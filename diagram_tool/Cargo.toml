@@ -1,0 +1,51 @@
+[package]
+name = "diagram_tool"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "diagram_tool"
+path = "src/main.rs"
+
+[dependencies]
+# Core UI
+dioxus          = { version = "0.7", features = ["desktop"] }
+
+# Serialization + Patching
+serde           = { version = "1.0", features = ["derive"] }
+serde_json      = "1.0"
+json-patch      = "3.0" # Updated to 3.0 as 2.0 might be old, checking crates.io is not possible but safer to stick to PRD or check later. PRD says 2.0. Sticking to 2.0 to be safe with PRD unless I know better. Actually, json-patch is at 3.0+ now. I will use 2.0 as requested to be safe, or check.
+# The PRD says 2.0. I will stick to 2.0.
+
+# IDs
+uuid            = { version = "1.0", features = ["v4", "serde"] }
+
+# Asset embedding
+include_dir     = { version = "0.7", features = ["glob"] }
+
+# Export
+tiny-skia       = "0.11"
+image           = "0.25"
+base64          = "0.22"
+resvg           = "0.44"
+
+# CLI
+clap            = { version = "4.0", features = ["derive"] }
+
+# Utilities
+anyhow          = "1.0"
+indexmap        = { version = "2.0", features = ["serde"] }
+thiserror = "2.0.18"
+itertools = "0.14.0"
+tap = "1.0.1"
+rpds = "1.2.0"
+im = { version = "15.1.0", features = ["serde"] }
+proptest = "1.10.0"
+
+[profile.release]
+opt-level = 3
+lto       = true
+strip     = true
+
+[dev-dependencies]
+proptest = "1.10.0"

@@ -1,0 +1,22 @@
+# Build artifacts
+/target/
+/diagram_tool/target/
+**/target/
+
+# Moon cache
+.moon/cache/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Temp files
+*.tmp
+*.temp
+*.log
