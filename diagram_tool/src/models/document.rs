@@ -5,10 +5,10 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
+use im::HashMap;
 use serde::{Deserialize, Serialize};
 use std::fmt;
-use std::ops::{Add, Sub, Mul, Div};
-use im::HashMap;
+use std::ops::{Add, Div, Mul, Sub};
 
 /// Newtype for Node Identifier to prevent primitive obsession
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -56,7 +56,7 @@ pub struct Revision(u64);
 
 impl Revision {
     pub const INITIAL: Self = Self(1);
-    
+
     #[must_use]
     pub const fn increment(self) -> Self {
         Self(self.0 + 1)
@@ -103,27 +103,37 @@ impl fmt::Display for OrderedFloat {
 
 impl Add for OrderedFloat {
     type Output = Self;
-    fn add(self, rhs: Self) -> Self::Output { Self(self.0 + rhs.0) }
+    fn add(self, rhs: Self) -> Self::Output {
+        Self(self.0 + rhs.0)
+    }
 }
 
 impl Sub for OrderedFloat {
     type Output = Self;
-    fn sub(self, rhs: Self) -> Self::Output { Self(self.0 - rhs.0) }
+    fn sub(self, rhs: Self) -> Self::Output {
+        Self(self.0 - rhs.0)
+    }
 }
 
 impl Sub<f64> for OrderedFloat {
     type Output = Self;
-    fn sub(self, rhs: f64) -> Self::Output { Self(self.0 - rhs) }
+    fn sub(self, rhs: f64) -> Self::Output {
+        Self(self.0 - rhs)
+    }
 }
 
 impl Mul<f64> for OrderedFloat {
     type Output = Self;
-    fn mul(self, rhs: f64) -> Self::Output { Self(self.0 * rhs) }
+    fn mul(self, rhs: f64) -> Self::Output {
+        Self(self.0 * rhs)
+    }
 }
 
 impl Div<f64> for OrderedFloat {
     type Output = Self;
-    fn div(self, rhs: f64) -> Self::Output { Self(self.0 / rhs) }
+    fn div(self, rhs: f64) -> Self::Output {
+        Self(self.0 / rhs)
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -139,7 +149,7 @@ pub enum NodeKind {
 pub enum NodeStyle {
     #[default]
     Default,
-    Box, 
+    Box,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
@@ -185,7 +195,7 @@ pub struct EditorState {
     #[serde(default = "default_snap")]
     pub snap_to_grid: bool,
     #[serde(skip)]
-    pub selected_items: im::HashSet<String>, 
+    pub selected_items: im::HashSet<String>,
 }
 
 const fn default_snap() -> bool {

@@ -5,9 +5,9 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, NodeKind, NodeId};
 use crate::models::dag::validate_dag;
-use anyhow::{Result, bail, anyhow};
+use crate::models::document::{DiagramDocument, NodeId, NodeKind};
+use anyhow::{anyhow, bail, Result};
 use im::HashSet;
 
 /// Functional schema validation.
@@ -21,7 +21,10 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
             if !node_ids.contains(parent_id) {
                 bail!("Node {id} references non-existent parent {parent_id}");
             }
-            if !nodes.get(parent_id).is_some_and(|p| p.kind == NodeKind::Subgraph) {
+            if !nodes
+                .get(parent_id)
+                .is_some_and(|p| p.kind == NodeKind::Subgraph)
+            {
                 bail!("Node {id} parent {parent_id} is not a subgraph");
             }
         }
@@ -40,8 +43,7 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
     })?;
 
     // 3. Validate DAG property
-    validate_dag(nodes, &doc.document.edges)
-        .map_err(|e| anyhow!("DAG Validation Failed: {e}"))?;
+    validate_dag(nodes, &doc.document.edges).map_err(|e| anyhow!("DAG Validation Failed: {e}"))?;
 
     Ok(())
 }
