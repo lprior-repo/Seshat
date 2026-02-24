@@ -15,6 +15,7 @@ mod app;
 mod cli;
 mod layout;
 mod history;
+mod hooks;
 mod patch;
 mod export;
 

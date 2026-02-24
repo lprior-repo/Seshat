@@ -14,6 +14,30 @@ use crate::history::History;
 use im::HashMap;
 use uuid::Uuid;
 
+#[must_use]
+fn create_smooth_step_path(from: (f64, f64), to: (f64, f64)) -> String {
+    let dx = to.0 - from.0;
+    let mid_y = (from.1 + to.1) / 2.0;
+    let radius: f64 = 8.0;
+
+    if dx.abs() < 2.0 {
+        return format!("M {} {} L {} {}", from.0, from.1, to.0, to.1);
+    }
+
+    let sign_x: f64 = if dx > 0.0 { 1.0 } else { -1.0 };
+    let r = radius.min(dx.abs() / 2.0).min((to.1 - from.1).abs() / 4.0);
+
+    format!(
+        "M {} {} L {} {} Q {} {} {} {} L {} {} Q {} {} {} {} L {} {}",
+        from.0, from.1,
+        from.0, mid_y - r,
+        from.0, mid_y, from.0 + sign_x * r, mid_y,
+        to.0 - sign_x * r, mid_y,
+        to.0, mid_y, to.0, mid_y + r,
+        to.0, to.1,
+    )
+}
+
 #[derive(Clone, Debug, PartialEq)]
 pub enum InteractionMode {
     Select,
@@ -35,6 +59,7 @@ pub fn Canvas() -> Element {
     let mut interaction_mode = use_signal(|| InteractionMode::Select);
     let mut alt_pressed = use_signal(|| false);
     let mut space_pressed = use_signal(|| false);
+    let mut drag_over = use_signal(|| false);
 
     let nodes_list = use_memo(move || doc_signal.read().document.nodes.clone());
     let edges_list = use_memo(move || doc_signal.read().document.edges.clone());
@@ -62,37 +87,14 @@ pub fn Canvas() -> Element {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 let event_type = json["type"].as_str().map_or("", |s| s);
                 let key = json["key"].as_str().map_or("", |s| s);
-                let ctrl = json["ctrl"].as_bool().is_some_and(|b| b);
-                let shift = json["shift"].as_bool().is_some_and(|b| b);
                 let alt = json["alt"].as_bool().is_some_and(|b| b);
                 
                 alt_pressed.set(alt);
                 if key == " " { space_pressed.set(event_type == "keydown"); }
 
                 if event_type == "keydown" {
-                    match (ctrl, key) {
-                        (true, "z" | "Z") if shift => {
-                            let (current, history) = (doc_signal.read().clone(), history_signal.read().clone());
-                            if let Some((doc, h)) = history.redo(current) {
-                                *doc_signal.write() = doc;
-                                *history_signal.write() = h;
-                            }
-                        },
-                        (true, "z" | "Z") => {
-                            let (current, history) = (doc_signal.read().clone(), history_signal.read().clone());
-                            if let Some((doc, h)) = history.undo(current) {
-                                *doc_signal.write() = doc;
-                                *history_signal.write() = h;
-                            }
-                        },
-                        (true, "y" | "Y") => {
-                            let (current, history) = (doc_signal.read().clone(), history_signal.read().clone());
-                            if let Some((doc, h)) = history.redo(current) {
-                                *doc_signal.write() = doc;
-                                *history_signal.write() = h;
-                            }
-                        },
-                        (_, "Delete" | "Backspace") => {
+                    match key {
+                        "Delete" | "Backspace" => {
                             let mut doc = doc_signal.write();
                             let selected_ids = doc.editor_state.selected_items.clone();
                             if !selected_ids.is_empty() {
@@ -116,8 +118,9 @@ pub fn Canvas() -> Element {
 
     let handle_drop = move |evt: DragEvent| {
         evt.prevent_default();
+        drag_over.set(false);
         dragging_icon.with_mut(|dragging| {
-            if let Some(path) = dragging.take() {
+            if let Some(icon_key) = dragging.take() {
                 let (current_doc, history) = (doc_signal.read().clone(), history_signal.read().clone());
                 *history_signal.write() = history.push(current_doc);
                 doc_signal.with_mut(|doc| {
@@ -125,7 +128,7 @@ pub fn Canvas() -> Element {
                     let (x, y) = to_canvas_coords(coords.x, coords.y, doc.editor_state.camera_x.0, doc.editor_state.camera_y.0, doc.editor_state.zoom.0);
                     let _ = doc.document.nodes.insert(NodeId::new(Uuid::new_v4().to_string()), Node {
                         kind: NodeKind::Node,
-                        icon: path, label: String::from("New Node"),
+                        icon: icon_key, label: String::from("New Node"),
                         x: OrderedFloat(x), y: OrderedFloat(y), width: OrderedFloat(64.0), height: OrderedFloat(64.0),
                         locked: false, parent: None, tags: Vec::new(), metadata: HashMap::new(), style: NodeStyle::default(),
                     });
@@ -135,12 +138,18 @@ pub fn Canvas() -> Element {
         });
     };
 
+    let is_dragging = dragging_icon.read().is_some();
+    let bg_color = if *drag_over.read() && is_dragging { "#e0f2fe" } else { "#ffffff" };
+    let border_style = if *drag_over.read() && is_dragging { "2px dashed #0ea5e9" } else { "none" };
+
     rsx! {
         div {
             class: "canvas-container",
-            style: "flex: 1; position: relative; overflow: hidden; background: #ffffff; cursor: crosshair; user-select: none;",
+            style: "flex: 1; position: relative; overflow: hidden; background: {bg_color}; cursor: crosshair; user-select: none; border: {border_style}; box-sizing: border-box;",
             
             ondragover: move |evt| { evt.prevent_default(); },
+            ondragenter: move |_| { drag_over.set(true); },
+            ondragleave: move |_| { drag_over.set(false); },
             ondrop: handle_drop,
             
             onwheel: move |evt| {
@@ -247,7 +256,22 @@ pub fn Canvas() -> Element {
             // SVG Layer
             svg {
                 style: "position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;",
-                
+
+                defs {
+                    marker {
+                        id: "arrow",
+                        marker_width: "10",
+                        marker_height: "7",
+                        ref_x: "10",
+                        ref_y: "3.5",
+                        orient: "auto",
+                        polygon {
+                            points: "0 0, 10 3.5, 0 7",
+                            fill: "black"
+                        }
+                    }
+                }
+
                 // Existing Edges
                 {
                     let doc = doc_signal.read();
@@ -257,7 +281,9 @@ pub fn Canvas() -> Element {
                             (Some(src), Some(tgt)) => {
                                 let (sx, sy) = to_screen_coords(src.x.0 + src.width.0/2.0, src.y.0 + src.height.0/2.0, s.camera_x.0, s.camera_y.0, s.zoom.0);
                                 let (tx, ty) = to_screen_coords(tgt.x.0 + tgt.width.0/2.0, tgt.y.0 + tgt.height.0/2.0, s.camera_x.0, s.camera_y.0, s.zoom.0);
-                                Some(rsx! { line { key: "{id:?}", x1: "{sx}", y1: "{sy}", x2: "{tx}", y2: "{ty}", stroke: "black", stroke_width: "2" } })
+                                let path_d = create_smooth_step_path((sx, sy), (tx, ty));
+                                let marker = if edge.directed { "url(#arrow)" } else { "" };
+                                Some(rsx! { path { key: "{id:?}", d: "{path_d}", stroke: "black", stroke_width: "2", fill: "none", marker_end: "{marker}" } })
                             },
                             _ => None,
                         }
@@ -274,7 +300,8 @@ pub fn Canvas() -> Element {
                         doc.document.nodes.get(from_node).map_or_else(|| rsx! {}, |src| {
                             let (sx, sy) = to_screen_coords(src.x.0 + src.width.0/2.0, src.y.0 + src.height.0/2.0, s.camera_x.0, s.camera_y.0, s.zoom.0);
                             let (tx, ty) = to_screen_coords(current_pos.0, current_pos.1, s.camera_x.0, s.camera_y.0, s.zoom.0);
-                            rsx! { line { x1: "{sx}", y1: "{sy}", x2: "{tx}", y2: "{ty}", stroke: "blue", stroke_width: "2", stroke_dasharray: "5,5" } }
+                            let temp_path = create_smooth_step_path((sx, sy), (tx, ty));
+                            rsx! { path { d: "{temp_path}", stroke: "blue", stroke_width: "2", fill: "none", stroke_dasharray: "5,5" } }
                         })
                     } else { rsx! {} }
                 }

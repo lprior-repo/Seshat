@@ -28,3 +28,35 @@
 | **State** | `use_signal` / `use_store`, NEVER `use_state` |
 | **Code Search** | Codanna MCP tools ONLY, no grep/rg/find |
 | **Errors** | `Result<T, Error>` with combinators, no unwrap |
+
+## Workspace Layout
+
+This is a Cargo workspace with two members:
+
+| Crate | Path | Target | Purpose |
+|-------|------|--------|---------|
+| `diagram_tool` | `diagram_tool/` | Desktop (native) | Primary development target — Dioxus desktop diagram editor |
+| `oya-frontend` | `.` | WASM (web) | OYA frontend — Dioxus web app |
+
+### Building
+
+```bash
+# Build diagram_tool (default)
+cargo build
+
+# Run diagram_tool desktop app
+cargo run -p diagram_tool
+
+# Check oya-frontend (requires wasm32 target)
+cargo check --package oya-frontend --target wasm32-unknown-unknown
+
+# Run all tests
+cargo test --workspace
+
+# Check only diagram_tool
+cargo check --package diagram_tool
+```
+
+### Cargo.lock files
+- `seshat/Cargo.lock` — root workspace lock (used by workspace builds)
+- `diagram_tool/Cargo.lock` — kept for historical reference but superseded by workspace lock

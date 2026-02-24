@@ -1,3 +1,4 @@
-pub mod document;
 pub mod dag;
+pub mod document;
 pub mod schema;
+pub mod validation;

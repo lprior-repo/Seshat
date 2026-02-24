@@ -1,3 +1,11 @@
+[workspace]
+members = [
+    ".",
+    "diagram_tool",
+]
+default-members = ["diagram_tool"]
+resolver = "2"
+
 [package]
 name = "oya-frontend"
 version = "0.1.0"
