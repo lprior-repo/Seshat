@@ -4,9 +4,16 @@ use std::fs;
 use std::path::Path;
 
 fn main() {
+    if let Err(err) = run() {
+        eprintln!("cargo:warning=icons index generation failed: {err}");
+        std::process::exit(1);
+    }
+}
+
+fn run() -> Result<(), String> {
     println!("cargo:rerun-if-changed=resources/");
 
-    let out_dir = env::var("OUT_DIR").expect("OUT_DIR not set");
+    let out_dir = env::var("OUT_DIR").map_err(|e| format!("OUT_DIR not set: {e}"))?;
     let resources_path = Path::new("resources");
 
     let mut icons: Vec<IconEntry> = Vec::new();
@@ -27,19 +34,24 @@ fn main() {
         by_provider: build_by_provider(&icons),
     };
 
-    let json = serde_json::to_string_pretty(&index).expect("Failed to serialize index");
+    let json =
+        serde_json::to_string_pretty(&index).map_err(|e| format!("serialize index failed: {e}"))?;
     let json_path = Path::new(&out_dir).join("icons_index.json");
-    fs::write(&json_path, &json).expect("Failed to write icons_index.json");
+    fs::write(&json_path, &json)
+        .map_err(|e| format!("write {} failed: {e}", json_path.display()))?;
 
     let rust_code = generate_rust_code();
     let rs_path = Path::new(&out_dir).join("icons_index.rs");
-    fs::write(&rs_path, rust_code).expect("Failed to write icons_index.rs");
+    fs::write(&rs_path, rust_code)
+        .map_err(|e| format!("write {} failed: {e}", rs_path.display()))?;
 
     let icon_count = icons.len();
     let provider_count = index.by_provider.len();
     println!(
         "cargo:warning=Generated index for {icon_count} icons across {provider_count} providers"
     );
+
+    Ok(())
 }
 
 #[derive(serde::Serialize, Clone)]

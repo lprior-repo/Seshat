@@ -6,12 +6,13 @@
 #![forbid(unsafe_code)]
 
 use crate::models::dag::validate_dag;
-use crate::models::document::{DiagramDocument, NodeKind};
+use crate::models::document::{DiagramDocument, DocumentData, NodeKind};
 
 /// Severity of a validation issue.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValidationSeverity {
     Error,
+    #[allow(dead_code)]
     Warning,
 }
 
@@ -29,8 +30,16 @@ pub struct ValidationIssue {
 /// This function is deterministic and has no side effects.
 #[must_use]
 pub fn validate_document(doc: &DiagramDocument) -> Vec<ValidationIssue> {
-    let nodes = &doc.document.nodes;
-    let edges = &doc.document.edges;
+    validate_document_data(&doc.document)
+}
+
+/// Pure function: validates only the structural document graph.
+///
+/// Editor/camera state is intentionally ignored.
+#[must_use]
+pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
+    let nodes = &document.nodes;
+    let edges = &document.edges;
 
     let edge_issues = edges.iter().flat_map(|(id, edge)| {
         let src_issue = (!nodes.contains_key(&edge.source)).then(|| ValidationIssue {
@@ -48,7 +57,7 @@ pub fn validate_document(doc: &DiagramDocument) -> Vec<ValidationIssue> {
         src_issue.into_iter().chain(tgt_issue)
     });
 
-    let node_issues = nodes.iter().flat_map(|(id, node)| {
+    let node_issues = nodes.iter().filter_map(|(id, node)| {
         node.parent.as_ref().and_then(|parent_id| {
             if !nodes.contains_key(parent_id) {
                 Some(ValidationIssue {
@@ -87,7 +96,8 @@ pub fn validate_document(doc: &DiagramDocument) -> Vec<ValidationIssue> {
 mod tests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
+        OrderedFloat,
     };
     use im::HashMap;
 
@@ -102,11 +112,16 @@ mod tests {
                 y: OrderedFloat(0.0),
                 width: OrderedFloat(64.0),
                 height: OrderedFloat(64.0),
+                font_size: None,
+                font_weight: None,
                 locked: false,
                 parent: None,
+                dag_rank: None,
                 tags: Vec::new(),
                 metadata: HashMap::new(),
-                style: NodeStyle::default(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
             },
         )
     }
@@ -119,8 +134,15 @@ mod tests {
                 target: NodeId::new(tgt.to_string()),
                 label: String::new(),
                 style: EdgeStyle::default(),
+                arrow_type: ArrowType::default(),
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
                 directed: true,
                 bend_points: Vec::new(),
+                tags: Vec::new(),
+                metadata: HashMap::new(),
+                font_size: None,
             },
         )
     }

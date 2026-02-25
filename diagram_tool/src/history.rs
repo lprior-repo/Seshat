@@ -27,7 +27,8 @@ impl History {
         Self {
             undo_stack: self.undo_stack.push_front(doc),
             redo_stack: List::new(),
-        }.tap_history_limit()
+        }
+        .tap_history_limit()
     }
 
     /// Pure transition to undo
@@ -37,9 +38,13 @@ impl History {
             (
                 prev.clone(),
                 Self {
-                    undo_stack: self.undo_stack.drop_first().iter().fold(List::new(), |_, l| l.clone()),
+                    undo_stack: self
+                        .undo_stack
+                        .drop_first()
+                        .iter()
+                        .fold(List::new(), |_, l| l.clone()),
                     redo_stack: self.redo_stack.push_front(current),
-                }
+                },
             )
         })
     }
@@ -52,8 +57,12 @@ impl History {
                 next.clone(),
                 Self {
                     undo_stack: self.undo_stack.push_front(current),
-                    redo_stack: self.redo_stack.drop_first().iter().fold(List::new(), |_, l| l.clone()),
-                }
+                    redo_stack: self
+                        .redo_stack
+                        .drop_first()
+                        .iter()
+                        .fold(List::new(), |_, l| l.clone()),
+                },
             )
         })
     }

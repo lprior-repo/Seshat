@@ -1,0 +1,267 @@
+#![deny(clippy::unwrap_used)]
+#![deny(clippy::expect_used)]
+#![deny(clippy::panic)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
+#![forbid(unsafe_code)]
+
+use crate::models::document::{DiagramDocument, DocumentData, NodeKind};
+use crate::ui::theme::{ACCENT, APP_FONT, BG_ELEVATED, BG_SURFACE, BORDER, TEXT_MUTED};
+use dioxus::prelude::*;
+
+const PAD: f64 = 60.0;
+const BASE_SIDE: f64 = 180.0;
+const MIN_W: f64 = 120.0;
+const MAX_W: f64 = 280.0;
+const MIN_H: f64 = 80.0;
+const MAX_H: f64 = 200.0;
+
+type EdgeSegment = (f64, f64, f64, f64);
+type NodeRect = (bool, f64, f64, f64, f64, String);
+
+#[derive(Clone)]
+struct MinimapSnapshot {
+    edge_segments: Vec<EdgeSegment>,
+    node_rects: Vec<NodeRect>,
+    min_x: f64,
+    min_y: f64,
+    max_x: f64,
+    max_y: f64,
+}
+
+impl MinimapSnapshot {
+    fn from_document(document: &DocumentData) -> Option<Self> {
+        if document.nodes.is_empty() {
+            return None;
+        }
+
+        let mut edge_segments = Vec::new();
+        let mut node_rects = Vec::new();
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        for node in document.nodes.values() {
+            min_x = min_x.min(node.x.0);
+            min_y = min_y.min(node.y.0);
+            max_x = max_x.max(node.x.0 + node.width.0);
+            max_y = max_y.max(node.y.0 + node.height.0);
+
+            let provider = node
+                .tags
+                .first()
+                .map_or_else(|| String::from("generic"), std::clone::Clone::clone);
+            node_rects.push((
+                node.kind == NodeKind::Subgraph,
+                node.x.0,
+                node.y.0,
+                node.width.0,
+                node.height.0,
+                provider,
+            ));
+        }
+
+        for edge in document.edges.values() {
+            if let Some((source, target)) = document
+                .nodes
+                .get(&edge.source)
+                .zip(document.nodes.get(&edge.target))
+            {
+                edge_segments.push((
+                    source.x.0 + (source.width.0 / 2.0),
+                    source.y.0 + (source.height.0 / 2.0),
+                    target.x.0 + (target.width.0 / 2.0),
+                    target.y.0 + (target.height.0 / 2.0),
+                ));
+            }
+        }
+
+        Some(Self {
+            edge_segments,
+            node_rects,
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+        })
+    }
+}
+
+fn provider_color(provider: &str) -> &'static str {
+    match provider {
+        "aws" => "#FF9900",
+        "gcp" => "#4285F4",
+        "azure" => "#0078D4",
+        "k8s" => "#326CE5",
+        _ => "#6B7280",
+    }
+}
+
+#[component]
+pub fn Minimap() -> Element {
+    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
+    let viewport_size = use_context::<Signal<(f64, f64)>>();
+    let mut dragging = use_signal(|| false);
+    let mut cached_snapshot = use_signal(|| Option::<MinimapSnapshot>::None);
+    let mut last_snapshot_revision = use_signal(|| doc_signal.read().revision);
+
+    let (cam_x, cam_y, zoom) = {
+        let doc = doc_signal.read();
+
+        if doc.document.nodes.is_empty() {
+            return rsx! {};
+        }
+
+        let needs_refresh = *last_snapshot_revision.read() != doc.revision;
+
+        if needs_refresh {
+            cached_snapshot.set(MinimapSnapshot::from_document(&doc.document));
+            last_snapshot_revision.set(doc.revision);
+        }
+
+        (
+            doc.editor_state.camera_x.0,
+            doc.editor_state.camera_y.0,
+            doc.editor_state.zoom.0,
+        )
+    };
+
+    let snapshot = cached_snapshot.read();
+    let Some(snapshot) = snapshot.as_ref() else {
+        return rsx! {};
+    };
+    let mut min_x = snapshot.min_x;
+    let mut min_y = snapshot.min_y;
+    let mut max_x = snapshot.max_x;
+    let mut max_y = snapshot.max_y;
+
+    let (viewport_w, viewport_h) = *viewport_size.read();
+    let vp_w = viewport_w.max(1.0) / zoom;
+    let vp_h = viewport_h.max(1.0) / zoom;
+    let vp_left = (-cam_x) / zoom;
+    let vp_top = (-cam_y) / zoom;
+
+    min_x = min_x.min(vp_left) - PAD;
+    min_y = min_y.min(vp_top) - PAD;
+    max_x = max_x.max(vp_left + vp_w) + PAD;
+    max_y = max_y.max(vp_top + vp_h) + PAD;
+
+    let world_w = (max_x - min_x).max(1.0);
+    let world_h = (max_y - min_y).max(1.0);
+    let aspect = world_w / world_h;
+    let zoom_scale = (1.0 / zoom).clamp(0.6, 1.4);
+
+    let (mut view_w, mut view_h) = if aspect > 1.0 {
+        let width = (BASE_SIDE * zoom_scale).round();
+        (width, (width / aspect).round())
+    } else {
+        let height = (BASE_SIDE * zoom_scale).round();
+        ((height * aspect).round(), height)
+    };
+    view_w = view_w.clamp(MIN_W, MAX_W);
+    view_h = view_h.clamp(MIN_H, MAX_H);
+
+    let scale = (view_w / world_w).min(view_h / world_h);
+
+    let to_mini = |x: f64, y: f64| ((x - min_x) * scale, (y - min_y) * scale);
+    let (vp_x, vp_y) = to_mini(vp_left, vp_top);
+
+    let mut nav_to = move |screen_x: f64, screen_y: f64| {
+        let center_x = (screen_x / scale) + min_x;
+        let center_y = (screen_y / scale) + min_y;
+        doc_signal.with_mut(|doc_mut| {
+            let zoom = doc_mut.editor_state.zoom.0;
+            let left = center_x - (vp_w / 2.0);
+            let top = center_y - (vp_h / 2.0);
+            doc_mut.editor_state.camera_x.0 = -(left * zoom);
+            doc_mut.editor_state.camera_y.0 = -(top * zoom);
+        });
+    };
+
+    rsx! {
+        div {
+            style: "position: absolute; right: 12px; bottom: 12px; width: {view_w}px; height: {view_h}px; border: 1px solid {BORDER}; border-radius: 10px; background: linear-gradient(180deg, {BG_ELEVATED}f2 0%, {BG_SURFACE}ea 100%); backdrop-filter: blur(8px); overflow: hidden; z-index: 20; user-select:none; box-shadow: 0 8px 20px color-mix(in oklch, black 28%, transparent);",
+            onmousedown: move |evt| {
+                evt.stop_propagation();
+                dragging.set(true);
+                let c = evt.data.coordinates().element();
+                nav_to(c.x, c.y);
+            },
+            onmousemove: move |evt| {
+                if *dragging.read() {
+                    let c = evt.data.coordinates().element();
+                    nav_to(c.x, c.y);
+                }
+            },
+            onmouseup: move |_| dragging.set(false),
+            onmouseleave: move |_| dragging.set(false),
+
+            svg {
+                width: "{view_w}",
+                height: "{view_h}",
+                for &(sxw, syw, txw, tyw) in snapshot.edge_segments.iter() {
+                    {
+                        let (sx, sy) = to_mini(sxw, syw);
+                        let (tx, ty) = to_mini(txw, tyw);
+                        rsx! {
+                            line {
+                                x1: "{sx}",
+                                y1: "{sy}",
+                                x2: "{tx}",
+                                y2: "{ty}",
+                                stroke: "color-mix(in oklch, {TEXT_MUTED} 78%, transparent)",
+                                stroke_width: "0.7",
+                                opacity: "0.7",
+                            }
+                        }
+                    }
+                }
+                for (is_subgraph, node_x, node_y, node_w, node_h, provider) in snapshot.node_rects.iter() {
+                    {
+                        let (x, y) = to_mini(*node_x, *node_y);
+                        let w = (*node_w * scale).max(2.0);
+                        let h = (*node_h * scale).max(2.0);
+                        let fill = if *is_subgraph {
+                            "none"
+                        } else {
+                            provider_color(provider)
+                        };
+                        let stroke = if *is_subgraph {
+                            "color-mix(in oklch, {TEXT_MUTED} 55%, transparent)"
+                        } else {
+                            ACCENT
+                        };
+                        rsx! {
+                            rect {
+                                x: "{x}",
+                                y: "{y}",
+                                width: "{w}",
+                                height: "{h}",
+                                rx: "1.5",
+                                fill: "{fill}",
+                                stroke: "{stroke}",
+                                stroke_width: "0.8",
+                                opacity: "0.85",
+                            }
+                        }
+                    }
+                }
+                rect {
+                    x: "{vp_x}",
+                    y: "{vp_y}",
+                    width: "{(vp_w * scale).max(4.0)}",
+                    height: "{(vp_h * scale).max(4.0)}",
+                    fill: "color-mix(in oklch, {ACCENT} 20%, transparent)",
+                    stroke: "{ACCENT}",
+                    stroke_width: "1.2",
+                    rx: "2",
+                }
+            }
+            div {
+                style: "position: absolute; top: 4px; right: 6px; color: {TEXT_MUTED}; font-size: 10px; font-family: {APP_FONT};",
+                "{(zoom * 100.0).round()}%"
+            }
+        }
+    }
+}

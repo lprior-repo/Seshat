@@ -7,61 +7,82 @@
 
 use crate::history::History;
 use crate::models::document::DiagramDocument;
+use crate::ui::commands::{
+    apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
+    apply_redo, apply_select_all, apply_undo, apply_ungroup_selection,
+};
 use dioxus::prelude::*;
 
-/// Global keyboard hook that handles ONLY undo/redo shortcuts:
-/// - Ctrl+Z        → undo
-/// - Ctrl+Shift+Z  → redo
-/// - Ctrl+Y        → redo
+/// Global keyboard hook that handles document-wide modifier shortcuts.
 ///
 /// Must be called inside a component that has `Signal<DiagramDocument>` and
 /// `Signal<History>` in context (i.e. after the context providers in `App`).
 pub fn use_global_keyboard() {
-    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
-    let mut history_signal = use_context::<Signal<History>>();
+    let doc_signal = use_context::<Signal<DiagramDocument>>();
+    let history_signal = use_context::<Signal<History>>();
 
     use_effect(move || {
         let mut eval = document::eval(
-            r#"
+            r"
             window.addEventListener('keydown', (e) => {
-                if (e.ctrlKey && (e.key === 'z' || e.key === 'Z' || e.key === 'y' || e.key === 'Y')) {
-                    dioxus.send({ type: 'keydown', key: e.key, ctrl: e.ctrlKey, shift: e.shiftKey });
+                const active = document.activeElement;
+                const editing = active && (
+                    active.tagName === 'INPUT' ||
+                    active.tagName === 'TEXTAREA' ||
+                    active.isContentEditable
+                );
+                if (editing) return;
+                const modifier = e.ctrlKey || e.metaKey;
+                const key = e.key.length === 1 ? e.key.toLowerCase() : e.key;
+                const handled = modifier && (
+                    key === 'z' ||
+                    key === 'y' ||
+                    key === 'a' ||
+                    key === 'c' ||
+                    key === 'v' ||
+                    key === 'd' ||
+                    key === 'g'
+                );
+                if (handled) {
+                    e.preventDefault();
+                    dioxus.send({ type: 'keydown', key: e.key, modifier, shift: e.shiftKey });
                 }
             });
-        "#,
+        ",
         );
 
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 let key = json["key"].as_str().map_or("", |s| s);
-                let ctrl = json["ctrl"].as_bool().is_some_and(|b| b);
+                let modifier = json["modifier"].as_bool().is_some_and(|b| b);
                 let shift = json["shift"].as_bool().is_some_and(|b| b);
+                let lowered = key.to_ascii_lowercase();
 
-                if ctrl {
-                    match (shift, key) {
-                        (true, "z" | "Z") => {
-                            let (current, history) =
-                                (doc_signal.read().clone(), history_signal.read().clone());
-                            if let Some((doc, h)) = history.redo(current) {
-                                *doc_signal.write() = doc;
-                                *history_signal.write() = h;
-                            }
+                if modifier {
+                    match (shift, lowered.as_str()) {
+                        (true, "z") | (_, "y") => {
+                            apply_redo(doc_signal, history_signal);
                         }
-                        (false, "z" | "Z") => {
-                            let (current, history) =
-                                (doc_signal.read().clone(), history_signal.read().clone());
-                            if let Some((doc, h)) = history.undo(current) {
-                                *doc_signal.write() = doc;
-                                *history_signal.write() = h;
-                            }
+                        (false, "z") => {
+                            apply_undo(doc_signal, history_signal);
                         }
-                        (_, "y" | "Y") => {
-                            let (current, history) =
-                                (doc_signal.read().clone(), history_signal.read().clone());
-                            if let Some((doc, h)) = history.redo(current) {
-                                *doc_signal.write() = doc;
-                                *history_signal.write() = h;
-                            }
+                        (_, "a") => {
+                            apply_select_all(doc_signal);
+                        }
+                        (_, "c") => {
+                            let _ = apply_copy_selection(doc_signal);
+                        }
+                        (_, "v") => {
+                            let _ = apply_paste_selection(doc_signal, history_signal);
+                        }
+                        (_, "d") => {
+                            let _ = apply_duplicate_selection(doc_signal, history_signal);
+                        }
+                        (true, "g") => {
+                            let _ = apply_ungroup_selection(doc_signal, history_signal);
+                        }
+                        (false, "g") => {
+                            let _ = apply_group_selection(doc_signal, history_signal);
                         }
                         _ => {}
                     }

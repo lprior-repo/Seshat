@@ -266,6 +266,7 @@ pub fn dag_layout(doc: &DiagramDocument, settings: &DagLayoutSettings) -> Diagra
         .collect();
 
     DiagramDocument {
+        version: doc.version,
         revision: doc.revision.increment(),
         document: DocumentData {
             nodes: next_nodes,
@@ -315,7 +316,8 @@ fn apply_position(
 mod tests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, EditorState, NodeKind, NodeStyle, Revision,
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, NodeKind, NodeStyle,
+        Revision,
     };
     use im::HashMap;
 
@@ -328,11 +330,16 @@ mod tests {
             y: OrderedFloat(y),
             width: OrderedFloat(220.0),
             height: OrderedFloat(68.0),
+            font_size: None,
+            font_weight: None,
             locked: false,
             parent: None,
+            dag_rank: None,
             tags: vec![],
             metadata: HashMap::new(),
-            style: NodeStyle::Default,
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
         }
     }
 
@@ -349,24 +356,28 @@ mod tests {
             target: tgt.clone(),
             label: String::new(),
             style: crate::models::document::EdgeStyle::Solid,
+            arrow_type: ArrowType::Arrow,
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.5),
             directed: true,
             bend_points: vec![],
+            tags: vec![],
+            metadata: HashMap::new(),
+            font_size: None,
         }
     }
 
     fn empty_editor() -> EditorState {
         EditorState {
-            camera_x: OrderedFloat(0.0),
-            camera_y: OrderedFloat(0.0),
-            zoom: OrderedFloat(1.0),
-            grid_size: OrderedFloat(20.0),
             snap_to_grid: false,
-            selected_items: im::HashSet::new(),
+            ..EditorState::default()
         }
     }
 
     fn make_doc(nodes: Vec<(NodeId, Node)>, edges: Vec<(EdgeId, Edge)>) -> DiagramDocument {
         DiagramDocument {
+            version: 2,
             revision: Revision::INITIAL,
             document: DocumentData {
                 nodes: nodes.into_iter().collect(),

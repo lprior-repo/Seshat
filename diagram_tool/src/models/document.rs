@@ -7,6 +7,7 @@
 
 use im::HashMap;
 use serde::{Deserialize, Serialize};
+use serde_json::Value;
 use std::fmt;
 use std::ops::{Add, Div, Mul, Sub};
 
@@ -45,9 +46,12 @@ impl fmt::Display for EdgeId {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct DiagramDocument {
+    pub version: u32,
     pub revision: Revision,
     pub document: DocumentData,
+    #[serde(default)]
     pub editor_state: EditorState,
 }
 
@@ -55,7 +59,7 @@ pub struct DiagramDocument {
 pub struct Revision(u64);
 
 impl Revision {
-    pub const INITIAL: Self = Self(1);
+    pub const INITIAL: Self = Self(0);
 
     #[must_use]
     pub const fn increment(self) -> Self {
@@ -64,12 +68,14 @@ impl Revision {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct DocumentData {
     pub nodes: HashMap<NodeId, Node>,
     pub edges: HashMap<EdgeId, Edge>,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Node {
     pub kind: NodeKind,
     #[serde(default)]
@@ -79,14 +85,25 @@ pub struct Node {
     pub y: OrderedFloat,
     pub width: OrderedFloat,
     pub height: OrderedFloat,
+    #[serde(default)]
+    pub font_size: Option<OrderedFloat>,
+    #[serde(default)]
+    pub font_weight: Option<FontWeight>,
     pub locked: bool,
+    #[serde(default)]
     pub parent: Option<NodeId>,
+    #[serde(default)]
+    pub dag_rank: Option<i64>,
     #[serde(default)]
     pub tags: Vec<String>,
     #[serde(default)]
-    pub metadata: HashMap<String, String>,
+    pub metadata: HashMap<String, Value>,
     #[serde(default)]
-    pub style: NodeStyle,
+    pub z_index: i64,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub style: Option<NodeStyle>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub collapsed: Option<bool>,
 }
 
 /// Helper to make floats Eq
@@ -148,11 +165,21 @@ pub enum NodeKind {
 #[serde(rename_all = "lowercase")]
 pub enum NodeStyle {
     #[default]
-    Default,
     Box,
+    Cloud,
+    Cylinder,
+    Dashed,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum FontWeight {
+    Normal,
+    Bold,
+}
+
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Edge {
     pub source: NodeId,
     pub target: NodeId,
@@ -160,17 +187,39 @@ pub struct Edge {
     pub label: String,
     #[serde(default)]
     pub style: EdgeStyle,
+    #[serde(default, rename = "arrowhead")]
+    pub arrow_type: ArrowType,
+    #[serde(default = "default_label_offset")]
+    pub label_offset_t: OrderedFloat,
+    #[serde(default)]
+    pub color: Option<String>,
+    #[serde(default = "default_thickness")]
+    pub thickness: OrderedFloat,
     #[serde(default = "default_directed")]
     pub directed: bool,
     #[serde(default)]
     pub bend_points: Vec<Point>,
+    #[serde(default)]
+    pub tags: Vec<String>,
+    #[serde(default)]
+    pub metadata: HashMap<String, Value>,
+    #[serde(default)]
+    pub font_size: Option<OrderedFloat>,
+}
+
+const fn default_label_offset() -> OrderedFloat {
+    OrderedFloat(0.5)
+}
+
+const fn default_thickness() -> OrderedFloat {
+    OrderedFloat(1.5)
 }
 
 const fn default_directed() -> bool {
     true
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
 #[serde(rename_all = "lowercase")]
 pub enum EdgeStyle {
     #[default]
@@ -179,45 +228,97 @@ pub enum EdgeStyle {
     Dotted,
 }
 
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "lowercase")]
+pub enum ArrowType {
+    #[default]
+    Arrow,
+    Open,
+    Diamond,
+    Circle,
+    None,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct Point {
     pub x: OrderedFloat,
     pub y: OrderedFloat,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct EditorState {
     pub camera_x: OrderedFloat,
     pub camera_y: OrderedFloat,
     pub zoom: OrderedFloat,
-    #[serde(default)]
+    #[serde(default = "default_grid_size")]
     pub grid_size: OrderedFloat,
     #[serde(default = "default_snap")]
     pub snap_to_grid: bool,
-    #[serde(skip)]
+    #[serde(default)]
     pub selected_items: im::HashSet<String>,
+    #[serde(default)]
+    pub editing_edge_id: Option<String>,
+    #[serde(default = "default_theme")]
+    pub theme: EditorTheme,
+    #[serde(default = "default_show_grid")]
+    pub show_grid: bool,
+    #[serde(default)]
+    pub minimap_visible: bool,
+}
+
+impl Default for EditorState {
+    fn default() -> Self {
+        Self {
+            camera_x: OrderedFloat(0.0),
+            camera_y: OrderedFloat(0.0),
+            zoom: OrderedFloat(1.0),
+            grid_size: default_grid_size(),
+            snap_to_grid: true,
+            selected_items: im::HashSet::new(),
+            editing_edge_id: None,
+            theme: default_theme(),
+            show_grid: default_show_grid(),
+            minimap_visible: false,
+        }
+    }
+}
+
+const fn default_grid_size() -> OrderedFloat {
+    OrderedFloat(20.0)
 }
 
 const fn default_snap() -> bool {
     true
 }
 
+const fn default_theme() -> EditorTheme {
+    EditorTheme::System
+}
+
+const fn default_show_grid() -> bool {
+    true
+}
+
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "lowercase")]
+pub enum EditorTheme {
+    Light,
+    Dark,
+    System,
+}
+
 impl Default for DiagramDocument {
     fn default() -> Self {
         Self {
+            version: 2,
             revision: Revision::INITIAL,
             document: DocumentData {
                 nodes: HashMap::new(),
                 edges: HashMap::new(),
             },
-            editor_state: EditorState {
-                camera_x: OrderedFloat(0.0),
-                camera_y: OrderedFloat(0.0),
-                zoom: OrderedFloat(1.0),
-                grid_size: OrderedFloat(20.0),
-                snap_to_grid: true,
-                selected_items: im::HashSet::new(),
-            },
+            editor_state: EditorState::default(),
         }
     }
 }

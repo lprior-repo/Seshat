@@ -6,9 +6,8 @@
 #![forbid(unsafe_code)]
 
 use crate::models::document::DiagramDocument;
-use crate::models::schema::validate_schema;
-use json_patch::Patch;
 use anyhow::Result;
+use json_patch::Patch;
 
 /// Pure calculation to apply an AI patch.
 pub fn patch_doc(doc: &DiagramDocument, patch: &Patch) -> Result<DiagramDocument> {
@@ -18,20 +17,12 @@ pub fn patch_doc(doc: &DiagramDocument, patch: &Patch) -> Result<DiagramDocument
     };
 
     match json_patch::patch(&mut doc_val, patch) {
-        Ok(()) => {},
+        Ok(()) => {}
         Err(e) => return Err(anyhow::Error::new(e).context("Failed to apply patch")),
     }
 
-    let mut new_doc: DiagramDocument = match serde_json::from_value(doc_val) {
-        Ok(v) => v,
-        Err(e) => return Err(anyhow::Error::new(e).context("Failed to deserialize document")),
-    };
-
-    match validate_schema(&new_doc) {
-        Ok(()) => {
-            new_doc.revision = new_doc.revision.increment();
-            Ok(new_doc)
-        },
-        Err(e) => Err(e.context("Schema validation failed")),
+    match serde_json::from_value(doc_val) {
+        Ok(v) => Ok(v),
+        Err(e) => Err(anyhow::Error::new(e).context("Failed to deserialize document")),
     }
 }

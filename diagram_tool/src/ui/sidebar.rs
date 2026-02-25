@@ -5,56 +5,398 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use dioxus::prelude::*;
+use crate::app::DraggedIconPayload;
+use crate::app::SidebarUiState;
 use crate::icons::ICONS;
-use base64::{Engine as _, engine::general_purpose};
+use crate::icons::{icon_index, IconMeta};
+use crate::ui::sidebar_primitives::{
+    SidebarGroup, SidebarHeader, SidebarOverlay, SidebarRail, SidebarSheet,
+};
+use crate::ui::theme::{
+    BG_BASE, BG_ELEVATED, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED,
+};
+use base64::{engine::general_purpose, Engine as _};
+use dioxus::prelude::*;
+use std::collections::{BTreeMap, BTreeSet};
+
+const INITIAL_PROVIDER_LIMIT: usize = 72;
+const LOAD_MORE_STEP: usize = 48;
+const MAX_SEARCH_RESULTS: usize = 180;
+
+#[derive(Clone, PartialEq)]
+struct CategoryBucket {
+    name: String,
+    icons: Vec<IconMeta>,
+}
+
+#[derive(Clone, PartialEq)]
+struct ProviderBucket {
+    provider: String,
+    total_count: usize,
+    visible_count: usize,
+    has_more: bool,
+    categories: Vec<CategoryBucket>,
+}
+
+fn matches_query(icon: &IconMeta, query: &str) -> bool {
+    if query.is_empty() {
+        return true;
+    }
+
+    let query_lower = query.to_ascii_lowercase();
+    let category = icon.category_path.join(" ").to_ascii_lowercase();
+
+    icon.icon_key.to_ascii_lowercase().contains(&query_lower)
+        || icon
+            .display_name
+            .to_ascii_lowercase()
+            .contains(&query_lower)
+        || icon.provider.to_ascii_lowercase().contains(&query_lower)
+        || category.contains(&query_lower)
+}
+
+fn category_label(icon: &IconMeta) -> String {
+    if icon.category_path.is_empty() {
+        String::from("General")
+    } else {
+        icon.category_path.join(" / ")
+    }
+}
+
+fn bucket_icons_by_category(icons: Vec<IconMeta>) -> Vec<CategoryBucket> {
+    let grouped =
+        icons
+            .into_iter()
+            .fold(BTreeMap::<String, Vec<IconMeta>>::new(), |mut acc, icon| {
+                acc.entry(category_label(&icon)).or_default().push(icon);
+                acc
+            });
+
+    grouped
+        .into_iter()
+        .map(|(name, icons)| CategoryBucket { name, icons })
+        .collect()
+}
+
+fn search_matches(index: &[IconMeta], query: &str) -> (usize, Vec<IconMeta>) {
+    index.iter().fold(
+        (0_usize, Vec::<IconMeta>::new()),
+        |(count, mut visible), icon| {
+            if matches_query(icon, query) {
+                if visible.len() < MAX_SEARCH_RESULTS {
+                    visible.push(icon.clone());
+                }
+                (count + 1, visible)
+            } else {
+                (count, visible)
+            }
+        },
+    )
+}
+
+fn build_provider_buckets(
+    query: &str,
+    provider_limits: &BTreeMap<String, usize>,
+) -> (Vec<ProviderBucket>, bool) {
+    let index = icon_index();
+
+    if query.is_empty() {
+        let buckets = index
+            .by_provider
+            .keys()
+            .map(|provider| {
+                let provider_icons = index.icons_by_provider(provider);
+                let limit = provider_limits
+                    .get(provider)
+                    .copied()
+                    .unwrap_or(INITIAL_PROVIDER_LIMIT);
+                let visible_icons: Vec<IconMeta> = provider_icons
+                    .iter()
+                    .take(limit)
+                    .map(|icon| (*icon).clone())
+                    .collect();
+                let visible_count = visible_icons.len();
+                let total_count = provider_icons.len();
+
+                ProviderBucket {
+                    provider: provider.clone(),
+                    total_count,
+                    visible_count,
+                    has_more: total_count > visible_count,
+                    categories: bucket_icons_by_category(visible_icons),
+                }
+            })
+            .collect();
+        (buckets, false)
+    } else {
+        let (total_match_count, limited) = search_matches(&icon_index().all, query);
+        let grouped =
+            limited
+                .into_iter()
+                .fold(BTreeMap::<String, Vec<IconMeta>>::new(), |mut acc, icon| {
+                    acc.entry(icon.provider.clone()).or_default().push(icon);
+                    acc
+                });
+
+        let buckets = grouped
+            .into_iter()
+            .map(|(provider, icons)| {
+                let visible_count = icons.len();
+                ProviderBucket {
+                    provider,
+                    total_count: visible_count,
+                    visible_count,
+                    has_more: false,
+                    categories: bucket_icons_by_category(icons),
+                }
+            })
+            .collect();
+
+        (buckets, total_match_count > MAX_SEARCH_RESULTS)
+    }
+}
+
+fn icon_data_url(icon: &IconMeta) -> Option<String> {
+    let file = ICONS.get_file(&icon.file_relpath)?;
+    let mime = std::path::Path::new(&icon.file_relpath)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map_or("image/png", |ext| {
+            if ext.eq_ignore_ascii_case("svg") {
+                "image/svg+xml"
+            } else {
+                "image/png"
+            }
+        });
+
+    Some(format!(
+        "data:{mime};base64,{}",
+        general_purpose::STANDARD.encode(file.contents())
+    ))
+}
+
+#[component]
+fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -> Element {
+    let data_url = icon_data_url(&icon);
+    let icon_key_for_drag = icon.icon_key.clone();
+    let icon_key_for_title = icon.icon_key.clone();
+    let category_for_title = if icon.category_path.is_empty() {
+        String::from("General")
+    } else {
+        icon.category_path.join(" / ")
+    };
+    let icon_label_for_drag = icon.display_name.clone();
+
+    rsx! {
+        button {
+            class: "icon-item",
+            title: "{icon.display_name}\n{icon_key_for_title}\n{category_for_title}",
+            draggable: "true",
+            onmousedown: move |_| {
+                dragging_icon.set(Some(DraggedIconPayload {
+                    icon_key: icon_key_for_drag.clone(),
+                    label: Some(icon_label_for_drag.clone()),
+                }));
+            },
+            ondragstart: move |_| {
+                dragging_icon.set(Some(DraggedIconPayload {
+                    icon_key: icon.icon_key.clone(),
+                    label: Some(icon.display_name.clone()),
+                }));
+            },
+            onmouseup: move |_| dragging_icon.set(None),
+            ondragend: move |_| dragging_icon.set(None),
+            style: "cursor: grab; border: 1px solid {BORDER}; border-radius: 6px; padding: 5px; display: flex; justify-content: center; align-items: center; background: linear-gradient(180deg, {BG_BASE} 0%, {BG_ELEVATED} 100%); aspect-ratio: 1/1; box-shadow: inset 0 0 0 1px color-mix(in oklch, {BORDER} 60%, transparent);",
+
+            if let Some(src) = data_url {
+                img {
+                    src: "{src}",
+                    width: "32px",
+                    height: "32px",
+                    style: "object-fit: contain; pointer-events: none;",
+                    draggable: "false"
+                }
+            } else {
+                div {
+                    style: "width: 32px; height: 32px; border-radius: 4px; background: #1f2937;"
+                }
+            }
+        }
+    }
+}
 
 #[component]
 pub fn Sidebar() -> Element {
     let mut search = use_signal(String::new);
-    let mut dragging_icon = use_context::<Signal<Option<String>>>();
+    let mut expanded_providers: Signal<BTreeSet<String>> = use_signal(BTreeSet::new);
+    let mut provider_limits: Signal<BTreeMap<String, usize>> = use_signal(BTreeMap::new);
+    let dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
+    let mut sidebar_ui = use_context::<Signal<SidebarUiState>>();
+    let trimmed_query = search.read().trim().to_ascii_lowercase();
+    let query_active = !trimmed_query.is_empty();
+    let (provider_buckets, search_is_truncated) =
+        build_provider_buckets(&trimmed_query, &provider_limits.read());
+    let ui_state = *sidebar_ui.read();
+
+    if ui_state.is_mobile && !ui_state.open_mobile {
+        return rsx! {
+            button {
+                style: "position: fixed; top: 64px; left: 10px; z-index: 72; border-radius: 999px; border: 1px solid {BORDER}; background: color-mix(in oklch, {BG_SURFACE} 92%, transparent); color: {TEXT_MAIN}; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 8px 16px color-mix(in oklch, black 20%, transparent);",
+                onclick: move |_| {
+                    sidebar_ui.with_mut(|state| state.open_mobile = true);
+                },
+                "Browse icons"
+            }
+        };
+    }
+
+    if !ui_state.is_mobile && !ui_state.open {
+        return rsx! {
+            SidebarRail {
+                label: String::from(">"),
+                title: String::from("Expand sidebar"),
+                onclick: move |_| {
+                    sidebar_ui.with_mut(|state| state.open = true);
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        let _eval = document::eval(
+                            "try { localStorage.setItem('diagram_tool.sidebar_open', 'true'); } catch (_) {}",
+                        );
+                    }
+                },
+            }
+        };
+    }
+
+    let panel_style = if ui_state.is_mobile {
+        format!(
+            "position: fixed; top: 56px; bottom: 0; left: 0; width: min(19rem, 90vw); background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_BASE} 100%); border-right: 1px solid {BORDER_SUBTLE}; padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; z-index: 70; box-shadow: 0 14px 28px color-mix(in oklch, black 26%, transparent);"
+        )
+    } else {
+        format!(
+            "width: 280px; max-width: 40vw; background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_BASE} 100%); border-right: 1px solid {BORDER_SUBTLE}; padding: 10px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;"
+        )
+    };
 
     rsx! {
-        div {
-            class: "sidebar",
-            style: "width: 250px; background: #f0f0f0; padding: 10px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;",
+        if ui_state.is_mobile {
+            SidebarOverlay {
+                onclick: move |_| {
+                    sidebar_ui.with_mut(|state| state.open_mobile = false);
+                }
+            }
+        }
+
+        SidebarSheet {
+            style: panel_style,
+            SidebarHeader {
+                title: String::from("Diagram Icons"),
+                action_label: if ui_state.is_mobile { String::from("Close") } else { String::from("Hide") },
+                onaction: move |_| {
+                    sidebar_ui.with_mut(|state| {
+                        if state.is_mobile {
+                            state.open_mobile = false;
+                        } else {
+                            state.open = false;
+                        }
+                    });
+                    #[cfg(target_arch = "wasm32")]
+                    {
+                        let _eval = document::eval(
+                            "try { localStorage.setItem('diagram_tool.sidebar_open', 'false'); } catch (_) {}",
+                        );
+                    }
+                }
+            }
 
             input {
                 placeholder: "Search icons...",
-                style: "padding: 5px; width: 100%;",
+                value: "{search}",
+                style: "padding: 6px 8px; width: 100%; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 oninput: move |evt| search.set(evt.value())
             }
-            div {
-                class: "icon-grid",
-                style: "display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px;",
-                
+
+            if search_is_truncated {
+                div {
+                    style: "font-size: 11px; color: {TEXT_MUTED};",
+                    "Showing first {MAX_SEARCH_RESULTS} matches. Refine search to narrow results."
+                }
+            }
+
+            for bucket in provider_buckets {
                 {
-                    ICONS.find("**/*.png").map_or_else(|_| Vec::new(), |iter| {
-                        iter.filter_map(|entry| entry.as_file().zip(entry.path().to_str()))
-                            .filter(|(_, path)| search.read().is_empty() || path.to_lowercase().contains(&search.read().to_lowercase()))
-                            .map(|(file, path)| {
-                                let src = format!("data:image/png;base64,{}", general_purpose::STANDARD.encode(file.contents()));
-                                let drag_path = path.to_string();
-                                
-                                rsx! {
+                    let provider = bucket.provider.clone();
+                    let expanded = query_active || expanded_providers.read().contains(&provider);
+                    let visible_count = bucket.visible_count;
+                    let total_count = bucket.total_count;
+                    let has_more = bucket.has_more;
+
+                    rsx! {
+                        SidebarGroup {
+                            provider: provider.clone(),
+                            expanded,
+                            query_active,
+                            visible_count,
+                            total_count,
+                            ontoggle: {
+                                let provider = provider.clone();
+                                move |_| {
+                                    if query_active {
+                                        return;
+                                    }
+                                    if expanded_providers.read().contains(&provider) {
+                                        let _ = expanded_providers.write().remove(&provider);
+                                    } else {
+                                        let _ = expanded_providers.write().insert(provider.clone());
+                                    }
+                                }
+                            },
+                            children: rsx! {
+                                for category in bucket.categories {
                                     div {
-                                        key: "{path}",
-                                        class: "icon-item",
-                                        title: "{path}",
-                                        draggable: "true",
-                                        onmousedown: move |_| dragging_icon.set(Some(drag_path.clone())),
-                                        onmouseup: move |_| dragging_icon.set(None),
-                                        style: "cursor: grab; border: 1px solid #ccc; padding: 5px; display: flex; justify-content: center; align-items: center;",
-                                        img {
-                                            src: "{src}",
-                                            width: "40px",
-                                            height: "40px",
-                                            draggable: "false"
+                                        key: "{provider}-{category.name}",
+                                        style: "display: flex; flex-direction: column; gap: 4px;",
+
+                                        p {
+                                            style: "margin: 0; font-size: 10px; color: {TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.04em;",
+                                            "{category.name}"
+                                        }
+
+                                        div {
+                                            class: "icon-grid",
+                                            style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;",
+                                            for icon in category.icons {
+                                                IconTile {
+                                                    key: "{icon.icon_key}",
+                                                    icon,
+                                                    dragging_icon,
+                                                }
+                                            }
                                         }
                                     }
                                 }
-                            }).collect::<Vec<_>>()
-                    }).into_iter()
+
+                                if has_more {
+                                    button {
+                                        style: "width: 100%; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_ELEVATED}; color: {TEXT_MAIN}; font-size: 11px; padding: 6px; cursor: pointer;",
+                                        onclick: {
+                                            move |_| {
+                                                let current_limit = provider_limits
+                                                    .read()
+                                                    .get(&provider)
+                                                    .copied()
+                                                    .unwrap_or(INITIAL_PROVIDER_LIMIT);
+                                                provider_limits
+                                                    .write()
+                                                    .insert(provider.clone(), current_limit + LOAD_MORE_STEP);
+                                            }
+                                        },
+                                        "Load more"
+                                    }
+                                }
+                            },
+                        }
+                    }
                 }
             }
         }

@@ -1,2 +1,2 @@
-pub mod svg;
 pub mod png;
+pub mod svg;

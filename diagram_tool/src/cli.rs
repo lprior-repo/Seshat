@@ -5,17 +5,18 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use clap::{Parser, Subcommand};
-use crate::models::document::DiagramDocument;
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
-use crate::patch::patch_doc;
-use crate::layout::grid::calculate_grid_layout;
+use crate::models::document::DiagramDocument;
 use crate::models::schema::validate_schema;
+use crate::mutation::ops::{apply_layout, apply_patch};
+use crate::mutation::pipeline::run_mutation;
+use anyhow::{anyhow, Context, Result};
+use clap::{Parser, Subcommand};
+use json_patch::Patch;
+use serde::Serialize;
 use std::fs::File;
 use std::io::{BufReader, Write};
-use anyhow::{Result, Context};
-use json_patch::Patch;
 use std::path::Path;
 
 #[derive(Parser, Debug, Clone)]
@@ -33,7 +34,7 @@ pub enum Commands {
         #[arg(long)]
         input: String,
         #[arg(long)]
-        output: String
+        output: String,
     },
     Patch {
         #[arg(long)]
@@ -41,25 +42,124 @@ pub enum Commands {
         #[arg(long)]
         patch: String,
         #[arg(long)]
-        output: String
+        output: String,
     },
     Layout {
         #[arg(long)]
         input: String,
         #[arg(long)]
-        output: String
+        output: String,
     },
     Validate {
         #[arg(long)]
-        input: String
+        input: String,
     },
 }
 
 pub fn run_cli(cli: &Cli) {
     if let Some(cmd) = &cli.command {
-        if let Err(e) = execute_command(cmd) {
-            eprintln!("Error: {e:#}");
-            std::process::exit(1);
+        emit_event(&CliEvent::start(command_name(cmd)));
+        match execute_command(cmd) {
+            Ok(()) => {
+                emit_event(&CliEvent::finish(
+                    command_name(cmd),
+                    true,
+                    String::from("ok"),
+                ));
+            }
+            Err(err) => {
+                emit_event(&CliEvent::error(
+                    command_name(cmd),
+                    error_code(&err),
+                    err.to_string(),
+                ));
+                emit_event(&CliEvent::finish(
+                    command_name(cmd),
+                    false,
+                    error_code(&err),
+                ));
+                std::process::exit(exit_code(&err));
+            }
+        }
+    }
+}
+
+#[derive(Serialize)]
+struct CliEvent {
+    event: String,
+    command: String,
+    ok: bool,
+    code: String,
+    message: Option<String>,
+}
+
+impl CliEvent {
+    fn start(command: String) -> Self {
+        Self {
+            event: String::from("start"),
+            command,
+            ok: true,
+            code: String::from("start"),
+            message: None,
+        }
+    }
+
+    fn error(command: String, code: String, message: String) -> Self {
+        Self {
+            event: String::from("error"),
+            command,
+            ok: false,
+            code,
+            message: Some(message),
+        }
+    }
+
+    fn finish(command: String, ok: bool, code: String) -> Self {
+        Self {
+            event: String::from("finish"),
+            command,
+            ok,
+            code,
+            message: None,
+        }
+    }
+}
+
+fn command_name(cmd: &Commands) -> String {
+    match cmd {
+        Commands::Render { .. } => String::from("render"),
+        Commands::Patch { .. } => String::from("patch"),
+        Commands::Layout { .. } => String::from("layout"),
+        Commands::Validate { .. } => String::from("validate"),
+    }
+}
+
+fn error_code(err: &anyhow::Error) -> String {
+    let msg = err.to_string().to_lowercase();
+    if msg.contains("schema") {
+        String::from("schema_violation")
+    } else if msg.contains("dag") || msg.contains("cycle") {
+        String::from("dag_cycle")
+    } else if msg.contains("parse") || msg.contains("deserialize") {
+        String::from("parse_error")
+    } else {
+        String::from("command_error")
+    }
+}
+
+fn exit_code(err: &anyhow::Error) -> i32 {
+    let code = error_code(err);
+    match code.as_str() {
+        "parse_error" | "command_error" => 2,
+        _ => 1,
+    }
+}
+
+fn emit_event(event: &CliEvent) {
+    match serde_json::to_string(&event) {
+        Ok(line) => println!("{line}"),
+        Err(_) => {
+            println!("{{\"event\":\"error\",\"ok\":false,\"code\":\"jsonl_encode_error\"}}");
         }
     }
 }
@@ -68,32 +168,46 @@ fn execute_command(cmd: &Commands) -> Result<()> {
     match cmd {
         Commands::Render { input, output } => {
             let doc = load_doc(input)?;
-            if Path::new(output).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("png")) {
+            if Path::new(output)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
+            {
                 export_png(&doc, output)?;
-            } else if Path::new(output).extension().is_some_and(|ext| ext.eq_ignore_ascii_case("svg")) {
+            } else if Path::new(output)
+                .extension()
+                .is_some_and(|ext| ext.eq_ignore_ascii_case("svg"))
+            {
                 let svg = generate_svg_string(&doc);
                 let mut file = File::create(output).context("Failed to create SVG file")?;
-                file.write_all(svg.as_bytes()).context("Failed to write SVG content")?;
+                file.write_all(svg.as_bytes())
+                    .context("Failed to write SVG content")?;
             } else {
-                eprintln!("Unknown output format. Use .png or .svg extension.");
+                return Err(anyhow!(
+                    "unknown output format; expected .png or .svg extension"
+                ));
             }
-        },
-        Commands::Patch { input, patch, output } => {
+        }
+        Commands::Patch {
+            input,
+            patch,
+            output,
+        } => {
             let doc = load_doc(input)?;
             let patch_file = File::open(patch).context("Failed to open patch file")?;
-            let patch_data: Patch = serde_json::from_reader(BufReader::new(patch_file)).context("Failed to parse patch JSON")?;
-            let patched_doc = patch_doc(&doc, &patch_data)?;
+            let patch_data: Patch = serde_json::from_reader(BufReader::new(patch_file))
+                .context("Failed to parse patch JSON")?;
+            let patched_doc = run_mutation(&doc, |current| apply_patch(current, &patch_data))
+                .map_err(|err| anyhow!(err.to_string()))?;
             save_doc(&patched_doc, output)?;
-        },
+        }
         Commands::Layout { input, output } => {
             let doc = load_doc(input)?;
-            let laid_out_doc = calculate_grid_layout(&doc, 200.0);
+            let laid_out_doc = run_mutation(&doc, |current| Ok(apply_layout(current, 200.0)))
+                .map_err(|err| anyhow!(err.to_string()))?;
             save_doc(&laid_out_doc, output)?;
-        },
+        }
         Commands::Validate { input } => {
-            let doc = load_doc(input)?;
-            validate_schema(&doc)?;
-            println!("Validation successful.");
+            let _doc = load_doc(input)?;
         }
     }
     Ok(())
@@ -101,12 +215,17 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 
 fn load_doc(path: &str) -> Result<DiagramDocument> {
     let file = File::open(path).with_context(|| format!("Failed to open input file: {path}"))?;
-    let doc: DiagramDocument = serde_json::from_reader(BufReader::new(file)).with_context(|| format!("Failed to parse document from: {path}"))?;
+    let doc: DiagramDocument = serde_json::from_reader(BufReader::new(file))
+        .with_context(|| format!("Failed to parse document from: {path}"))?;
+    validate_schema(&doc)
+        .with_context(|| format!("Failed schema validation for document: {path}"))?;
     Ok(doc)
 }
 
 fn save_doc(doc: &DiagramDocument, path: &str) -> Result<()> {
-    let file = File::create(path).with_context(|| format!("Failed to create output file: {path}"))?;
-    serde_json::to_writer_pretty(file, doc).with_context(|| format!("Failed to write document to: {path}"))?;
+    let file =
+        File::create(path).with_context(|| format!("Failed to create output file: {path}"))?;
+    serde_json::to_writer_pretty(file, doc)
+        .with_context(|| format!("Failed to write document to: {path}"))?;
     Ok(())
 }

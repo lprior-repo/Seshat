@@ -12,6 +12,10 @@ use im::HashSet;
 
 /// Functional schema validation.
 pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
+    if doc.version != 2 {
+        bail!("Document version must be 2, got {}", doc.version);
+    }
+
     let nodes = &doc.document.nodes;
     let node_ids = nodes.keys().cloned().collect::<HashSet<NodeId>>();
 

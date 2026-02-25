@@ -8,13 +8,12 @@ name = "diagram_tool"
 path = "src/main.rs"
 
 [dependencies]
-dioxus          = { version = "0.7", features = ["desktop"] }
+dioxus          = { version = "0.7", features = ["fullstack"] }
 
 # Serialization + Patching
 serde           = { version = "1.0", features = ["derive"] }
 serde_json      = "1.0"
-json-patch      = "3.0" # Updated to 3.0 as 2.0 might be old, checking crates.io is not possible but safer to stick to PRD or check later. PRD says 2.0. Sticking to 2.0 to be safe with PRD unless I know better. Actually, json-patch is at 3.0+ now. I will use 2.0 as requested to be safe, or check.
-# The PRD says 2.0. I will stick to 2.0.
+json-patch      = "3.0"
 
 # IDs
 uuid            = { version = "1.0", features = ["v4", "serde"] }
@@ -40,8 +39,14 @@ tap = "1.0.1"
 rpds = "1.2.0"
 im = { version = "15.1.0", features = ["serde"] }
 petgraph = "0.8"
-rfd = "0.14"
-proptest = "1.10.0"
+redb = "2.4"
+
+[features]
+default = ["desktop", "server"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+server = ["dioxus/server"]
+fullstack = ["web", "server"]
 
 [profile.release]
 opt-level = 3
@@ -54,3 +59,10 @@ serde_json = "1.0"
 
 [dev-dependencies]
 proptest = "1.10.0"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+uuid = { version = "1.0", features = ["v4", "serde", "js"] }
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+rfd = "0.14"

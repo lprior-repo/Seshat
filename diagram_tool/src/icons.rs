@@ -24,6 +24,7 @@ pub fn icon_index() -> &'static IconIndex {
     ICON_INDEX.get_or_init(IconIndex::load)
 }
 
+#[allow(dead_code)]
 pub fn icon_src(icon: &IconMeta) -> String {
     format!("/resources/{}", icon.file_relpath)
 }

@@ -8,26 +8,30 @@
 use clap::Parser;
 use dioxus::prelude::*;
 
-mod models;
-mod ui;
-mod icons;
 mod app;
+mod backend;
 mod cli;
-mod layout;
+mod export;
 mod history;
 mod hooks;
+mod icons;
+mod layout;
+mod models;
+mod mutation;
 mod patch;
-mod export;
+mod ui;
 
 use crate::app::App;
 use crate::cli::Cli;
 
 fn main() {
     let cli = Cli::parse();
-    
+
     if cli.command.is_some() {
         cli::run_cli(&cli);
     } else {
-        dioxus::launch(App);
+        dioxus::LaunchBuilder::new()
+            .with_context(server_only! { ServeConfig::builder() })
+            .launch(App);
     }
 }
