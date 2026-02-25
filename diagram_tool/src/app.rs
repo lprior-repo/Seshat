@@ -17,7 +17,7 @@ use crate::ui::properties::PropertiesPanel;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
-use crate::ui::toolbar::Toolbar;
+use crate::ui::toolbar::{Toolbar, ToolbarStats};
 use crate::ui::ValidationPanel;
 use dioxus::prelude::*;
 
@@ -62,6 +62,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(ArrowType::Arrow));
     use_context_provider(|| Signal::new(ToastQueue::default()));
     use_context_provider(|| Signal::new(PanelVisibility::default()));
+    use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
     // Shared counter that the Validate button can increment to force re-validation.
@@ -73,6 +74,7 @@ pub fn App() -> Element {
     let validate_trigger = use_context::<Signal<u64>>();
     let mut sidebar_ui = use_context::<Signal<SidebarUiState>>();
     let mut panels = use_context::<Signal<PanelVisibility>>();
+    let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
 
     use_effect(move || {
         let mut eval = document::eval(&format!(
@@ -192,19 +194,30 @@ pub fn App() -> Element {
         let doc = doc_signal.read();
         validate_document_data(&doc.document)
     });
-    let mut last_validated_revision = use_signal(move || doc_signal.read().revision);
+    let mut last_validated_document = use_signal(move || doc_signal.read().document.clone());
     let mut last_validate_trigger = use_signal(move || *validate_trigger.read());
 
     use_effect(move || {
+        let doc = doc_signal.read();
+        let next = ToolbarStats {
+            selected_count: doc.editor_state.selected_items.len(),
+            node_count: doc.document.nodes.len(),
+            edge_count: doc.document.edges.len(),
+        };
+        if *toolbar_stats.read() != next {
+            toolbar_stats.set(next);
+        }
+    });
+
+    use_effect(move || {
         let current_trigger = *validate_trigger.read();
-        let current_revision = doc_signal.read().revision;
+        let current_document = doc_signal.read().document.clone();
         let should_validate = current_trigger != *last_validate_trigger.read()
-            || current_revision != *last_validated_revision.read();
+            || current_document != *last_validated_document.read();
 
         if should_validate {
-            let current_document = doc_signal.read().document.clone();
             validation_issues.set(validate_document_data(&current_document));
-            last_validated_revision.set(current_revision);
+            last_validated_document.set(current_document);
             last_validate_trigger.set(current_trigger);
         }
     });

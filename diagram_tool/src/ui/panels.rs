@@ -19,7 +19,7 @@ impl Default for PanelVisibility {
         Self {
             sidebar: true,
             properties: false,
-            minimap: false,
+            minimap: true,
             validation: false,
         }
     }

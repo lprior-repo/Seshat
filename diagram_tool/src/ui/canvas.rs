@@ -8,6 +8,7 @@
 
 mod canvas_view;
 mod interaction_reducer;
+mod perf;
 mod selection_geometry;
 
 use crate::history::History;
@@ -15,7 +16,7 @@ use crate::app::DraggedIconPayload;
 use crate::models::dag::validate_dag;
 use crate::models::document::{
     ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
-    OrderedFloat,
+    OrderedFloat, Revision,
 };
 use crate::ui::commands::{
     apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
@@ -39,6 +40,10 @@ use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use im::HashMap;
 use interaction_reducer::{commit_inline_edit, InteractionMode, ResizeHandle};
+use perf::{
+    normalize_viewport, to_canvas_coords, to_screen_coords, viewport_changed, wheel_update,
+    WheelInput,
+};
 use selection_geometry::{selected_node_ids, selection_bounds};
 use uuid::Uuid;
 
@@ -102,34 +107,37 @@ fn edge_preserves_dag(doc: &DiagramDocument, edge: &Edge) -> bool {
     validate_dag(&doc.document.nodes, &candidate_edges).is_ok()
 }
 
-fn ordered_nodes(doc: &DiagramDocument) -> Vec<(NodeId, Node)> {
-    let mut nodes = doc
-        .document
-        .nodes
-        .iter()
-        .map(|(id, node)| (id.clone(), node.clone()))
-        .collect::<Vec<_>>();
-
-    nodes.sort_by(|(a_id, a_node), (b_id, b_node)| {
-        let a_layer = i32::from(a_node.kind != NodeKind::Subgraph);
-        let b_layer = i32::from(b_node.kind != NodeKind::Subgraph);
-        (a_layer, a_node.z_index, a_id.to_string()).cmp(&(b_layer, b_node.z_index, b_id.to_string()))
+fn ordered_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
+    let mut node_ids = doc.document.nodes.keys().cloned().collect::<Vec<_>>();
+    node_ids.sort_by(|a_id, b_id| {
+        doc.document
+            .nodes
+            .get(a_id)
+            .zip(doc.document.nodes.get(b_id))
+            .map_or(std::cmp::Ordering::Equal, |(a_node, b_node)| {
+                let a_layer = i32::from(a_node.kind != NodeKind::Subgraph);
+                let b_layer = i32::from(b_node.kind != NodeKind::Subgraph);
+                (a_layer, a_node.z_index, a_id.to_string())
+                    .cmp(&(b_layer, b_node.z_index, b_id.to_string()))
+            })
     });
 
-    nodes
+    node_ids
 }
 
 fn find_node_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<NodeId> {
-    ordered_nodes(doc)
+    ordered_node_ids(doc)
         .iter()
         .rev()
-        .find(|(_, node)| {
-            x >= node.x.0
-                && x <= node.x.0 + node.width.0
-                && y >= node.y.0
-                && y <= node.y.0 + node.height.0
+        .find(|id| {
+            doc.document.nodes.get(*id).is_some_and(|node| {
+                x >= node.x.0
+                    && x <= node.x.0 + node.width.0
+                    && y >= node.y.0
+                    && y <= node.y.0 + node.height.0
+            })
         })
-        .map(|(id, _)| id.clone())
+        .cloned()
 }
 
 fn scale_selected_nodes(doc: &mut DiagramDocument, factor: f64) -> bool {
@@ -192,23 +200,28 @@ pub fn Canvas() -> Element {
     let mut editing_edge = use_signal(|| Option::<EdgeId>::None);
     let mut edit_value = use_signal(String::new);
     let mut nudge_batch_active = use_signal(|| false);
+    let mut space_pan_active = use_signal(|| false);
     let mut viewport_size = use_context::<Signal<(f64, f64)>>();
+    let mut ordered_node_cache = use_signal(Vec::<NodeId>::new);
+    let mut ordered_node_revision = use_signal(|| Option::<Revision>::None);
 
-    let nodes_list = use_memo(move || ordered_nodes(&doc_signal.read()));
-    let edges_list = use_memo(move || doc_signal.read().document.edges.clone());
-
-    let to_canvas_coords = |client_x: f64, client_y: f64, cam_x: f64, cam_y: f64, zoom: f64| {
-        ((client_x - cam_x) / zoom, (client_y - cam_y) / zoom)
-    };
-
-    let to_screen_coords = |world_x: f64, world_y: f64, cam_x: f64, cam_y: f64, zoom: f64| {
-        (world_x.mul_add(zoom, cam_x), world_y.mul_add(zoom, cam_y))
-    };
+    use_effect(move || {
+        let doc = doc_signal.read();
+        let revision = doc.revision;
+        if ordered_node_revision.read().as_ref() != Some(&revision) {
+            ordered_node_cache.set(ordered_node_ids(&doc));
+            ordered_node_revision.set(Some(revision));
+        }
+    });
 
     use_effect(move || {
         let mut eval = document::eval(
             r"
-                window.addEventListener('keydown', (e) => {
+                if (window.__seshat_canvas_keyboard_cleanup) {
+                    window.__seshat_canvas_keyboard_cleanup();
+                }
+
+                const onKeyDown = (e) => {
                     const active = document.activeElement;
                     const editing = active && (
                         active.tagName === 'INPUT' ||
@@ -225,8 +238,9 @@ pub fn Canvas() -> Element {
                         e.preventDefault();
                     }
                     dioxus.send({ type: 'keydown', key: key, ctrl: e.ctrlKey, shift: e.shiftKey, meta: e.metaKey, repeat: e.repeat });
-                });
-                window.addEventListener('keyup', (e) => {
+                };
+
+                const onKeyUp = (e) => {
                     const active = document.activeElement;
                     const editing = active && (
                         active.tagName === 'INPUT' ||
@@ -235,7 +249,14 @@ pub fn Canvas() -> Element {
                     );
                     if (editing) return;
                     dioxus.send({ type: 'keyup', key: e.key, ctrl: e.ctrlKey, shift: e.shiftKey, meta: e.metaKey, repeat: false });
-                });
+                };
+
+                window.addEventListener('keydown', onKeyDown);
+                window.addEventListener('keyup', onKeyUp);
+                window.__seshat_canvas_keyboard_cleanup = () => {
+                    window.removeEventListener('keydown', onKeyDown);
+                    window.removeEventListener('keyup', onKeyUp);
+                };
             ",
         );
 
@@ -250,6 +271,15 @@ pub fn Canvas() -> Element {
 
                 if key == " " {
                     space_pressed.set(event_type == "keydown");
+                    if event_type == "keyup" {
+                        let should_cancel_space_pan = *space_pan_active.read()
+                            && matches!(*interaction_mode.read(), InteractionMode::Panning { .. })
+                            && *tool_signal.read() != ToolMode::Pan;
+                        if should_cancel_space_pan {
+                            interaction_mode.set(InteractionMode::Select);
+                        }
+                        space_pan_active.set(false);
+                    }
                 }
                 if key == "Shift" {
                     shift_pressed.set(event_type == "keydown");
@@ -345,22 +375,67 @@ pub fn Canvas() -> Element {
         });
     });
 
+    use_drop(move || {
+        let _ = document::eval(
+            r"
+                if (window.__seshat_canvas_keyboard_cleanup) {
+                    window.__seshat_canvas_keyboard_cleanup();
+                    window.__seshat_canvas_keyboard_cleanup = null;
+                }
+                if (window.__seshat_canvas_resize_cleanup) {
+                    window.__seshat_canvas_resize_cleanup();
+                    window.__seshat_canvas_resize_cleanup = null;
+                }
+            ",
+        );
+    });
+
     use_effect(move || {
         let mut eval = document::eval(
             r"
+                if (window.__seshat_canvas_resize_cleanup) {
+                    window.__seshat_canvas_resize_cleanup();
+                }
+
                 const target = document.querySelector('.canvas-container');
                 if (target) {
-                    if (window.__seshat_canvas_ro) {
-                        window.__seshat_canvas_ro.disconnect();
-                    }
-                    const notify = () => {
-                        const r = target.getBoundingClientRect();
-                        dioxus.send({ type: 'resize', width: r.width, height: r.height });
+                    let rafId = 0;
+                    let lastWidth = -1;
+                    let lastHeight = -1;
+
+                    const notify = (width, height) => {
+                        if (Math.abs(width - lastWidth) < 0.5 && Math.abs(height - lastHeight) < 0.5) {
+                            return;
+                        }
+                        lastWidth = width;
+                        lastHeight = height;
+                        dioxus.send({ type: 'resize', width, height });
                     };
-                    const ro = new ResizeObserver(() => notify());
+
+                    const scheduleNotify = () => {
+                        if (rafId !== 0) {
+                            return;
+                        }
+                        rafId = window.requestAnimationFrame(() => {
+                            rafId = 0;
+                            const r = target.getBoundingClientRect();
+                            notify(r.width, r.height);
+                        });
+                    };
+
+                    const ro = new ResizeObserver(() => scheduleNotify());
                     ro.observe(target);
-                    window.__seshat_canvas_ro = ro;
-                    notify();
+
+                    window.addEventListener('resize', scheduleNotify, { passive: true });
+                    window.__seshat_canvas_resize_cleanup = () => {
+                        ro.disconnect();
+                        window.removeEventListener('resize', scheduleNotify);
+                        if (rafId !== 0) {
+                            window.cancelAnimationFrame(rafId);
+                        }
+                    };
+
+                    scheduleNotify();
                 }
             ",
         );
@@ -368,9 +443,14 @@ pub fn Canvas() -> Element {
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 if json["type"].as_str() == Some("resize") {
-                    let width = json["width"].as_f64().map_or(1200.0, |v| v.max(1.0));
-                    let height = json["height"].as_f64().map_or(800.0, |v| v.max(1.0));
-                    viewport_size.set((width, height));
+                    let next = normalize_viewport(
+                        json["width"].as_f64().map_or(1200.0, |v| v),
+                        json["height"].as_f64().map_or(800.0, |v| v),
+                    );
+                    let current = *viewport_size.read();
+                    if viewport_changed(current, next) {
+                        viewport_size.set(next);
+                    }
                 }
             }
         });
@@ -501,16 +581,20 @@ pub fn Canvas() -> Element {
                     doc.editor_state.zoom.0,
                 );
 
-                let hit_node = ordered_nodes(&doc)
+                let hit_node = ordered_node_cache
+                    .read()
                     .iter()
                     .rev()
-                    .find(|(_, n)| {
-                        pos.0 >= n.x.0
-                            && pos.0 <= n.x.0 + n.width.0
-                            && pos.1 >= n.y.0
-                            && pos.1 <= n.y.0 + n.height.0
+                    .find_map(|id| {
+                        doc.document.nodes.get(id).and_then(|node| {
+                            (pos.0 >= node.x.0
+                                && pos.0 <= node.x.0 + node.width.0
+                                && pos.1 >= node.y.0
+                                && pos.1 <= node.y.0 + node.height.0)
+                                .then(|| (id.clone(), node.label.clone()))
+                        })
                     })
-                    .map(|(id, n)| (id.clone(), n.label.clone()));
+                    ;
 
                 if let Some((nid, label)) = hit_node {
                     editing_edge.set(None);
@@ -525,6 +609,9 @@ pub fn Canvas() -> Element {
                         .edges
                         .get(&eid)
                         .map_or_else(String::new, |e| e.label.clone());
+                    doc_signal.with_mut(|d| {
+                        d.editor_state.selected_items = select_single(eid.to_string());
+                    });
                     editing_node.set(None);
                     editing_edge.set(Some(eid));
                     edit_value.set(label);
@@ -541,46 +628,27 @@ pub fn Canvas() -> Element {
                 let zoom_gesture = *ctrl_pressed.read() || *meta_pressed.read();
                 let shift = *shift_pressed.read();
                 let discrete_wheel = dy.abs() >= 50.0;
+                let coords = evt.data.coordinates().client();
 
-                doc_signal.with_mut(|doc| {
-                    let s = &mut doc.editor_state;
-                    if zoom_gesture {
-                        let old_zoom = s.zoom.0;
-                        let zoom_factor = (-dy * 0.0015).exp();
-                        let new_zoom = (s.zoom.0 * zoom_factor).clamp(0.1, 4.0);
-                        let coords = evt.data.coordinates().client();
-                        let (wx, wy) = to_canvas_coords(
-                            coords.x,
-                            coords.y,
-                            s.camera_x.0,
-                            s.camera_y.0,
-                            old_zoom,
-                        );
-                        s.camera_x = OrderedFloat(wx.mul_add(-new_zoom, coords.x));
-                        s.camera_y = OrderedFloat(wy.mul_add(-new_zoom, coords.y));
-                        s.zoom = OrderedFloat(new_zoom);
-                    } else if shift {
-                        s.camera_x = OrderedFloat(s.camera_x.0 - dy);
-                    } else if discrete_wheel {
-                        let old_zoom = s.zoom.0;
-                        let zoom_factor = if dy > 0.0 { 0.9 } else { 1.1 };
-                        let new_zoom = (old_zoom * zoom_factor).clamp(0.1, 4.0);
-                        let coords = evt.data.coordinates().client();
-                        let (wx, wy) = to_canvas_coords(
-                            coords.x,
-                            coords.y,
-                            s.camera_x.0,
-                            s.camera_y.0,
-                            old_zoom,
-                        );
-                        s.camera_x = OrderedFloat(wx.mul_add(-new_zoom, coords.x));
-                        s.camera_y = OrderedFloat(wy.mul_add(-new_zoom, coords.y));
-                        s.zoom = OrderedFloat(new_zoom);
-                    } else {
-                        s.camera_x = OrderedFloat(s.camera_x.0 - dx);
-                        s.camera_y = OrderedFloat(s.camera_y.0 - dy);
-                    }
-                });
+                let current = doc_signal.read().editor_state.clone();
+                if let Some((next_x, next_y, next_zoom)) = wheel_update(WheelInput {
+                    camera_x: current.camera_x,
+                    camera_y: current.camera_y,
+                    zoom: current.zoom,
+                    client_x: coords.x,
+                    client_y: coords.y,
+                    dx,
+                    dy,
+                    zoom_gesture,
+                    shift_pan: shift,
+                    discrete_wheel,
+                }) {
+                    doc_signal.with_mut(|doc| {
+                        doc.editor_state.camera_x = next_x;
+                        doc.editor_state.camera_y = next_y;
+                        doc.editor_state.zoom = next_zoom;
+                    });
+                }
             },
 
             onmousedown: move |evt| {
@@ -599,6 +667,7 @@ pub fn Canvas() -> Element {
                 let tool = *tool_signal.read();
 
                 if *space_pressed.read() || is_middle || is_right || tool == ToolMode::Pan {
+                    space_pan_active.set(*space_pressed.read() && !is_middle && !is_right && tool != ToolMode::Pan);
                     interaction_mode.set(InteractionMode::Panning { last_pos: (coords.x, coords.y) });
                     return;
                 }
@@ -730,17 +799,28 @@ pub fn Canvas() -> Element {
                                         doc.editor_state.grid_size.0,
                                     );
                                     for (id, (nx, ny)) in positions.iter() {
-                                        doc.document.nodes = doc.document.nodes.alter(
-                                            |n| {
-                                                n.map(|mut node| {
-                                                    node.x = OrderedFloat(*nx);
-                                                    node.y = OrderedFloat(*ny);
-                                                    node.locked = true;
-                                                    node
-                                                })
-                                            },
-                                            id.clone(),
-                                        );
+                                        let should_update = doc
+                                            .document
+                                            .nodes
+                                            .get(id)
+                                            .is_some_and(|node| {
+                                                (node.x.0 - *nx).abs() > f64::EPSILON
+                                                    || (node.y.0 - *ny).abs() > f64::EPSILON
+                                                    || !node.locked
+                                            });
+                                        if should_update {
+                                            doc.document.nodes = doc.document.nodes.alter(
+                                                |n| {
+                                                    n.map(|mut node| {
+                                                        node.x = OrderedFloat(*nx);
+                                                        node.y = OrderedFloat(*ny);
+                                                        node.locked = true;
+                                                        node
+                                                    })
+                                                },
+                                                id.clone(),
+                                            );
+                                        }
                                     }
                                 }
                             });
@@ -860,10 +940,14 @@ pub fn Canvas() -> Element {
                             let dx = coords.x - last_pos.0;
                             let dy = coords.y - last_pos.1;
                             *last_pos = (coords.x, coords.y);
-                            doc_signal.with_mut(|doc| {
-                                doc.editor_state.camera_x = OrderedFloat(doc.editor_state.camera_x.0 + dx);
-                                doc.editor_state.camera_y = OrderedFloat(doc.editor_state.camera_y.0 + dy);
-                            });
+                            if dx.abs() > f64::EPSILON || dy.abs() > f64::EPSILON {
+                                doc_signal.with_mut(|doc| {
+                                    doc.editor_state.camera_x =
+                                        OrderedFloat(doc.editor_state.camera_x.0 + dx);
+                                    doc.editor_state.camera_y =
+                                        OrderedFloat(doc.editor_state.camera_y.0 + dy);
+                                });
+                            }
                         }
                         InteractionMode::Select => {}
                     }
@@ -1026,9 +1110,13 @@ pub fn Canvas() -> Element {
                             }
                             *mode = InteractionMode::Select;
                         }
-                        _ => *mode = InteractionMode::Select,
+                        InteractionMode::Panning { .. } => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::Select => *mode = InteractionMode::Select,
                     }
                 });
+                space_pan_active.set(false);
             },
 
             onmouseleave: move |_| {
@@ -1059,6 +1147,7 @@ pub fn Canvas() -> Element {
                         InteractionMode::Select => {}
                     }
                 });
+                space_pan_active.set(false);
             },
 
             svg {
@@ -1136,7 +1225,7 @@ pub fn Canvas() -> Element {
                 {
                     let doc = doc_signal.read();
                     let s = &doc.editor_state;
-                    edges_list.read().iter().filter_map(|(id, edge)| {
+                    doc.document.edges.iter().filter_map(|(id, edge)| {
                         doc.document.nodes
                             .get(&edge.source)
                             .zip(doc.document.nodes.get(&edge.target))
@@ -1245,9 +1334,14 @@ pub fn Canvas() -> Element {
             }
 
             {
-                let editor_for_nodes = doc_signal.read().editor_state.clone();
+                let doc_for_nodes = doc_signal.read();
+                let editor_for_nodes = doc_for_nodes.editor_state.clone();
                 let hovered_now = hovered_node.read().clone();
-                nodes_list.read().iter().map(|(id, node)| {
+                ordered_node_cache
+                    .read()
+                    .iter()
+                    .filter_map(|id| doc_for_nodes.document.nodes.get(id).map(|node| (id, node)))
+                    .map(|(id, node)| {
                     let id_mousedown = id.clone();
                     let id_mouseup = id.clone();
                     let id_mouseenter = id.clone();
@@ -1307,6 +1401,7 @@ pub fn Canvas() -> Element {
                                 let pos = to_canvas_coords(coords.x, coords.y, doc.editor_state.camera_x.0, doc.editor_state.camera_y.0, doc.editor_state.zoom.0);
 
                                 if *space_pressed.read() || is_middle || is_right || tool == ToolMode::Pan {
+                                    space_pan_active.set(*space_pressed.read() && !is_middle && !is_right && tool != ToolMode::Pan);
                                     interaction_mode.set(InteractionMode::Panning { last_pos: (coords.x, coords.y) });
                                     return;
                                 }

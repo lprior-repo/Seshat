@@ -39,6 +39,26 @@ fn push_history(mut history_signal: Signal<History>, current: DiagramDocument) {
     *history_signal.write() = history.push(current);
 }
 
+fn reparent_if_deleted(parent: Option<NodeId>, deleted_ids: &BTreeSet<NodeId>) -> Option<NodeId> {
+    parent.and_then(|parent_id| {
+        if deleted_ids.contains(&parent_id) {
+            None
+        } else {
+            Some(parent_id)
+        }
+    })
+}
+
+fn remap_pasted_parent(parent: Option<NodeId>, id_map: &HashMap<NodeId, NodeId>) -> Option<NodeId> {
+    parent.and_then(|parent_id| {
+        if let Some(remapped_parent) = id_map.get(&parent_id) {
+            Some(remapped_parent.clone())
+        } else {
+            Some(parent_id)
+        }
+    })
+}
+
 pub fn apply_select_all(mut doc_signal: Signal<DiagramDocument>) {
     doc_signal.with_mut(|doc| {
         doc.editor_state.selected_items = doc
@@ -68,12 +88,20 @@ pub fn apply_delete_selected(
 
     push_history(history_signal, doc_signal.read().clone());
     doc_signal.with_mut(|doc| {
+        let deleted_node_ids = selected
+            .iter()
+            .map(|id| NodeId::new(id.clone()))
+            .collect::<BTreeSet<_>>();
         doc.document.nodes = doc
             .document
             .nodes
             .iter()
             .filter(|(id, _)| !selected.contains(&id.to_string()))
-            .map(|(id, node)| (id.clone(), node.clone()))
+            .map(|(id, node)| {
+                let mut next = node.clone();
+                next.parent = reparent_if_deleted(next.parent, &deleted_node_ids);
+                (id.clone(), next)
+            })
             .collect();
 
         let node_ids: im::HashSet<NodeId> = doc.document.nodes.keys().cloned().collect();
@@ -183,7 +211,7 @@ fn paste_from(
         let mut next = node;
         next.x = OrderedFloat(next.x.0 + offset);
         next.y = OrderedFloat(next.y.0 + offset);
-        next.parent = next.parent.and_then(|parent| id_map.get(&parent).cloned());
+        next.parent = remap_pasted_parent(next.parent, &id_map);
         let _ = selected.insert(new_id.to_string());
         let _ = doc.document.nodes.insert(new_id, next);
     }
