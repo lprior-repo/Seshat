@@ -107,7 +107,10 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
     }
 
     let provider = components[0].to_string();
-    let category_path: Vec<String> = components[1..].iter().map(|s| s.to_string()).collect();
+    let category_path: Vec<String> = components[1..]
+        .iter()
+        .map(std::string::ToString::to_string)
+        .collect();
 
     let file_stem = path.file_stem()?.to_str()?;
     let icon_key = format!("{}/{file_stem}", relpath_str.rsplit_once('/')?.0);
@@ -128,10 +131,9 @@ fn title_case(s: &str) -> String {
         .split_whitespace()
         .map(|word| {
             let mut chars = word.chars();
-            match chars.next() {
-                Some(first) => first.to_uppercase().collect::<String>() + chars.as_str(),
-                None => String::new(),
-            }
+            chars.next().map_or_else(String::new, |first| {
+                first.to_uppercase().collect::<String>() + chars.as_str()
+            })
         })
         .collect::<Vec<_>>()
         .join(" ")

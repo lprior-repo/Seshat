@@ -20,3 +20,18 @@ Thumbs.db
 *.tmp
 *.temp
 *.log
+
+# JavaScript tooling
+node_modules/
+test-results/
+playwright-report/
+
+# Local databases and runtime artifacts
+*.redb
+
+# Generated bead scratch files
+.beads/last-touched
+.beads/schemas/*.cue
+
+# Local scratch workspaces
+dont-fuck-up/

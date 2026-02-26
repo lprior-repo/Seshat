@@ -2,3 +2,8 @@
 members = ["diagram_tool"]
 default-members = ["diagram_tool"]
 resolver = "2"
+
+[profile.release]
+opt-level = 3
+lto = true
+strip = true

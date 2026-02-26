@@ -13,7 +13,7 @@ tasks:
     command: "/usr/bin/cargo test"
 
   e2e:
-    command: "node_modules/.bin/playwright test"
+    command: "npm exec playwright test"
     options:
       cache: false
 
@@ -37,4 +37,4 @@ tasks:
       /usr/bin/cargo check
       /usr/bin/cargo test
       /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
-      node_modules/.bin/playwright test
+      npm exec playwright test

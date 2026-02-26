@@ -6,30 +6,30 @@ tasks:
       cache: false
 
   check:
-    command: "cargo check"
+    command: "/usr/bin/cargo check"
 
   test:
-    command: "cargo test"
+    command: "/usr/bin/cargo test"
 
   clippy:
-    command: "cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic"
+    command: "/usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic"
 
   fmt:
-    command: "cargo fmt --check"
+    command: "/usr/bin/cargo fmt --check"
 
   build-web:
     command: "dx build --platform web"
 
   coverage:
-    command: "cargo llvm-cov --summary-only"
+    command: "/usr/bin/cargo llvm-cov --summary-only"
 
   coverage-core:
-    command: "cargo llvm-cov --summary-only --ignore-filename-regex '(src/main.rs|src/bin/|src/ui/|src/hooks/)'"
+    command: "/usr/bin/cargo llvm-cov --summary-only --ignore-filename-regex '(src/main.rs|src/bin/|src/ui/|src/hooks/)'"
 
   ci:
     script: |
-      cargo check
-      cargo test
-      cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
+      /usr/bin/cargo check
+      /usr/bin/cargo test
+      /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
     options:
       cache: true

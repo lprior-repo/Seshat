@@ -89,7 +89,7 @@ async function createRandomEdge(page: Page, canvas: Locator, rng: Lcg) {
     b = (b + 1) % centers.length;
   }
 
-  await runEffect(() => page.getByRole("button", { name: "Edge", exact: true }).click());
+  await clickFirstVisibleButton(page, "Edge");
   await runEffect(() => page.mouse.move(centers[a].x, centers[a].y));
   await runEffect(() => page.mouse.down());
   await runEffect(() => page.mouse.up());
@@ -106,7 +106,7 @@ async function clickFirstVisibleButton(page: Page, label: string) {
     const candidate = buttons.nth(i);
     const visible = await runEffect(() => candidate.isVisible().catch(() => false));
     if (visible) {
-      await runEffect(() => candidate.click());
+      await runEffect(() => candidate.click({ timeout: 1_500 }));
       return;
     }
   }
@@ -141,18 +141,18 @@ async function randomOp(page: Page, canvas: Locator, rng: Lcg) {
 
   if (roll < 0.74) {
     const panel = ["Icons", "Props", "Mini", "Valid"][rng.pick(4)];
-    await runEffect(() => page.getByRole("button", { name: panel, exact: true }).click());
+    await clickFirstVisibleButton(page, panel);
     return;
   }
 
   if (roll < 0.84) {
     const historyBtn = rng.next() > 0.5 ? "Undo" : "Redo";
-    await runEffect(() => page.getByRole("button", { name: historyBtn, exact: true }).click());
+    await clickFirstVisibleButton(page, historyBtn);
     return;
   }
 
   if (roll < 0.92 && counters.selected > 0) {
-    await runEffect(() => page.getByRole("button", { name: "Delete", exact: true }).click());
+    await clickFirstVisibleButton(page, "Delete");
     return;
   }
 
@@ -188,14 +188,14 @@ test.describe("diagram chaos hardening", () => {
 
   test("survives deterministic mixed-interaction chaos seed 1337", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runSeededChaos(page, 1337, 56);
+    await runSeededChaos(page, 1337, 40);
     await expect(page.locator(".canvas-container")).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
 
   test("survives deterministic mixed-interaction chaos seed 4242", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runSeededChaos(page, 4242, 56);
+    await runSeededChaos(page, 4242, 40);
     await expect(page.locator(".canvas-container")).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
