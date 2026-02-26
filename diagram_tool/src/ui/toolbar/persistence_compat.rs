@@ -24,6 +24,7 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         for node in nodes.values_mut() {
             if let Some(node_obj) = node.as_object_mut() {
                 let _ = node_obj.remove("id");
+                remap_key(node_obj, "font_size", "fontSize");
                 remap_key(node_obj, "fontWeight", "font_weight");
                 remap_key(node_obj, "dagRank", "dag_rank");
             }
@@ -37,6 +38,7 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         for edge in edges.values_mut() {
             if let Some(edge_obj) = edge.as_object_mut() {
                 let _ = edge_obj.remove("id");
+                remap_key(edge_obj, "font_size", "fontSize");
                 remap_key(edge_obj, "arrowhead", "arrowType");
                 remap_key(edge_obj, "arrow_type", "arrowType");
                 remap_key(edge_obj, "bendPoints", "bend_points");
@@ -113,6 +115,57 @@ mod tests {
                 "style": "solid",
                 "arrowType": "curved",
                 "directed": true,
+                "bend_points": []
+              }
+            }
+          },
+          "editor_state": {
+            "camera_x": 0,
+            "camera_y": 0,
+            "zoom": 1,
+            "grid_size": 20,
+            "snap_to_grid": true,
+            "selected_items": []
+          }
+        }"#;
+
+        let loaded = super::parse_diagram_document_with_compat(json);
+        assert!(loaded.is_ok(), "{:?}", loaded.err());
+    }
+
+    #[test]
+    fn given_legacy_font_size_keys_when_parsed_then_document_loads() {
+        let json = r#"{
+          "version": 2,
+          "revision": 1,
+          "document": {
+            "nodes": {
+              "n1": {
+                "id": "n1",
+                "kind": "node",
+                "icon": "aws/compute/ec2",
+                "label": "EC2",
+                "x": 10,
+                "y": 20,
+                "width": 64,
+                "height": 64,
+                "font_size": null,
+                "locked": true,
+                "parent": null,
+                "tags": [],
+                "metadata": {}
+              }
+            },
+            "edges": {
+              "e1": {
+                "id": "e1",
+                "source": "n1",
+                "target": "n1",
+                "label": "",
+                "style": "solid",
+                "arrowType": "curved",
+                "directed": true,
+                "font_size": null,
                 "bend_points": []
               }
             }

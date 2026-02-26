@@ -197,7 +197,12 @@ pub struct Edge {
     pub label: String,
     #[serde(default)]
     pub style: EdgeStyle,
-    #[serde(default, rename = "arrowType")]
+    #[serde(
+        default,
+        rename = "arrowType",
+        alias = "arrowhead",
+        alias = "arrow_type"
+    )]
     pub arrow_type: ArrowType,
     #[serde(default = "default_label_offset")]
     pub label_offset_t: OrderedFloat,
@@ -330,5 +335,35 @@ impl Default for DiagramDocument {
             },
             editor_state: EditorState::default(),
         }
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::{ArrowType, Edge};
+
+    #[test]
+    fn given_legacy_arrowhead_key_when_deserializing_edge_then_it_is_accepted() {
+        let json = r#"{
+            "source": "n1",
+            "target": "n2",
+            "label": "",
+            "style": "solid",
+            "arrowhead": "default",
+            "label_offset_t": 0.5,
+            "thickness": 1.5,
+            "directed": true,
+            "bend_points": [],
+            "tags": [],
+            "metadata": {}
+        }"#;
+
+        let parsed = serde_json::from_str::<Edge>(json);
+        assert!(parsed.is_ok(), "{:?}", parsed.err());
+        assert_eq!(
+            parsed.ok().map(|edge| edge.arrow_type),
+            Some(ArrowType::Default)
+        );
     }
 }
