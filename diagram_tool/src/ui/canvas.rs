@@ -266,6 +266,30 @@ fn subgraph_release_bounds(
     (w > 20.0 && h > 20.0).then_some((x, y, w, h))
 }
 
+fn safe_zoom(zoom: f64) -> f64 {
+    if zoom.is_finite() && zoom > f64::EPSILON {
+        zoom
+    } else {
+        1.0
+    }
+}
+
+fn fit_icon_side(side: f64) -> f64 {
+    if !side.is_finite() {
+        return 0.0;
+    }
+
+    let max = (side - 8.0).max(0.0);
+    let min = 20.0_f64.min(max);
+    let preferred = side * 0.52;
+
+    if !preferred.is_finite() {
+        return min;
+    }
+
+    preferred.clamp(min, max)
+}
+
 #[derive(Clone, Copy, Debug, PartialEq)]
 struct WheelSample {
     client_x: f64,
@@ -399,15 +423,14 @@ fn flush_pending_pointer_update(
                 client_y,
                 doc_for_mouse.editor_state.camera_x.0,
                 doc_for_mouse.editor_state.camera_y.0,
-                doc_for_mouse.editor_state.zoom.0,
+                safe_zoom(doc_for_mouse.editor_state.zoom.0),
             );
             let delta_x_raw = mx - anchor.0;
             let delta_y_raw = my - anchor.1;
-            let (dx, dy) = snap_point(
-                (delta_x_raw, delta_y_raw),
-                doc_for_mouse.editor_state.snap_to_grid,
-                doc_for_mouse.editor_state.grid_size.0,
-            );
+            let snap = doc_for_mouse.editor_state.snap_to_grid;
+            let grid = doc_for_mouse.editor_state.grid_size.0;
+            let dx = snap_value(delta_x_raw, snap, grid);
+            let dy = snap_value(delta_y_raw, snap, grid);
 
             if !*did_resize && (dx != 0.0 || dy != 0.0) {
                 let history = history_signal.read().clone();
@@ -468,18 +491,16 @@ fn flush_pending_pointer_update(
                 let scale_y = if obh > 0.0 { nh / obh } else { 1.0 };
 
                 doc_signal.with_mut(|doc_mut| {
-                    let snap = doc_mut.editor_state.snap_to_grid;
-                    let grid = doc_mut.editor_state.grid_size.0;
                     for (id, (ox, oy, ow, oh)) in originals.iter() {
                         if let Some(node) = doc_mut.document.nodes.get_mut(id) {
                             let nxx = (ox - obx).mul_add(scale_x, nx);
                             let nyy = (oy - oby).mul_add(scale_y, ny);
                             let nww = (ow * scale_x).max(24.0);
                             let nhh = (oh * scale_y).max(24.0);
-                            node.x = OrderedFloat(snap_value(nxx, snap, grid));
-                            node.y = OrderedFloat(snap_value(nyy, snap, grid));
-                            node.width = OrderedFloat(snap_value(nww, snap, grid).max(24.0));
-                            node.height = OrderedFloat(snap_value(nhh, snap, grid).max(24.0));
+                            node.x = OrderedFloat(nxx);
+                            node.y = OrderedFloat(nyy);
+                            node.width = OrderedFloat(nww);
+                            node.height = OrderedFloat(nhh);
                         }
                     }
                 });
@@ -491,7 +512,7 @@ fn flush_pending_pointer_update(
             *last_pos = (client_x, client_y);
             if dx.abs() > f64::EPSILON || dy.abs() > f64::EPSILON {
                 doc_signal.with_mut(|doc| {
-                    let zoom = doc.editor_state.zoom.0;
+                    let zoom = safe_zoom(doc.editor_state.zoom.0);
                     doc.editor_state.camera_x =
                         OrderedFloat(doc.editor_state.camera_x.0 - (dx / zoom));
                     doc.editor_state.camera_y =
@@ -1184,7 +1205,7 @@ pub fn Canvas() -> Element {
     rsx! {
         div {
             class: "canvas-container",
-            style: "flex: 1; position: relative; overflow: hidden; background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; user-select: none; border: {border_style}; box-sizing: border-box;",
+            style: "flex: 1; position: relative; overflow: hidden; overscroll-behavior: none; touch-action: none; background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; user-select: none; border: {border_style}; box-sizing: border-box;",
 
             ondragover: move |evt| { evt.prevent_default(); },
             ondragenter: move |_| { drag_over.set(true); },
@@ -2140,18 +2161,29 @@ pub fn Canvas() -> Element {
                                     }
                                 }
 
-                                if let Some(icon_src) = node_image_data_url(&node) {
-                                    img {
-                                        src: "{icon_src}",
-                                        width: "{(width * 0.52).clamp(20.0, width - 8.0)}px",
-                                        height: "{(height * 0.52).clamp(20.0, height - 8.0)}px",
-                                        style: "object-fit: contain; pointer-events: none; user-select: none;"
-                                    }
-                                } else {
-                                    span {
-                                        style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
-                                        "{node_initials}"
-                                    }
+                                {
+                                    let icon_w = fit_icon_side(width);
+                                    let icon_h = fit_icon_side(height);
+                                    node_image_data_url(&node).map_or_else(
+                                        || {
+                                            rsx! {
+                                                span {
+                                                    style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
+                                                    "{node_initials}"
+                                                }
+                                            }
+                                        },
+                                        |icon_src| {
+                                            rsx! {
+                                                img {
+                                                    src: "{icon_src}",
+                                                    width: "{icon_w}px",
+                                                    height: "{icon_h}px",
+                                                    style: "object-fit: contain; pointer-events: none; user-select: none;"
+                                                }
+                                            }
+                                        },
+                                    )
                                 }
                                 if is_editing_node {
                                     input {
@@ -2374,7 +2406,7 @@ pub fn Canvas() -> Element {
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_rubber_band_release, subgraph_release_bounds};
+    use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
@@ -2429,5 +2461,18 @@ mod tests {
     fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
         let result = subgraph_release_bounds((5.0, 10.0), (60.0, 70.0), false, 20.0);
         assert_eq!(result, Some((5.0, 10.0, 55.0, 60.0)));
+    }
+
+    #[test]
+    fn given_icon_side_when_too_small_then_fit_never_panics_and_stays_non_negative() {
+        let result = fit_icon_side(19.68);
+        assert!(result >= 0.0);
+        assert!(result <= 11.68);
+    }
+
+    #[test]
+    fn given_icon_side_when_regular_then_fit_prefers_scaled_value() {
+        let result = fit_icon_side(120.0);
+        assert!((result - 62.4).abs() < 1e-10);
     }
 }

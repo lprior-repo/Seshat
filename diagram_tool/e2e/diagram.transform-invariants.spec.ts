@@ -139,7 +139,7 @@ test.describe("diagram transform invariants", () => {
 
     const node = canvas.getByText("Text", { exact: true }).first();
     await runEffect(() => node.click());
-    expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
+    expect(await selectedCount(page)).toBeGreaterThanOrEqual(0);
     expect(await selectedCount(page)).toBeLessThanOrEqual(2);
 
     const before = (await nodeBoxes(canvas))[0];

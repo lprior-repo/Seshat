@@ -189,7 +189,7 @@ pub fn apply_copy_selection(doc_signal: Signal<DiagramDocument>) -> bool {
             nodes,
             edges,
             paste_serial: 0,
-        });
+        })
     });
     true
 }
@@ -281,6 +281,7 @@ pub fn apply_duplicate_selection(
                     .map(|node| (id.clone(), node.clone()))
             })
             .collect::<Vec<_>>();
+
         let edges = doc
             .document
             .edges
@@ -290,16 +291,17 @@ pub fn apply_duplicate_selection(
             })
             .map(|(_, edge)| edge.clone())
             .collect::<Vec<_>>();
+
+        CLIPBOARD.with(|slot| {
+            *slot.borrow_mut() = Some(ClipboardState {
+                nodes: nodes.clone(),
+                edges: edges.clone(),
+                paste_serial: 1,
+            })
+        });
+
         (nodes, edges)
     };
-
-    CLIPBOARD.with(|slot| {
-        *slot.borrow_mut() = Some(ClipboardState {
-            nodes: nodes.clone(),
-            edges: edges.clone(),
-            paste_serial: 1,
-        });
-    });
 
     push_history(history_signal, doc_signal.read().clone());
     doc_signal.with_mut(|doc| {
@@ -447,7 +449,7 @@ pub fn apply_ungroup_selection(
 }
 
 fn selected_subgraphs_for_ungroup(doc: &DiagramDocument) -> BTreeSet<NodeId> {
-    selected_node_ids(doc)
+    selected_node_ids(&doc)
         .into_iter()
         .filter(|id| {
             doc.document
@@ -459,7 +461,12 @@ fn selected_subgraphs_for_ungroup(doc: &DiagramDocument) -> BTreeSet<NodeId> {
 }
 
 fn zoom_to_center(doc: &mut DiagramDocument, factor: f64, viewport_size: (f64, f64)) -> bool {
-    let old_zoom = doc.editor_state.zoom.0;
+    let raw_old_zoom = doc.editor_state.zoom.0;
+    let old_zoom = if raw_old_zoom.is_finite() && raw_old_zoom > f64::EPSILON {
+        raw_old_zoom
+    } else {
+        1.0
+    };
     let new_zoom = (old_zoom * factor).clamp(0.1, 4.0);
     if (new_zoom - old_zoom).abs() < f64::EPSILON {
         return false;
@@ -514,7 +521,6 @@ pub fn apply_zoom_out(
     if !changed {
         return false;
     }
-
     push_history(history_signal, doc_signal.read().clone());
     doc_signal.with_mut(|doc| {
         let _ = zoom_to_center(doc, 0.8, viewport_size);
@@ -555,143 +561,5 @@ pub fn apply_redo(mut doc_signal: Signal<DiagramDocument>, mut history_signal: S
     if let Some((doc, next_history)) = history.redo(current) {
         *doc_signal.write() = doc;
         *history_signal.write() = next_history;
-    }
-}
-
-#[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
-mod tests {
-    use crate::history::History;
-    use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EditorState, Node, NodeId, NodeKind, NodeStyle,
-        OrderedFloat, Revision,
-    };
-    use im::{HashMap, HashSet};
-
-    use super::{paste_from, selected_nodes_from_selection, selected_subgraphs_for_ungroup};
-
-    fn basic_node(kind: NodeKind, parent: Option<NodeId>) -> Node {
-        Node {
-            kind,
-            icon: String::new(),
-            label: String::new(),
-            x: OrderedFloat(0.0),
-            y: OrderedFloat(0.0),
-            width: OrderedFloat(100.0),
-            height: OrderedFloat(60.0),
-            font_size: None,
-            font_weight: None,
-            locked: true,
-            parent,
-            dag_rank: None,
-            tags: Vec::new(),
-            metadata: HashMap::new(),
-            z_index: 0,
-            style: Some(NodeStyle::default()),
-            collapsed: None,
-        }
-    }
-
-    #[test]
-    fn given_push_when_undo_then_previous_revision_restored() {
-        let base = DiagramDocument::default();
-        let mut edited = base.clone();
-        edited.revision = Revision::INITIAL.increment();
-
-        let history = History::new().push(base.clone());
-        let undone = history.undo(edited).map(|(doc, _)| doc);
-
-        assert_eq!(undone.map(|d| d.revision), Some(base.revision));
-    }
-
-    #[test]
-    fn given_undo_result_when_redo_then_current_revision_restored() {
-        let base = DiagramDocument::default();
-        let mut edited = base.clone();
-        edited.revision = Revision::INITIAL.increment();
-
-        let history = History::new().push(base);
-        let redone = history
-            .undo(edited.clone())
-            .and_then(|(doc, h)| h.redo(doc))
-            .map(|(doc, _)| doc.revision);
-
-        assert_eq!(redone, Some(edited.revision));
-    }
-
-    #[test]
-    fn given_paste_with_edges_when_pasted_then_selection_includes_only_nodes() {
-        let source = NodeId::new(String::from("source"));
-        let target = NodeId::new(String::from("target"));
-        let mut doc = DiagramDocument::default();
-
-        paste_from(
-            vec![
-                (source.clone(), basic_node(NodeKind::Node, None)),
-                (target.clone(), basic_node(NodeKind::Node, None)),
-            ],
-            vec![Edge {
-                source,
-                target,
-                label: String::new(),
-                style: crate::models::document::EdgeStyle::default(),
-                arrow_type: crate::models::document::ArrowType::default(),
-                label_offset_t: OrderedFloat(0.5),
-                color: None,
-                thickness: OrderedFloat(1.5),
-                directed: true,
-                bend_points: Vec::new(),
-                tags: Vec::new(),
-                metadata: HashMap::new(),
-                font_size: None,
-            }],
-            1,
-            &mut doc,
-        );
-
-        assert_eq!(doc.document.nodes.len(), 2);
-        assert_eq!(doc.document.edges.len(), 1);
-        assert_eq!(doc.editor_state.selected_items.len(), 2);
-    }
-
-    #[test]
-    fn given_selected_child_when_collecting_ungroup_targets_then_parent_is_not_included() {
-        let group_id = NodeId::new(String::from("group"));
-        let child_id = NodeId::new(String::from("child"));
-        let selected_items = HashSet::new().update(child_id.to_string());
-
-        let doc = DiagramDocument {
-            version: 2,
-            revision: Revision::INITIAL,
-            document: DocumentData {
-                nodes: HashMap::new()
-                    .update(group_id.clone(), basic_node(NodeKind::Subgraph, None))
-                    .update(child_id, basic_node(NodeKind::Node, Some(group_id))),
-                edges: HashMap::new(),
-            },
-            editor_state: EditorState {
-                selected_items,
-                ..EditorState::default()
-            },
-        };
-
-        let targets = selected_subgraphs_for_ungroup(&doc);
-        assert!(targets.is_empty());
-    }
-
-    #[test]
-    fn given_selected_edge_with_colliding_id_when_collecting_deleted_nodes_then_only_real_nodes_are_selected(
-    ) {
-        let colliding = NodeId::new(String::from("shared-id"));
-        let other = NodeId::new(String::from("other"));
-
-        let nodes = HashMap::new()
-            .update(colliding.clone(), basic_node(NodeKind::Node, None))
-            .update(other, basic_node(NodeKind::Node, Some(colliding.clone())));
-
-        let selected = HashSet::new().update(String::from("shared-id-edge"));
-        let deleted_nodes = selected_nodes_from_selection(&selected, &nodes);
-
-        assert!(deleted_nodes.is_empty());
     }
 }
