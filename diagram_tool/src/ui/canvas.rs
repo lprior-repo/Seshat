@@ -2241,6 +2241,7 @@ pub fn Canvas() -> Element {
                     &doc,
                     interaction_mode,
                     doc_signal,
+                    canvas_origin,
                     to_screen_coords,
                 )
             }

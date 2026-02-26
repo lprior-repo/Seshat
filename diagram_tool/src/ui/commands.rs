@@ -189,7 +189,7 @@ pub fn apply_copy_selection(doc_signal: Signal<DiagramDocument>) -> bool {
             nodes,
             edges,
             paste_serial: 0,
-        })
+        });
     });
     true
 }
@@ -297,7 +297,7 @@ pub fn apply_duplicate_selection(
                 nodes: nodes.clone(),
                 edges: edges.clone(),
                 paste_serial: 1,
-            })
+            });
         });
 
         (nodes, edges)
@@ -449,7 +449,7 @@ pub fn apply_ungroup_selection(
 }
 
 fn selected_subgraphs_for_ungroup(doc: &DiagramDocument) -> BTreeSet<NodeId> {
-    selected_node_ids(&doc)
+    selected_node_ids(doc)
         .into_iter()
         .filter(|id| {
             doc.document
@@ -561,5 +561,249 @@ pub fn apply_redo(mut doc_signal: Signal<DiagramDocument>, mut history_signal: S
     if let Some((doc, next_history)) = history.redo(current) {
         *doc_signal.write() = doc;
         *history_signal.write() = next_history;
+    }
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+
+    fn make_doc_with_zoom(zoom: f64) -> DiagramDocument {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state.zoom = OrderedFloat(zoom);
+        doc
+    }
+
+    fn make_doc_with_camera(zoom: f64, cam_x: f64, cam_y: f64) -> DiagramDocument {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state.zoom = OrderedFloat(zoom);
+        doc.editor_state.camera_x = OrderedFloat(cam_x);
+        doc.editor_state.camera_y = OrderedFloat(cam_y);
+        doc
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_valid_zoom_then_zoom_clamped() {
+        let mut doc = make_doc_with_zoom(1.0);
+        let result = zoom_to_center(&mut doc, 2.0, (800.0, 600.0));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0 >= 0.1 && doc.editor_state.zoom.0 <= 4.0);
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_nan_zoom_then_uses_default() {
+        let mut doc = make_doc_with_zoom(f64::NAN);
+        let result = zoom_to_center(&mut doc, 1.5, (800.0, 600.0));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0.is_finite());
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_inf_zoom_then_uses_default() {
+        let mut doc = make_doc_with_zoom(f64::INFINITY);
+        let result = zoom_to_center(&mut doc, 0.5, (800.0, 600.0));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0.is_finite());
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_zero_zoom_then_uses_default() {
+        let mut doc = make_doc_with_zoom(0.0);
+        let result = zoom_to_center(&mut doc, 2.0, (800.0, 600.0));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0 >= 0.1);
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_negative_zoom_then_uses_default() {
+        let mut doc = make_doc_with_zoom(-5.0);
+        let result = zoom_to_center(&mut doc, 2.0, (800.0, 600.0));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0 >= 0.1);
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_at_max_then_no_change() {
+        let mut doc = make_doc_with_zoom(4.0);
+        let result = zoom_to_center(&mut doc, 2.0, (800.0, 600.0));
+        assert!(!result);
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_at_min_then_no_change() {
+        let mut doc = make_doc_with_zoom(0.1);
+        let result = zoom_to_center(&mut doc, 0.5, (800.0, 600.0));
+        assert!(!result);
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_valid_then_camera_finite() {
+        let mut doc = make_doc_with_camera(1.0, 100.0, 200.0);
+        let _ = zoom_to_center(&mut doc, 1.5, (800.0, 600.0));
+        assert!(doc.editor_state.camera_x.0.is_finite());
+        assert!(doc.editor_state.camera_y.0.is_finite());
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_nan_camera_then_zoom_still_clamped() {
+        let mut doc = make_doc_with_camera(1.0, f64::NAN, f64::NAN);
+        let _ = zoom_to_center(&mut doc, 1.5, (800.0, 600.0));
+        assert!(doc.editor_state.zoom.0.is_finite());
+        assert!(doc.editor_state.zoom.0 >= 0.1 && doc.editor_state.zoom.0 <= 4.0);
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_tiny_viewport_then_no_panic() {
+        let mut doc = make_doc_with_zoom(1.0);
+        let result = zoom_to_center(&mut doc, 1.5, (0.0, 0.0));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0.is_finite());
+    }
+
+    #[test]
+    fn given_zoom_to_center_when_huge_viewport_then_no_panic() {
+        let mut doc = make_doc_with_zoom(1.0);
+        let result = zoom_to_center(&mut doc, 1.5, (1e10, 1e10));
+        assert!(result);
+        assert!(doc.editor_state.zoom.0.is_finite());
+    }
+}
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    prop_compose! {
+        fn arb_finite_f64()(x in -1e6_f64..1e6_f64) -> f64 { x }
+    }
+
+    prop_compose! {
+        fn arb_zoom_f64()(x in 0.001_f64..100.0_f64) -> f64 { x }
+    }
+
+    prop_compose! {
+        fn arb_factor()(x in 0.1_f64..10.0_f64) -> f64 { x }
+    }
+
+    prop_compose! {
+        fn arb_viewport()(w in 0.0_f64..5000.0_f64, h in 0.0_f64..5000.0_f64) -> (f64, f64) {
+            (w, h)
+        }
+    }
+
+    fn make_doc_for_prop(zoom: f64, cam_x: f64, cam_y: f64) -> DiagramDocument {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state.zoom = OrderedFloat(zoom);
+        doc.editor_state.camera_x = OrderedFloat(cam_x);
+        doc.editor_state.camera_y = OrderedFloat(cam_y);
+        doc
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        fn prop_zoom_to_center_zoom_always_clamped(
+            zoom in arb_zoom_f64(),
+            factor in arb_factor(),
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(zoom, 0.0, 0.0);
+            let _ = zoom_to_center(&mut doc, factor, viewport);
+
+            prop_assert!(doc.editor_state.zoom.0 >= 0.1);
+            prop_assert!(doc.editor_state.zoom.0 <= 4.0);
+        }
+
+        #[test]
+        fn prop_zoom_to_center_camera_stays_finite(
+            zoom in arb_zoom_f64(),
+            cam_x in arb_finite_f64(),
+            cam_y in arb_finite_f64(),
+            factor in arb_factor(),
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(zoom, cam_x, cam_y);
+            let _ = zoom_to_center(&mut doc, factor, viewport);
+
+            prop_assert!(doc.editor_state.camera_x.0.is_finite());
+            prop_assert!(doc.editor_state.camera_y.0.is_finite());
+        }
+
+        #[test]
+        fn prop_zoom_to_center_nan_zoom_recovered(
+            factor in arb_factor(),
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(f64::NAN, 0.0, 0.0);
+            let _ = zoom_to_center(&mut doc, factor, viewport);
+
+            prop_assert!(doc.editor_state.zoom.0.is_finite());
+            prop_assert!(doc.editor_state.zoom.0 >= 0.1);
+            prop_assert!(doc.editor_state.zoom.0 <= 4.0);
+        }
+
+        #[test]
+        fn prop_zoom_to_center_inf_zoom_recovered(
+            factor in arb_factor(),
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(f64::INFINITY, 0.0, 0.0);
+            let _ = zoom_to_center(&mut doc, factor, viewport);
+
+            prop_assert!(doc.editor_state.zoom.0.is_finite());
+        }
+
+        #[test]
+        fn prop_zoom_to_center_zero_zoom_recovered(
+            factor in arb_factor(),
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(0.0, 0.0, 0.0);
+            let _ = zoom_to_center(&mut doc, factor, viewport);
+
+            prop_assert!(doc.editor_state.zoom.0 >= 0.1);
+        }
+
+        #[test]
+        fn prop_zoom_to_center_negative_zoom_recovered(
+            factor in arb_factor(),
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(-100.0, 0.0, 0.0);
+            let _ = zoom_to_center(&mut doc, factor, viewport);
+
+            prop_assert!(doc.editor_state.zoom.0 >= 0.1);
+        }
+
+        #[test]
+        fn prop_zoom_increases_with_large_factor(
+            zoom in 0.2_f64..2.0_f64,
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(zoom, 0.0, 0.0);
+            let old_zoom = doc.editor_state.zoom.0;
+            let changed = zoom_to_center(&mut doc, 2.0, viewport);
+
+            if changed {
+                prop_assert!(doc.editor_state.zoom.0 >= old_zoom);
+            }
+        }
+
+        #[test]
+        fn prop_zoom_decreases_with_small_factor(
+            zoom in 0.5_f64..3.0_f64,
+            viewport in arb_viewport(),
+        ) {
+            let mut doc = make_doc_for_prop(zoom, 0.0, 0.0);
+            let old_zoom = doc.editor_state.zoom.0;
+            let changed = zoom_to_center(&mut doc, 0.5, viewport);
+
+            if changed {
+                prop_assert!(doc.editor_state.zoom.0 <= old_zoom);
+            }
+        }
     }
 }
