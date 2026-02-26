@@ -32,6 +32,26 @@ tasks:
   coverage-core:
     command: "/usr/bin/cargo llvm-cov --summary-only --ignore-filename-regex '(src/main.rs|src/bin/|src/ui/|src/hooks/)'"
 
+  mutants:
+    command: "cargo mutants --in-place"
+    options:
+      cache: false
+
+  mutants-ci:
+    command: "cargo mutants --in-place --check"
+    options:
+      cache: false
+
+  mutants-list:
+    command: "cargo mutants --list --json"
+    options:
+      cache: false
+
+  mutants-quick:
+    command: "cargo mutants --in-place --shard 1/4"
+    options:
+      cache: false
+
   ci:
     script: |
       /usr/bin/cargo check
