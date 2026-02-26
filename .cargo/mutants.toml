@@ -1,0 +1,56 @@
+# Mutation Testing Configuration for cargo-mutants
+# https://mutants.rs/
+#
+# NOTE: Run `cargo test` first to ensure baseline tests pass.
+# If tests don't compile, mutation testing cannot proceed.
+
+# Examine only source files matching these patterns (core business logic)
+examine_globs = [
+    "diagram_tool/src/mutation/**/*.rs",
+    "diagram_tool/src/models/**/*.rs",
+    "diagram_tool/src/patch.rs",
+    "diagram_tool/src/layout/**/*.rs",
+    "diagram_tool/src/history.rs",
+    "diagram_tool/src/export/**/*.rs",
+]
+
+# Exclude UI code, hooks, backend, CLI, and main entry points
+exclude_globs = [
+    "diagram_tool/src/ui/**/*.rs",
+    "diagram_tool/src/hooks/**/*.rs",
+    "diagram_tool/src/main.rs",
+    "diagram_tool/src/app.rs",
+    "diagram_tool/src/icons.rs",
+    "diagram_tool/build.rs",
+    "diagram_tool/src/backend.rs",
+    "diagram_tool/src/cli.rs",
+]
+
+# Exclude files matching these regex patterns
+exclude_re = [
+    "src/ui/.*",
+    "src/hooks/.*",
+    "src/backend.*",
+    "src/cli.*",
+]
+
+# Timeout multiplier for tests (relative to baseline)
+timeout_multiplier = 3.0
+
+# Build timeout multiplier
+build_timeout_multiplier = 3.0
+
+# Minimum test timeout in seconds
+minimum_test_timeout = 60
+
+# Pass --cap-lints to rustc to avoid denied warnings blocking mutants
+cap_lints = true
+
+# Additional cargo test arguments
+additional_cargo_test_args = ["--", "--test-threads=2"]
+
+# Skip calls to common functions that don't need mutation testing
+skip_calls = ["println", "eprintln", "dbg", "todo"]
+
+# Use built-in skip_calls defaults
+skip_calls_defaults = true

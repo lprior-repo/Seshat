@@ -490,3 +490,148 @@ mod tests {
         );
     }
 }
+
+#[cfg(test)]
+mod proptests {
+    use super::*;
+    use crate::models::document::{DiagramDocument, Revision};
+    use proptest::prelude::*;
+
+    fn doc_with_revision(steps: u64) -> DiagramDocument {
+        let mut revision = Revision::INITIAL;
+        for _ in 0..steps {
+            revision = revision.increment();
+        }
+        DiagramDocument {
+            revision,
+            ..DiagramDocument::default()
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_undo_on_empty_returns_none(rev in 0..1000u64) {
+            let history = History::new();
+            let current = doc_with_revision(rev);
+            prop_assert!(history.undo(current).is_none());
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_redo_on_empty_returns_none(rev in 0..1000u64) {
+            let history = History::new().push(doc_with_revision(rev));
+            let current = doc_with_revision(rev + 100);
+            prop_assert!(history.redo(current).is_none());
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_push_undo_roundtrip(current_rev in 0..1000u64, push_rev in 0..1000u64) {
+            let history = History::new().push(doc_with_revision(push_rev));
+            let current = doc_with_revision(current_rev);
+
+            let (restored, after_undo) = history.undo(current.clone()).unwrap();
+            prop_assert_eq!(restored.revision, doc_with_revision(push_rev).revision);
+
+            let (redo_doc, _) = after_undo.redo(restored.clone()).unwrap();
+            prop_assert_eq!(redo_doc.revision, current.revision);
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_undo_stack_bounded_at_100(pushes in 0..200usize) {
+            let history = (0..pushes as u64).fold(History::new(), |acc, i| {
+                acc.push(doc_with_revision(i))
+            });
+            prop_assert!(history.undo_stack.len() <= 100);
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_redo_stack_bounded_at_100(undos in 1..150usize) {
+            let total_pushes = undos + 10;
+            let history = (0..total_pushes as u64).fold(History::new(), |acc, i| {
+                acc.push(doc_with_revision(i))
+            });
+            let current = doc_with_revision(10_000);
+
+            let final_history = (0..undos).fold(Some((current, history)), |state, _| {
+                state.and_then(|(curr, h)| h.undo(curr))
+            }).map(|(_, h)| h);
+
+            if let Some(h) = final_history {
+                prop_assert!(h.redo_stack.len() <= 100);
+            }
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_sequential_pushes_recoverable(pushes in 1..50usize) {
+            let history = (0..pushes as u64).fold(History::new(), |acc, i| {
+                acc.push(doc_with_revision(i))
+            });
+
+            let mut current = doc_with_revision(10_000);
+            let mut h = history;
+
+            for expected_rev in (0..pushes as u64).rev() {
+                let (restored, new_h) = h.undo(current.clone()).unwrap();
+                prop_assert_eq!(restored.revision, doc_with_revision(expected_rev).revision);
+                current = restored;
+                h = new_h;
+            }
+            prop_assert!(h.undo(current).is_none());
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_capacity_maintained_after_many_ops(ops in 0..300usize) {
+            let mut history = History::new();
+            for i in 0..ops {
+                history = history.push(doc_with_revision(i as u64));
+            }
+            prop_assert!(history.undo_stack.len() <= 100);
+            prop_assert!(history.redo_stack.len() <= 100);
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_push_clears_redo_stack(initial_pushes in 1..20usize, undos in 1..10usize) {
+            let history = (0..initial_pushes as u64).fold(History::new(), |acc, i| {
+                acc.push(doc_with_revision(i))
+            });
+
+            let undos_to_do = undos.min(initial_pushes - 1).max(1);
+            let current = doc_with_revision(10_000);
+
+            let (_, after_undo) = (0..undos_to_do).fold(
+                (current.clone(), history),
+                |(curr, h), _| h.undo(curr).unwrap()
+            );
+
+            prop_assert!(!after_undo.redo_stack.is_empty());
+
+            let after_push = after_undo.push(doc_with_revision(999));
+            prop_assert!(after_push.redo_stack.is_empty());
+        }
+
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_undo_redo_idempotent(push_rev in 0..100u64, current_rev in 0..100u64) {
+            let history = History::new().push(doc_with_revision(push_rev));
+            let current = doc_with_revision(current_rev);
+
+            let (undo_doc, after_undo) = history.undo(current.clone()).unwrap();
+            let (redo_doc, _) = after_undo.redo(undo_doc.clone()).unwrap();
+
+            let (undo_doc2, after_undo2) = history.undo(current.clone()).unwrap();
+            let (redo_doc2, _) = after_undo2.redo(undo_doc2.clone()).unwrap();
+
+            prop_assert_eq!(redo_doc.revision, redo_doc2.revision);
+            prop_assert_eq!(undo_doc.revision, undo_doc2.revision);
+        }
+    }
+}
