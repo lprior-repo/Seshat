@@ -28,3 +28,271 @@ pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
     pixmap.save_png(path).context("Failed to save PNG")?;
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use crate::models::document::{
+        DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
+        OrderedFloat,
+    };
+    use im::HashMap;
+    use tempfile::NamedTempFile;
+
+    /// PNG file magic bytes (signature)
+    const PNG_SIGNATURE: &[u8; 8] = &[137, 80, 78, 71, 13, 10, 26, 10];
+
+    fn create_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
+        (
+            NodeId::new(id.to_string()),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: format!("Node {id}"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(100.0),
+                height: OrderedFloat(60.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: Vec::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        )
+    }
+
+    #[test]
+    fn given_empty_document_when_export_png_then_creates_valid_png_file() -> Result<()> {
+        // Given
+        let doc = DiagramDocument::default();
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        assert!(bytes.len() > 8, "PNG file too small: {} bytes", bytes.len());
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        Ok(())
+    }
+
+    #[test]
+    fn given_document_with_single_node_when_export_png_then_creates_valid_png() -> Result<()> {
+        // Given
+        let (node_id, node) = create_test_node("node1", 50.0, 50.0);
+        let mut nodes = HashMap::new();
+        nodes.insert(node_id, node);
+        let doc = DiagramDocument {
+            version: 2,
+            revision: crate::models::document::Revision::INITIAL,
+            document: DocumentData {
+                nodes,
+                edges: HashMap::new(),
+            },
+            editor_state: crate::models::document::EditorState::default(),
+        };
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        // Verify file has reasonable size (at least a few KB for a simple PNG)
+        assert!(
+            bytes.len() > 100,
+            "PNG file unexpectedly small: {} bytes",
+            bytes.len()
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn given_document_with_multiple_nodes_when_export_png_then_creates_valid_png() -> Result<()> {
+        // Given
+        let (node_id1, node1) = create_test_node("node1", 0.0, 0.0);
+        let (node_id2, node2) = create_test_node("node2", 200.0, 0.0);
+        let (node_id3, node3) = create_test_node("node3", 100.0, 150.0);
+        let mut nodes = HashMap::new();
+        nodes.insert(node_id1, node1);
+        nodes.insert(node_id2, node2);
+        nodes.insert(node_id3, node3);
+        let doc = DiagramDocument {
+            version: 2,
+            revision: crate::models::document::Revision::INITIAL,
+            document: DocumentData {
+                nodes,
+                edges: HashMap::new(),
+            },
+            editor_state: crate::models::document::EditorState::default(),
+        };
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        Ok(())
+    }
+
+    #[test]
+    fn given_document_with_edges_when_export_png_then_creates_valid_png() -> Result<()> {
+        // Given
+        let (node_id1, node1) = create_test_node("source", 0.0, 50.0);
+        let (node_id2, node2) = create_test_node("target", 200.0, 50.0);
+        let mut nodes = HashMap::new();
+        nodes.insert(node_id1.clone(), node1);
+        nodes.insert(node_id2.clone(), node2);
+
+        let edge = Edge {
+            source: node_id1,
+            target: node_id2,
+            label: String::new(),
+            style: EdgeStyle::Solid,
+            arrow_type: crate::models::document::ArrowType::Default,
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.5),
+            directed: true,
+            bend_points: Vec::new(),
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            font_size: None,
+        };
+        let mut edges = HashMap::new();
+        edges.insert(EdgeId::new("edge1".to_string()), edge);
+
+        let doc = DiagramDocument {
+            version: 2,
+            revision: crate::models::document::Revision::INITIAL,
+            document: DocumentData { nodes, edges },
+            editor_state: crate::models::document::EditorState::default(),
+        };
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        Ok(())
+    }
+
+    #[test]
+    fn given_valid_document_when_export_png_then_file_exists_on_disk() -> Result<()> {
+        // Given
+        let doc = DiagramDocument::default();
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        assert!(
+            temp_file.path().exists(),
+            "PNG file should exist at {output_path:?}"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn given_valid_document_when_export_png_then_png_has_iend_chunk() -> Result<()> {
+        // Given
+        let doc = DiagramDocument::default();
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        // IEND chunk marks the end of a PNG file
+        let iend_marker = b"IEND";
+        assert!(
+            bytes.windows(4).any(|w| w == iend_marker),
+            "PNG file should contain IEND chunk marker"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn given_valid_document_when_export_png_then_png_has_ihdr_chunk() -> Result<()> {
+        // Given
+        let doc = DiagramDocument::default();
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        // IHDR chunk must be the first chunk in a PNG file (after signature)
+        let ihdr_marker = b"IHDR";
+        assert!(
+            bytes.windows(4).any(|w| w == ihdr_marker),
+            "PNG file should contain IHDR chunk marker"
+        );
+        Ok(())
+    }
+
+    #[test]
+    fn given_invalid_output_path_when_export_png_then_returns_error() {
+        // Given
+        let doc = DiagramDocument::default();
+        let invalid_path = "/nonexistent/directory/output.png";
+
+        // When/Then
+        let result = export_png(&doc, invalid_path);
+        assert!(
+            result.is_err(),
+            "Expected error when exporting to invalid path"
+        );
+    }
+
+    #[test]
+    fn given_document_with_large_coordinates_when_export_png_then_creates_valid_png() -> Result<()>
+    {
+        // Given
+        let (node_id, node) = create_test_node("far_node", 10000.0, 10000.0);
+        let mut nodes = HashMap::new();
+        nodes.insert(node_id, node);
+        let doc = DiagramDocument {
+            version: 2,
+            revision: crate::models::document::Revision::INITIAL,
+            document: DocumentData {
+                nodes,
+                edges: HashMap::new(),
+            },
+            editor_state: crate::models::document::EditorState::default(),
+        };
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        let output_path = temp_file.path().to_str().context("Invalid path")?;
+
+        // When
+        export_png(&doc, output_path)?;
+
+        // Then
+        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        Ok(())
+    }
+}
