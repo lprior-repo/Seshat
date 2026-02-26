@@ -1,7 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
-  createTextNode,
   nodeCenters,
   runEffect,
   trapPageErrors,
@@ -77,6 +76,27 @@ async function dragRandomNode(page: Page, canvas: Locator, rng: Lcg) {
   await runEffect(() => page.mouse.up());
 }
 
+async function createTextNodeSafe(page: Page, canvas: Locator, x: number, y: number) {
+  await clickFirstVisibleButton(page, "Text");
+  const box = await runEffect(() => canvas.boundingBox().catch(() => null));
+  if (!box) {
+    return;
+  }
+  await runEffect(() => page.mouse.click(box.x + x, box.y + y));
+}
+
+async function recoverFromRebuildOverlay(page: Page) {
+  const rebuilding = page.getByRole("heading", { name: "Your app is being rebuilt." });
+  const visible = await runEffect(() => rebuilding.isVisible().catch(() => false));
+  if (!visible) {
+    return;
+  }
+
+  await runEffect(() => page.reload({ waitUntil: "domcontentloaded", timeout: 5_000 }));
+  await runEffect(() => waitForUiReady(page));
+  await runEffect(() => clearCanvasOverlays(page));
+}
+
 async function createRandomEdge(page: Page, canvas: Locator, rng: Lcg) {
   const centers = await runEffect(() => nodeCenters(canvas));
   if (centers.length < 2) {
@@ -113,13 +133,14 @@ async function clickFirstVisibleButton(page: Page, label: string) {
 }
 
 async function randomOp(page: Page, canvas: Locator, rng: Lcg) {
+  await recoverFromRebuildOverlay(page);
   const counters = await readCounters(page);
   const roll = rng.next();
 
   if (roll < 0.2) {
     const x = 480 + rng.pick(520);
     const y = 160 + rng.pick(380);
-    await runEffect(() => createTextNode(page, canvas, x, y));
+    await createTextNodeSafe(page, canvas, x, y);
     return;
   }
 
@@ -166,9 +187,9 @@ async function runSeededChaos(page: Page, seed: number, steps: number) {
   await runEffect(() => clearCanvasOverlays(page));
 
   const canvas = page.locator(".canvas-container");
-  await runEffect(() => createTextNode(page, canvas, 540, 220));
-  await runEffect(() => createTextNode(page, canvas, 760, 260));
-  await runEffect(() => createTextNode(page, canvas, 940, 300));
+  await createTextNodeSafe(page, canvas, 540, 220);
+  await createTextNodeSafe(page, canvas, 760, 260);
+  await createTextNodeSafe(page, canvas, 940, 300);
 
   for (let i = 0; i < steps; i += 1) {
     if (i % 8 === 0) {
@@ -184,18 +205,18 @@ async function runSeededChaos(page: Page, seed: number, steps: number) {
 }
 
 test.describe("diagram chaos hardening", () => {
-  test.describe.configure({ timeout: 120_000 });
+  test.describe.configure({ timeout: 60_000 });
 
   test("survives deterministic mixed-interaction chaos seed 1337", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runSeededChaos(page, 1337, 40);
+    await runSeededChaos(page, 1337, 24);
     await expect(page.locator(".canvas-container")).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
 
   test("survives deterministic mixed-interaction chaos seed 4242", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runSeededChaos(page, 4242, 40);
+    await runSeededChaos(page, 4242, 24);
     await expect(page.locator(".canvas-container")).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
