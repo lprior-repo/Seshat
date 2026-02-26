@@ -8,6 +8,7 @@
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use crate::models::schema::validate_schema;
 use crate::models::validation::validate_document;
+#[allow(unused_imports)]
 use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
 use dioxus::prelude::*;
 use serde::{Deserialize, Serialize};
@@ -30,6 +31,7 @@ impl PersistedWorkspace {
     pub const SCHEMA_VERSION: u32 = 1;
 }
 
+#[allow(dead_code)]
 fn validate_workspace_document(document: &DiagramDocument) -> Result<(), ServerFnError> {
     validate_schema(document)
         .map_err(|err| ServerFnError::new(format!("schema validation error: {err}")))?;

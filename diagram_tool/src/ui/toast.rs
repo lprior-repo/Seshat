@@ -74,19 +74,132 @@ pub struct ToastApi {
     queue: Signal<ToastQueue>,
 }
 
+#[derive(Clone, Copy)]
+pub struct ToastHandle {
+    id: ToastId,
+    api: ToastApi,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ToastOptions {
+    pub intent: ToastIntent,
+    pub title: String,
+    pub detail: Option<String>,
+    pub action: Option<ToastAction>,
+}
+
+impl ToastOptions {
+    #[must_use]
+    pub fn new(intent: ToastIntent, title: impl Into<String>) -> Self {
+        Self {
+            intent,
+            title: title.into(),
+            detail: None,
+            action: None,
+        }
+    }
+
+    #[must_use]
+    pub fn with_detail(self, detail: impl Into<String>) -> Self {
+        Self {
+            detail: Some(detail.into()),
+            ..self
+        }
+    }
+
+    #[must_use]
+    pub fn with_optional_detail(self, detail: Option<String>) -> Self {
+        Self { detail, ..self }
+    }
+
+    #[must_use]
+    #[allow(dead_code)]
+    pub fn with_action(self, action: ToastAction) -> Self {
+        Self {
+            action: Some(action),
+            ..self
+        }
+    }
+}
+
+impl ToastHandle {
+    #[must_use]
+    pub const fn id(self) -> ToastId {
+        self.id
+    }
+
+    pub fn update(self, patch: ToastUpdate) -> bool {
+        self.api.update(self.id, patch)
+    }
+
+    pub fn dismiss(self) -> bool {
+        self.api.dismiss(Some(self.id))
+    }
+
+    #[allow(dead_code)]
+    pub fn remove(self) -> bool {
+        self.api.remove(self.id)
+    }
+}
+
 impl ToastApi {
     #[must_use]
+    pub const fn from_signal(queue: Signal<ToastQueue>) -> Self {
+        Self { queue }
+    }
+
+    #[must_use]
+    pub fn toast(self, options: ToastOptions) -> ToastHandle {
+        let mut queue = self.queue;
+        let mut id = ToastId(0);
+        queue.with_mut(|state| {
+            id = state.add_with_action(
+                options.intent,
+                options.title,
+                options.detail,
+                options.action,
+            );
+        });
+        ToastHandle { id, api: self }
+    }
+
+    #[must_use]
     pub fn show(
-        mut self,
+        self,
         intent: ToastIntent,
         title: impl Into<String>,
         detail: Option<String>,
     ) -> ToastId {
-        let mut result = ToastId(0);
-        self.queue.with_mut(|queue| {
-            result = queue.add(intent, title, detail);
+        self.toast(ToastOptions::new(intent, title).with_optional_detail(detail))
+            .id()
+    }
+
+    pub fn update(self, id: ToastId, patch: ToastUpdate) -> bool {
+        let mut queue = self.queue;
+        let mut changed = false;
+        queue.with_mut(|state| {
+            changed = state.update(id, patch);
         });
-        result
+        changed
+    }
+
+    pub fn dismiss(self, id: Option<ToastId>) -> bool {
+        let mut queue = self.queue;
+        let mut changed = false;
+        queue.with_mut(|state| {
+            changed = state.dismiss_target(id);
+        });
+        changed
+    }
+
+    #[allow(dead_code)]
+    pub fn remove(self, id: ToastId) -> bool {
+        let mut queue = self.queue;
+        let mut changed = false;
+        queue.with_mut(|state| {
+            changed = state.remove(id);
+        });
+        changed
     }
 
     #[must_use]
@@ -97,13 +210,18 @@ impl ToastApi {
 
 #[must_use]
 pub fn use_toast() -> ToastApi {
-    ToastApi {
-        queue: use_context::<Signal<ToastQueue>>(),
-    }
+    ToastApi::from_signal(use_context::<Signal<ToastQueue>>())
+}
+
+#[must_use]
+#[allow(dead_code)]
+pub fn toast(options: ToastOptions) -> ToastHandle {
+    use_toast().toast(options)
 }
 
 impl ToastQueue {
     #[must_use]
+    #[allow(dead_code)]
     pub fn add(
         &mut self,
         intent: ToastIntent,

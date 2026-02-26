@@ -1,7 +1,5 @@
-#[cfg(not(target_arch = "wasm32"))]
 use crate::models::document::DiagramDocument;
 
-#[cfg(not(target_arch = "wasm32"))]
 fn remap_key(obj: &mut serde_json::Map<String, serde_json::Value>, from: &str, to: &str) {
     if obj.contains_key(to) {
         let _ = obj.remove(from);
@@ -10,7 +8,6 @@ fn remap_key(obj: &mut serde_json::Map<String, serde_json::Value>, from: &str, t
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 fn normalize_compat_shape(root: &mut serde_json::Value) {
     let Some(document) = root
         .as_object_mut()
@@ -67,7 +64,6 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
     }
 }
 
-#[cfg(not(target_arch = "wasm32"))]
 pub fn parse_diagram_document_with_compat(contents: &str) -> Result<DiagramDocument, String> {
     let mut value =
         serde_json::from_str::<serde_json::Value>(contents).map_err(|err| err.to_string())?;

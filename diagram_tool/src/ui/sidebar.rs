@@ -6,11 +6,14 @@
 #![forbid(unsafe_code)]
 
 use crate::app::DraggedIconPayload;
-use crate::app::SidebarUiState;
 use crate::icons::ICONS;
 use crate::icons::{icon_index, IconMeta};
+use crate::ui::mobile::{close_sidebar, open_sidebar, SidebarUiState};
 use crate::ui::sidebar_primitives::{
-    SidebarGroup, SidebarHeader, SidebarOverlay, SidebarRail, SidebarSheet,
+    Sidebar as SidebarPanel, SidebarCollapsible, SidebarGroup, SidebarHeader, SidebarInset,
+    SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem,
+    SidebarOverlay, SidebarProvider, SidebarRail, SidebarSheet, SidebarSide, SidebarTrigger,
+    SidebarVariant,
 };
 use crate::ui::theme::{
     BG_BASE, BG_ELEVATED, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED,
@@ -22,6 +25,8 @@ use std::collections::{BTreeMap, BTreeSet};
 const INITIAL_PROVIDER_LIMIT: usize = 72;
 const LOAD_MORE_STEP: usize = 48;
 const MAX_SEARCH_RESULTS: usize = 180;
+const DEFAULT_EXPANDED_PROVIDER: &str = "aws";
+const DEFAULT_EXPANDED_CATEGORY: &str = "aws/compute";
 
 #[derive(Clone, PartialEq)]
 struct CategoryBucket {
@@ -61,6 +66,18 @@ fn category_label(icon: &IconMeta) -> String {
     } else {
         icon.category_path.join(" / ")
     }
+}
+
+fn category_key(provider: &str, category_label: &str) -> String {
+    let normalized = category_label
+        .split('/')
+        .map(str::trim)
+        .filter(|segment| !segment.is_empty())
+        .map(str::to_ascii_lowercase)
+        .collect::<Vec<_>>()
+        .join("/");
+
+    format!("{}/{}", provider.to_ascii_lowercase(), normalized)
 }
 
 fn bucket_icons_by_category(icons: Vec<IconMeta>) -> Vec<CategoryBucket> {
@@ -228,10 +245,13 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
 #[component]
 pub fn Sidebar() -> Element {
     let mut search = use_signal(String::new);
-    let mut expanded_providers: Signal<BTreeSet<String>> = use_signal(BTreeSet::new);
+    let mut expanded_providers: Signal<BTreeSet<String>> =
+        use_signal(|| BTreeSet::from([String::from(DEFAULT_EXPANDED_PROVIDER)]));
+    let mut expanded_categories: Signal<BTreeSet<String>> =
+        use_signal(|| BTreeSet::from([String::from(DEFAULT_EXPANDED_CATEGORY)]));
     let mut provider_limits: Signal<BTreeMap<String, usize>> = use_signal(BTreeMap::new);
     let dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
-    let mut sidebar_ui = use_context::<Signal<SidebarUiState>>();
+    let sidebar_ui = use_context::<Signal<SidebarUiState>>();
     let trimmed_query = search.read().trim().to_ascii_lowercase();
     let query_active = !trimmed_query.is_empty();
     let (provider_buckets, search_is_truncated) =
@@ -240,30 +260,34 @@ pub fn Sidebar() -> Element {
 
     if ui_state.is_mobile && !ui_state.open_mobile {
         return rsx! {
-            button {
-                style: "position: fixed; top: 64px; left: 10px; z-index: 72; border-radius: 999px; border: 1px solid {BORDER}; background: color-mix(in oklch, {BG_SURFACE} 92%, transparent); color: {TEXT_MAIN}; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 8px 16px color-mix(in oklch, black 20%, transparent);",
-                onclick: move |_| {
-                    sidebar_ui.with_mut(|state| state.open_mobile = true);
-                },
-                "Browse icons"
+            SidebarProvider {
+                sidebar_ui,
+                side: SidebarSide::Left,
+                variant: SidebarVariant::Sidebar,
+                collapsible: SidebarCollapsible::Offcanvas,
+                SidebarTrigger {
+                    label: String::from("Browse icons"),
+                    title: String::from("Open icon browser"),
+                    style: Some(format!("position: fixed; top: 64px; left: 10px; z-index: 72; border-radius: 999px; border: 1px solid {BORDER}; background: color-mix(in oklch, {BG_SURFACE} 92%, transparent); color: {TEXT_MAIN}; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 8px 16px color-mix(in oklch, black 20%, transparent);")),
+                }
             }
         };
     }
 
     if !ui_state.is_mobile && !ui_state.open {
         return rsx! {
-            SidebarRail {
-                label: String::from(">"),
-                title: String::from("Expand sidebar"),
-                onclick: move |_| {
-                    sidebar_ui.with_mut(|state| state.open = true);
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        let _eval = document::eval(
-                            "try { localStorage.setItem('diagram_tool.sidebar_open', 'true'); } catch (_) {}",
-                        );
-                    }
-                },
+            SidebarProvider {
+                sidebar_ui,
+                side: SidebarSide::Left,
+                variant: SidebarVariant::Sidebar,
+                collapsible: SidebarCollapsible::Offcanvas,
+                SidebarRail {
+                    label: String::from(">"),
+                    title: String::from("Expand sidebar"),
+                    onclick: move |_| {
+                        open_sidebar(sidebar_ui);
+                    },
+                }
             }
         };
     }
@@ -279,33 +303,30 @@ pub fn Sidebar() -> Element {
     };
 
     rsx! {
-        if ui_state.is_mobile {
-            SidebarOverlay {
-                onclick: move |_| {
-                    sidebar_ui.with_mut(|state| state.open_mobile = false);
+        SidebarProvider {
+            sidebar_ui,
+            side: SidebarSide::Left,
+            variant: SidebarVariant::Sidebar,
+            collapsible: SidebarCollapsible::Offcanvas,
+
+            if ui_state.is_mobile {
+                SidebarOverlay {
+                    onclick: move |_| {
+                        close_sidebar(sidebar_ui);
+                    }
                 }
             }
-        }
 
-        SidebarSheet {
-            style: panel_style,
+            SidebarPanel {
+                style: Some(panel_style),
+
+                SidebarSheet {
+                    style: String::new(),
             SidebarHeader {
                 title: String::from("Diagram Icons"),
                 action_label: if ui_state.is_mobile { String::from("Close") } else { String::from("Hide") },
                 onaction: move |_| {
-                    sidebar_ui.with_mut(|state| {
-                        if state.is_mobile {
-                            state.open_mobile = false;
-                        } else {
-                            state.open = false;
-                        }
-                    });
-                    #[cfg(target_arch = "wasm32")]
-                    {
-                        let _eval = document::eval(
-                            "try { localStorage.setItem('diagram_tool.sidebar_open', 'false'); } catch (_) {}",
-                        );
-                    }
+                    close_sidebar(sidebar_ui);
                 }
             }
 
@@ -323,80 +344,121 @@ pub fn Sidebar() -> Element {
                 }
             }
 
-            for bucket in provider_buckets {
-                {
-                    let provider = bucket.provider.clone();
-                    let expanded = query_active || expanded_providers.read().contains(&provider);
-                    let visible_count = bucket.visible_count;
-                    let total_count = bucket.total_count;
-                    let has_more = bucket.has_more;
+            SidebarInset {
+                style: Some(String::from("display: flex; flex: 1; min-height: 0; flex-direction: column;")),
+                SidebarMenu {
+                    for bucket in provider_buckets {
+                        {
+                            let provider = bucket.provider.clone();
+                            let expanded = query_active || expanded_providers.read().contains(&provider);
+                            let visible_count = bucket.visible_count;
+                            let total_count = bucket.total_count;
+                            let has_more = bucket.has_more;
 
-                    rsx! {
-                        SidebarGroup {
-                            provider: provider.clone(),
-                            expanded,
-                            query_active,
-                            visible_count,
-                            total_count,
-                            ontoggle: {
-                                let provider = provider.clone();
-                                move |_| {
-                                    if query_active {
-                                        return;
-                                    }
-                                    if expanded_providers.read().contains(&provider) {
-                                        let _ = expanded_providers.write().remove(&provider);
-                                    } else {
-                                        let _ = expanded_providers.write().insert(provider.clone());
-                                    }
-                                }
-                            },
-                            children: rsx! {
-                                for category in bucket.categories {
-                                    div {
-                                        key: "{provider}-{category.name}",
-                                        style: "display: flex; flex-direction: column; gap: 4px;",
-
-                                        p {
-                                            style: "margin: 0; font-size: 10px; color: {TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.04em;",
-                                            "{category.name}"
-                                        }
-
-                                        div {
-                                            class: "icon-grid",
-                                            style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;",
-                                            for icon in category.icons {
-                                                IconTile {
-                                                    key: "{icon.icon_key}",
-                                                    icon,
-                                                    dragging_icon,
+                            rsx! {
+                                SidebarMenuItem {
+                                    SidebarGroup {
+                                        provider: provider.clone(),
+                                        expanded,
+                                        query_active,
+                                        visible_count,
+                                        total_count,
+                                        ontoggle: {
+                                            let provider = provider.clone();
+                                            move |_| {
+                                                if query_active {
+                                                    return;
+                                                }
+                                                if expanded_providers.read().contains(&provider) {
+                                                    let _ = expanded_providers.write().remove(&provider);
+                                                } else {
+                                                    let _ = expanded_providers.write().insert(provider.clone());
                                                 }
                                             }
-                                        }
-                                    }
-                                }
+                                        },
+                                        children: rsx! {
+                                            SidebarMenuSub {
+                                                for category in bucket.categories {
+                                                    {
+                                                        let category_state_key = category_key(&provider, &category.name);
+                                                        let category_expanded =
+                                                            query_active || expanded_categories.read().contains(&category_state_key);
 
-                                if has_more {
-                                    button {
-                                        style: "width: 100%; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_ELEVATED}; color: {TEXT_MAIN}; font-size: 11px; padding: 6px; cursor: pointer;",
-                                        onclick: {
-                                            move |_| {
-                                                let current_limit = provider_limits
-                                                    .read()
-                                                    .get(&provider)
-                                                    .copied()
-                                                    .unwrap_or(INITIAL_PROVIDER_LIMIT);
-                                                provider_limits
-                                                    .write()
-                                                    .insert(provider.clone(), current_limit + LOAD_MORE_STEP);
+                                                        rsx! {
+                                                            SidebarMenuSubItem {
+                                                                key: "{provider}-{category.name}",
+                                                                div {
+                                                                    style: "display: flex; flex-direction: column; gap: 4px;",
+
+                                                                    button {
+                                                                        style: "width: 100%; margin: 0; border: none; background: transparent; color: {TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; text-align: left; padding: 0; cursor: pointer;",
+                                                                        onclick: {
+                                                                            let category_state_key = category_state_key.clone();
+                                                                            move |_| {
+                                                                                if query_active {
+                                                                                    return;
+                                                                                }
+                                                                                if expanded_categories.read().contains(&category_state_key) {
+                                                                                    let _ = expanded_categories.write().remove(&category_state_key);
+                                                                                } else {
+                                                                                    let _ = expanded_categories
+                                                                                        .write()
+                                                                                        .insert(category_state_key.clone());
+                                                                                }
+                                                                            }
+                                                                        },
+                                                                        if query_active {
+                                                                            "{category.name}"
+                                                                        } else if category_expanded {
+                                                                            "▼ {category.name}"
+                                                                        } else {
+                                                                            "▶ {category.name}"
+                                                                        }
+                                                                    }
+
+                                                                    if category_expanded {
+                                                                        div {
+                                                                            class: "icon-grid",
+                                                                            style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;",
+                                                                            for icon in category.icons {
+                                                                                IconTile {
+                                                                                    key: "{icon.icon_key}",
+                                                                                    icon,
+                                                                                    dragging_icon,
+                                                                                }
+                                                                            }
+                                                                        }
+                                                                    }
+                                                                }
+                                                            }
+                                                        }
+                                                    }
+                                                }
+                                            }
+
+                                            if has_more {
+                                                SidebarMenuButton {
+                                                    label: String::from("Load more"),
+                                                    onclick: move |_| {
+                                                        let current_limit = provider_limits
+                                                            .read()
+                                                            .get(&provider)
+                                                            .copied()
+                                                            .unwrap_or(INITIAL_PROVIDER_LIMIT);
+                                                        provider_limits
+                                                            .write()
+                                                            .insert(provider.clone(), current_limit + LOAD_MORE_STEP);
+                                                    },
+                                                }
                                             }
                                         },
-                                        "Load more"
                                     }
                                 }
-                            },
+                            }
                         }
                     }
+                }
+            }
                 }
             }
         }

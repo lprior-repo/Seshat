@@ -7,10 +7,11 @@
 
 use crate::history::History;
 use crate::hooks::keyboard::use_global_keyboard;
-use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
+use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::validation::validate_document_data;
 use crate::ui::canvas::Canvas;
 use crate::ui::editor::ToolMode;
+use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
 use crate::ui::minimap::Minimap;
 use crate::ui::panels::PanelVisibility;
 use crate::ui::properties::PropertiesPanel;
@@ -21,15 +22,7 @@ use crate::ui::toolbar::{Toolbar, ToolbarStats};
 use crate::ui::ValidationPanel;
 use dioxus::prelude::*;
 
-const MOBILE_BREAKPOINT: u32 = 768;
-const SIDEBAR_OPEN_KEY: &str = "diagram_tool.sidebar_open";
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub struct SidebarUiState {
-    pub is_mobile: bool,
-    pub open: bool,
-    pub open_mobile: bool,
-}
+const VALIDATION_IDLE_MS: u64 = 220;
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DraggedIconPayload {
@@ -37,15 +30,6 @@ pub struct DraggedIconPayload {
     pub label: Option<String>,
 }
 
-impl Default for SidebarUiState {
-    fn default() -> Self {
-        Self {
-            is_mobile: false,
-            open: true,
-            open_mobile: false,
-        }
-    }
-}
 
 #[allow(non_snake_case)]
 #[allow(
@@ -72,130 +56,20 @@ pub fn App() -> Element {
 
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let validate_trigger = use_context::<Signal<u64>>();
-    let mut sidebar_ui = use_context::<Signal<SidebarUiState>>();
-    let mut panels = use_context::<Signal<PanelVisibility>>();
+    let sidebar_ui = use_context::<Signal<SidebarUiState>>();
+    let panels = use_context::<Signal<PanelVisibility>>();
     let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
 
-    use_effect(move || {
-        let mut eval = document::eval(&format!(
-            r#"
-                const BREAKPOINT = {};
-                const readSidebarPreference = () => {{
-                    let open = true;
-                    try {{
-                        const stored = localStorage.getItem('{}');
-                        if (stored === 'true' || stored === 'false') {{
-                            open = stored === 'true';
-                        }}
-                    }} catch (_) {{}}
-                    dioxus.send({{ type: 'sidebar-open', open }});
-                }};
-                const emitViewport = () => {{
-                    dioxus.send({{ type: 'viewport', isMobile: window.innerWidth < BREAKPOINT }});
-                }};
-                if (!window.__diagramToolViewportListenerInstalled) {{
-                    window.__diagramToolViewportListenerInstalled = true;
-                    window.addEventListener('resize', emitViewport);
-                }}
-                if (!window.__diagramToolSidebarHotkeyInstalled) {{
-                    window.__diagramToolSidebarHotkeyInstalled = true;
-                    window.addEventListener('keydown', (event) => {{
-                        const active = document.activeElement;
-                        const editing = active && (
-                            active.tagName === 'INPUT' ||
-                            active.tagName === 'TEXTAREA' ||
-                            active.isContentEditable
-                        );
-                        const modifier = event.metaKey || event.ctrlKey;
-                        const keyB = event.code === 'KeyB' || event.key === 'b' || event.key === 'B';
-                        if (!event.defaultPrevented && modifier && keyB && !editing) {{
-                            event.preventDefault();
-                            dioxus.send({{ type: 'toggle-sidebar' }});
-                        }}
-                    }});
-                }}
-                if (!window.__diagramToolSidebarPrefLoaded) {{
-                    window.__diagramToolSidebarPrefLoaded = true;
-                    readSidebarPreference();
-                }}
-                if (!window.__diagramToolViewportMediaInstalled) {{
-                    window.__diagramToolViewportMediaInstalled = true;
-                    const mediaQuery = window.matchMedia('(max-width: {}px)');
-                    mediaQuery.addEventListener('change', emitViewport);
-                }}
-                if (!window.__diagramToolViewportBooted) {{
-                    window.__diagramToolViewportBooted = true;
-                    emitViewport();
-                }}
-            "#,
-            MOBILE_BREAKPOINT,
-            SIDEBAR_OPEN_KEY,
-            MOBILE_BREAKPOINT.saturating_sub(1)
-        ));
-
-        spawn(async move {
-            while let Ok(msg) = eval.recv::<serde_json::Value>().await {
-                match msg["type"].as_str().map_or("", |v| v) {
-                    "viewport" => {
-                        let is_mobile = msg["isMobile"].as_bool().is_some_and(|v| v);
-                        sidebar_ui.with_mut(|state| {
-                            state.is_mobile = is_mobile;
-                            if !is_mobile {
-                                state.open_mobile = false;
-                            }
-                        });
-                    }
-                    "sidebar-open" => {
-                        let open = msg["open"].as_bool().unwrap_or(true);
-                        sidebar_ui.with_mut(|state| {
-                            state.open = open;
-                        });
-                    }
-                    "toggle-sidebar" => {
-                        if panels.read().sidebar {
-                            sidebar_ui.with_mut(|state| {
-                                if state.is_mobile {
-                                    state.open_mobile = !state.open_mobile;
-                                } else {
-                                    state.open = !state.open;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        let value = if state.open { "true" } else { "false" };
-                                        let _eval = document::eval(&format!(
-                                            "try {{ localStorage.setItem(\"{SIDEBAR_OPEN_KEY}\", \"{value}\"); }} catch (_) {{}}"
-                                        ));
-                                    }
-                                }
-                            });
-                        } else {
-                            panels.with_mut(|panel_state| panel_state.sidebar = true);
-                            sidebar_ui.with_mut(|state| {
-                                if state.is_mobile {
-                                    state.open_mobile = true;
-                                } else {
-                                    state.open = true;
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        let _eval = document::eval(&format!(
-                                            "try {{ localStorage.setItem(\"{SIDEBAR_OPEN_KEY}\", \"true\"); }} catch (_) {{}}"
-                                        ));
-                                    }
-                                }
-                            });
-                        }
-                    }
-                    _ => {}
-                }
-            }
-        });
-    });
+    use_sidebar_mobile_bridge(sidebar_ui, panels);
 
     let mut validation_issues = use_signal(move || {
         let doc = doc_signal.read();
         validate_document_data(&doc.document)
     });
-    let mut last_validated_document = use_signal(move || doc_signal.read().document.clone());
+    let mut last_validated_revision = use_signal(move || doc_signal.read().revision);
     let mut last_validate_trigger = use_signal(move || *validate_trigger.read());
+    let mut queued_validation_revision = use_signal(|| Option::<Revision>::None);
+    let mut validation_job = use_signal(|| 0_u64);
 
     use_effect(move || {
         let doc = doc_signal.read();
@@ -211,15 +85,72 @@ pub fn App() -> Element {
 
     use_effect(move || {
         let current_trigger = *validate_trigger.read();
-        let current_document = doc_signal.read().document.clone();
-        let should_validate = current_trigger != *last_validate_trigger.read()
-            || current_document != *last_validated_document.read();
-
-        if should_validate {
+        if current_trigger != *last_validate_trigger.read() {
+            let current_document = doc_signal.read().document.clone();
             validation_issues.set(validate_document_data(&current_document));
-            last_validated_document.set(current_document);
+            last_validated_revision.set(doc_signal.read().revision);
             last_validate_trigger.set(current_trigger);
+            queued_validation_revision.set(None);
+            validation_job.with_mut(|job| {
+                *job = job.saturating_add(1);
+            });
+            return;
         }
+
+        let doc = doc_signal.read();
+        let current_revision = doc.revision;
+        let already_validated = current_revision == *last_validated_revision.read();
+        let already_queued = queued_validation_revision
+            .read()
+            .as_ref()
+            .is_some_and(|queued| *queued == current_revision);
+
+        if already_validated || already_queued {
+            return;
+        }
+
+        queued_validation_revision.set(Some(current_revision));
+
+        let next_job = (*validation_job.read()).saturating_add(1);
+        validation_job.set(next_job);
+        let current_document = doc.document.clone();
+        drop(doc);
+
+        let validation_job_signal = validation_job;
+        let mut validation_issues_signal = validation_issues;
+        let mut last_validated_revision_signal = last_validated_revision;
+        let mut queued_validation_revision_signal = queued_validation_revision;
+        let mut eval = document::eval(&format!(
+            "setTimeout(() => dioxus.send({{ job: {next_job} }}), {VALIDATION_IDLE_MS});"
+        ));
+
+        spawn(async move {
+            let Ok(message) = eval.recv::<serde_json::Value>().await else {
+                return;
+            };
+            let fired_job = message["job"].as_u64().map_or(0, |value| value);
+
+            if fired_job != next_job {
+                return;
+            }
+
+            if *validation_job_signal.read() != next_job {
+                return;
+            }
+
+            let still_queued = queued_validation_revision_signal
+                .read()
+                .as_ref()
+                .is_some_and(|queued| *queued == current_revision);
+
+            if !still_queued {
+                return;
+            }
+
+            validation_issues_signal.set(validate_document_data(&current_document));
+            last_validated_revision_signal.set(current_revision);
+            queued_validation_revision_signal.set(None);
+        });
     });
 
     rsx! {

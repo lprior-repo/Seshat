@@ -5,7 +5,7 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, DocumentData, NodeKind};
+use crate::models::document::{DiagramDocument, DocumentData, NodeKind, Revision};
 use crate::ui::theme::{ACCENT, APP_FONT, BG_ELEVATED, BG_SURFACE, BORDER, TEXT_MUTED};
 use dioxus::prelude::*;
 
@@ -18,6 +18,32 @@ const MAX_H: f64 = 200.0;
 
 type EdgeSegment = (f64, f64, f64, f64);
 type NodeRect = (bool, f64, f64, f64, f64, String);
+type ProjectedNodeRect = (bool, f64, f64, f64, f64, &'static str);
+
+#[derive(Clone)]
+struct MinimapProjection {
+    edge_segments: Vec<EdgeSegment>,
+    node_rects: Vec<ProjectedNodeRect>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+struct ProjectionKey {
+    revision: Revision,
+    min_x_bits: u64,
+    min_y_bits: u64,
+    scale_bits: u64,
+}
+
+impl ProjectionKey {
+    fn from_state(revision: Revision, min_x: f64, min_y: f64, scale: f64) -> Self {
+        Self {
+            revision,
+            min_x_bits: min_x.to_bits(),
+            min_y_bits: min_y.to_bits(),
+            scale_bits: scale.to_bits(),
+        }
+    }
+}
 
 #[derive(Clone)]
 struct MinimapSnapshot {
@@ -86,6 +112,34 @@ impl MinimapSnapshot {
             max_y,
         })
     }
+
+    fn project(&self, min_x: f64, min_y: f64, scale: f64) -> MinimapProjection {
+        let to_mini = |x: f64, y: f64| ((x - min_x) * scale, (y - min_y) * scale);
+        let edge_segments = self
+            .edge_segments
+            .iter()
+            .map(|(sxw, syw, txw, tyw)| {
+                let (sx, sy) = to_mini(*sxw, *syw);
+                let (tx, ty) = to_mini(*txw, *tyw);
+                (sx, sy, tx, ty)
+            })
+            .collect();
+        let node_rects = self
+            .node_rects
+            .iter()
+            .map(|(is_subgraph, node_x, node_y, node_w, node_h, provider)| {
+                let (x, y) = to_mini(*node_x, *node_y);
+                let w = (*node_w * scale).max(2.0);
+                let h = (*node_h * scale).max(2.0);
+                (*is_subgraph, x, y, w, h, provider_color(provider))
+            })
+            .collect();
+
+        MinimapProjection {
+            edge_segments,
+            node_rects,
+        }
+    }
 }
 
 fn provider_color(provider: &str) -> &'static str {
@@ -105,6 +159,8 @@ pub fn Minimap() -> Element {
     let mut dragging = use_signal(|| false);
     let mut cached_snapshot = use_signal(|| Option::<MinimapSnapshot>::None);
     let mut last_snapshot_revision = use_signal(|| doc_signal.read().revision);
+    let mut cached_projection = use_signal(|| Option::<MinimapProjection>::None);
+    let mut last_projection_key = use_signal(|| Option::<ProjectionKey>::None);
 
     let (cam_x, cam_y, zoom) = {
         let doc = doc_signal.read();
@@ -131,10 +187,10 @@ pub fn Minimap() -> Element {
     let Some(snapshot) = snapshot.as_ref() else {
         return rsx! {};
     };
-    let mut min_x = snapshot.min_x;
-    let mut min_y = snapshot.min_y;
-    let mut max_x = snapshot.max_x;
-    let mut max_y = snapshot.max_y;
+    let doc_min_x = snapshot.min_x;
+    let doc_min_y = snapshot.min_y;
+    let doc_max_x = snapshot.max_x;
+    let doc_max_y = snapshot.max_y;
 
     let (viewport_w, viewport_h) = *viewport_size.read();
     let vp_w = viewport_w.max(1.0) / zoom;
@@ -142,10 +198,10 @@ pub fn Minimap() -> Element {
     let vp_left = (-cam_x) / zoom;
     let vp_top = (-cam_y) / zoom;
 
-    min_x = min_x.min(vp_left) - PAD;
-    min_y = min_y.min(vp_top) - PAD;
-    max_x = max_x.max(vp_left + vp_w) + PAD;
-    max_y = max_y.max(vp_top + vp_h) + PAD;
+    let min_x = doc_min_x.min(vp_left) - PAD;
+    let min_y = doc_min_y.min(vp_top) - PAD;
+    let max_x = doc_max_x.max(vp_left + vp_w) + PAD;
+    let max_y = doc_max_y.max(vp_top + vp_h) + PAD;
 
     let world_w = (max_x - min_x).max(1.0);
     let world_h = (max_y - min_y).max(1.0);
@@ -164,19 +220,42 @@ pub fn Minimap() -> Element {
 
     let scale = (view_w / world_w).min(view_h / world_h);
 
-    let to_mini = |x: f64, y: f64| ((x - min_x) * scale, (y - min_y) * scale);
-    let (vp_x, vp_y) = to_mini(vp_left, vp_top);
+    let projection_key =
+        ProjectionKey::from_state(*last_snapshot_revision.read(), min_x, min_y, scale);
+    if last_projection_key
+        .read()
+        .as_ref()
+        .is_none_or(|cached| *cached != projection_key)
+    {
+        cached_projection.set(Some(snapshot.project(min_x, min_y, scale)));
+        last_projection_key.set(Some(projection_key));
+    }
+
+    let projection = cached_projection.read();
+    let Some(projection) = projection.as_ref() else {
+        return rsx! {};
+    };
+    let vp_x = (vp_left - min_x) * scale;
+    let vp_y = (vp_top - min_y) * scale;
 
     let mut nav_to = move |screen_x: f64, screen_y: f64| {
         let center_x = (screen_x / scale) + min_x;
         let center_y = (screen_y / scale) + min_y;
-        doc_signal.with_mut(|doc_mut| {
-            let zoom = doc_mut.editor_state.zoom.0;
-            let left = center_x - (vp_w / 2.0);
-            let top = center_y - (vp_h / 2.0);
-            doc_mut.editor_state.camera_x.0 = -(left * zoom);
-            doc_mut.editor_state.camera_y.0 = -(top * zoom);
-        });
+        let doc = doc_signal.read();
+        let zoom = doc.editor_state.zoom.0;
+        let left = center_x - (vp_w / 2.0);
+        let top = center_y - (vp_h / 2.0);
+        let next_camera_x = -(left * zoom);
+        let next_camera_y = -(top * zoom);
+        let changed = (doc.editor_state.camera_x.0 - next_camera_x).abs() > 0.25
+            || (doc.editor_state.camera_y.0 - next_camera_y).abs() > 0.25;
+        if changed {
+            drop(doc);
+            doc_signal.with_mut(|doc_mut| {
+                doc_mut.editor_state.camera_x.0 = next_camera_x;
+                doc_mut.editor_state.camera_y.0 = next_camera_y;
+            });
+        }
     };
 
     rsx! {
@@ -200,51 +279,32 @@ pub fn Minimap() -> Element {
             svg {
                 width: "{view_w}",
                 height: "{view_h}",
-                for &(sxw, syw, txw, tyw) in snapshot.edge_segments.iter() {
-                    {
-                        let (sx, sy) = to_mini(sxw, syw);
-                        let (tx, ty) = to_mini(txw, tyw);
-                        rsx! {
-                            line {
-                                x1: "{sx}",
-                                y1: "{sy}",
-                                x2: "{tx}",
-                                y2: "{ty}",
-                                stroke: "color-mix(in oklch, {TEXT_MUTED} 78%, transparent)",
-                                stroke_width: "0.7",
-                                opacity: "0.7",
-                            }
-                        }
+                for &(sx, sy, tx, ty) in projection.edge_segments.iter() {
+                    line {
+                        x1: "{sx}",
+                        y1: "{sy}",
+                        x2: "{tx}",
+                        y2: "{ty}",
+                        stroke: "color-mix(in oklch, {TEXT_MUTED} 78%, transparent)",
+                        stroke_width: "0.7",
+                        opacity: "0.7",
                     }
                 }
-                for (is_subgraph, node_x, node_y, node_w, node_h, provider) in snapshot.node_rects.iter() {
-                    {
-                        let (x, y) = to_mini(*node_x, *node_y);
-                        let w = (*node_w * scale).max(2.0);
-                        let h = (*node_h * scale).max(2.0);
-                        let fill = if *is_subgraph {
-                            "none"
+                for &(is_subgraph, x, y, w, h, provider_color) in projection.node_rects.iter() {
+                    rect {
+                        x: "{x}",
+                        y: "{y}",
+                        width: "{w}",
+                        height: "{h}",
+                        rx: "1.5",
+                        fill: if is_subgraph { "none" } else { provider_color },
+                        stroke: if is_subgraph {
+                            format!("color-mix(in oklch, {TEXT_MUTED} 55%, transparent)")
                         } else {
-                            provider_color(provider)
-                        };
-                        let stroke = if *is_subgraph {
-                            "color-mix(in oklch, {TEXT_MUTED} 55%, transparent)"
-                        } else {
-                            ACCENT
-                        };
-                        rsx! {
-                            rect {
-                                x: "{x}",
-                                y: "{y}",
-                                width: "{w}",
-                                height: "{h}",
-                                rx: "1.5",
-                                fill: "{fill}",
-                                stroke: "{stroke}",
-                                stroke_width: "0.8",
-                                opacity: "0.85",
-                            }
-                        }
+                            String::from(ACCENT)
+                        },
+                        stroke_width: "0.8",
+                        opacity: "0.85",
                     }
                 }
                 rect {

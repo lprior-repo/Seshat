@@ -42,6 +42,7 @@ impl ToolMode {
     }
 
     #[cfg(target_arch = "wasm32")]
+    #[allow(dead_code)]
     #[must_use]
     pub fn from_persisted_key(raw: &str) -> Option<Self> {
         match raw {

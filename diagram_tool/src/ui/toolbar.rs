@@ -51,7 +51,7 @@ pub fn Toolbar() -> Element {
         "Save"
     };
     let open_label = if cfg!(target_arch = "wasm32") {
-        "Load from Server"
+        "Import JSON"
     } else {
         "Open"
     };
@@ -62,6 +62,7 @@ pub fn Toolbar() -> Element {
         TEXT_MAIN
     };
     let delete_opacity = if stats.selected_count > 0 { "1" } else { "0.6" };
+    let zoom_percent = (doc_signal.read().editor_state.zoom.0 * 100.0).round();
 
     rsx! {
         div {
@@ -108,9 +109,10 @@ pub fn Toolbar() -> Element {
                 "+"
             }
             button {
-                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {ACCENT}; background: color-mix(in oklch, {ACCENT_SOFT} 65%, {BG_BASE}); color: {TEXT_MAIN}; min-width: 72px;",
                 onclick: move |_| actions::zoom_reset(doc_signal, history_signal),
-                "Reset Zoom"
+                title: "Reset zoom",
+                "{zoom_percent:.0}%"
             }
             button {
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",

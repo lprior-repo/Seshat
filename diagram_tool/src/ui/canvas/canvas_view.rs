@@ -206,11 +206,11 @@ fn quadratic_bezier_point(p0: (f64, f64), p1: (f64, f64), p2: (f64, f64), t: f64
 }
 
 #[must_use]
-pub(super) const fn edge_marker_id(_arrow_type: ArrowType, selected: bool) -> &'static str {
+pub(super) const fn edge_marker_ref(selected: bool) -> &'static str {
     if selected {
-        "arrowhead-selected"
+        "url(#arrowhead-selected)"
     } else {
-        "arrowhead"
+        "url(#arrowhead)"
     }
 }
 

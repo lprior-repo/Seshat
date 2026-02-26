@@ -10,6 +10,21 @@ use im::{HashMap, HashSet};
 
 const DRAG_THRESHOLD_PX: f64 = 3.0;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SelectionMode {
+    Contain,
+    Intersect,
+}
+
+#[must_use]
+pub const fn selection_mode_from_drag(start: (f64, f64), current: (f64, f64)) -> SelectionMode {
+    if current.0 >= start.0 {
+        SelectionMode::Contain
+    } else {
+        SelectionMode::Intersect
+    }
+}
+
 #[must_use]
 pub fn has_drag_threshold(origin: (f64, f64), current: (f64, f64)) -> bool {
     let dx = current.0 - origin.0;
@@ -37,6 +52,21 @@ pub fn node_ids_in_rect(
     start: (f64, f64),
     current: (f64, f64),
 ) -> HashSet<String> {
+    node_ids_in_rect_with_mode(
+        doc,
+        start,
+        current,
+        selection_mode_from_drag(start, current),
+    )
+}
+
+#[must_use]
+pub fn node_ids_in_rect_with_mode(
+    doc: &DiagramDocument,
+    start: (f64, f64),
+    current: (f64, f64),
+    mode: SelectionMode,
+) -> HashSet<String> {
     let min_x = start.0.min(current.0);
     let min_y = start.1.min(current.1);
     let max_x = start.0.max(current.0);
@@ -45,11 +75,18 @@ pub fn node_ids_in_rect(
     doc.document
         .nodes
         .iter()
-        .filter(|(_, n)| {
-            n.x.0 >= min_x
-                && n.y.0 >= min_y
-                && n.x.0 + n.width.0 <= max_x
-                && n.y.0 + n.height.0 <= max_y
+        .filter(|(_, n)| match mode {
+            SelectionMode::Contain => {
+                n.x.0 >= min_x
+                    && n.y.0 >= min_y
+                    && n.x.0 + n.width.0 <= max_x
+                    && n.y.0 + n.height.0 <= max_y
+            }
+            SelectionMode::Intersect => {
+                let node_max_x = n.x.0 + n.width.0;
+                let node_max_y = n.y.0 + n.height.0;
+                n.x.0 < max_x && node_max_x > min_x && n.y.0 < max_y && node_max_y > min_y
+            }
         })
         .map(|(id, _)| id.to_string())
         .collect()
@@ -172,7 +209,8 @@ pub fn with_auto_selected_edges(
 mod tests {
     use super::{
         dragged_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
-        select_single, snap_point, snap_value, toggle_selection, with_auto_selected_edges,
+        node_ids_in_rect_with_mode, select_single, selection_mode_from_drag, snap_point,
+        snap_value, toggle_selection, with_auto_selected_edges, SelectionMode,
     };
     use crate::models::document::{
         DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId, NodeKind,
@@ -270,6 +308,20 @@ mod tests {
         let selected = node_ids_in_rect(&doc, (0.0, 0.0), (60.0, 60.0));
         assert!(selected.contains("a"));
         assert!(!selected.contains("b"));
+    }
+
+    #[test]
+    fn given_leftward_drag_when_selection_mode_resolved_then_uses_intersect() {
+        let mode = selection_mode_from_drag((100.0, 100.0), (40.0, 120.0));
+        assert_eq!(mode, SelectionMode::Intersect);
+    }
+
+    #[test]
+    fn given_intersect_mode_when_rect_touches_node_then_node_is_selected() {
+        let doc = doc_with_nodes();
+        let selected =
+            node_ids_in_rect_with_mode(&doc, (35.0, 25.0), (42.0, 32.0), SelectionMode::Intersect);
+        assert!(selected.contains("a"));
     }
 
     #[test]
