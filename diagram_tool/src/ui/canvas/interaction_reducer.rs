@@ -7,9 +7,55 @@
 
 use super::selection_geometry::{selected_node_ids, selection_bounds};
 use crate::history::History;
-use crate::models::document::{DiagramDocument, EdgeId, NodeId};
+use crate::models::document::{DiagramDocument, EdgeId, NodeId, NodeKind};
 use dioxus::prelude::*;
 use im::HashMap;
+use std::collections::HashSet;
+
+fn safe_zoom(zoom: f64) -> Option<f64> {
+    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
+}
+
+fn within(subgraph: (f64, f64, f64, f64), node: (f64, f64, f64, f64)) -> bool {
+    let (sx, sy, sw, sh) = subgraph;
+    let (nx, ny, nw, nh) = node;
+    nx >= sx && ny >= sy && nx + nw <= sx + sw && ny + nh <= sy + sh
+}
+
+fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
+    let selected = selected_node_ids(doc);
+    let selected_set = selected.iter().cloned().collect::<HashSet<_>>();
+
+    let selected_subgraphs = selected
+        .iter()
+        .filter_map(|id| doc.document.nodes.get(id).map(|node| (id, node)))
+        .filter(|(_, node)| node.kind == NodeKind::Subgraph)
+        .map(|(_, node)| (node.x.0, node.y.0, node.width.0, node.height.0))
+        .collect::<Vec<_>>();
+
+    if selected_subgraphs.is_empty() {
+        return selected;
+    }
+
+    doc.document
+        .nodes
+        .iter()
+        .fold(selected_set, |acc, (id, node)| {
+            let node_rect = (node.x.0, node.y.0, node.width.0, node.height.0);
+            let included = selected_subgraphs
+                .iter()
+                .any(|subgraph_rect| within(*subgraph_rect, node_rect));
+            if included {
+                let mut updated = acc;
+                let _ = updated.insert(id.clone());
+                updated
+            } else {
+                acc
+            }
+        })
+        .into_iter()
+        .collect::<Vec<_>>()
+}
 
 #[derive(Clone, Debug, PartialEq)]
 pub(super) enum InteractionMode {
@@ -122,11 +168,13 @@ pub(super) fn start_resize_interaction(
 ) {
     let doc = doc_signal.read().clone();
     if let Some(bounds) = selection_bounds(&doc) {
-        let zoom = doc.editor_state.zoom.0;
+        let Some(zoom) = safe_zoom(doc.editor_state.zoom.0) else {
+            return;
+        };
         let cx = (client_x / zoom) + doc.editor_state.camera_x.0;
         let cy = (client_y / zoom) + doc.editor_state.camera_y.0;
 
-        let originals = selected_node_ids(&doc)
+        let originals = resize_target_ids(&doc)
             .into_iter()
             .fold(HashMap::new(), |acc, id| {
                 if let Some(n) = doc.document.nodes.get(&id) {
@@ -169,9 +217,33 @@ pub(super) fn finalize_motion_release(
 
 #[cfg(test)]
 mod tests {
-    use super::{finalize_motion_release, InteractionMode, ResizeHandle};
-    use crate::models::document::DiagramDocument;
+    use super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
+    use crate::models::document::{
+        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    };
     use im::HashMap;
+
+    fn node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+        Node {
+            kind,
+            icon: String::new(),
+            label: String::from("n"),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(w),
+            height: OrderedFloat(h),
+            font_size: None,
+            font_weight: None,
+            locked: true,
+            parent: None,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        }
+    }
 
     #[test]
     fn given_drag_end_when_finalized_twice_then_revision_bumps_once() {
@@ -211,5 +283,35 @@ mod tests {
         assert!(finalized);
         assert_eq!(doc.revision, DiagramDocument::default().revision);
         assert_eq!(mode, InteractionMode::Select);
+    }
+
+    #[test]
+    fn given_selected_subgraph_when_collecting_resize_targets_then_interior_nodes_included() {
+        let mut doc = DiagramDocument::default();
+        let subgraph = NodeId::new(String::from("sub"));
+        let inside = NodeId::new(String::from("inside"));
+        let outside = NodeId::new(String::from("outside"));
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(
+                subgraph.clone(),
+                node(NodeKind::Subgraph, 100.0, 100.0, 300.0, 220.0),
+            )
+            .update(
+                inside.clone(),
+                node(NodeKind::Node, 140.0, 140.0, 80.0, 60.0),
+            )
+            .update(
+                outside.clone(),
+                node(NodeKind::Node, 450.0, 300.0, 80.0, 60.0),
+            );
+        let _ = doc.editor_state.selected_items.insert(subgraph.to_string());
+
+        let targets = resize_target_ids(&doc);
+        assert!(targets.contains(&subgraph));
+        assert!(targets.contains(&inside));
+        assert!(!targets.contains(&outside));
     }
 }

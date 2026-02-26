@@ -191,4 +191,92 @@ mod tests {
         let issues = validate_document(&doc);
         assert!(issues.is_empty());
     }
+
+    #[test]
+    fn given_nan_node_geometry_when_validated_then_no_panic() {
+        let mut doc = DiagramDocument::default();
+        let (nid, mut node) = make_node("nan-node");
+        node.x = OrderedFloat(f64::NAN);
+        node.y = OrderedFloat(f64::NAN);
+        node.width = OrderedFloat(f64::NAN);
+        node.height = OrderedFloat(f64::NAN);
+        doc.document.nodes = doc.document.nodes.update(nid, node);
+
+        let issues = validate_document(&doc);
+        for issue in &issues {
+            assert!(
+                issue.code != "internal-error",
+                "Validation should not create internal error codes for NaN geometry"
+            );
+        }
+    }
+
+    #[test]
+    fn given_inf_node_geometry_when_validated_then_no_panic() {
+        let mut doc = DiagramDocument::default();
+        let (nid, mut node) = make_node("inf-node");
+        node.x = OrderedFloat(f64::INFINITY);
+        node.y = OrderedFloat(f64::NEG_INFINITY);
+        node.width = OrderedFloat(f64::INFINITY);
+        node.height = OrderedFloat(f64::INFINITY);
+        doc.document.nodes = doc.document.nodes.update(nid, node);
+
+        let issues = validate_document(&doc);
+        assert!(issues.iter().all(|i| i.code != "internal-error"));
+    }
+
+    #[test]
+    fn given_negative_node_dimensions_when_validated_then_no_panic() {
+        let mut doc = DiagramDocument::default();
+        let (nid, mut node) = make_node("neg-node");
+        node.width = OrderedFloat(-10.0);
+        node.height = OrderedFloat(-5.0);
+        doc.document.nodes = doc.document.nodes.update(nid, node);
+
+        let issues = validate_document(&doc);
+        assert!(issues.iter().all(|i| i.code != "internal-error"));
+    }
+
+    #[test]
+    fn given_nan_editor_zoom_when_validated_then_no_panic() {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state.zoom = OrderedFloat(f64::NAN);
+        let issues = validate_document(&doc);
+        assert!(issues.iter().all(|i| i.code != "internal-error"));
+    }
+
+    #[test]
+    fn given_invalid_editor_zoom_range_when_validated_then_no_panic() {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state.zoom = OrderedFloat(10.0);
+        let issues = validate_document(&doc);
+        assert!(issues.iter().all(|i| i.code != "internal-error"));
+
+        doc.editor_state.zoom = OrderedFloat(-1.0);
+        let issues2 = validate_document(&doc);
+        assert!(issues2.iter().all(|i| i.code != "internal-error"));
+    }
+
+    #[test]
+    fn given_nan_camera_position_when_validated_then_no_panic() {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state.camera_x = OrderedFloat(f64::NAN);
+        doc.editor_state.camera_y = OrderedFloat(f64::NAN);
+        let issues = validate_document(&doc);
+        assert!(issues.iter().all(|i| i.code != "internal-error"));
+    }
+
+    #[test]
+    fn given_valid_node_minimum_size_when_validated_then_accepts() {
+        let mut doc = DiagramDocument::default();
+        let (nid, node) = make_node("small-valid");
+        let small_node = Node {
+            width: OrderedFloat(24.0),
+            height: OrderedFloat(24.0),
+            ..node
+        };
+        doc.document.nodes = doc.document.nodes.update(nid, small_node);
+        let issues = validate_document(&doc);
+        assert!(issues.iter().all(|i| i.code != "internal-error"));
+    }
 }
