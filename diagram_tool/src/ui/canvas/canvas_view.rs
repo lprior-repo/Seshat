@@ -219,6 +219,7 @@ pub(super) fn selection_handles_overlay(
     doc: &DiagramDocument,
     interaction_mode: Signal<InteractionMode>,
     doc_signal: Signal<DiagramDocument>,
+    canvas_origin: Signal<(f64, f64)>,
     to_screen_coords: impl Fn(f64, f64, f64, f64, f64) -> (f64, f64),
 ) -> Element {
     let selected_nodes = selected_node_ids(doc);
@@ -267,12 +268,13 @@ pub(super) fn selection_handles_overlay(
                             }
                             evt.stop_propagation();
                             let c = evt.data.coordinates().client();
+                            let origin = *canvas_origin.read();
                             start_resize_interaction(
                                 interaction_mode,
                                 doc_signal,
                                 handle,
-                                c.x,
-                                c.y,
+                                c.x - origin.0,
+                                c.y - origin.1,
                             );
                         }
                     }

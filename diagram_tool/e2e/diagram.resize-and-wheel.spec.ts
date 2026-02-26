@@ -78,4 +78,39 @@ test.describe("diagram resize and wheel behavior", () => {
     expect(after.width).toBeGreaterThanOrEqual(24);
     expect(pageErrors).toHaveLength(0);
   });
+
+  test("small handle drag does not jump from viewport-offset math", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffect(() => page.goto("/"));
+    await runEffect(() => waitForUiReady(page));
+    await runEffect(() => clearCanvasOverlays(page));
+
+    const canvas = page.locator(".canvas-container");
+    await runEffect(() => createTextNode(page, canvas, 700, 320));
+    await expect(page.getByText(/1 nodes/)).toBeVisible();
+
+    const node = canvas.getByText("Text", { exact: true }).first();
+    await runEffect(() => node.click());
+
+    const before = await firstNodeBox(page);
+    const handles = canvas.locator('button[style*="ew-resize"]');
+    const east = await runEffect(() => handles.last().boundingBox());
+    if (!east) {
+      throw new Error("east resize handle unavailable");
+    }
+
+    const cx = east.x + east.width / 2;
+    const cy = east.y + east.height / 2;
+    await runEffect(() => page.mouse.move(cx, cy));
+    await runEffect(() => page.mouse.down());
+    await runEffect(() => page.mouse.move(cx - 12, cy, { steps: 3 }));
+    await runEffect(() => page.mouse.up());
+
+    const after = await firstNodeBox(page);
+    const delta = Math.abs(after.width - before.width);
+
+    expect(delta).toBeGreaterThanOrEqual(0);
+    expect(delta).toBeLessThanOrEqual(40);
+    expect(pageErrors).toHaveLength(0);
+  });
 });

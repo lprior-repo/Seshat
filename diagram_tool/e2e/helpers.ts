@@ -85,3 +85,52 @@ export async function nodeCenters(
     );
   return boxes;
 }
+
+export async function nodeFrameByLabel(
+  page: Page,
+  label: string,
+  index = 0,
+): Promise<{ x: number; y: number; width: number; height: number }> {
+  const frame = await runEffect(() =>
+    page.evaluate(
+      ({ targetLabel, targetIndex }) => {
+        const labels = Array.from(document.querySelectorAll("span"))
+          .filter((el) => (el.textContent ?? "").trim() === targetLabel)
+          .sort((a, b) => a.getBoundingClientRect().x - b.getBoundingClientRect().x);
+        const labelEl = labels[targetIndex];
+        if (!labelEl) {
+          return null;
+        }
+
+        let current: HTMLElement | null = labelEl as HTMLElement;
+        while (current) {
+          const style = current.getAttribute("style") ?? "";
+          if (style.includes("position: absolute") && style.includes("border-radius: 10px")) {
+            const rect = current.getBoundingClientRect();
+            return { x: rect.x, y: rect.y, width: rect.width, height: rect.height };
+          }
+          current = current.parentElement;
+        }
+
+        return null;
+      },
+      { targetLabel: label, targetIndex: index },
+    ),
+  );
+
+  if (!frame) {
+    throw new Error(`missing frame for label: ${label}`);
+  }
+  return frame;
+}
+
+export async function selectedCount(page: Page): Promise<number> {
+  const text = await runEffect(() =>
+    page.evaluate(() => {
+      const match = document.body.innerText.match(/(\d+) selected/);
+      return match ? match[1] : "0";
+    }),
+  );
+  const parsed = Number.parseInt(text, 10);
+  return Number.isNaN(parsed) ? 0 : parsed;
+}

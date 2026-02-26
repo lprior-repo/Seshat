@@ -155,4 +155,41 @@ test.describe("subgraph proportional resize", () => {
     expect(Math.abs(relYAfter - relYBefore)).toBeLessThanOrEqual(0.2);
     expect(pageErrors).toHaveLength(0);
   });
+
+  test("nested subgraph resize preserves inner/outer proportionality", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    const canvas = await setupSubgraphWithNodes(page);
+
+    await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
+    const canvasBox = await requireBox(canvas);
+    await runEffect(() => page.mouse.move(canvasBox.x + 640, canvasBox.y + 250));
+    await runEffect(() => page.mouse.down());
+    await runEffect(() => page.mouse.move(canvasBox.x + 800, canvasBox.y + 360, { steps: 8 }));
+    await runEffect(() => page.mouse.up());
+
+    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await runEffect(() => page.keyboard.press("Control+a"));
+    expect(await selectedCount(page)).toBeGreaterThanOrEqual(4);
+
+    const outerBefore = await nodeFrameByLabel(page, "Subgraph", 0);
+    const innerBefore = await nodeFrameByLabel(page, "Subgraph", 1);
+    const ratioWBefore = innerBefore.width / outerBefore.width;
+    const ratioHBefore = innerBefore.height / outerBefore.height;
+
+    const seHandle = await pickSouthEastHandle(canvas);
+    const seCenter = await center(seHandle);
+    await runEffect(() => page.mouse.move(seCenter.x, seCenter.y));
+    await runEffect(() => page.mouse.down());
+    await runEffect(() => page.mouse.move(seCenter.x + 160, seCenter.y + 120, { steps: 8 }));
+    await runEffect(() => page.mouse.up());
+
+    const outerAfter = await nodeFrameByLabel(page, "Subgraph", 0);
+    const innerAfter = await nodeFrameByLabel(page, "Subgraph", 1);
+    const ratioWAfter = innerAfter.width / outerAfter.width;
+    const ratioHAfter = innerAfter.height / outerAfter.height;
+
+    expect(Math.abs(ratioWAfter - ratioWBefore)).toBeLessThanOrEqual(0.2);
+    expect(Math.abs(ratioHAfter - ratioHBefore)).toBeLessThanOrEqual(0.2);
+    expect(pageErrors).toHaveLength(0);
+  });
 });
