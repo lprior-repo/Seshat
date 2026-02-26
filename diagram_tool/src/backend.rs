@@ -57,7 +57,9 @@ fn database_path() -> PathBuf {
 }
 
 #[cfg(feature = "server")]
-fn with_database<T>(f: impl FnOnce(&Database) -> Result<T, ServerFnError>) -> Result<T, ServerFnError> {
+fn with_database<T>(
+    f: impl FnOnce(&Database) -> Result<T, ServerFnError>,
+) -> Result<T, ServerFnError> {
     let db = Database::create(database_path())
         .map_err(|err| ServerFnError::new(format!("database open error: {err}")))?;
 
@@ -92,7 +94,9 @@ pub async fn backend_health() -> Result<String, ServerFnError> {
 }
 
 #[server]
-pub async fn save_workspace_to_backend(workspace: PersistedWorkspace) -> Result<String, ServerFnError> {
+pub async fn save_workspace_to_backend(
+    workspace: PersistedWorkspace,
+) -> Result<String, ServerFnError> {
     std::future::ready(()).await;
 
     validate_workspace_document(&workspace.document)?;
@@ -149,9 +153,9 @@ pub async fn load_workspace_from_backend() -> Result<PersistedWorkspace, ServerF
             let read_txn = db.begin_read().map_err(|err| {
                 ServerFnError::new(format!("database read transaction error: {err}"))
             })?;
-            let table = read_txn.open_table(DIAGRAM_TABLE).map_err(|err| {
-                ServerFnError::new(format!("database table open error: {err}"))
-            })?;
+            let table = read_txn
+                .open_table(DIAGRAM_TABLE)
+                .map_err(|err| ServerFnError::new(format!("database table open error: {err}")))?;
 
             let value = table
                 .get("default")
@@ -173,8 +177,7 @@ pub async fn load_workspace_from_backend() -> Result<PersistedWorkspace, ServerF
                         .map_err(|err| ServerFnError::new(format!("deserialize error: {err}")))
                         .and_then(|workspace| {
                             if workspace.schema_version == PersistedWorkspace::SCHEMA_VERSION {
-                                validate_workspace_document(&workspace.document)
-                                    .map(|()| workspace)
+                                validate_workspace_document(&workspace.document).map(|()| workspace)
                             } else {
                                 Err(ServerFnError::new(format!(
                                     "schema version mismatch: expected {}, got {}",
@@ -197,18 +200,18 @@ pub async fn load_workspace_from_backend() -> Result<PersistedWorkspace, ServerF
 }
 
 #[server]
-pub async fn ingest_document_json_to_backend(raw_document: String) -> Result<String, ServerFnError> {
+pub async fn ingest_document_json_to_backend(
+    raw_document: String,
+) -> Result<String, ServerFnError> {
     std::future::ready(()).await;
 
     let incoming = serde_json::from_str::<DiagramDocument>(&raw_document)
         .map_err(|err| ServerFnError::new(format!("ingest parse error: {err}")))?;
 
     let current = load_workspace_from_backend().await?;
-    let next_doc = run_mutation_with_policy(
-        &current.document,
-        RevisionPolicy::Preserve,
-        |_| Ok(incoming),
-    )
+    let next_doc = run_mutation_with_policy(&current.document, RevisionPolicy::Preserve, |_| {
+        Ok(incoming)
+    })
     .map_err(|err| ServerFnError::new(format!("ingest validation error: {err}")))?;
 
     let next_workspace = PersistedWorkspace {

@@ -13,16 +13,14 @@ const DRAG_THRESHOLD_PX: f64 = 3.0;
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SelectionMode {
     Contain,
+    #[allow(dead_code)]
     Intersect,
 }
 
 #[must_use]
 pub const fn selection_mode_from_drag(start: (f64, f64), current: (f64, f64)) -> SelectionMode {
-    if current.0 >= start.0 {
-        SelectionMode::Contain
-    } else {
-        SelectionMode::Intersect
-    }
+    let _ = (start, current);
+    SelectionMode::Contain
 }
 
 #[must_use]
@@ -149,32 +147,27 @@ pub fn drag_original_positions(
         .filter(|id| doc.document.nodes.contains_key(id))
         .collect::<HashSet<_>>();
 
-    let selected_subgraphs: HashSet<NodeId> = selected_nodes
-        .iter()
-        .filter(|id| {
-            doc.document
-                .nodes
-                .get(id)
-                .is_some_and(|node| node.kind == crate::models::document::NodeKind::Subgraph)
-        })
-        .cloned()
-        .collect::<HashSet<_>>();
+    let with_children = std::iter::successors(Some(selected_nodes), |current| {
+        let expanded = doc
+            .document
+            .nodes
+            .iter()
+            .fold(current.clone(), |acc, (id, node)| {
+                if node
+                    .parent
+                    .as_ref()
+                    .is_some_and(|parent| acc.contains(parent))
+                {
+                    acc.update(id.clone())
+                } else {
+                    acc
+                }
+            });
 
-    let with_children = doc
-        .document
-        .nodes
-        .iter()
-        .fold(selected_nodes, |acc, (id, node)| {
-            if node
-                .parent
-                .as_ref()
-                .is_some_and(|parent| selected_subgraphs.contains(parent))
-            {
-                acc.update(id.clone())
-            } else {
-                acc
-            }
-        });
+        (expanded.len() > current.len()).then_some(expanded)
+    })
+    .last()
+    .unwrap_or_else(HashSet::new);
 
     with_children.iter().fold(HashMap::new(), |acc, id| {
         if let Some(node) = doc.document.nodes.get(id) {
@@ -208,9 +201,10 @@ pub fn with_auto_selected_edges(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{
-        dragged_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
-        node_ids_in_rect_with_mode, select_single, selection_mode_from_drag, snap_point,
-        snap_value, toggle_selection, with_auto_selected_edges, SelectionMode,
+        drag_original_positions, dragged_positions, dragged_positions_with_snap,
+        has_drag_threshold, node_ids_in_rect, node_ids_in_rect_with_mode, select_single,
+        selection_mode_from_drag, snap_point, snap_value, toggle_selection,
+        with_auto_selected_edges, SelectionMode,
     };
     use crate::models::document::{
         DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId, NodeKind,
@@ -311,9 +305,9 @@ mod tests {
     }
 
     #[test]
-    fn given_leftward_drag_when_selection_mode_resolved_then_uses_intersect() {
+    fn given_leftward_drag_when_selection_mode_resolved_then_uses_contain() {
         let mode = selection_mode_from_drag((100.0, 100.0), (40.0, 120.0));
-        assert_eq!(mode, SelectionMode::Intersect);
+        assert_eq!(mode, SelectionMode::Contain);
     }
 
     #[test]
@@ -326,8 +320,9 @@ mod tests {
 
     #[test]
     fn given_snap_enabled_when_snapping_values_then_rounds_to_grid() {
-        assert_eq!(snap_value(29.0, true, 20.0), 20.0);
-        assert_eq!(snap_point((31.0, 49.0), true, 20.0), (40.0, 40.0));
+        assert!((snap_value(29.0, true, 20.0) - 20.0).abs() < f64::EPSILON);
+        let pt = snap_point((31.0, 49.0), true, 20.0);
+        assert!((pt.0 - 40.0).abs() < f64::EPSILON && (pt.1 - 40.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -350,8 +345,8 @@ mod tests {
                 source: source.clone(),
                 target: target.clone(),
                 label: String::new(),
-                style: Default::default(),
-                arrow_type: Default::default(),
+                style: crate::models::document::EdgeStyle::default(),
+                arrow_type: crate::models::document::ArrowType::default(),
                 label_offset_t: OrderedFloat(0.5),
                 color: None,
                 thickness: OrderedFloat(1.5),
@@ -368,5 +363,87 @@ mod tests {
 
         let enriched = with_auto_selected_edges(&doc, &selected);
         assert!(enriched.contains(&edge_id.to_string()));
+    }
+
+    #[test]
+    fn given_nested_subgraph_selection_when_dragging_then_all_descendants_are_included() {
+        let outer = NodeId::new(String::from("outer"));
+        let inner = NodeId::new(String::from("inner"));
+        let leaf = NodeId::new(String::from("leaf"));
+
+        let mut doc = DiagramDocument::default();
+        let _ = doc.document.nodes.insert(
+            outer.clone(),
+            Node {
+                kind: NodeKind::Subgraph,
+                icon: String::new(),
+                label: String::new(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(100.0),
+                height: OrderedFloat(80.0),
+                font_size: None,
+                font_weight: None,
+                locked: true,
+                parent: None,
+                dag_rank: None,
+                tags: Vec::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: Some(false),
+            },
+        );
+        let _ = doc.document.nodes.insert(
+            inner.clone(),
+            Node {
+                kind: NodeKind::Subgraph,
+                icon: String::new(),
+                label: String::new(),
+                x: OrderedFloat(10.0),
+                y: OrderedFloat(10.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(60.0),
+                font_size: None,
+                font_weight: None,
+                locked: true,
+                parent: Some(outer.clone()),
+                dag_rank: None,
+                tags: Vec::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: Some(false),
+            },
+        );
+        let _ = doc.document.nodes.insert(
+            leaf.clone(),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: String::new(),
+                x: OrderedFloat(20.0),
+                y: OrderedFloat(20.0),
+                width: OrderedFloat(20.0),
+                height: OrderedFloat(20.0),
+                font_size: None,
+                font_weight: None,
+                locked: true,
+                parent: Some(inner),
+                dag_rank: None,
+                tags: Vec::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            },
+        );
+
+        let selected = HashSet::new().update(outer.to_string());
+        let positions = drag_original_positions(&doc, &selected);
+
+        assert!(positions.contains_key(&outer));
+        assert!(positions.contains_key(&leaf));
+        assert_eq!(positions.len(), 3);
     }
 }

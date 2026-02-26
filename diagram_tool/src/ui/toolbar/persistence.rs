@@ -1,17 +1,15 @@
+#[cfg(target_arch = "wasm32")]
+use crate::backend::{save_workspace_to_backend, PersistedWorkspace};
 use crate::history::History;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
 use crate::ui::editor::ToolMode;
-use crate::ui::toast::{
-    ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue, ToastUpdate,
-};
+use crate::ui::toast::{ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue, ToastUpdate};
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
-#[cfg(target_arch = "wasm32")]
-use crate::backend::{save_workspace_to_backend, PersistedWorkspace};
 
 pub fn save_workspace(
     doc_signal: Signal<DiagramDocument>,
@@ -22,8 +20,7 @@ pub fn save_workspace(
 ) {
     let toast_api = ToastApi::from_signal(toasts);
     let toast_handle = toast_api.toast(
-        ToastOptions::new(ToastIntent::Info, "Saving workspace")
-            .with_detail("Preparing data..."),
+        ToastOptions::new(ToastIntent::Info, "Saving workspace").with_detail("Preparing data..."),
     );
     #[cfg(target_arch = "wasm32")]
     {
@@ -97,6 +94,7 @@ pub fn save_workspace(
         });
     }
 }
+#[allow(clippy::too_many_lines)]
 pub fn open_workspace(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
@@ -163,9 +161,10 @@ pub fn open_workspace(
                     }
 
                     if msg["ok"].as_bool() != Some(true) {
-                        let detail = msg["error"]
-                            .as_str()
-                            .map_or_else(|| String::from("Browser file import failed"), String::from);
+                        let detail = msg["error"].as_str().map_or_else(
+                            || String::from("Browser file import failed"),
+                            String::from,
+                        );
                         update_load_save_error(toast_handle, "Load failed", detail);
                         return;
                     }
@@ -189,7 +188,7 @@ pub fn open_workspace(
                             ) {
                                 Ok(next_doc) => {
                                     *doc_signal.write() = next_doc;
-                                    *history_signal.write() = History::new();
+                                    *history_signal.write() = History::new().push(current);
                                     update_load_save_success(
                                         toast_handle,
                                         "Workspace loaded",
@@ -199,7 +198,10 @@ pub fn open_workspace(
                                 Err(err) => update_load_save_error(
                                     toast_handle,
                                     "Load failed",
-                                    format!("Load validation error: {}", super::mutation_error_code(&err)),
+                                    format!(
+                                        "Load validation error: {}",
+                                        super::mutation_error_code(&err)
+                                    ),
                                 ),
                             }
                         }
@@ -230,37 +232,44 @@ pub fn open_workspace(
                         "Load failed",
                         format!("Read error: {e}"),
                     ),
-                    Ok(contents) => match super::persistence_compat::parse_diagram_document_with_compat(&contents) {
-                        Err(e) => update_load_save_error(
-                            toast_handle,
-                            "Load failed",
-                            format!("Parse error: {e}"),
-                        ),
-                        Ok(mut loaded_doc) => {
-                            loaded_doc.revision = Revision::INITIAL;
-                            let current = doc_signal.read().clone();
-                            match run_mutation_with_policy(
-                                &current,
-                                RevisionPolicy::Preserve,
-                                |_| Ok(loaded_doc),
-                            ) {
-                                Ok(next_doc) => {
-                                    *doc_signal.write() = next_doc;
-                                    *history_signal.write() = History::new();
-                                    update_load_save_success(
+                    Ok(contents) => {
+                        match super::persistence_compat::parse_diagram_document_with_compat(
+                            &contents,
+                        ) {
+                            Err(e) => update_load_save_error(
+                                toast_handle,
+                                "Load failed",
+                                format!("Parse error: {e}"),
+                            ),
+                            Ok(mut loaded_doc) => {
+                                loaded_doc.revision = Revision::INITIAL;
+                                let current = doc_signal.read().clone();
+                                match run_mutation_with_policy(
+                                    &current,
+                                    RevisionPolicy::Preserve,
+                                    |_| Ok(loaded_doc),
+                                ) {
+                                    Ok(next_doc) => {
+                                        *doc_signal.write() = next_doc;
+                                        *history_signal.write() = History::new().push(current);
+                                        update_load_save_success(
+                                            toast_handle,
+                                            "Workspace loaded",
+                                            format!("Loaded from {}", p.display()),
+                                        );
+                                    }
+                                    Err(err) => update_load_save_error(
                                         toast_handle,
-                                        "Workspace loaded",
-                                        format!("Loaded from {}", p.display()),
-                                    );
+                                        "Load failed",
+                                        format!(
+                                            "Load validation error: {}",
+                                            super::mutation_error_code(&err)
+                                        ),
+                                    ),
                                 }
-                                Err(err) => update_load_save_error(
-                                    toast_handle,
-                                    "Load failed",
-                                    format!("Load validation error: {}", super::mutation_error_code(&err)),
-                                ),
                             }
                         }
-                    },
+                    }
                 },
             }
         });

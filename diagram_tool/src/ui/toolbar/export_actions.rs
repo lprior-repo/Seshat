@@ -5,9 +5,9 @@ use crate::models::document::DiagramDocument;
 #[cfg(target_arch = "wasm32")]
 use crate::ui::toast::ToastIntent;
 use crate::ui::toast::ToastQueue;
-use dioxus::prelude::*;
 #[cfg(target_arch = "wasm32")]
 use base64::{engine::general_purpose, Engine as _};
+use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs::File;
 #[cfg(not(target_arch = "wasm32"))]

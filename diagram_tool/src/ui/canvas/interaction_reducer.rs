@@ -19,7 +19,8 @@ pub(super) enum InteractionMode {
         current: (f64, f64),
     },
     DraggingSelection {
-        anchor: (f64, f64),
+        anchor_canvas: (f64, f64),
+        anchor_client: (f64, f64),
         original_positions: HashMap<NodeId, (f64, f64)>,
         did_move: bool,
     },
@@ -122,8 +123,8 @@ pub(super) fn start_resize_interaction(
     let doc = doc_signal.read().clone();
     if let Some(bounds) = selection_bounds(&doc) {
         let zoom = doc.editor_state.zoom.0;
-        let cx = (client_x - doc.editor_state.camera_x.0) / zoom;
-        let cy = (client_y - doc.editor_state.camera_y.0) / zoom;
+        let cx = (client_x / zoom) + doc.editor_state.camera_x.0;
+        let cy = (client_y / zoom) + doc.editor_state.camera_y.0;
 
         let originals = selected_node_ids(&doc)
             .into_iter()
@@ -142,5 +143,73 @@ pub(super) fn start_resize_interaction(
             anchor: (cx, cy),
             did_resize: false,
         });
+    }
+}
+
+pub(super) fn finalize_motion_release(
+    mode: &mut InteractionMode,
+    doc: &mut DiagramDocument,
+) -> bool {
+    let should_increment = match mode {
+        InteractionMode::DraggingSelection { did_move, .. } => Some(*did_move),
+        InteractionMode::ResizingSelection { did_resize, .. } => Some(*did_resize),
+        _ => None,
+    };
+
+    if let Some(increment) = should_increment {
+        if increment {
+            doc.revision = doc.revision.increment();
+        }
+        *mode = InteractionMode::Select;
+        true
+    } else {
+        false
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{finalize_motion_release, InteractionMode, ResizeHandle};
+    use crate::models::document::DiagramDocument;
+    use im::HashMap;
+
+    #[test]
+    fn given_drag_end_when_finalized_twice_then_revision_bumps_once() {
+        let mut doc = DiagramDocument::default();
+        let mut mode = InteractionMode::DraggingSelection {
+            anchor_canvas: (0.0, 0.0),
+            anchor_client: (0.0, 0.0),
+            original_positions: HashMap::new(),
+            did_move: true,
+        };
+
+        let first = finalize_motion_release(&mut mode, &mut doc);
+        let second = finalize_motion_release(&mut mode, &mut doc);
+
+        assert!(first);
+        assert!(!second);
+        assert_eq!(
+            doc.revision,
+            DiagramDocument::default().revision.increment()
+        );
+        assert_eq!(mode, InteractionMode::Select);
+    }
+
+    #[test]
+    fn given_resize_end_without_resize_when_finalized_then_no_revision_bump() {
+        let mut doc = DiagramDocument::default();
+        let mut mode = InteractionMode::ResizingSelection {
+            handle: ResizeHandle::Se,
+            original_bounds: (0.0, 0.0, 10.0, 10.0),
+            originals: HashMap::new(),
+            anchor: (0.0, 0.0),
+            did_resize: false,
+        };
+
+        let finalized = finalize_motion_release(&mut mode, &mut doc);
+
+        assert!(finalized);
+        assert_eq!(doc.revision, DiagramDocument::default().revision);
+        assert_eq!(mode, InteractionMode::Select);
     }
 }

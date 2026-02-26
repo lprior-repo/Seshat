@@ -33,7 +33,7 @@ pub(super) fn to_canvas_coords(
     cam_y: f64,
     zoom: f64,
 ) -> (f64, f64) {
-    ((client_x - cam_x) / zoom, (client_y - cam_y) / zoom)
+    ((client_x / zoom) + cam_x, (client_y / zoom) + cam_y)
 }
 
 #[must_use]
@@ -44,14 +44,26 @@ pub(super) fn to_screen_coords(
     cam_y: f64,
     zoom: f64,
 ) -> (f64, f64) {
-    (world_x.mul_add(zoom, cam_x), world_y.mul_add(zoom, cam_y))
+    ((world_x - cam_x) * zoom, (world_y - cam_y) * zoom)
 }
 
 #[must_use]
 pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
-    if input.zoom_gesture {
-        let zoom_factor = (-input.dy * 0.0015).exp();
+    if input.shift_pan {
+        let actual_dx = if input.dx.abs() > f64::EPSILON {
+            input.dx
+        } else {
+            input.dy
+        };
+        (
+            input.camera_x.0 + (actual_dx / input.zoom.0),
+            input.camera_y.0,
+            input.zoom.0,
+        )
+    } else if input.zoom_gesture {
+        let zoom_factor = input.dy.mul_add(-0.01, 1.0);
         let new_zoom = (input.zoom.0 * zoom_factor).clamp(ZOOM_MIN, ZOOM_MAX);
+        let factor = input.zoom.0 / new_zoom;
         let (wx, wy) = to_canvas_coords(
             input.client_x,
             input.client_y,
@@ -60,15 +72,14 @@ pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
             input.zoom.0,
         );
         (
-            wx.mul_add(-new_zoom, input.client_x),
-            wy.mul_add(-new_zoom, input.client_y),
+            (wx - input.camera_x.0).mul_add(-factor, wx),
+            (wy - input.camera_y.0).mul_add(-factor, wy),
             new_zoom,
         )
-    } else if input.shift_pan {
-        (input.camera_x.0 - input.dy, input.camera_y.0, input.zoom.0)
     } else if input.discrete_wheel {
         let zoom_factor = if input.dy > 0.0 { 0.9 } else { 1.1 };
         let new_zoom = (input.zoom.0 * zoom_factor).clamp(ZOOM_MIN, ZOOM_MAX);
+        let factor = input.zoom.0 / new_zoom;
         let (wx, wy) = to_canvas_coords(
             input.client_x,
             input.client_y,
@@ -77,14 +88,14 @@ pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
             input.zoom.0,
         );
         (
-            wx.mul_add(-new_zoom, input.client_x),
-            wy.mul_add(-new_zoom, input.client_y),
+            (wx - input.camera_x.0).mul_add(-factor, wx),
+            (wy - input.camera_y.0).mul_add(-factor, wy),
             new_zoom,
         )
     } else {
         (
-            input.camera_x.0 - input.dx,
-            input.camera_y.0 - input.dy,
+            input.camera_x.0 + (input.dx / input.zoom.0),
+            input.camera_y.0 + (input.dy / input.zoom.0),
             input.zoom.0,
         )
     }

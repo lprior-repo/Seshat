@@ -45,12 +45,11 @@ pub struct SidebarProviderContext {
     pub collapsible: SidebarCollapsible,
 }
 
-fn merge_class(base: &str, class: &Option<String>) -> String {
-    class
-        .as_ref()
-        .map_or_else(|| String::from(base), |extra| format!("{base} {extra}"))
+fn merge_class(base: &str, class: Option<&str>) -> String {
+    class.map_or_else(|| String::from(base), |extra| format!("{base} {extra}"))
 }
 
+#[allow(clippy::missing_const_for_fn)]
 fn local_storage_set_sidebar_open(_open: bool) {
     #[cfg(target_arch = "wasm32")]
     {
@@ -112,7 +111,7 @@ pub fn SidebarProvider(
 
     rsx! {
         div {
-            class: "{merge_class(\"sidebar-provider\", &class)}",
+            class: "{merge_class(\"sidebar-provider\", class.as_deref())}",
             style: "{provider_style}",
             {children}
         }
@@ -133,13 +132,15 @@ pub fn Sidebar(
 ) -> Element {
     let context = use_sidebar_provider();
     let signal = resolve_sidebar_signal(sidebar_ui);
-    let base_style = style.clone();
-    let side = side.or(context.map(|ctx| ctx.side)).unwrap_or_default();
+    let final_style = style.unwrap_or_default();
+    let side = side
+        .or_else(|| context.map(|ctx| ctx.side))
+        .unwrap_or_default();
     let variant = variant
-        .or(context.map(|ctx| ctx.variant))
+        .or_else(|| context.map(|ctx| ctx.variant))
         .unwrap_or_default();
     let collapsible = collapsible
-        .or(context.map(|ctx| ctx.collapsible))
+        .or_else(|| context.map(|ctx| ctx.collapsible))
         .unwrap_or_default();
 
     let side_class = match side {
@@ -159,7 +160,7 @@ pub fn Sidebar(
 
     let root_class = merge_class(
         &format!("sidebar {side_class} {variant_class} {collapsible_class}"),
-        &class,
+        class.as_deref(),
     );
 
     if let Some(signal) = signal {
@@ -170,9 +171,13 @@ pub fn Sidebar(
                 return rsx! {};
             }
 
-            let panel_style = mobile_style
-                .or(style.clone())
-                .unwrap_or_else(|| String::from("width: min(19rem, 90vw);"));
+            let panel_style = mobile_style.unwrap_or_else(|| {
+                if final_style.is_empty() {
+                    String::from("width: min(19rem, 90vw);")
+                } else {
+                    final_style.clone()
+                }
+            });
             return rsx! {
                 div {
                     class: "{root_class}",
@@ -201,8 +206,6 @@ pub fn Sidebar(
         }
     }
 
-    let final_style = base_style.unwrap_or_default();
-
     rsx! {
         div {
             class: "{root_class}",
@@ -222,7 +225,7 @@ pub fn SidebarTrigger(
     #[props(default)] style: Option<String>,
 ) -> Element {
     let mut signal = resolve_sidebar_signal(sidebar_ui);
-    let trigger_class = merge_class("sidebar-trigger", &class);
+    let trigger_class = merge_class("sidebar-trigger", class.as_deref());
     let trigger_style = style.unwrap_or_default();
 
     rsx! {
@@ -253,7 +256,7 @@ pub fn SidebarRail(
     #[props(default)] style: Option<String>,
 ) -> Element {
     let mut signal = resolve_sidebar_signal(sidebar_ui);
-    let rail_class = merge_class("sidebar-rail-wrap", &class);
+    let rail_class = merge_class("sidebar-rail-wrap", class.as_deref());
     let rail_style = style.unwrap_or_else(|| {
         format!(
             "width: 18px; border-right: 1px solid {BORDER_SUBTLE}; background: {BG_SURFACE}; display: flex; align-items: center; justify-content: center;"
@@ -307,7 +310,7 @@ pub fn SidebarInset(
     #[props(default)] style: Option<String>,
     children: Element,
 ) -> Element {
-    let inset_class = merge_class("sidebar-inset", &class);
+    let inset_class = merge_class("sidebar-inset", class.as_deref());
     let inset_style = style.unwrap_or_else(|| {
         String::from("display: flex; flex: 1; min-width: 0; flex-direction: column;")
     });
@@ -327,7 +330,7 @@ pub fn SidebarMenu(
     #[props(default)] style: Option<String>,
     children: Element,
 ) -> Element {
-    let menu_class = merge_class("sidebar-menu", &class);
+    let menu_class = merge_class("sidebar-menu", class.as_deref());
     let menu_style = style.unwrap_or_else(|| {
         String::from(
             "display: flex; min-width: 0; flex-direction: column; gap: 8px; margin: 0; padding: 0; list-style: none;",
@@ -349,7 +352,7 @@ pub fn SidebarMenuItem(
     #[props(default)] style: Option<String>,
     children: Element,
 ) -> Element {
-    let item_class = merge_class("sidebar-menu-item", &class);
+    let item_class = merge_class("sidebar-menu-item", class.as_deref());
     let item_style = style.unwrap_or_default();
 
     rsx! {
@@ -368,7 +371,7 @@ pub fn SidebarMenuButton(
     #[props(default)] class: Option<String>,
     #[props(default)] style: Option<String>,
 ) -> Element {
-    let button_class = merge_class("sidebar-menu-button", &class);
+    let button_class = merge_class("sidebar-menu-button", class.as_deref());
     let button_style = style.unwrap_or_else(|| {
         format!(
             "width: 100%; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_ELEVATED}; color: {TEXT_MAIN}; font-size: 11px; padding: 6px; cursor: pointer;"
@@ -395,7 +398,7 @@ pub fn SidebarMenuSub(
     #[props(default)] style: Option<String>,
     children: Element,
 ) -> Element {
-    let submenu_class = merge_class("sidebar-menu-sub", &class);
+    let submenu_class = merge_class("sidebar-menu-sub", class.as_deref());
     let submenu_style = style.unwrap_or_else(|| {
         String::from(
             "display: flex; min-width: 0; flex-direction: column; gap: 6px; margin: 0; padding: 0; list-style: none;",
@@ -417,7 +420,7 @@ pub fn SidebarMenuSubItem(
     #[props(default)] style: Option<String>,
     children: Element,
 ) -> Element {
-    let item_class = merge_class("sidebar-menu-sub-item", &class);
+    let item_class = merge_class("sidebar-menu-sub-item", class.as_deref());
     let item_style = style.unwrap_or_default();
 
     rsx! {

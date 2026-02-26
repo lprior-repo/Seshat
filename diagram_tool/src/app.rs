@@ -11,8 +11,8 @@ use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::validation::validate_document_data;
 use crate::ui::canvas::Canvas;
 use crate::ui::editor::ToolMode;
-use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
 use crate::ui::minimap::Minimap;
+use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
 use crate::ui::panels::PanelVisibility;
 use crate::ui::properties::PropertiesPanel;
 use crate::ui::sidebar::Sidebar;
@@ -28,8 +28,8 @@ const VALIDATION_IDLE_MS: u64 = 220;
 pub struct DraggedIconPayload {
     pub icon_key: String,
     pub label: Option<String>,
+    pub image_data_url: Option<String>,
 }
-
 
 #[allow(non_snake_case)]
 #[allow(
@@ -43,7 +43,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(History::new()));
     use_context_provider(|| Signal::new(ToolMode::Select));
     use_context_provider(|| Signal::new(EdgeStyle::Solid));
-    use_context_provider(|| Signal::new(ArrowType::Arrow));
+    use_context_provider(|| Signal::new(ArrowType::Default));
     use_context_provider(|| Signal::new(ToastQueue::default()));
     use_context_provider(|| Signal::new(PanelVisibility::default()));
     use_context_provider(|| Signal::new(ToolbarStats::default()));

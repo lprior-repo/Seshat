@@ -16,13 +16,14 @@ use crate::mutation::error::MutationError;
 use crate::ui::editor::ToolMode;
 use crate::ui::panels::PanelVisibility;
 use crate::ui::theme::{
-    ThemeMode, ACCENT, ACCENT_SOFT, BG_BASE, BG_ELEVATED, BG_SURFACE, BORDER, BORDER_SUBTLE,
-    ERROR, TEXT_MAIN, TEXT_MUTED,
+    ThemeMode, ACCENT, ACCENT_SOFT, BG_BASE, BG_ELEVATED, BG_SURFACE, BORDER, BORDER_SUBTLE, ERROR,
+    TEXT_MAIN, TEXT_MUTED,
 };
 use crate::ui::toast::{use_toast, ToastQueue};
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
+#[allow(clippy::struct_field_names)]
 pub struct ToolbarStats {
     pub selected_count: usize,
     pub node_count: usize,

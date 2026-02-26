@@ -10,6 +10,25 @@ use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 
+fn accumulated_parent_delta(
+    parent_id: &NodeId,
+    deltas: &HashMap<NodeId, (f64, f64)>,
+    nodes: &HashMap<NodeId, crate::models::document::Node>,
+) -> Option<(f64, f64)> {
+    std::iter::successors(Some(parent_id.clone()), |id| {
+        nodes.get(id).and_then(|node| node.parent.clone())
+    })
+    .take(nodes.len())
+    .fold(None, |acc: Option<(f64, f64)>, id| {
+        deltas.get(&id).map_or(acc, |&(dx, dy)| {
+            Some(match acc {
+                Some((adx, ady)) => (adx + dx, ady + dy),
+                None => (dx, dy),
+            })
+        })
+    })
+}
+
 /// Pure calculation to determine grid layout.
 /// Returns a new document with updated positions for unlocked nodes.
 #[must_use]
@@ -96,9 +115,9 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
             None => node.parent.as_ref().map_or_else(
                 || (id.clone(), node.clone()),
                 |pid| {
-                    deltas.get(pid).map_or_else(
+                    accumulated_parent_delta(pid, &deltas, &doc.document.nodes).map_or_else(
                         || (id.clone(), node.clone()),
-                        |&(dx, dy)| {
+                        |(dx, dy)| {
                             let mut next_node = node.clone();
                             next_node.x = OrderedFloat(node.x.0 + dx);
                             next_node.y = OrderedFloat(node.y.0 + dy);
@@ -113,4 +132,91 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
     let mut next_doc = doc.clone();
     next_doc.document.nodes = next_nodes;
     next_doc
+}
+
+#[cfg(test)]
+mod tests {
+    use super::calculate_grid_layout;
+    use crate::models::document::{
+        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    };
+    use im::HashMap;
+
+    fn node(x: f64, y: f64, locked: bool, parent: Option<NodeId>) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: String::new(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(100.0),
+            height: OrderedFloat(60.0),
+            font_size: None,
+            font_weight: None,
+            locked,
+            parent,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        }
+    }
+
+    #[test]
+    fn given_nested_children_when_grid_layout_moves_root_then_descendants_follow() {
+        let root = NodeId::new(String::from("root"));
+        let child = NodeId::new(String::from("child"));
+        let grandchild = NodeId::new(String::from("grandchild"));
+
+        let mut doc = DiagramDocument::default();
+        doc.document.nodes = HashMap::new()
+            .update(root.clone(), node(40.0, 40.0, false, None))
+            .update(child.clone(), node(50.0, 50.0, true, Some(root.clone())))
+            .update(
+                grandchild.clone(),
+                node(60.0, 60.0, true, Some(child.clone())),
+            );
+
+        let next = calculate_grid_layout(&doc, 100.0);
+
+        let root_before = doc
+            .document
+            .nodes
+            .get(&root)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let root_after = next
+            .document
+            .nodes
+            .get(&root)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let delta = (root_after.0 - root_before.0, root_after.1 - root_before.1);
+
+        let child_before = doc
+            .document
+            .nodes
+            .get(&child)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let child_after = next
+            .document
+            .nodes
+            .get(&child)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let grand_before = doc
+            .document
+            .nodes
+            .get(&grandchild)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let grand_after = next
+            .document
+            .nodes
+            .get(&grandchild)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+
+        assert!((child_after.0 - (child_before.0 + delta.0)).abs() < f64::EPSILON);
+        assert!((child_after.1 - (child_before.1 + delta.1)).abs() < f64::EPSILON);
+        assert!((grand_after.0 - (grand_before.0 + delta.0)).abs() < f64::EPSILON);
+        assert!((grand_after.1 - (grand_before.1 + delta.1)).abs() < f64::EPSILON);
+    }
 }

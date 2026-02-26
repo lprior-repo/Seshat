@@ -42,7 +42,7 @@ where
         || {
             let revision = match revision_policy {
                 RevisionPolicy::Increment => current.revision.increment(),
-                RevisionPolicy::Preserve => next.revision,
+                RevisionPolicy::Preserve => current.revision,
             };
             Ok(DiagramDocument { revision, ..next })
         },
@@ -141,6 +141,20 @@ mod tests {
         let next = result.ok();
         assert!(next.is_some());
         assert_eq!(next.map(|doc| doc.revision), Some(current.revision));
+    }
+
+    #[test]
+    fn given_preserve_policy_with_stale_transformed_revision_when_run_mutation_then_current_revision_wins(
+    ) {
+        let mut current = DiagramDocument::default();
+        current.revision = current.revision.increment();
+
+        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, |_| {
+            Ok(DiagramDocument::default())
+        });
+
+        assert!(result.is_ok());
+        assert_eq!(result.ok().map(|doc| doc.revision), Some(current.revision));
     }
 
     #[test]

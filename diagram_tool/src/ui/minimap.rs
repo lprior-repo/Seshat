@@ -35,7 +35,7 @@ struct ProjectionKey {
 }
 
 impl ProjectionKey {
-    fn from_state(revision: Revision, min_x: f64, min_y: f64, scale: f64) -> Self {
+    const fn from_state(revision: Revision, min_x: f64, min_y: f64, scale: f64) -> Self {
         Self {
             revision,
             min_x_bits: min_x.to_bits(),
@@ -158,28 +158,34 @@ pub fn Minimap() -> Element {
     let viewport_size = use_context::<Signal<(f64, f64)>>();
     let mut dragging = use_signal(|| false);
     let mut cached_snapshot = use_signal(|| Option::<MinimapSnapshot>::None);
-    let mut last_snapshot_revision = use_signal(|| doc_signal.read().revision);
+    let mut last_snapshot_revision = use_signal(|| Option::<Revision>::None);
     let mut cached_projection = use_signal(|| Option::<MinimapProjection>::None);
     let mut last_projection_key = use_signal(|| Option::<ProjectionKey>::None);
 
-    let (cam_x, cam_y, zoom) = {
+    let (cam_x, cam_y, zoom, revision) = {
         let doc = doc_signal.read();
 
         if doc.document.nodes.is_empty() {
             return rsx! {};
         }
 
-        let needs_refresh = *last_snapshot_revision.read() != doc.revision;
+        let needs_refresh = cached_snapshot.read().is_none()
+            || last_snapshot_revision
+                .read()
+                .as_ref()
+                .is_none_or(|cached| *cached != doc.revision);
 
         if needs_refresh {
             cached_snapshot.set(MinimapSnapshot::from_document(&doc.document));
-            last_snapshot_revision.set(doc.revision);
+            last_snapshot_revision.set(Some(doc.revision));
+            last_projection_key.set(None);
         }
 
         (
             doc.editor_state.camera_x.0,
             doc.editor_state.camera_y.0,
             doc.editor_state.zoom.0,
+            doc.revision,
         )
     };
 
@@ -195,8 +201,8 @@ pub fn Minimap() -> Element {
     let (viewport_w, viewport_h) = *viewport_size.read();
     let vp_w = viewport_w.max(1.0) / zoom;
     let vp_h = viewport_h.max(1.0) / zoom;
-    let vp_left = (-cam_x) / zoom;
-    let vp_top = (-cam_y) / zoom;
+    let vp_left = cam_x;
+    let vp_top = cam_y;
 
     let min_x = doc_min_x.min(vp_left) - PAD;
     let min_y = doc_min_y.min(vp_top) - PAD;
@@ -206,13 +212,11 @@ pub fn Minimap() -> Element {
     let world_w = (max_x - min_x).max(1.0);
     let world_h = (max_y - min_y).max(1.0);
     let aspect = world_w / world_h;
-    let zoom_scale = (1.0 / zoom).clamp(0.6, 1.4);
-
     let (mut view_w, mut view_h) = if aspect > 1.0 {
-        let width = (BASE_SIDE * zoom_scale).round();
+        let width = BASE_SIDE.round();
         (width, (width / aspect).round())
     } else {
-        let height = (BASE_SIDE * zoom_scale).round();
+        let height = BASE_SIDE.round();
         ((height * aspect).round(), height)
     };
     view_w = view_w.clamp(MIN_W, MAX_W);
@@ -220,8 +224,7 @@ pub fn Minimap() -> Element {
 
     let scale = (view_w / world_w).min(view_h / world_h);
 
-    let projection_key =
-        ProjectionKey::from_state(*last_snapshot_revision.read(), min_x, min_y, scale);
+    let projection_key = ProjectionKey::from_state(revision, min_x, min_y, scale);
     if last_projection_key
         .read()
         .as_ref()
@@ -243,10 +246,13 @@ pub fn Minimap() -> Element {
         let center_y = (screen_y / scale) + min_y;
         let doc = doc_signal.read();
         let zoom = doc.editor_state.zoom.0;
+        let viewport = *viewport_size.read();
+        let vp_w = viewport.0.max(1.0) / zoom;
+        let vp_h = viewport.1.max(1.0) / zoom;
         let left = center_x - (vp_w / 2.0);
         let top = center_y - (vp_h / 2.0);
-        let next_camera_x = -(left * zoom);
-        let next_camera_y = -(top * zoom);
+        let next_camera_x = left;
+        let next_camera_y = top;
         let changed = (doc.editor_state.camera_x.0 - next_camera_x).abs() > 0.25
             || (doc.editor_state.camera_y.0 - next_camera_y).abs() > 0.25;
         if changed {

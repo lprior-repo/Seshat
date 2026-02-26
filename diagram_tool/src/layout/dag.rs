@@ -260,7 +260,7 @@ pub fn dag_layout(doc: &DiagramDocument, settings: &DagLayoutSettings) -> Diagra
         .nodes
         .iter()
         .map(|(id, node)| {
-            let next = apply_position(id, node, &new_positions, &deltas);
+            let next = apply_position(id, node, &new_positions, &deltas, &doc.document.nodes);
             (id.clone(), next)
         })
         .collect();
@@ -285,6 +285,7 @@ fn apply_position(
     node: &Node,
     new_positions: &HashMap<NodeId, (f64, f64)>,
     deltas: &HashMap<NodeId, (f64, f64)>,
+    all_nodes: &HashMap<NodeId, Node>,
 ) -> Node {
     if let Some(&(nx, ny)) = new_positions.get(id) {
         return Node {
@@ -298,8 +299,23 @@ fn apply_position(
         return node.clone(); // locked root → unchanged
     };
 
-    let Some(&(dx, dy)) = deltas.get(pid) else {
-        return node.clone(); // parent not moved → unchanged
+    let inherited_delta = std::iter::successors(Some(pid.clone()), |parent_id| {
+        all_nodes
+            .get(parent_id)
+            .and_then(|parent| parent.parent.clone())
+    })
+    .take(all_nodes.len())
+    .fold(None, |acc: Option<(f64, f64)>, parent_id| {
+        deltas.get(&parent_id).map_or(acc, |&(dx, dy)| {
+            Some(match acc {
+                Some((adx, ady)) => (adx + dx, ady + dy),
+                None => (dx, dy),
+            })
+        })
+    });
+
+    let Some((dx, dy)) = inherited_delta else {
+        return node.clone(); // parent chain not moved → unchanged
     };
 
     Node {
@@ -356,7 +372,7 @@ mod tests {
             target: tgt.clone(),
             label: String::new(),
             style: crate::models::document::EdgeStyle::Solid,
-            arrow_type: ArrowType::Arrow,
+            arrow_type: ArrowType::Default,
             label_offset_t: OrderedFloat(0.5),
             color: None,
             thickness: OrderedFloat(1.5),
@@ -421,10 +437,7 @@ mod tests {
         let b = NodeId::new("B".to_string());
 
         let doc = make_doc(
-            vec![
-                (a.clone(), make_node(0.0, 0.0)),
-                (b.clone(), make_node(0.0, 0.0)),
-            ],
+            vec![(a, make_node(0.0, 0.0)), (b, make_node(0.0, 0.0))],
             vec![],
         );
 
@@ -462,19 +475,24 @@ mod tests {
         let doc = make_doc(
             vec![
                 (locked.clone(), make_locked_node(999.0, 888.0)),
-                (free.clone(), make_node(0.0, 0.0)),
+                (free, make_node(0.0, 0.0)),
             ],
             vec![],
         );
 
         let result = dag_layout(&doc, &DagLayoutSettings::default());
-        let ln = result
-            .document
-            .nodes
-            .get(&locked)
-            .expect("locked node must exist");
-        assert_eq!(ln.x.0, 999.0, "locked x must not change");
-        assert_eq!(ln.y.0, 888.0, "locked y must not change");
+        assert!(result.document.nodes.contains_key(&locked));
+        let Some(ln) = result.document.nodes.get(&locked) else {
+            return;
+        };
+        assert!(
+            (ln.x.0 - 999.0).abs() < f64::EPSILON,
+            "locked x must not change"
+        );
+        assert!(
+            (ln.y.0 - 888.0).abs() < f64::EPSILON,
+            "locked y must not change"
+        );
     }
 
     // ── Test 5: Deterministic — two calls on same input produce same result ─
@@ -505,5 +523,55 @@ mod tests {
         assert_eq!(get_xy(&r1, &a), get_xy(&r2, &a), "A must be deterministic");
         assert_eq!(get_xy(&r1, &b), get_xy(&r2, &b), "B must be deterministic");
         assert_eq!(get_xy(&r1, &c), get_xy(&r2, &c), "C must be deterministic");
+    }
+
+    #[test]
+    fn nested_children_follow_ancestor_delta() {
+        let root = NodeId::new("root".to_string());
+        let child = NodeId::new("child".to_string());
+        let grandchild = NodeId::new("grandchild".to_string());
+
+        let mut child_node = make_node(10.0, 10.0);
+        child_node.parent = Some(root.clone());
+
+        let mut grandchild_node = make_node(20.0, 20.0);
+        grandchild_node.parent = Some(child.clone());
+
+        let doc = make_doc(
+            vec![
+                (root.clone(), make_node(0.0, 0.0)),
+                (child.clone(), child_node),
+                (grandchild.clone(), grandchild_node),
+            ],
+            vec![],
+        );
+
+        let result = dag_layout(&doc, &DagLayoutSettings::default());
+
+        let root_before = doc
+            .document
+            .nodes
+            .get(&root)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let root_after = result
+            .document
+            .nodes
+            .get(&root)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let delta = (root_after.0 - root_before.0, root_after.1 - root_before.1);
+
+        let grandchild_before = doc
+            .document
+            .nodes
+            .get(&grandchild)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let grandchild_after = result
+            .document
+            .nodes
+            .get(&grandchild)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+
+        assert!((grandchild_after.0 - (grandchild_before.0 + delta.0)).abs() < f64::EPSILON);
+        assert!((grandchild_after.1 - (grandchild_before.1 + delta.1)).abs() < f64::EPSILON);
     }
 }

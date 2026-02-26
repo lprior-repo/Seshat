@@ -58,11 +58,11 @@ const fn edge_path_semantics(edge: &Edge) -> EdgePathSemantics {
 
 const fn semantics_from_arrow(arrow_type: ArrowType) -> EdgePathSemantics {
     match arrow_type {
-        ArrowType::Arrow => EdgePathSemantics::Default,
-        ArrowType::Open => EdgePathSemantics::Straight,
-        ArrowType::Diamond => EdgePathSemantics::Step,
-        ArrowType::Circle => EdgePathSemantics::Curved,
-        ArrowType::None => EdgePathSemantics::Sharp,
+        ArrowType::Default => EdgePathSemantics::Default,
+        ArrowType::Straight => EdgePathSemantics::Straight,
+        ArrowType::Step => EdgePathSemantics::Step,
+        ArrowType::Curved => EdgePathSemantics::Curved,
+        ArrowType::Sharp => EdgePathSemantics::Sharp,
     }
 }
 
@@ -382,6 +382,7 @@ pub(super) fn subgraph_preview_overlay(
 }
 
 pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<EdgeId> {
+    let hit_radius_world = 8.0 / doc.editor_state.zoom.0.max(0.1);
     doc.document.edges.iter().find_map(|(id, edge)| {
         doc.document
             .nodes
@@ -419,7 +420,99 @@ pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<Edge
                         })
                         .fold(f64::MAX, f64::min),
                 };
-                (hit_distance < 8.0).then(|| id.clone())
+                (hit_distance < hit_radius_world).then(|| id.clone())
             })
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::find_edge_at;
+    use crate::models::document::{
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
+        NodeStyle, OrderedFloat,
+    };
+    use im::HashMap;
+
+    fn node_at(x: f64, y: f64) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: String::new(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(10.0),
+            height: OrderedFloat(10.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        }
+    }
+
+    fn edge(source: NodeId, target: NodeId) -> Edge {
+        Edge {
+            source,
+            target,
+            label: String::new(),
+            style: EdgeStyle::Solid,
+            arrow_type: ArrowType::Straight,
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.5),
+            directed: true,
+            bend_points: Vec::new(),
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            font_size: None,
+        }
+    }
+
+    #[test]
+    fn given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_radius() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("e1"));
+
+        let mut doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new().update(edge_id.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+        doc.editor_state.zoom = OrderedFloat(0.5);
+
+        let hit = find_edge_at(&doc, 50.0, 17.0);
+        assert_eq!(hit, Some(edge_id));
+    }
+
+    #[test]
+    fn given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("e1"));
+
+        let mut doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new().update(edge_id, edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+        doc.editor_state.zoom = OrderedFloat(2.0);
+
+        let hit = find_edge_at(&doc, 50.0, 17.0);
+        assert!(hit.is_none());
+    }
 }

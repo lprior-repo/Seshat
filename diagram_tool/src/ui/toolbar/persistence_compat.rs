@@ -24,7 +24,6 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         for node in nodes.values_mut() {
             if let Some(node_obj) = node.as_object_mut() {
                 let _ = node_obj.remove("id");
-                remap_key(node_obj, "fontSize", "font_size");
                 remap_key(node_obj, "fontWeight", "font_weight");
                 remap_key(node_obj, "dagRank", "dag_rank");
             }
@@ -38,25 +37,24 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         for edge in edges.values_mut() {
             if let Some(edge_obj) = edge.as_object_mut() {
                 let _ = edge_obj.remove("id");
-                remap_key(edge_obj, "arrowType", "arrowhead");
-                remap_key(edge_obj, "arrow_type", "arrowhead");
-                remap_key(edge_obj, "fontSize", "font_size");
+                remap_key(edge_obj, "arrowhead", "arrowType");
+                remap_key(edge_obj, "arrow_type", "arrowType");
                 remap_key(edge_obj, "bendPoints", "bend_points");
                 remap_key(edge_obj, "labelOffsetT", "label_offset_t");
-                if let Some(arrowhead) = edge_obj.get_mut("arrowhead") {
-                    let normalized = arrowhead
+                if let Some(arrow_type) = edge_obj.get_mut("arrowType") {
+                    let normalized = arrow_type
                         .as_str()
                         .map(|value| match value {
-                            "default" => "arrow",
-                            "straight" => "open",
-                            "step" => "diamond",
-                            "curved" => "circle",
-                            "sharp" => "none",
+                            "arrow" => "default",
+                            "open" => "straight",
+                            "diamond" => "step",
+                            "circle" => "curved",
+                            "none" => "sharp",
                             _ => value,
                         })
                         .map(ToString::to_string);
                     if let Some(value) = normalized {
-                        *arrowhead = serde_json::Value::String(value);
+                        *arrow_type = serde_json::Value::String(value);
                     }
                 }
             }

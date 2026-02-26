@@ -5,7 +5,9 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use crate::ui::theme::{css_vars_for, ThemeMode, ThemeScheme, APP_FONT, BG_BASE, BG_SURFACE, TEXT_MAIN};
+use crate::ui::theme::{
+    css_vars_for, ThemeMode, ThemeScheme, APP_FONT, BG_BASE, BG_SURFACE, TEXT_MAIN,
+};
 use dioxus::prelude::*;
 
 #[component]

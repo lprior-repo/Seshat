@@ -18,9 +18,20 @@ impl Default for PanelVisibility {
     fn default() -> Self {
         Self {
             sidebar: true,
-            properties: false,
+            properties: true,
             minimap: true,
             validation: false,
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::PanelVisibility;
+
+    #[test]
+    fn given_default_panel_visibility_when_created_then_properties_is_visible() {
+        let panels = PanelVisibility::default();
+        assert!(panels.properties);
     }
 }

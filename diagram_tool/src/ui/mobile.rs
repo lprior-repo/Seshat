@@ -94,10 +94,13 @@ pub fn toggle_sidebar(mut sidebar_ui: Signal<SidebarUiState>, mut panels: Signal
     }
 }
 
-pub fn use_sidebar_mobile_bridge(mut sidebar_ui: Signal<SidebarUiState>, panels: Signal<PanelVisibility>) {
+pub fn use_sidebar_mobile_bridge(
+    mut sidebar_ui: Signal<SidebarUiState>,
+    panels: Signal<PanelVisibility>,
+) {
     use_effect(move || {
         let mut eval = document::eval(&format!(
-            r#"
+            r"
                 const BREAKPOINT = {};
                 const readSidebarPreference = () => {{
                     let open = true;
@@ -161,7 +164,7 @@ pub fn use_sidebar_mobile_bridge(mut sidebar_ui: Signal<SidebarUiState>, panels:
                     window.__diagramToolViewportBooted = true;
                     emitViewport();
                 }}
-            "#,
+            ",
             MOBILE_BREAKPOINT,
             SIDEBAR_COOKIE_NAME,
             SIDEBAR_LEGACY_LOCAL_STORAGE_KEY,
@@ -172,7 +175,8 @@ pub fn use_sidebar_mobile_bridge(mut sidebar_ui: Signal<SidebarUiState>, panels:
             while let Ok(message) = eval.recv::<serde_json::Value>().await {
                 match message_type(&message) {
                     "viewport" => {
-                        let is_mobile = message_bool(&message, "isMobile").is_some_and(|value| value);
+                        let is_mobile =
+                            message_bool(&message, "isMobile").is_some_and(|value| value);
                         sidebar_ui.with_mut(|state| {
                             state.is_mobile = is_mobile;
                             if !is_mobile {
@@ -181,7 +185,7 @@ pub fn use_sidebar_mobile_bridge(mut sidebar_ui: Signal<SidebarUiState>, panels:
                         });
                     }
                     "sidebar-open" => {
-                        let open = message_bool(&message, "open").map_or(true, |value| value);
+                        let open = message_bool(&message, "open").is_none_or(|value| value);
                         sidebar_ui.with_mut(|state| {
                             state.open = open;
                         });

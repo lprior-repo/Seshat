@@ -20,6 +20,11 @@ impl NodeId {
     pub const fn new(id: String) -> Self {
         Self(id)
     }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
 }
 
 impl fmt::Display for NodeId {
@@ -36,6 +41,11 @@ impl EdgeId {
     #[must_use]
     pub const fn new(id: String) -> Self {
         Self(id)
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
     }
 }
 
@@ -85,7 +95,7 @@ pub struct Node {
     pub y: OrderedFloat,
     pub width: OrderedFloat,
     pub height: OrderedFloat,
-    #[serde(default)]
+    #[serde(default, rename = "fontSize")]
     pub font_size: Option<OrderedFloat>,
     #[serde(default)]
     pub font_weight: Option<FontWeight>,
@@ -187,7 +197,7 @@ pub struct Edge {
     pub label: String,
     #[serde(default)]
     pub style: EdgeStyle,
-    #[serde(default, rename = "arrowhead")]
+    #[serde(default, rename = "arrowType")]
     pub arrow_type: ArrowType,
     #[serde(default = "default_label_offset")]
     pub label_offset_t: OrderedFloat,
@@ -203,7 +213,7 @@ pub struct Edge {
     pub tags: Vec<String>,
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
-    #[serde(default)]
+    #[serde(default, rename = "fontSize")]
     pub font_size: Option<OrderedFloat>,
 }
 
@@ -232,11 +242,11 @@ pub enum EdgeStyle {
 #[serde(rename_all = "lowercase")]
 pub enum ArrowType {
     #[default]
-    Arrow,
-    Open,
-    Diamond,
-    Circle,
-    None,
+    Default,
+    Sharp,
+    Curved,
+    Step,
+    Straight,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]

@@ -195,6 +195,8 @@ fn icon_data_url(icon: &IconMeta) -> Option<String> {
 #[component]
 fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -> Element {
     let data_url = icon_data_url(&icon);
+    let data_url_for_drag = data_url.clone();
+    let data_url_for_drag_start = data_url.clone();
     let icon_key_for_drag = icon.icon_key.clone();
     let icon_key_for_title = icon.icon_key.clone();
     let category_for_title = if icon.category_path.is_empty() {
@@ -213,15 +215,16 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
                 dragging_icon.set(Some(DraggedIconPayload {
                     icon_key: icon_key_for_drag.clone(),
                     label: Some(icon_label_for_drag.clone()),
+                    image_data_url: data_url_for_drag.clone(),
                 }));
             },
             ondragstart: move |_| {
                 dragging_icon.set(Some(DraggedIconPayload {
                     icon_key: icon.icon_key.clone(),
                     label: Some(icon.display_name.clone()),
+                    image_data_url: data_url_for_drag_start.clone(),
                 }));
             },
-            onmouseup: move |_| dragging_icon.set(None),
             ondragend: move |_| dragging_icon.set(None),
             style: "cursor: grab; border: 1px solid {BORDER}; border-radius: 6px; padding: 5px; display: flex; justify-content: center; align-items: center; background: linear-gradient(180deg, {BG_BASE} 0%, {BG_ELEVATED} 100%); aspect-ratio: 1/1; box-shadow: inset 0 0 0 1px color-mix(in oklch, {BORDER} 60%, transparent);",
 
@@ -393,7 +396,6 @@ pub fn Sidebar() -> Element {
                                                                     button {
                                                                         style: "width: 100%; margin: 0; border: none; background: transparent; color: {TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; text-align: left; padding: 0; cursor: pointer;",
                                                                         onclick: {
-                                                                            let category_state_key = category_state_key.clone();
                                                                             move |_| {
                                                                                 if query_active {
                                                                                     return;

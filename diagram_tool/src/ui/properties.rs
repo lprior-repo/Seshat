@@ -55,11 +55,11 @@ fn parse_edge_style(v: &str) -> EdgeStyle {
 
 fn parse_arrow_type(v: &str) -> ArrowType {
     match v {
-        "straight" | "open" => ArrowType::Open,
-        "step" | "diamond" => ArrowType::Diamond,
-        "curved" | "circle" => ArrowType::Circle,
-        "sharp" | "none" => ArrowType::None,
-        _ => ArrowType::Arrow,
+        "straight" | "open" => ArrowType::Straight,
+        "step" | "diamond" => ArrowType::Step,
+        "curved" | "circle" => ArrowType::Curved,
+        "sharp" | "none" => ArrowType::Sharp,
+        _ => ArrowType::Default,
     }
 }
 
@@ -73,11 +73,11 @@ const fn edge_style_str(v: EdgeStyle) -> &'static str {
 
 const fn arrow_type_str(v: ArrowType) -> &'static str {
     match v {
-        ArrowType::Arrow => "default",
-        ArrowType::Open => "straight",
-        ArrowType::Diamond => "step",
-        ArrowType::Circle => "curved",
-        ArrowType::None => "sharp",
+        ArrowType::Default => "default",
+        ArrowType::Straight => "straight",
+        ArrowType::Step => "step",
+        ArrowType::Curved => "curved",
+        ArrowType::Sharp => "sharp",
     }
 }
 

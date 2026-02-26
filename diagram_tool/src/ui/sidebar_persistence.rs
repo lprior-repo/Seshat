@@ -27,4 +27,4 @@ pub fn persist_sidebar_open(open: bool) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub fn persist_sidebar_open(_open: bool) {}
+pub const fn persist_sidebar_open(_open: bool) {}

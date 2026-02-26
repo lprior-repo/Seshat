@@ -51,3 +51,27 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::validate_schema;
+    use crate::models::document::DiagramDocument;
+
+    #[test]
+    fn given_default_document_when_validated_then_schema_passes() {
+        let doc = DiagramDocument::default();
+        let result = validate_schema(&doc);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_non_v2_document_when_validated_then_schema_fails_without_runtime_gate() {
+        let doc = DiagramDocument {
+            version: 3,
+            ..DiagramDocument::default()
+        };
+
+        let result = validate_schema(&doc);
+        assert!(result.is_err());
+    }
+}

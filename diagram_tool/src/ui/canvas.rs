@@ -11,8 +11,9 @@ mod interaction_reducer;
 mod perf;
 mod selection_geometry;
 
-use crate::history::History;
 use crate::app::DraggedIconPayload;
+use crate::history::History;
+use crate::icons::{icon_index, ICONS};
 use crate::models::dag::validate_dag;
 use crate::models::document::{
     ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
@@ -31,6 +32,7 @@ use crate::ui::theme::{
     ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT, EDGE_SELECTED,
     GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG,
 };
+use base64::{engine::general_purpose, Engine as _};
 use canvas_view::{
     edge_label_position, edge_marker_ref, edge_path, edge_preview_overlay, find_edge_at,
     rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay,
@@ -39,12 +41,15 @@ use dioxus::html::geometry::WheelDelta;
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use im::HashMap;
-use interaction_reducer::{commit_inline_edit, InteractionMode, ResizeHandle};
+use interaction_reducer::{
+    commit_inline_edit, finalize_motion_release, InteractionMode, ResizeHandle,
+};
 use perf::{
     normalize_viewport, to_canvas_coords, to_screen_coords, viewport_changed, wheel_update,
     WheelInput,
 };
 use selection_geometry::{selected_node_ids, selection_bounds};
+use serde_json::Value;
 use uuid::Uuid;
 
 fn provider_color(provider: &str) -> &'static str {
@@ -64,7 +69,11 @@ fn initials(label: &str) -> String {
         .collect::<Vec<_>>();
 
     if parts.len() <= 1 {
-        return label.chars().take(3).collect::<String>().to_ascii_uppercase();
+        return label
+            .chars()
+            .take(3)
+            .collect::<String>()
+            .to_ascii_uppercase();
     }
 
     parts
@@ -87,16 +96,51 @@ fn icon_tags(icon_key: &str) -> Vec<String> {
 }
 
 fn fallback_icon_label(icon_key: &str) -> String {
-    icon_key
-        .split('/')
-        .next_back()
-        .map_or_else(|| String::from("Node"), |part| {
+    icon_key.split('/').next_back().map_or_else(
+        || String::from("Node"),
+        |part| {
             let mut chars = part.chars();
             chars.next().map_or_else(String::new, |first| {
                 let first_up = first.to_ascii_uppercase();
                 format!("{first_up}{}", chars.as_str())
             })
-        })
+        },
+    )
+}
+
+fn data_url_for_relpath(file_relpath: &str) -> Option<String> {
+    let file = ICONS.get_file(file_relpath)?;
+    let mime = std::path::Path::new(file_relpath)
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .map_or("image/png", |ext| {
+            if ext.eq_ignore_ascii_case("svg") {
+                "image/svg+xml"
+            } else {
+                "image/png"
+            }
+        });
+
+    Some(format!(
+        "data:{mime};base64,{}",
+        general_purpose::STANDARD.encode(file.contents())
+    ))
+}
+
+fn icon_data_url(icon_key: &str) -> Option<String> {
+    icon_index()
+        .by_key
+        .get(icon_key)
+        .and_then(|meta| data_url_for_relpath(&meta.file_relpath))
+        .or_else(|| data_url_for_relpath(icon_key))
+}
+
+fn node_image_data_url(node: &Node) -> Option<String> {
+    node.metadata
+        .get("icon_data_url")
+        .and_then(Value::as_str)
+        .map(str::to_owned)
+        .or_else(|| icon_data_url(&node.icon))
 }
 
 fn edge_preserves_dag(doc: &DiagramDocument, edge: &Edge) -> bool {
@@ -117,8 +161,11 @@ fn ordered_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
             .map_or(std::cmp::Ordering::Equal, |(a_node, b_node)| {
                 let a_layer = i32::from(a_node.kind != NodeKind::Subgraph);
                 let b_layer = i32::from(b_node.kind != NodeKind::Subgraph);
-                (a_layer, a_node.z_index, a_id.to_string())
-                    .cmp(&(b_layer, b_node.z_index, b_id.to_string()))
+                (a_layer, a_node.z_index, a_id.to_string()).cmp(&(
+                    b_layer,
+                    b_node.z_index,
+                    b_id.to_string(),
+                ))
             })
     });
 
@@ -180,6 +227,88 @@ fn scale_selected_nodes(doc: &mut DiagramDocument, factor: f64) -> bool {
     true
 }
 
+fn apply_rubber_band_release(
+    doc: &mut DiagramDocument,
+    start: (f64, f64),
+    current: (f64, f64),
+    shift: bool,
+) {
+    let boxed = node_ids_in_rect(doc, start, current);
+    let selected = if shift {
+        boxed
+            .iter()
+            .fold(doc.editor_state.selected_items.clone(), |acc, id| {
+                toggle_selection(&acc, id)
+            })
+    } else {
+        boxed
+    };
+    doc.editor_state.selected_items = with_auto_selected_edges(doc, &selected);
+}
+
+fn subgraph_release_bounds(
+    start: (f64, f64),
+    current: (f64, f64),
+    snap: bool,
+    grid: f64,
+) -> Option<(f64, f64, f64, f64)> {
+    let mut x = start.0.min(current.0);
+    let mut y = start.1.min(current.1);
+    let mut w = (start.0 - current.0).abs();
+    let mut h = (start.1 - current.1).abs();
+    if snap {
+        x = snap_value(x, true, grid);
+        y = snap_value(y, true, grid);
+        w = snap_value(w, true, grid).max(grid.max(20.0));
+        h = snap_value(h, true, grid).max(grid.max(20.0));
+    }
+
+    (w > 20.0 && h > 20.0).then_some((x, y, w, h))
+}
+
+#[derive(Clone, Copy, Debug, PartialEq)]
+struct WheelSample {
+    client_x: f64,
+    client_y: f64,
+    dx: f64,
+    dy: f64,
+    zoom_gesture: bool,
+    shift_pan: bool,
+    discrete_wheel: bool,
+}
+
+fn flush_pending_wheel_update(
+    mut doc_signal: Signal<DiagramDocument>,
+    mut pending_wheel_sample: Signal<Option<WheelSample>>,
+) {
+    let pending = pending_wheel_sample.read().as_ref().copied();
+    let Some(sample) = pending else {
+        return;
+    };
+    pending_wheel_sample.set(None);
+
+    let current = doc_signal.read().editor_state.clone();
+    if let Some((next_x, next_y, next_zoom)) = wheel_update(WheelInput {
+        camera_x: current.camera_x,
+        camera_y: current.camera_y,
+        zoom: current.zoom,
+        client_x: sample.client_x,
+        client_y: sample.client_y,
+        dx: sample.dx,
+        dy: sample.dy,
+        zoom_gesture: sample.zoom_gesture,
+        shift_pan: sample.shift_pan,
+        discrete_wheel: sample.discrete_wheel,
+    }) {
+        doc_signal.with_mut(|doc| {
+            doc.editor_state.camera_x = next_x;
+            doc.editor_state.camera_y = next_y;
+            doc.editor_state.zoom = next_zoom;
+        });
+    }
+}
+
+#[allow(clippy::too_many_lines, clippy::similar_names)]
 fn flush_pending_pointer_update(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
@@ -194,7 +323,8 @@ fn flush_pending_pointer_update(
 
     interaction_mode.with_mut(|mode| match mode {
         InteractionMode::DraggingSelection {
-            anchor,
+            anchor_canvas,
+            anchor_client,
             original_positions,
             did_move,
         } => {
@@ -207,7 +337,7 @@ fn flush_pending_pointer_update(
                 doc.editor_state.zoom.0,
             );
 
-            if !*did_move && has_drag_threshold(*anchor, (curr_x, curr_y)) {
+            if !*did_move && has_drag_threshold(*anchor_client, (client_x, client_y)) {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc.clone());
                 *did_move = true;
@@ -216,7 +346,7 @@ fn flush_pending_pointer_update(
             if *did_move {
                 let positions = dragged_positions_with_snap(
                     original_positions,
-                    *anchor,
+                    *anchor_canvas,
                     (curr_x, curr_y),
                     doc.editor_state.snap_to_grid,
                     doc.editor_state.grid_size.0,
@@ -232,11 +362,12 @@ fn flush_pending_pointer_update(
                 if has_changes {
                     doc_signal.with_mut(|doc_mut| {
                         for (id, (nx, ny)) in positions.iter() {
-                            let should_update = doc_mut.document.nodes.get(id).is_some_and(|node| {
-                                (node.x.0 - *nx).abs() > f64::EPSILON
-                                    || (node.y.0 - *ny).abs() > f64::EPSILON
-                                    || !node.locked
-                            });
+                            let should_update =
+                                doc_mut.document.nodes.get(id).is_some_and(|node| {
+                                    (node.x.0 - *nx).abs() > f64::EPSILON
+                                        || (node.y.0 - *ny).abs() > f64::EPSILON
+                                        || !node.locked
+                                });
                             if should_update {
                                 doc_mut.document.nodes = doc_mut.document.nodes.alter(
                                     |n| {
@@ -270,45 +401,64 @@ fn flush_pending_pointer_update(
                 doc_for_mouse.editor_state.camera_y.0,
                 doc_for_mouse.editor_state.zoom.0,
             );
-            let raw_dx = mx - anchor.0;
-            let raw_dy = my - anchor.1;
+            let delta_x_raw = mx - anchor.0;
+            let delta_y_raw = my - anchor.1;
             let (dx, dy) = snap_point(
-                (raw_dx, raw_dy),
+                (delta_x_raw, delta_y_raw),
                 doc_for_mouse.editor_state.snap_to_grid,
                 doc_for_mouse.editor_state.grid_size.0,
             );
 
             if !*did_resize && (dx != 0.0 || dy != 0.0) {
                 let history = history_signal.read().clone();
-                *history_signal.write() = history.push(doc_for_mouse.clone());
+                *history_signal.write() = history.push(doc_for_mouse);
                 *did_resize = true;
             }
 
             if *did_resize {
                 let (obx, oby, obw, obh) = *original_bounds;
-                let north =
-                    *handle == ResizeHandle::Nw || *handle == ResizeHandle::N || *handle == ResizeHandle::Ne;
-                let south =
-                    *handle == ResizeHandle::Sw || *handle == ResizeHandle::S || *handle == ResizeHandle::Se;
-                let west =
-                    *handle == ResizeHandle::Nw || *handle == ResizeHandle::W || *handle == ResizeHandle::Sw;
-                let east =
-                    *handle == ResizeHandle::Ne || *handle == ResizeHandle::E || *handle == ResizeHandle::Se;
+                let north = *handle == ResizeHandle::Nw
+                    || *handle == ResizeHandle::N
+                    || *handle == ResizeHandle::Ne;
+                let south = *handle == ResizeHandle::Sw
+                    || *handle == ResizeHandle::S
+                    || *handle == ResizeHandle::Se;
+                let west = *handle == ResizeHandle::Nw
+                    || *handle == ResizeHandle::W
+                    || *handle == ResizeHandle::Sw;
+                let east = *handle == ResizeHandle::Ne
+                    || *handle == ResizeHandle::E
+                    || *handle == ResizeHandle::Se;
 
-                let nx = if west { obx + dx } else { obx };
-                let ny = if north { oby + dy } else { oby };
-                let nw = if west {
-                    obw - dx
+                let mut dx_clamped = dx;
+                let mut dy_clamped = dy;
+
+                if west {
+                    dx_clamped = dx_clamped.min(obw - 24.0);
                 } else if east {
-                    obw + dx
+                    dx_clamped = dx_clamped.max(24.0 - obw);
+                }
+
+                if north {
+                    dy_clamped = dy_clamped.min(obh - 24.0);
+                } else if south {
+                    dy_clamped = dy_clamped.max(24.0 - obh);
+                }
+
+                let nx = if west { obx + dx_clamped } else { obx };
+                let ny = if north { oby + dy_clamped } else { oby };
+                let nw = if west {
+                    obw - dx_clamped
+                } else if east {
+                    obw + dx_clamped
                 } else {
                     obw
                 }
                 .max(24.0);
                 let nh = if north {
-                    obh - dy
+                    obh - dy_clamped
                 } else if south {
-                    obh + dy
+                    obh + dy_clamped
                 } else {
                     obh
                 }
@@ -341,8 +491,11 @@ fn flush_pending_pointer_update(
             *last_pos = (client_x, client_y);
             if dx.abs() > f64::EPSILON || dy.abs() > f64::EPSILON {
                 doc_signal.with_mut(|doc| {
-                    doc.editor_state.camera_x = OrderedFloat(doc.editor_state.camera_x.0 + dx);
-                    doc.editor_state.camera_y = OrderedFloat(doc.editor_state.camera_y.0 + dy);
+                    let zoom = doc.editor_state.zoom.0;
+                    doc.editor_state.camera_x =
+                        OrderedFloat(doc.editor_state.camera_x.0 - (dx / zoom));
+                    doc.editor_state.camera_y =
+                        OrderedFloat(doc.editor_state.camera_y.0 - (dy / zoom));
                 });
             }
         }
@@ -376,6 +529,8 @@ pub fn Canvas() -> Element {
     let mut space_pan_active = use_signal(|| false);
     let mut viewport_size = use_context::<Signal<(f64, f64)>>();
     let mut pending_pointer_sample = use_signal(|| Option::<(f64, f64)>::None);
+    let mut pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
+    let mut canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let mut ordered_node_cache = use_signal(Vec::<NodeId>::new);
     let mut ordered_node_revision = use_signal(|| Option::<Revision>::None);
 
@@ -479,21 +634,13 @@ pub fn Canvas() -> Element {
                             } else {
                                 let mode = interaction_mode.read().clone();
                                 match mode {
-                                    InteractionMode::DraggingSelection { did_move, .. } => {
-                                        if did_move {
+                                    InteractionMode::DraggingSelection { .. }
+                                    | InteractionMode::ResizingSelection { .. } => {
+                                        interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {
-                                                doc.revision = doc.revision.increment();
+                                                let _ = finalize_motion_release(mode_mut, doc);
                                             });
-                                        }
-                                        interaction_mode.set(InteractionMode::Select);
-                                    }
-                                    InteractionMode::ResizingSelection { did_resize, .. } => {
-                                        if did_resize {
-                                            doc_signal.with_mut(|doc| {
-                                                doc.revision = doc.revision.increment();
-                                            });
-                                        }
-                                        interaction_mode.set(InteractionMode::Select);
+                                        });
                                     }
                                     InteractionMode::Select => {
                                         apply_clear_selection(doc_signal);
@@ -570,6 +717,10 @@ pub fn Canvas() -> Element {
                     window.__seshat_canvas_pointer_raf_cleanup();
                     window.__seshat_canvas_pointer_raf_cleanup = null;
                 }
+                if (window.__seshat_canvas_pointer_global_cleanup) {
+                    window.__seshat_canvas_pointer_global_cleanup();
+                    window.__seshat_canvas_pointer_global_cleanup = null;
+                }
             ",
         );
     });
@@ -621,15 +772,18 @@ pub fn Canvas() -> Element {
 
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
-                if json["type"].as_str() == Some("raf")
-                    && pending_pointer_sample.read().is_some()
-                {
-                    flush_pending_pointer_update(
-                        doc_signal,
-                        history_signal,
-                        interaction_mode,
-                        pending_pointer_sample,
-                    );
+                if json["type"].as_str() == Some("raf") {
+                    if pending_pointer_sample.read().is_some() {
+                        flush_pending_pointer_update(
+                            doc_signal,
+                            history_signal,
+                            interaction_mode,
+                            pending_pointer_sample,
+                        );
+                    }
+                    if pending_wheel_sample.read().is_some() {
+                        flush_pending_wheel_update(doc_signal, pending_wheel_sample);
+                    }
                 }
             }
         });
@@ -648,13 +802,13 @@ pub fn Canvas() -> Element {
                     let lastWidth = -1;
                     let lastHeight = -1;
 
-                    const notify = (width, height) => {
+                    const notify = (left, top, width, height) => {
                         if (Math.abs(width - lastWidth) < 0.5 && Math.abs(height - lastHeight) < 0.5) {
                             return;
                         }
                         lastWidth = width;
                         lastHeight = height;
-                        dioxus.send({ type: 'resize', width, height });
+                        dioxus.send({ type: 'resize', left, top, width, height });
                     };
 
                     const scheduleNotify = () => {
@@ -664,7 +818,7 @@ pub fn Canvas() -> Element {
                         rafId = window.requestAnimationFrame(() => {
                             rafId = 0;
                             const r = target.getBoundingClientRect();
-                            notify(r.width, r.height);
+                            notify(r.left, r.top, r.width, r.height);
                         });
                     };
 
@@ -688,6 +842,10 @@ pub fn Canvas() -> Element {
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 if json["type"].as_str() == Some("resize") {
+                    canvas_origin.set((
+                        json["left"].as_f64().map_or(0.0, |v| v),
+                        json["top"].as_f64().map_or(0.0, |v| v),
+                    ));
                     let next = normalize_viewport(
                         json["width"].as_f64().map_or(1200.0, |v| v),
                         json["height"].as_f64().map_or(800.0, |v| v),
@@ -701,6 +859,222 @@ pub fn Canvas() -> Element {
         });
     });
 
+    use_effect(move || {
+        let mut eval = document::eval(
+            r"
+                if (window.__seshat_canvas_pointer_global_cleanup) {
+                    window.__seshat_canvas_pointer_global_cleanup();
+                }
+
+                const onPointerMove = (event) => {
+                    dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY });
+                };
+
+                const onPointerUp = (event) => {
+                    dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY });
+                };
+
+                window.addEventListener('pointermove', onPointerMove, { passive: true });
+                window.addEventListener('pointerup', onPointerUp, { passive: true });
+
+                window.__seshat_canvas_pointer_global_cleanup = () => {
+                    window.removeEventListener('pointermove', onPointerMove);
+                    window.removeEventListener('pointerup', onPointerUp);
+                };
+            ",
+        );
+
+        spawn(async move {
+            while let Ok(json) = eval.recv::<serde_json::Value>().await {
+                let event_type = json["type"].as_str().map_or("", |s| s);
+                let client_x = json["x"].as_f64().map_or(0.0, |v| v);
+                let client_y = json["y"].as_f64().map_or(0.0, |v| v);
+                let origin = *canvas_origin.read();
+                let local_x = client_x - origin.0;
+                let local_y = client_y - origin.1;
+
+                if event_type == "pointermove" {
+                    interaction_mode.with_mut(|mode| match mode {
+                        InteractionMode::DrawingEdge { current_pos, .. } => {
+                            let doc = doc_signal.read();
+                            *current_pos = to_canvas_coords(
+                                local_x,
+                                local_y,
+                                doc.editor_state.camera_x.0,
+                                doc.editor_state.camera_y.0,
+                                doc.editor_state.zoom.0,
+                            );
+                        }
+                        InteractionMode::RubberBand { current, .. }
+                        | InteractionMode::DrawingSubgraph { current, .. } => {
+                            let doc = doc_signal.read();
+                            let raw = to_canvas_coords(
+                                local_x,
+                                local_y,
+                                doc.editor_state.camera_x.0,
+                                doc.editor_state.camera_y.0,
+                                doc.editor_state.zoom.0,
+                            );
+                            *current = snap_point(
+                                raw,
+                                doc.editor_state.snap_to_grid,
+                                doc.editor_state.grid_size.0,
+                            );
+                        }
+                        InteractionMode::DraggingSelection { .. }
+                        | InteractionMode::ResizingSelection { .. }
+                        | InteractionMode::Panning { .. } => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
+                        InteractionMode::Select => {}
+                    });
+                    continue;
+                }
+
+                if event_type == "pointerup" {
+                    flush_pending_pointer_update(
+                        doc_signal,
+                        history_signal,
+                        interaction_mode,
+                        pending_pointer_sample,
+                    );
+
+                    interaction_mode.with_mut(|mode| match mode {
+                        InteractionMode::DrawingEdge { from_node, .. } => {
+                            let doc = doc_signal.read().clone();
+                            let pos = to_canvas_coords(
+                                local_x,
+                                local_y,
+                                doc.editor_state.camera_x.0,
+                                doc.editor_state.camera_y.0,
+                                doc.editor_state.zoom.0,
+                            );
+                            let target = find_node_at(&doc, pos.0, pos.1);
+                            if let Some(target_id) = target.clone() {
+                                if &target_id != from_node {
+                                    let candidate_edge = Edge {
+                                        source: from_node.clone(),
+                                        target: target_id,
+                                        label: String::new(),
+                                        style: *edge_style_default.read(),
+                                        arrow_type: *arrow_type_default.read(),
+                                        label_offset_t: OrderedFloat(0.5),
+                                        color: None,
+                                        thickness: OrderedFloat(1.5),
+                                        directed: true,
+                                        bend_points: Vec::new(),
+                                        tags: Vec::new(),
+                                        metadata: HashMap::new(),
+                                        font_size: None,
+                                    };
+
+                                    if !edge_preserves_dag(&doc, &candidate_edge) {
+                                        if *tool_signal.read() == ToolMode::Edge {
+                                            if let Some(target_id) = target {
+                                                *mode = InteractionMode::DrawingEdge {
+                                                    from_node: target_id,
+                                                    current_pos: pos,
+                                                };
+                                            } else {
+                                                *mode = InteractionMode::Select;
+                                            }
+                                        } else {
+                                            *mode = InteractionMode::Select;
+                                        }
+                                        return;
+                                    }
+
+                                    let current = doc_signal.read().clone();
+                                    let history = history_signal.read().clone();
+                                    *history_signal.write() = history.push(current);
+                                    doc_signal.with_mut(|doc_mut| {
+                                        doc_mut.document.edges = doc_mut.document.edges.update(
+                                            EdgeId::new(Uuid::new_v4().to_string()),
+                                            candidate_edge,
+                                        );
+                                        doc_mut.revision = doc_mut.revision.increment();
+                                    });
+                                }
+                            }
+                            if *tool_signal.read() == ToolMode::Edge {
+                                if let Some(target_id) = target {
+                                    *mode = InteractionMode::DrawingEdge {
+                                        from_node: target_id,
+                                        current_pos: pos,
+                                    };
+                                } else {
+                                    *mode = InteractionMode::Select;
+                                }
+                            } else {
+                                *mode = InteractionMode::Select;
+                            }
+                        }
+                        InteractionMode::RubberBand { start, current } => {
+                            let shift = *shift_pressed.read();
+                            doc_signal.with_mut(|doc| {
+                                apply_rubber_band_release(doc, *start, *current, shift);
+                            });
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::DrawingSubgraph { start, current } => {
+                            let doc_now = doc_signal.read().clone();
+                            let snap = doc_now.editor_state.snap_to_grid;
+                            let grid = doc_now.editor_state.grid_size.0;
+                            if let Some((x, y, w, h)) =
+                                subgraph_release_bounds(*start, *current, snap, grid)
+                            {
+                                let id = NodeId::new(Uuid::new_v4().to_string());
+                                let current_doc = doc_signal.read().clone();
+                                let history = history_signal.read().clone();
+                                *history_signal.write() = history.push(current_doc);
+                                doc_signal.with_mut(|doc| {
+                                    let _ = doc.document.nodes.insert(
+                                        id.clone(),
+                                        Node {
+                                            kind: NodeKind::Subgraph,
+                                            icon: String::new(),
+                                            label: String::from("Subgraph"),
+                                            x: OrderedFloat(x),
+                                            y: OrderedFloat(y),
+                                            width: OrderedFloat(w),
+                                            height: OrderedFloat(h),
+                                            font_size: None,
+                                            font_weight: None,
+                                            locked: true,
+                                            parent: None,
+                                            dag_rank: None,
+                                            tags: Vec::new(),
+                                            metadata: HashMap::new(),
+                                            z_index: -1,
+                                            style: Some(NodeStyle::Box),
+                                            collapsed: Some(false),
+                                        },
+                                    );
+                                    doc.editor_state.selected_items.clear();
+                                    let _ = doc.editor_state.selected_items.insert(id.to_string());
+                                    doc.revision = doc.revision.increment();
+                                });
+                            }
+                            tool_signal.set(ToolMode::Select);
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::ResizingSelection { .. }
+                        | InteractionMode::DraggingSelection { .. } => {
+                            doc_signal.with_mut(|doc| {
+                                let _ = finalize_motion_release(mode, doc);
+                            });
+                        }
+                        InteractionMode::Panning { .. } => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::Select => {}
+                    });
+                    space_pan_active.set(false);
+                }
+            }
+        });
+    });
+
     let handle_drop = move |evt: DragEvent| {
         evt.prevent_default();
         drag_over.set(false);
@@ -708,6 +1082,7 @@ pub fn Canvas() -> Element {
         dragging_icon.with_mut(|dragging| {
             if let Some(payload) = dragging.take() {
                 let icon_key = payload.icon_key;
+                let image_data_url = payload.image_data_url;
                 let current = doc_signal.read().clone();
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(current);
@@ -719,9 +1094,12 @@ pub fn Canvas() -> Element {
 
                 doc_signal.with_mut(|doc| {
                     let coords = evt.data.coordinates().client();
+                    let origin = *canvas_origin.read();
+                    let local_x = coords.x - origin.0;
+                    let local_y = coords.y - origin.1;
                     let (x, y) = to_canvas_coords(
-                        coords.x,
-                        coords.y,
+                        local_x,
+                        local_y,
                         doc.editor_state.camera_x.0,
                         doc.editor_state.camera_y.0,
                         doc.editor_state.zoom.0,
@@ -731,6 +1109,9 @@ pub fn Canvas() -> Element {
                         doc.editor_state.snap_to_grid,
                         doc.editor_state.grid_size.0,
                     );
+                    let metadata = image_data_url.clone().map_or_else(HashMap::new, |image| {
+                        HashMap::new().update("icon_data_url".to_string(), Value::String(image))
+                    });
                     let id = NodeId::new(Uuid::new_v4().to_string());
                     let _ = doc.document.nodes.insert(
                         id.clone(),
@@ -748,7 +1129,7 @@ pub fn Canvas() -> Element {
                             parent: None,
                             dag_rank: None,
                             tags,
-                            metadata: HashMap::new(),
+                            metadata,
                             z_index: 0,
                             style: Some(NodeStyle::default()),
                             collapsed: None,
@@ -817,10 +1198,13 @@ pub fn Canvas() -> Element {
             },
             ondoubleclick: move |evt| {
                 let coords = evt.data.coordinates().client();
+                let origin = *canvas_origin.read();
+                let local_x = coords.x - origin.0;
+                let local_y = coords.y - origin.1;
                 let doc = doc_signal.read().clone();
                 let pos = to_canvas_coords(
-                    coords.x,
-                    coords.y,
+                    local_x,
+                    local_y,
                     doc.editor_state.camera_x.0,
                     doc.editor_state.camera_y.0,
                     doc.editor_state.zoom.0,
@@ -865,35 +1249,24 @@ pub fn Canvas() -> Element {
 
             onwheel: move |evt| {
                 evt.prevent_default();
-                let (dx, dy) = match evt.data.delta() {
-                    WheelDelta::Pixels(v) => (v.x, v.y),
-                    WheelDelta::Lines(v) => (v.x * 20.0, v.y * 20.0),
-                    WheelDelta::Pages(v) => (v.x * 100.0, v.y * 100.0),
+                let (dx, dy, discrete_wheel) = match evt.data.delta() {
+                    WheelDelta::Pixels(v) => (v.x, v.y, v.y.abs() >= 50.0),
+                    WheelDelta::Lines(v) => (v.x, v.y, false),
+                    WheelDelta::Pages(v) => (v.x, v.y, false),
                 };
-                let zoom_gesture = *ctrl_pressed.read() || *meta_pressed.read();
-                let shift = *shift_pressed.read();
-                let discrete_wheel = dy.abs() >= 50.0;
                 let coords = evt.data.coordinates().client();
-
-                let current = doc_signal.read().editor_state.clone();
-                if let Some((next_x, next_y, next_zoom)) = wheel_update(WheelInput {
-                    camera_x: current.camera_x,
-                    camera_y: current.camera_y,
-                    zoom: current.zoom,
-                    client_x: coords.x,
-                    client_y: coords.y,
+                let origin = *canvas_origin.read();
+                let local_x = coords.x - origin.0;
+                let local_y = coords.y - origin.1;
+                pending_wheel_sample.set(Some(WheelSample {
+                    client_x: local_x,
+                    client_y: local_y,
                     dx,
                     dy,
-                    zoom_gesture,
-                    shift_pan: shift,
+                    zoom_gesture: *ctrl_pressed.read() || *meta_pressed.read(),
+                    shift_pan: *shift_pressed.read(),
                     discrete_wheel,
-                }) {
-                    doc_signal.with_mut(|doc| {
-                        doc.editor_state.camera_x = next_x;
-                        doc.editor_state.camera_y = next_y;
-                        doc.editor_state.zoom = next_zoom;
-                    });
-                }
+                }));
             },
 
             onmousedown: move |evt| {
@@ -907,6 +1280,9 @@ pub fn Canvas() -> Element {
                     );
                 }
                 let coords = evt.data.coordinates().client();
+                let origin = *canvas_origin.read();
+                let local_x = coords.x - origin.0;
+                let local_y = coords.y - origin.1;
                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                 let tool = *tool_signal.read();
@@ -917,7 +1293,7 @@ pub fn Canvas() -> Element {
 
                 if *space_pressed.read() || is_middle || is_right || tool == ToolMode::Pan {
                     space_pan_active.set(*space_pressed.read() && !is_middle && !is_right && tool != ToolMode::Pan);
-                    interaction_mode.set(InteractionMode::Panning { last_pos: (coords.x, coords.y) });
+                    interaction_mode.set(InteractionMode::Panning { last_pos: (local_x, local_y) });
                     return;
                 }
 
@@ -928,8 +1304,8 @@ pub fn Canvas() -> Element {
                 let pos = {
                     let doc = doc_signal.read();
                     to_canvas_coords(
-                        coords.x,
-                        coords.y,
+                        local_x,
+                        local_y,
                         doc.editor_state.camera_x.0,
                         doc.editor_state.camera_y.0,
                         doc.editor_state.zoom.0,
@@ -1019,20 +1395,16 @@ pub fn Canvas() -> Element {
 
             onmousemove: move |evt| {
                 let coords = evt.data.coordinates().client();
+                let origin = *canvas_origin.read();
+                let local_x = coords.x - origin.0;
+                let local_y = coords.y - origin.1;
                 interaction_mode.with_mut(|mode| {
                     match mode {
-                        InteractionMode::DraggingSelection {
-                            anchor: _,
-                            original_positions: _,
-                            did_move: _,
-                        } => {
-                            pending_pointer_sample.set(Some((coords.x, coords.y)));
-                        }
                         InteractionMode::DrawingEdge { current_pos, .. } => {
                             let doc = doc_signal.read();
                             *current_pos = to_canvas_coords(
-                                coords.x,
-                                coords.y,
+                                local_x,
+                                local_y,
                                 doc.editor_state.camera_x.0,
                                 doc.editor_state.camera_y.0,
                                 doc.editor_state.zoom.0,
@@ -1042,8 +1414,8 @@ pub fn Canvas() -> Element {
                         | InteractionMode::DrawingSubgraph { current, .. } => {
                             let doc = doc_signal.read();
                             let raw = to_canvas_coords(
-                                coords.x,
-                                coords.y,
+                                local_x,
+                                local_y,
                                 doc.editor_state.camera_x.0,
                                 doc.editor_state.camera_y.0,
                                 doc.editor_state.zoom.0,
@@ -1054,17 +1426,10 @@ pub fn Canvas() -> Element {
                                 doc.editor_state.grid_size.0,
                             );
                         }
-                        InteractionMode::ResizingSelection {
-                            handle: _,
-                            original_bounds: _,
-                            originals: _,
-                            anchor: _,
-                            did_resize: _,
-                        } => {
-                            pending_pointer_sample.set(Some((coords.x, coords.y)));
-                        }
-                        InteractionMode::Panning { .. } => {
-                            pending_pointer_sample.set(Some((coords.x, coords.y)));
+                        InteractionMode::DraggingSelection { .. }
+                        | InteractionMode::ResizingSelection { .. }
+                        | InteractionMode::Panning { .. } => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
                         }
                         InteractionMode::Select => {}
                     }
@@ -1082,10 +1447,13 @@ pub fn Canvas() -> Element {
                     match mode {
                         InteractionMode::DrawingEdge { from_node, .. } => {
                             let coords = evt.data.coordinates().client();
+                            let origin = *canvas_origin.read();
+                            let local_x = coords.x - origin.0;
+                            let local_y = coords.y - origin.1;
                             let doc = doc_signal.read().clone();
                             let pos = to_canvas_coords(
-                                coords.x,
-                                coords.y,
+                                local_x,
+                                local_y,
                                 doc.editor_state.camera_x.0,
                                 doc.editor_state.camera_y.0,
                                 doc.editor_state.zoom.0,
@@ -1153,17 +1521,7 @@ pub fn Canvas() -> Element {
                         InteractionMode::RubberBand { start, current } => {
                             let shift = *shift_pressed.read();
                             doc_signal.with_mut(|doc| {
-                                let boxed = node_ids_in_rect(doc, *start, *current);
-                                let selected = if shift {
-                                    boxed
-                                        .iter()
-                                        .fold(doc.editor_state.selected_items.clone(), |acc, id| {
-                                            toggle_selection(&acc, id)
-                                        })
-                                } else {
-                                    boxed
-                                };
-                                doc.editor_state.selected_items = with_auto_selected_edges(doc, &selected);
+                                apply_rubber_band_release(doc, *start, *current, shift);
                             });
                             *mode = InteractionMode::Select;
                         }
@@ -1171,17 +1529,9 @@ pub fn Canvas() -> Element {
                             let doc_now = doc_signal.read().clone();
                             let snap = doc_now.editor_state.snap_to_grid;
                             let grid = doc_now.editor_state.grid_size.0;
-                            let mut x = start.0.min(current.0);
-                            let mut y = start.1.min(current.1);
-                            let mut w = (start.0 - current.0).abs();
-                            let mut h = (start.1 - current.1).abs();
-                            if snap {
-                                x = snap_value(x, true, grid);
-                                y = snap_value(y, true, grid);
-                                w = snap_value(w, true, grid).max(grid.max(20.0));
-                                h = snap_value(h, true, grid).max(grid.max(20.0));
-                            }
-                            if w > 20.0 && h > 20.0 {
+                            if let Some((x, y, w, h)) =
+                                subgraph_release_bounds(*start, *current, snap, grid)
+                            {
                                 let id = NodeId::new(Uuid::new_v4().to_string());
                                 let current_doc = doc_signal.read().clone();
                                 let history = history_signal.read().clone();
@@ -1217,21 +1567,11 @@ pub fn Canvas() -> Element {
                             tool_signal.set(ToolMode::Select);
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::ResizingSelection { did_resize, .. } => {
-                            if *did_resize {
-                                doc_signal.with_mut(|doc| {
-                                    doc.revision = doc.revision.increment();
-                                });
-                            }
-                            *mode = InteractionMode::Select;
-                        }
-                        InteractionMode::DraggingSelection { did_move, .. } => {
-                            if *did_move {
-                                doc_signal.with_mut(|doc| {
-                                    doc.revision = doc.revision.increment();
-                                });
-                            }
-                            *mode = InteractionMode::Select;
+                        InteractionMode::ResizingSelection { .. }
+                        | InteractionMode::DraggingSelection { .. } => {
+                            doc_signal.with_mut(|doc| {
+                                let _ = finalize_motion_release(mode, doc);
+                            });
                         }
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
@@ -1242,42 +1582,7 @@ pub fn Canvas() -> Element {
                 space_pan_active.set(false);
             },
 
-            onmouseleave: move |_| {
-                flush_pending_pointer_update(
-                    doc_signal,
-                    history_signal,
-                    interaction_mode,
-                    pending_pointer_sample,
-                );
-                interaction_mode.with_mut(|mode| {
-                    match mode {
-                        InteractionMode::DraggingSelection { did_move, .. } => {
-                            if *did_move {
-                                doc_signal.with_mut(|doc| {
-                                    doc.revision = doc.revision.increment();
-                                });
-                            }
-                            *mode = InteractionMode::Select;
-                        }
-                        InteractionMode::ResizingSelection { did_resize, .. } => {
-                            if *did_resize {
-                                doc_signal.with_mut(|doc| {
-                                    doc.revision = doc.revision.increment();
-                                });
-                            }
-                            *mode = InteractionMode::Select;
-                        }
-                        InteractionMode::Panning { .. }
-                        | InteractionMode::DrawingEdge { .. }
-                        | InteractionMode::DrawingSubgraph { .. }
-                        | InteractionMode::RubberBand { .. } => {
-                            *mode = InteractionMode::Select;
-                        }
-                        InteractionMode::Select => {}
-                    }
-                });
-                space_pan_active.set(false);
-            },
+            onmouseleave: move |_| {},
 
             svg {
                 style: "position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;",
@@ -1316,8 +1621,8 @@ pub fn Canvas() -> Element {
                     let s = &doc.editor_state;
                     let (vw, vh) = *viewport_size.read();
                     let pattern_step = (s.grid_size.0.max(8.0) * s.zoom.0).max(4.0);
-                    let pattern_x = s.camera_x.0.rem_euclid(pattern_step);
-                    let pattern_y = s.camera_y.0.rem_euclid(pattern_step);
+                    let pattern_x = (-s.camera_x.0 * s.zoom.0).rem_euclid(pattern_step);
+                    let pattern_y = (-s.camera_y.0 * s.zoom.0).rem_euclid(pattern_step);
                     let dot_r = if s.zoom.0 >= 0.75 { 1.0 } else { 0.8 };
 
                     if s.show_grid && s.zoom.0 >= 0.3 {
@@ -1352,19 +1657,26 @@ pub fn Canvas() -> Element {
                 }
 
                 {
-                    let doc = doc_signal.read();
-                    let s = &doc.editor_state;
-                    doc.document.edges.iter().filter_map(|(id, edge)| {
+                    let doc = doc_signal.read().clone();
+                    let s = doc.editor_state.clone();
+                    let selected_items =
+                        s.selected_items.iter().cloned().collect::<std::collections::HashSet<_>>();
+                    let camera_x = s.camera_x.0;
+                    let camera_y = s.camera_y.0;
+                    let zoom = s.zoom.0;
+                    #[allow(clippy::needless_collect)]
+                    let edge_rows = doc.document.edges.iter().filter_map(|(id, edge)| {
                         doc.document.nodes
                             .get(&edge.source)
                             .zip(doc.document.nodes.get(&edge.target))
-                            .map(|(src, tgt)| (id, edge, src, tgt))
-                    }).map(|(id, edge, src, tgt)| {
-                                let (sx, sy) = to_screen_coords(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0, s.camera_x.0, s.camera_y.0, s.zoom.0);
-                                let (tx, ty) = to_screen_coords(tgt.x.0 + tgt.width.0 / 2.0, tgt.y.0 + tgt.height.0 / 2.0, s.camera_x.0, s.camera_y.0, s.zoom.0);
-                                let d = edge_path(sx, sy, tx, ty, edge);
-                                let (mid_x, mid_y) = edge_label_position(sx, sy, tx, ty, edge);
-                                let is_selected = s.selected_items.contains(&id.to_string());
+                            .map(|(src, tgt)| (id.clone(), edge.clone(), src.clone(), tgt.clone()))
+                    }).collect::<Vec<_>>();
+                    edge_rows.into_iter().map(move |(id, edge, src, tgt)| {
+                                let (sx, sy) = to_screen_coords(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0, camera_x, camera_y, zoom);
+                                let (tx, ty) = to_screen_coords(tgt.x.0 + tgt.width.0 / 2.0, tgt.y.0 + tgt.height.0 / 2.0, camera_x, camera_y, zoom);
+                                let d = edge_path(sx, sy, tx, ty, &edge);
+                                let (mid_x, mid_y) = edge_label_position(sx, sy, tx, ty, &edge);
+                                let is_selected = selected_items.contains(id.as_str());
                                 let stroke_color = if is_selected {
                                     EDGE_SELECTED
                                 } else {
@@ -1379,8 +1691,8 @@ pub fn Canvas() -> Element {
                                 } else {
                                     ""
                                 };
-                                let font_size = edge.font_size.map_or(10.0, |f| f.0) * s.zoom.0;
-                                let is_editing_edge = editing_edge.read().as_ref() == Some(id);
+                                let font_size = edge.font_size.map_or(10.0, |f| f.0) * zoom;
+                                let is_editing_edge = editing_edge.read().as_ref() == Some(&id);
                                 rsx! {
                                     path {
                                         key: "{id:?}",
@@ -1445,7 +1757,6 @@ pub fn Canvas() -> Element {
                                     }
                                 }
                             })
-                    .collect::<Vec<_>>().into_iter()
                 }
 
                 {
@@ -1463,31 +1774,47 @@ pub fn Canvas() -> Element {
             }
 
             {
-                let doc_for_nodes = doc_signal.read();
+                let doc_for_nodes = doc_signal.read().clone();
                 let editor_for_nodes = doc_for_nodes.editor_state.clone();
+                let selected_items = editor_for_nodes
+                    .selected_items
+                    .iter()
+                    .cloned()
+                    .collect::<std::collections::HashSet<_>>();
                 let hovered_now = hovered_node.read().clone();
-                ordered_node_cache
+                let camera_x = editor_for_nodes.camera_x.0;
+                let camera_y = editor_for_nodes.camera_y.0;
+                let zoom = editor_for_nodes.zoom.0;
+                #[allow(clippy::needless_collect)]
+                let node_rows = ordered_node_cache
                     .read()
                     .iter()
-                    .filter_map(|id| doc_for_nodes.document.nodes.get(id).map(|node| (id, node)))
-                    .map(|(id, node)| {
+                    .filter_map(|id| {
+                        doc_for_nodes
+                            .document
+                            .nodes
+                            .get(id)
+                            .map(|node| (id.clone(), node.clone()))
+                    })
+                    .collect::<Vec<_>>();
+                node_rows.into_iter().map(move |(id, node)| {
                     let id_mousedown = id.clone();
                     let id_mouseup = id.clone();
                     let id_mouseenter = id.clone();
                     let id_mouseleave = id.clone();
-                    let is_selected = editor_for_nodes.selected_items.contains(&id.to_string());
+                    let is_selected = selected_items.contains(id.as_str());
                     let (left, top) = to_screen_coords(
                         node.x.0,
                         node.y.0,
-                        editor_for_nodes.camera_x.0,
-                        editor_for_nodes.camera_y.0,
-                        editor_for_nodes.zoom.0,
+                        camera_x,
+                        camera_y,
+                        zoom,
                     );
                     let (width, height) = (
-                        node.width.0 * editor_for_nodes.zoom.0,
-                        node.height.0 * editor_for_nodes.zoom.0,
+                        node.width.0 * zoom,
+                        node.height.0 * zoom,
                     );
-                    let is_hovered = hovered_now.as_ref() == Some(id);
+                    let is_hovered = hovered_now.as_ref() == Some(&id);
                     let border_width = if is_selected { "2" } else { "1" };
                     let border_base = if is_selected || is_hovered {
                         ACCENT
@@ -1497,8 +1824,8 @@ pub fn Canvas() -> Element {
                     let border_mix = if is_hovered && !is_selected { "50" } else { "100" };
                     let bg = if node.kind == NodeKind::Subgraph { NODE_BG_SUBGRAPH } else { NODE_BG };
                     let z_index = node.z_index + if node.kind == NodeKind::Subgraph { 0 } else { 1000 };
-                    let is_editing_node = editing_node.read().as_ref() == Some(id);
-                    let font_px = node.font_size.map_or(11.0, |f| f.0) * editor_for_nodes.zoom.0;
+                    let is_editing_node = editing_node.read().as_ref() == Some(&id);
+                    let font_px = node.font_size.map_or(11.0, |f| f.0) * zoom;
                     let fallback_provider = node.icon.split('/').next().map_or("generic", |p| p);
                     let provider = node.tags.first().map_or(fallback_provider, |p| p.as_str());
                     let provider_top = provider_color(provider);
@@ -1527,11 +1854,20 @@ pub fn Canvas() -> Element {
                                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                                 let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
                                 let coords = evt.data.coordinates().client();
-                                let pos = to_canvas_coords(coords.x, coords.y, doc.editor_state.camera_x.0, doc.editor_state.camera_y.0, doc.editor_state.zoom.0);
+                                let origin = *canvas_origin.read();
+                                let local_x = coords.x - origin.0;
+                                let local_y = coords.y - origin.1;
+                                let pos = to_canvas_coords(
+                                    local_x,
+                                    local_y,
+                                    doc.editor_state.camera_x.0,
+                                    doc.editor_state.camera_y.0,
+                                    doc.editor_state.zoom.0,
+                                );
 
                                 if *space_pressed.read() || is_middle || is_right || tool == ToolMode::Pan {
                                     space_pan_active.set(*space_pressed.read() && !is_middle && !is_right && tool != ToolMode::Pan);
-                                    interaction_mode.set(InteractionMode::Panning { last_pos: (coords.x, coords.y) });
+                                    interaction_mode.set(InteractionMode::Panning { last_pos: (local_x, local_y) });
                                     return;
                                 }
 
@@ -1548,7 +1884,8 @@ pub fn Canvas() -> Element {
                                         });
                                     }
                                 } else {
-                                    let was_selected = doc.editor_state.selected_items.contains(&id_mousedown.to_string());
+                                    let was_selected =
+                                        doc.editor_state.selected_items.contains(id_mousedown.as_str());
 
                                     doc_signal.with_mut(|d| {
                                         let selected = if shift {
@@ -1565,7 +1902,8 @@ pub fn Canvas() -> Element {
                                     let original_positions =
                                         drag_original_positions(&current_doc, &current_doc.editor_state.selected_items);
                                     interaction_mode.set(InteractionMode::DraggingSelection {
-                                        anchor: pos,
+                                        anchor_canvas: pos,
+                                        anchor_client: (local_x, local_y),
                                         original_positions,
                                         did_move: false,
                                     });
@@ -1616,9 +1954,12 @@ pub fn Canvas() -> Element {
                                         if *tool_signal.read() == ToolMode::Edge {
                                             let doc_now = doc_signal.read().clone();
                                             let coords = evt.data.coordinates().client();
+                                            let origin = *canvas_origin.read();
+                                            let local_x = coords.x - origin.0;
+                                            let local_y = coords.y - origin.1;
                                             let pos = to_canvas_coords(
-                                                coords.x,
-                                                coords.y,
+                                                local_x,
+                                                local_y,
                                                 doc_now.editor_state.camera_x.0,
                                                 doc_now.editor_state.camera_y.0,
                                                 doc_now.editor_state.zoom.0,
@@ -1631,21 +1972,13 @@ pub fn Canvas() -> Element {
                                             interaction_mode.set(InteractionMode::Select);
                                         }
                                     }
-                                    InteractionMode::DraggingSelection { did_move, .. } => {
-                                        if did_move {
+                                    InteractionMode::DraggingSelection { .. }
+                                    | InteractionMode::ResizingSelection { .. } => {
+                                        interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {
-                                                doc.revision = doc.revision.increment();
+                                                let _ = finalize_motion_release(mode_mut, doc);
                                             });
-                                        }
-                                        interaction_mode.set(InteractionMode::Select);
-                                    }
-                                    InteractionMode::ResizingSelection { did_resize, .. } => {
-                                        if did_resize {
-                                            doc_signal.with_mut(|doc| {
-                                                doc.revision = doc.revision.increment();
-                                            });
-                                        }
-                                        interaction_mode.set(InteractionMode::Select);
+                                        });
                                     }
                                     _ => {}
                                 }
@@ -1689,12 +2022,11 @@ pub fn Canvas() -> Element {
                                     span {
                                         style: "font-size: {font_px}px; color: {TEXT_MAIN};",
                                         ondoubleclick: {
-                                            let edit_id = id.clone();
                                             let edit_label = node.label.clone();
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 editing_edge.set(None);
-                                                editing_node.set(Some(edit_id.clone()));
+                                                editing_node.set(Some(id.clone()));
                                                 edit_value.set(edit_label.clone());
                                             }
                                         },
@@ -1738,12 +2070,11 @@ pub fn Canvas() -> Element {
                                     span {
                                         style: "position:absolute; top:8px; left:10px; font-size:{font_px}px; color:{TEXT_MUTED};",
                                         ondoubleclick: {
-                                            let edit_id = id.clone();
                                             let edit_label = node.label.clone();
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 editing_edge.set(None);
-                                                editing_node.set(Some(edit_id.clone()));
+                                                editing_node.set(Some(id.clone()));
                                                 edit_value.set(edit_label.clone());
                                             }
                                         },
@@ -1781,10 +2112,13 @@ pub fn Canvas() -> Element {
                                                             }
                                                             evt.stop_propagation();
                                                             let coords = evt.data.coordinates().client();
+                                                            let origin = *canvas_origin.read();
+                                                            let local_x = coords.x - origin.0;
+                                                            let local_y = coords.y - origin.1;
                                                             let doc = doc_signal.read().clone();
                                                             let mouse_pos = to_canvas_coords(
-                                                                coords.x,
-                                                                coords.y,
+                                                                local_x,
+                                                                local_y,
                                                                 doc.editor_state.camera_x.0,
                                                                 doc.editor_state.camera_y.0,
                                                                 doc.editor_state.zoom.0,
@@ -1806,9 +2140,18 @@ pub fn Canvas() -> Element {
                                     }
                                 }
 
-                                span {
-                                    style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
-                                    "{node_initials}"
+                                if let Some(icon_src) = node_image_data_url(&node) {
+                                    img {
+                                        src: "{icon_src}",
+                                        width: "{(width * 0.52).clamp(20.0, width - 8.0)}px",
+                                        height: "{(height * 0.52).clamp(20.0, height - 8.0)}px",
+                                        style: "object-fit: contain; pointer-events: none; user-select: none;"
+                                    }
+                                } else {
+                                    span {
+                                        style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
+                                        "{node_initials}"
+                                    }
                                 }
                                 if is_editing_node {
                                     input {
@@ -1843,12 +2186,11 @@ pub fn Canvas() -> Element {
                                     span {
                                         style: "position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:{font_px}px; color:{TEXT_MAIN};",
                                         ondoubleclick: {
-                                            let edit_id = id.clone();
                                             let edit_label = node.label.clone();
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 editing_edge.set(None);
-                                                editing_node.set(Some(edit_id.clone()));
+                                                editing_node.set(Some(id.clone()));
                                                 edit_value.set(edit_label.clone());
                                             }
                                         },
@@ -1859,7 +2201,6 @@ pub fn Canvas() -> Element {
                     }
                 }
                     })
-                    .collect::<Vec<_>>().into_iter()
             }
 
             {
@@ -2028,5 +2369,65 @@ pub fn Canvas() -> Element {
                 }
             }
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{apply_rubber_band_release, subgraph_release_bounds};
+    use crate::models::document::{
+        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    };
+    use im::HashMap;
+
+    fn node_at(x: f64, y: f64) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: String::from("N"),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(50.0),
+            height: OrderedFloat(50.0),
+            font_size: None,
+            font_weight: None,
+            locked: true,
+            parent: None,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        }
+    }
+
+    #[test]
+    fn given_rubber_band_release_when_applied_then_selection_is_committed() {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new(String::from("n1"));
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_id.clone(), node_at(10.0, 10.0));
+
+        apply_rubber_band_release(&mut doc, (0.0, 0.0), (80.0, 80.0), false);
+
+        assert!(doc
+            .editor_state
+            .selected_items
+            .contains(&node_id.to_string()));
+    }
+
+    #[test]
+    fn given_subgraph_release_bounds_when_drag_too_small_then_none() {
+        let result = subgraph_release_bounds((0.0, 0.0), (10.0, 10.0), false, 20.0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
+        let result = subgraph_release_bounds((5.0, 10.0), (60.0, 70.0), false, 20.0);
+        assert_eq!(result, Some((5.0, 10.0, 55.0, 60.0)));
     }
 }
