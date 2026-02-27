@@ -2,7 +2,9 @@ $schema: "https://moonrepo.dev/schemas/project.json"
 
 tasks:
   serve:
-    command: "sh -c 'fuser -k 8081/tcp || true; dx serve --platform web --port 8081'"
+    script: |
+      fuser -k 8081/tcp || true
+      dx serve --platform web --port 8081
     options:
       cache: false
 

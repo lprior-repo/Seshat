@@ -1,6 +1,6 @@
 $schema: "https://moonrepo.dev/schemas/workspace.json"
 vcs:
-  client: "git"
+  manager: "git"
   defaultBranch: "main"
 
 projects:
