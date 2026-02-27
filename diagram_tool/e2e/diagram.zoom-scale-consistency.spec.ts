@@ -2,11 +2,13 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  nodeCount,
   nodeFrameByLabel,
   runEffect,
   selectedCount,
   trapPageErrors,
   waitForUiReady,
+  zoomPercent,
 } from "./helpers";
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -17,14 +19,6 @@ async function requireBox(target: Locator): Promise<Box> {
     throw new Error("expected bounding box");
   }
   return box;
-}
-
-async function zoomPercent(page: Page): Promise<number> {
-  const text = await runEffect(() =>
-    page.getByRole("button", { name: /\d+%/ }).first().innerText(),
-  );
-  const parsed = Number.parseInt(text, 10);
-  return Number.isNaN(parsed) ? 100 : parsed;
 }
 
 async function zoomToAtLeast(page: Page, target: number) {
@@ -38,16 +32,9 @@ async function zoomToAtLeast(page: Page, target: number) {
 }
 
 async function southEastHandle(canvas: Locator): Promise<Box> {
-  const handles = canvas.locator('button[style*="nwse-resize"], button[style*="nesw-resize"]');
-  const count = await runEffect(() => handles.count());
-  const boxes: Box[] = [];
-  for (let i = 0; i < count; i += 1) {
-    const next = await runEffect(() => handles.nth(i).boundingBox());
-    if (next) {
-      boxes.push(next);
-    }
-  }
-  const selected = boxes.sort((a, b) => (a.x + a.y) - (b.x + b.y)).pop();
+  const selected = await runEffect(() =>
+    canvas.locator('[data-testid="selection-handle"][data-handle="se"]').first().boundingBox(),
+  );
   if (!selected) {
     throw new Error("missing south-east handle");
   }
@@ -67,7 +54,7 @@ async function runResizeScenario(
   await runEffect(() => waitForUiReady(page));
   await runEffect(() => clearCanvasOverlays(page));
 
-  const canvas = page.locator(".canvas-container");
+  const canvas = page.getByTestId("canvas-container");
   await runEffect(() => createTextNode(page, canvas, 680, 300));
   const node = canvas.getByText("Text", { exact: true }).first();
   await runEffect(() => node.click());
@@ -116,10 +103,11 @@ test.describe("zoom/scale consistency", () => {
     await runEffect(() => waitForUiReady(page));
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 700, 320));
+  const canvas = page.getByTestId("canvas-container");
+  await runEffect(() => createTextNode(page, canvas, 700, 320));
     const node = canvas.getByText("Text", { exact: true }).first();
     await runEffect(() => node.click());
+    expect(await nodeCount(page)).toBe(1);
     await zoomToAtLeast(page, 300);
 
     const handle = await southEastHandle(canvas);

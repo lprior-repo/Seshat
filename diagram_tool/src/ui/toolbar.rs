@@ -75,8 +75,16 @@ pub fn Toolbar() -> Element {
                     let active = *tool_signal.read() == mode;
                     let bg = if active { ACCENT_SOFT } else { "transparent" };
                     let border = if active { format!("1px solid {ACCENT}") } else { format!("1px solid {BORDER}") };
+                    let test_id = match mode {
+                        ToolMode::Select => "tool-select",
+                        ToolMode::Pan => "tool-pan",
+                        ToolMode::Edge => "tool-edge",
+                        ToolMode::Subgraph => "tool-subgraph",
+                        ToolMode::Text => "tool-text",
+                    };
                     rsx! {
                         button {
+                            "data-testid": "{test_id}",
                             style: "padding: 6px 10px; border-radius: 6px; border: {border}; background: {bg}; color: {TEXT_MAIN}; cursor: pointer; font-size: 12px;",
                             onclick: move |_| tool_signal.set(mode),
                             "{mode.label()}"
@@ -94,28 +102,33 @@ pub fn Toolbar() -> Element {
             div { style: "width: 1px; height: 20px; background: {BORDER};" }
 
             button {
+                "data-testid": "toolbar-undo",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| actions::undo(doc_signal, history_signal),
                 "Undo"
             }
             button {
+                "data-testid": "toolbar-redo",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| actions::redo(doc_signal, history_signal),
                 "Redo"
             }
 
             button {
+                "data-testid": "zoom-in",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| actions::zoom_in(doc_signal, history_signal, viewport_size_signal),
                 "+"
             }
             button {
+                "data-testid": "zoom-percent",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {ACCENT}; background: color-mix(in oklch, {ACCENT_SOFT} 65%, {BG_BASE}); color: {TEXT_MAIN}; min-width: 72px;",
                 onclick: move |_| actions::zoom_reset(doc_signal, history_signal),
                 title: "Reset zoom",
                 "{zoom_percent:.0}%"
             }
             button {
+                "data-testid": "zoom-out",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| actions::zoom_out(doc_signal, history_signal, viewport_size_signal),
                 "-"
@@ -124,6 +137,7 @@ pub fn Toolbar() -> Element {
             div { style: "width: 1px; height: 20px; background: {BORDER};" }
 
             button {
+                "data-testid": "toolbar-delete",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {delete_color}; opacity: {delete_opacity};",
                 onclick: move |_| actions::delete_selection(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
@@ -133,6 +147,7 @@ pub fn Toolbar() -> Element {
             div { style: "width: 1px; height: 20px; background: {BORDER};" }
 
             button {
+                "data-testid": "toolbar-validate",
                 style: "padding: 5px 10px; cursor: pointer; background: {ACCENT}; border: none; border-radius: 4px; color: {BG_BASE};",
                 onclick: move |_| {
                     validate_trigger.with_mut(|t| *t = t.saturating_add(1));
@@ -143,6 +158,7 @@ pub fn Toolbar() -> Element {
             div { style: "width: 1px; height: 20px; background: {BORDER};" }
 
             button {
+                "data-testid": "toolbar-save",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| {
                     persistence::save_workspace(
@@ -156,6 +172,7 @@ pub fn Toolbar() -> Element {
                 "{save_label}"
             }
             button {
+                "data-testid": "toolbar-open",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| {
                     persistence::open_workspace(
@@ -185,17 +202,18 @@ pub fn Toolbar() -> Element {
                 }
             }
 
-            for (label, enabled, setter) in [
-                ("Icons", panel_visibility.read().sidebar, 0_u8),
-                ("Props", panel_visibility.read().properties, 1_u8),
-                ("Mini", panel_visibility.read().minimap, 2_u8),
-                ("Valid", panel_visibility.read().validation, 3_u8),
+            for (label, test_id, enabled, setter) in [
+                ("Icons", "toggle-icons-panel", panel_visibility.read().sidebar, 0_u8),
+                ("Props", "toggle-props-panel", panel_visibility.read().properties, 1_u8),
+                ("Mini", "toggle-mini-panel", panel_visibility.read().minimap, 2_u8),
+                ("Valid", "toggle-valid-panel", panel_visibility.read().validation, 3_u8),
             ] {
                 {
                     let bg = if enabled { ACCENT_SOFT } else { BG_BASE };
                     let border = if enabled { format!("1px solid {ACCENT}") } else { format!("1px solid {BORDER}") };
                     rsx! {
                         button {
+                            "data-testid": "{test_id}",
                             style: "padding: 6px 8px; cursor: pointer; border-radius: 6px; border: {border}; background: {bg}; color: {TEXT_MAIN}; font-size: 11px;",
                             onclick: move |_| {
                                 panel_visibility.with_mut(|panels| {
@@ -232,14 +250,17 @@ pub fn Toolbar() -> Element {
             }
 
             span {
+                "data-testid": "node-count",
                 style: "font-size: 11px; color: {TEXT_MUTED}; margin-left: 8px;",
                 "{stats.node_count} nodes"
             }
             span {
+                "data-testid": "edge-count",
                 style: "font-size: 11px; color: {TEXT_MUTED};",
                 "{stats.edge_count} edges"
             }
             span {
+                "data-testid": "selected-count",
                 style: "font-size: 11px; color: {TEXT_MUTED};",
                 "{stats.selected_count} selected"
             }

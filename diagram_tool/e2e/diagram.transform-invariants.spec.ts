@@ -3,6 +3,7 @@ import {
   clearCanvasOverlays,
   createTextNode,
   runEffect,
+  selectedCount,
   trapPageErrors,
   waitForNoRebuildOverlay,
   waitForUiReady,
@@ -25,7 +26,7 @@ type Point = {
 async function nodeBoxes(canvas: Locator): Promise<Box[]> {
   return runEffect(() =>
     canvas
-      .locator('div[style*="position: absolute"][style*="border-radius: 10px"]')
+      .getByTestId("diagram-node")
       .evaluateAll((elements) =>
         elements
           .map((element) => {
@@ -60,9 +61,10 @@ async function dragMouse(page: Page, from: Point, to: Point) {
 }
 
 async function resizeHandleCenters(canvas: Locator, cursor: string): Promise<Point[]> {
+  const handleName = cursor === "ew-resize" ? "e" : "se";
   return runEffect(() =>
     canvas
-      .locator(`button[style*="${cursor}"]`)
+      .locator(`[data-testid="selection-handle"][data-handle="${handleName}"]`)
       .evaluateAll((elements) =>
         elements
           .map((element) => {
@@ -72,12 +74,6 @@ async function resizeHandleCenters(canvas: Locator, cursor: string): Promise<Poi
           .sort((a, b) => a.x - b.x),
       ),
   );
-}
-
-async function selectedCount(page: Page): Promise<number> {
-  const label = await runEffect(() => page.getByText(/\d+ selected/).first().innerText());
-  const parsed = Number.parseInt(label, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
 }
 
 test.describe("diagram transform invariants", () => {

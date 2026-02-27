@@ -254,6 +254,7 @@ pub(super) fn selection_handles_overlay(
         rsx! {
             if is_multi {
                 div {
+                    "data-testid": "selection-bounds",
                     style: "position:absolute; left:{sx - pad}px; top:{sy - pad}px; width:{box_w}px; height:{box_h}px; border:{SELECTION_BOUNDS_STROKE}; pointer-events:none; z-index:15;"
                 }
             }
@@ -261,6 +262,17 @@ pub(super) fn selection_handles_overlay(
                 for (handle, hx, hy, cursor) in handles {
                     button {
                         key: "{hx}-{hy}",
+                        "data-testid": "selection-handle",
+                        "data-handle": match handle {
+                            ResizeHandle::Nw => "nw",
+                            ResizeHandle::N => "n",
+                            ResizeHandle::Ne => "ne",
+                            ResizeHandle::E => "e",
+                            ResizeHandle::Se => "se",
+                            ResizeHandle::S => "s",
+                            ResizeHandle::Sw => "sw",
+                            ResizeHandle::W => "w",
+                        },
                         style: "position:absolute; left:{hx - hs/2.0}px; top:{hy - hs/2.0}px; width:{hs}px; height:{hs}px; border-radius:2px; border:1px solid {BG_BASE}; background:{ACCENT}; cursor:{cursor}; z-index:16;",
                         onmousedown: move |evt| {
                             if evt.data.trigger_button() != Some(MouseButton::Primary) {
@@ -385,46 +397,60 @@ pub(super) fn subgraph_preview_overlay(
 
 pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<EdgeId> {
     let hit_radius_world = 8.0 / doc.editor_state.zoom.0.max(0.1);
-    doc.document.edges.iter().find_map(|(id, edge)| {
-        doc.document
-            .nodes
-            .get(&edge.source)
-            .zip(doc.document.nodes.get(&edge.target))
-            .and_then(|(source, target)| {
-                let sx = source.x.0 + (source.width.0 / 2.0);
-                let sy = source.y.0 + (source.height.0 / 2.0);
-                let tx = target.x.0 + (target.width.0 / 2.0);
-                let ty = target.y.0 + (target.height.0 / 2.0);
-                let hit_distance = match edge_geometry(sx, sy, tx, ty, edge) {
-                    EdgeGeometry::Quadratic { control: (cx, cy) } => {
-                        let mut min_dist = f64::MAX;
-                        let mut prev = (sx, sy);
-                        for step in 1..=20 {
-                            let t = f64::from(step) / 20.0;
-                            let curr = quadratic_bezier_point((sx, sy), (cx, cy), (tx, ty), t);
-                            min_dist =
-                                min_dist.min(dist_to_segment(x, y, prev.0, prev.1, curr.0, curr.1));
-                            prev = curr;
+    let endpoint_hit_radius_world = hit_radius_world * 1.25;
+    doc.document
+        .edges
+        .iter()
+        .filter_map(|(id, edge)| {
+            doc.document
+                .nodes
+                .get(&edge.source)
+                .zip(doc.document.nodes.get(&edge.target))
+                .and_then(|(source, target)| {
+                    let sx = source.x.0 + (source.width.0 / 2.0);
+                    let sy = source.y.0 + (source.height.0 / 2.0);
+                    let tx = target.x.0 + (target.width.0 / 2.0);
+                    let ty = target.y.0 + (target.height.0 / 2.0);
+                    let hit_distance = match edge_geometry(sx, sy, tx, ty, edge) {
+                        EdgeGeometry::Quadratic { control: (cx, cy) } => {
+                            let mut min_dist = f64::MAX;
+                            let mut prev = (sx, sy);
+                            for step in 1..=32 {
+                                let t = f64::from(step) / 32.0;
+                                let curr = quadratic_bezier_point((sx, sy), (cx, cy), (tx, ty), t);
+                                min_dist = min_dist
+                                    .min(dist_to_segment(x, y, prev.0, prev.1, curr.0, curr.1));
+                                prev = curr;
+                            }
+                            min_dist
                         }
-                        min_dist
-                    }
-                    EdgeGeometry::Polyline(points) => points
-                        .windows(2)
-                        .map(|window| {
-                            dist_to_segment(
-                                x,
-                                y,
-                                window[0].0,
-                                window[0].1,
-                                window[1].0,
-                                window[1].1,
-                            )
-                        })
-                        .fold(f64::MAX, f64::min),
-                };
-                (hit_distance < hit_radius_world).then(|| id.clone())
-            })
-    })
+                        EdgeGeometry::Polyline(points) => points
+                            .windows(2)
+                            .map(|window| {
+                                dist_to_segment(
+                                    x,
+                                    y,
+                                    window[0].0,
+                                    window[0].1,
+                                    window[1].0,
+                                    window[1].1,
+                                )
+                            })
+                            .fold(f64::MAX, f64::min),
+                    };
+                    let endpoint_distance = dist_to_segment(x, y, sx, sy, sx, sy)
+                        .min(dist_to_segment(x, y, tx, ty, tx, ty));
+                    (hit_distance < hit_radius_world
+                        || endpoint_distance < endpoint_hit_radius_world)
+                        .then(|| (id.clone(), hit_distance))
+                })
+        })
+        .min_by(|(a_id, a_dist), (b_id, b_dist)| {
+            a_dist
+                .total_cmp(b_dist)
+                .then_with(|| a_id.as_str().cmp(b_id.as_str()))
+        })
+        .map(|(id, _)| id)
 }
 
 #[cfg(test)]
@@ -516,6 +542,49 @@ mod tests {
 
         let hit = find_edge_at(&doc, 50.0, 17.0);
         assert!(hit.is_none());
+    }
+
+    #[test]
+    fn given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_edge_id() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_a = EdgeId::new(String::from("edge-a"));
+        let edge_b = EdgeId::new(String::from("edge-b"));
+
+        let doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new()
+                    .update(edge_b.clone(), edge(source_id.clone(), target_id.clone()))
+                    .update(edge_a.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        let hit = find_edge_at(&doc, 50.0, 5.0);
+        assert_eq!(hit, Some(edge_a));
+    }
+
+    #[test]
+    fn given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("e1"));
+
+        let doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new().update(edge_id.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        let hit = find_edge_at(&doc, 109.0, 12.0);
+        assert_eq!(hit, Some(edge_id));
     }
 }
 

@@ -3,36 +3,67 @@ $schema: "https://moonrepo.dev/schemas/project.json"
 tasks:
   serve:
     script: |
-      fuser -k 8081/tcp || true
       dx serve --platform web --port 8081
     options:
       cache: false
 
   check:
-    command: "/usr/bin/cargo check"
+    script: |
+      /usr/bin/cargo check
 
   test:
-    command: "/usr/bin/cargo test"
+    script: |
+      /usr/bin/cargo test
+
+  e2e-smoke:
+    command: "npm exec playwright test -- --project baseline-chromium --grep @p0-smoke"
+    options:
+      cache: false
+
+  e2e-redqueen-wave1:
+    command: "npm exec playwright test -- --project rq-wave1"
+    options:
+      cache: false
+
+  e2e-redqueen-replay:
+    command: "npm exec playwright test -- --project rq-wave1 --grep RQ-A01"
+    options:
+      cache: false
+
+  e2e-redqueen-wave3:
+    command: "npm exec playwright test -- --project rq-wave3"
+    options:
+      cache: false
+
+  e2e-full:
+    command: "npm exec playwright test --"
+    options:
+      cache: false
 
   e2e:
-    command: "npm exec playwright test"
+    command: "moon run :e2e-full"
     options:
       cache: false
 
   clippy:
-    command: "/usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic"
+    script: |
+      /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
 
   fmt:
-    command: "/usr/bin/cargo fmt --check"
+    script: |
+      /usr/bin/cargo fmt --check
 
   build-web:
-    command: "dx build --platform web"
+    script: |
+      dx build --platform web
 
   coverage:
-    command: "/usr/bin/cargo llvm-cov --summary-only"
+    script: |
+      /usr/bin/cargo llvm-cov --summary-only
 
   coverage-core:
-    command: "/usr/bin/cargo llvm-cov --summary-only --ignore-filename-regex '(src/main.rs|src/bin/|src/ui/|src/hooks/)'"
+    script: |
+      /usr/bin/cargo llvm-cov --summary-only --ignore-filename-regex '(src/main.rs|src/bin/|src/ui/|src/hooks/)'
 
   mutants:
     command: "cargo mutants --in-place"
@@ -56,7 +87,14 @@ tasks:
 
   ci:
     script: |
-      /usr/bin/cargo check
-      /usr/bin/cargo test
-      /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
-      npm exec playwright test
+      moon run :check
+      moon run :test
+      moon run :clippy
+
+  ci-hardening:
+    script: |
+      moon run :check
+      moon run :test
+      moon run :clippy
+      moon run :e2e-smoke
+      moon run :e2e-full

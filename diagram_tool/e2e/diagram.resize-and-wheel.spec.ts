@@ -2,13 +2,16 @@ import { expect, test } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  nodeCount,
   runEffect,
+  selectedCount,
   trapPageErrors,
   waitForUiReady,
+  zoomPercent,
 } from "./helpers";
 
 async function firstNodeBox(page: Parameters<typeof test>[0]["page"]) {
-  const node = page.locator(".canvas-container").getByText("Text", { exact: true }).first();
+  const node = page.getByTestId("canvas-container").getByText("Text", { exact: true }).first();
   const box = await runEffect(() => node.boundingBox());
   if (!box) {
     throw new Error("node bounds unavailable");
@@ -17,16 +20,15 @@ async function firstNodeBox(page: Parameters<typeof test>[0]["page"]) {
 }
 
 test.describe("diagram resize and wheel behavior", () => {
-  test("wheel on canvas zooms editor and does not scroll page", async ({ page }) => {
+  test("wheel on canvas zooms editor and does not scroll page @p0-smoke", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffect(() => page.goto("/"));
     await runEffect(() => waitForUiReady(page));
     await runEffect(() => clearCanvasOverlays(page));
 
-    const zoomLabel = page.getByRole("button", { name: /\d+%/ }).first();
-    await expect(zoomLabel).toHaveText("100%");
+    expect(await zoomPercent(page)).toBe(100);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     const box = await runEffect(() => canvas.boundingBox());
     if (!box) {
       throw new Error("canvas bounds unavailable");
@@ -35,7 +37,7 @@ test.describe("diagram resize and wheel behavior", () => {
     const beforeScroll = await runEffect(() => page.evaluate(() => window.scrollY));
     await runEffect(() => page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4));
     await runEffect(() => page.mouse.wheel(0, -180));
-    await expect(zoomLabel).not.toHaveText("100%");
+    expect(await zoomPercent(page)).not.toBe(100);
 
     const afterScroll = await runEffect(() => page.evaluate(() => window.scrollY));
     expect(afterScroll).toBe(beforeScroll);
@@ -48,17 +50,18 @@ test.describe("diagram resize and wheel behavior", () => {
     await runEffect(() => waitForUiReady(page));
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     await runEffect(() => createTextNode(page, canvas, 620, 280));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    expect(await nodeCount(page)).toBe(1);
 
     const node = canvas.getByText("Text", { exact: true }).first();
     await runEffect(() => node.click());
-    await expect(page.getByText(/1 selected/)).toBeVisible();
+    expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
 
     const before = await firstNodeBox(page);
-    const handles = canvas.locator('button[style*="ew-resize"]');
-    const east = await runEffect(() => handles.last().boundingBox());
+    const east = await runEffect(() =>
+      canvas.locator('[data-testid="selection-handle"][data-handle="e"]').first().boundingBox(),
+    );
     if (!east) {
       throw new Error("resize handle bounds unavailable");
     }
@@ -85,16 +88,17 @@ test.describe("diagram resize and wheel behavior", () => {
     await runEffect(() => waitForUiReady(page));
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     await runEffect(() => createTextNode(page, canvas, 700, 320));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    expect(await nodeCount(page)).toBe(1);
 
     const node = canvas.getByText("Text", { exact: true }).first();
     await runEffect(() => node.click());
 
     const before = await firstNodeBox(page);
-    const handles = canvas.locator('button[style*="ew-resize"]');
-    const east = await runEffect(() => handles.last().boundingBox());
+    const east = await runEffect(() =>
+      canvas.locator('[data-testid="selection-handle"][data-handle="e"]').first().boundingBox(),
+    );
     if (!east) {
       throw new Error("east resize handle unavailable");
     }

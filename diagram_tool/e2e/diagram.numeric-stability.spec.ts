@@ -68,7 +68,7 @@ async function performWheelZoom(page: Page, canvas: Locator, deltaY: number, ctr
 }
 
 async function dragNodeBy(page: Page, canvas: Locator, dx: number, dy: number) {
-  const nodes = canvas.locator('div[style*="border-radius: 10px"]').first();
+  const nodes = canvas.getByTestId("diagram-node").first();
   const box = await runEffect(() => nodes.boundingBox());
   if (!box) return;
   await runEffect(() => page.mouse.move(box.x + box.width / 2, box.y + box.height / 2));
@@ -103,7 +103,7 @@ async function enableMinimap(page: Page) {
   const visible = await runEffect(() => miniBtn.isVisible().catch(() => false));
   if (!visible) {
     await runEffect(() => miniBtn.click());
-    await runEffect(() => page.waitForTimeout(200));
+    await runEffect(() => waitForNoRebuildOverlay(page));
   }
 }
 
@@ -138,7 +138,7 @@ test.describe("diagram numeric stability", () => {
     for (let burst = 0; burst < 3; burst += 1) {
       for (let i = 0; i < 8; i += 1) {
         await clickZoomButton(page, "+");
-        await runEffect(() => page.waitForTimeout(50));
+        await runEffect(() => waitForNoRebuildOverlay(page));
       }
       let zoom = await getZoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
@@ -161,7 +161,7 @@ test.describe("diagram numeric stability", () => {
 
       for (let i = 0; i < 8; i += 1) {
         await clickZoomButton(page, "-");
-        await runEffect(() => page.waitForTimeout(50));
+        await runEffect(() => waitForNoRebuildOverlay(page));
       }
 
       await runEffect(() => page.keyboard.press("-"));
@@ -193,7 +193,7 @@ test.describe("diagram numeric stability", () => {
     const canvas = page.locator(".canvas-container");
     await createTextNode(page, canvas, 400, 250);
 
-    const node = canvas.locator('div[style*="border-radius: 10px"]').first();
+    const node = canvas.getByTestId("diagram-node").first();
     const initialBox = await runEffect(() => node.boundingBox());
     expect(initialBox).not.toBeNull();
 
@@ -254,22 +254,22 @@ test.describe("diagram numeric stability", () => {
     await createTextNode(page, canvas, 450, 200);
     await createTextNode(page, canvas, 600, 200);
 
-    const nodes = canvas.locator('div[style*="border-radius: 10px"]');
+    const nodes = canvas.getByTestId("diagram-node");
     const count = await runEffect(() => nodes.count());
     expect(count).toBeGreaterThanOrEqual(3);
 
     await runEffect(() => page.keyboard.press("Control+a"));
-    await runEffect(() => page.waitForTimeout(100));
+    await runEffect(() => waitForNoRebuildOverlay(page));
 
     for (let burst = 0; burst < 4; burst += 1) {
       for (let i = 0; i < 5; i += 1) {
         await clickZoomButton(page, "-");
-        await runEffect(() => page.waitForTimeout(30));
+        await runEffect(() => waitForNoRebuildOverlay(page));
       }
 
       const selectionBox = await runEffect(() =>
         canvas
-          .locator('div[style*="border: 2px"]')
+          .getByTestId("selection-bounds")
           .first()
           .boundingBox()
           .catch(() => null),
@@ -293,7 +293,7 @@ test.describe("diagram numeric stability", () => {
         await runEffect(() => page.mouse.up());
       }
 
-      await runEffect(() => page.waitForTimeout(100));
+      await runEffect(() => waitForNoRebuildOverlay(page));
     }
 
     const allNodes = await runEffect(() =>
@@ -338,7 +338,7 @@ test.describe("diagram numeric stability", () => {
 
       for (let i = 0; i < 15; i += 1) {
         await clickZoomButton(page, direction as "+" | "-");
-        await runEffect(() => page.waitForTimeout(50));
+        await runEffect(() => waitForNoRebuildOverlay(page));
       }
 
       const zoom = await getZoomPercent(page);
@@ -354,7 +354,7 @@ test.describe("diagram numeric stability", () => {
 
       for (const corner of corners) {
         await dragMinimapViewport(page, corner.dx, corner.dy);
-        await runEffect(() => page.waitForTimeout(50));
+        await runEffect(() => waitForNoRebuildOverlay(page));
 
         const rect = await getMinimapViewportRect(page);
         expect(rect).not.toBeNull();

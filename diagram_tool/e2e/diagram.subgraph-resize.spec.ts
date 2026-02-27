@@ -2,7 +2,10 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  nodeCount,
+  nodeFrameByLabel,
   runEffect,
+  selectedCount,
   trapPageErrors,
   waitForUiReady,
 } from "./helpers";
@@ -17,50 +20,8 @@ async function requireBox(target: Locator): Promise<Box> {
   return box;
 }
 
-async function nodeFrameByLabel(page: Page, label: string, index = 0): Promise<Box> {
-  const frame = await runEffect(() =>
-    page.evaluate(
-      ({ targetLabel, targetIndex }) => {
-        const labels = Array.from(document.querySelectorAll("span"))
-          .filter((el) => (el.textContent ?? "").trim() === targetLabel)
-          .sort(
-            (a, b) =>
-              a.getBoundingClientRect().x - b.getBoundingClientRect().x,
-          );
-        const label = labels[targetIndex];
-        if (!label) {
-          return null;
-        }
-
-        let current: HTMLElement | null = label as HTMLElement;
-        while (current) {
-          const style = current.getAttribute("style") ?? "";
-          if (style.includes("position: absolute") && style.includes("border-radius: 10px")) {
-            const rect = current.getBoundingClientRect();
-            return {
-              x: rect.x,
-              y: rect.y,
-              width: rect.width,
-              height: rect.height,
-            };
-          }
-          current = current.parentElement;
-        }
-
-        return null;
-      },
-      { targetLabel: label, targetIndex: index },
-    ),
-  );
-
-  if (!frame) {
-    throw new Error(`missing frame for label: ${label}`);
-  }
-  return frame;
-}
-
 async function pickSouthEastHandle(canvas: Locator): Promise<Box> {
-  const handles = canvas.locator('button[style*="nwse-resize"], button[style*="nesw-resize"]');
+  const handles = canvas.locator('[data-testid="selection-handle"][data-handle="se"]');
   const count = await runEffect(() => handles.count());
   if (count < 1) {
     throw new Error("no resize handles found");
@@ -74,7 +35,7 @@ async function pickSouthEastHandle(canvas: Locator): Promise<Box> {
     }
   }
 
-  const best = boxes.sort((a, b) => (a.x + a.y) - (b.x + b.y)).pop();
+  const best = boxes[0];
   if (!best) {
     throw new Error("no visible resize handle boxes");
   }
@@ -85,17 +46,6 @@ async function center(box: Box) {
   return { x: box.x + box.width / 2, y: box.y + box.height / 2 };
 }
 
-async function selectedCount(page: Page): Promise<number> {
-  const text = await runEffect(() =>
-    page.evaluate(() => {
-      const match = document.body.innerText.match(/(\d+) selected/);
-      return match ? match[1] : "0";
-    }),
-  );
-  const parsed = Number.parseInt(text, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
 async function setupSubgraphWithNodes(page: Page) {
   await runEffect(() => page.goto("/"));
   await runEffect(() => waitForUiReady(page));
@@ -104,7 +54,7 @@ async function setupSubgraphWithNodes(page: Page) {
 
   await runEffect(() => createTextNode(page, canvas, 620, 250));
   await runEffect(() => createTextNode(page, canvas, 760, 330));
-  await expect(page.getByText(/2 nodes/)).toBeVisible();
+  expect(await nodeCount(page)).toBe(2);
 
   await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
   const canvasBox = await requireBox(canvas);
@@ -117,7 +67,7 @@ async function setupSubgraphWithNodes(page: Page) {
   await runEffect(() => page.mouse.move(ex, ey, { steps: 8 }));
   await runEffect(() => page.mouse.up());
 
-  await expect(page.getByText(/3 nodes/)).toBeVisible();
+  expect(await nodeCount(page)).toBe(3);
   return canvas;
 }
 
@@ -167,7 +117,7 @@ test.describe("subgraph proportional resize", () => {
     await runEffect(() => page.mouse.move(canvasBox.x + 800, canvasBox.y + 360, { steps: 8 }));
     await runEffect(() => page.mouse.up());
 
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    expect(await nodeCount(page)).toBe(4);
     await runEffect(() => page.keyboard.press("Control+a"));
     expect(await selectedCount(page)).toBeGreaterThanOrEqual(4);
 

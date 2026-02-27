@@ -231,10 +231,14 @@ fn apply_rubber_band_release(
     doc: &mut DiagramDocument,
     start: (f64, f64),
     current: (f64, f64),
-    shift: bool,
+    additive: bool,
 ) {
+    if !has_drag_threshold(start, current) {
+        return;
+    }
+
     let boxed = node_ids_in_rect(doc, start, current);
-    let selected = if shift {
+    let selected = if additive {
         boxed
             .iter()
             .fold(doc.editor_state.selected_items.clone(), |acc, id| {
@@ -601,11 +605,17 @@ pub fn Canvas() -> Element {
                     dioxus.send({ type: 'keyup', key: e.key, ctrl: e.ctrlKey, shift: e.shiftKey, meta: e.metaKey, repeat: false });
                 };
 
+                const onWindowBlur = () => {
+                    dioxus.send({ type: 'blur', key: '', ctrl: false, shift: false, meta: false, repeat: false });
+                };
+
                 window.addEventListener('keydown', onKeyDown);
                 window.addEventListener('keyup', onKeyUp);
+                window.addEventListener('blur', onWindowBlur);
                 window.__seshat_canvas_keyboard_cleanup = () => {
                     window.removeEventListener('keydown', onKeyDown);
                     window.removeEventListener('keyup', onKeyUp);
+                    window.removeEventListener('blur', onWindowBlur);
                 };
             ",
         );
@@ -618,6 +628,18 @@ pub fn Canvas() -> Element {
                 let meta = json["meta"].as_bool().is_some_and(|v| v);
                 let shift = json["shift"].as_bool().is_some_and(|v| v);
                 let modifier = ctrl || meta;
+                let is_arrow_key =
+                    matches!(key, "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight");
+
+                if event_type == "blur" {
+                    space_pressed.set(false);
+                    shift_pressed.set(false);
+                    ctrl_pressed.set(false);
+                    meta_pressed.set(false);
+                    nudge_batch_active.set(false);
+                    space_pan_active.set(false);
+                    continue;
+                }
 
                 if key == " " {
                     space_pressed.set(event_type == "keydown");
@@ -642,6 +664,9 @@ pub fn Canvas() -> Element {
                 }
 
                 if event_type == "keydown" {
+                    if !is_arrow_key {
+                        nudge_batch_active.set(false);
+                    }
                     match key {
                         "Delete" | "Backspace" => {
                             let _ = apply_delete_selected(doc_signal, history_signal);
@@ -710,9 +735,7 @@ pub fn Canvas() -> Element {
                         "t" | "T" if !modifier => tool_signal.set(ToolMode::Text),
                         _ => {}
                     }
-                } else if event_type == "keyup"
-                    && matches!(key, "ArrowUp" | "ArrowDown" | "ArrowLeft" | "ArrowRight")
-                {
+                } else if event_type == "keyup" && is_arrow_key {
                     nudge_batch_active.set(false);
                 }
             }
@@ -820,13 +843,22 @@ pub fn Canvas() -> Element {
                 const target = document.querySelector('.canvas-container');
                 if (target) {
                     let rafId = 0;
-                    let lastWidth = -1;
-                    let lastHeight = -1;
+                    let lastLeft = Number.NaN;
+                    let lastTop = Number.NaN;
+                    let lastWidth = Number.NaN;
+                    let lastHeight = Number.NaN;
 
                     const notify = (left, top, width, height) => {
-                        if (Math.abs(width - lastWidth) < 0.5 && Math.abs(height - lastHeight) < 0.5) {
+                        if (
+                            Math.abs(left - lastLeft) < 0.5 &&
+                            Math.abs(top - lastTop) < 0.5 &&
+                            Math.abs(width - lastWidth) < 0.5 &&
+                            Math.abs(height - lastHeight) < 0.5
+                        ) {
                             return;
                         }
+                        lastLeft = left;
+                        lastTop = top;
                         lastWidth = width;
                         lastHeight = height;
                         dioxus.send({ type: 'resize', left, top, width, height });
@@ -847,9 +879,11 @@ pub fn Canvas() -> Element {
                     ro.observe(target);
 
                     window.addEventListener('resize', scheduleNotify, { passive: true });
+                    window.addEventListener('scroll', scheduleNotify, { passive: true, capture: true });
                     window.__seshat_canvas_resize_cleanup = () => {
                         ro.disconnect();
                         window.removeEventListener('resize', scheduleNotify);
+                        window.removeEventListener('scroll', scheduleNotify, { capture: true });
                         if (rafId !== 0) {
                             window.cancelAnimationFrame(rafId);
                         }
@@ -1031,9 +1065,9 @@ pub fn Canvas() -> Element {
                             }
                         }
                         InteractionMode::RubberBand { start, current } => {
-                            let shift = *shift_pressed.read();
+                            let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                             doc_signal.with_mut(|doc| {
-                                apply_rubber_band_release(doc, *start, *current, shift);
+                                apply_rubber_band_release(doc, *start, *current, additive);
                             });
                             *mode = InteractionMode::Select;
                         }
@@ -1205,6 +1239,7 @@ pub fn Canvas() -> Element {
     rsx! {
         div {
             class: "canvas-container",
+            "data-testid": "canvas-container",
             style: "flex: 1; position: relative; overflow: hidden; overscroll-behavior: none; touch-action: none; background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; user-select: none; border: {border_style}; box-sizing: border-box;",
 
             ondragover: move |evt| { evt.prevent_default(); },
@@ -1336,9 +1371,9 @@ pub fn Canvas() -> Element {
                 if tool == ToolMode::Select {
                     let doc = doc_signal.read().clone();
                     if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
-                        let shift = *shift_pressed.read();
+                        let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                         doc_signal.with_mut(|d| {
-                            d.editor_state.selected_items = if shift {
+                            d.editor_state.selected_items = if additive {
                                 toggle_selection(&d.editor_state.selected_items, &edge_id.to_string())
                             } else {
                                 select_single(edge_id.to_string())
@@ -1405,9 +1440,6 @@ pub fn Canvas() -> Element {
                         });
                     }
                     ToolMode::Select => {
-                        if !*shift_pressed.read() {
-                            doc_signal.with_mut(|d| d.editor_state.selected_items.clear());
-                        }
                         interaction_mode.set(InteractionMode::RubberBand { start: pos, current: pos });
                     }
                     ToolMode::Edge | ToolMode::Pan => {}
@@ -1540,9 +1572,9 @@ pub fn Canvas() -> Element {
                             }
                         }
                         InteractionMode::RubberBand { start, current } => {
-                            let shift = *shift_pressed.read();
+                            let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                             doc_signal.with_mut(|doc| {
-                                apply_rubber_band_release(doc, *start, *current, shift);
+                                apply_rubber_band_release(doc, *start, *current, additive);
                             });
                             *mode = InteractionMode::Select;
                         }
@@ -1823,6 +1855,10 @@ pub fn Canvas() -> Element {
                     let id_mouseup = id.clone();
                     let id_mouseenter = id.clone();
                     let id_mouseleave = id.clone();
+                    let id_data_attr = id.to_string();
+                    let id_edit_text = id.clone();
+                    let id_edit_subgraph = id.clone();
+                    let id_edit_node = id.clone();
                     let is_selected = selected_items.contains(id.as_str());
                     let (left, top) = to_screen_coords(
                         node.x.0,
@@ -1855,6 +1891,13 @@ pub fn Canvas() -> Element {
                     rsx! {
                         div {
                             key: "{id:?}",
+                            "data-testid": "diagram-node",
+                            "data-node-id": "{id_data_attr}",
+                            "data-node-kind": match node.kind {
+                                NodeKind::Node => "node",
+                                NodeKind::Subgraph => "subgraph",
+                                NodeKind::Text => "text",
+                            },
                             style: "position: absolute; left: {left}px; top: {top}px; width: {width}px; height: {height}px; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); border-radius: 10px; background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: inherit; z-index: {z_index}; box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
 
                             onmouseenter: {
@@ -1870,7 +1913,7 @@ pub fn Canvas() -> Element {
                                 evt.stop_propagation();
                                 let tool = *tool_signal.read();
                                 let doc = doc_signal.read().clone();
-                                let shift = *shift_pressed.read();
+                                let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
                                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                                 let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
@@ -1909,7 +1952,7 @@ pub fn Canvas() -> Element {
                                         doc.editor_state.selected_items.contains(id_mousedown.as_str());
 
                                     doc_signal.with_mut(|d| {
-                                        let selected = if shift {
+                                        let selected = if additive {
                                             toggle_selection(&d.editor_state.selected_items, &id_mousedown.to_string())
                                         } else if !was_selected {
                                             select_single(id_mousedown.to_string())
@@ -2047,7 +2090,7 @@ pub fn Canvas() -> Element {
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 editing_edge.set(None);
-                                                editing_node.set(Some(id.clone()));
+                                                editing_node.set(Some(id_edit_text.clone()));
                                                 edit_value.set(edit_label.clone());
                                             }
                                         },
@@ -2095,7 +2138,7 @@ pub fn Canvas() -> Element {
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 editing_edge.set(None);
-                                                editing_node.set(Some(id.clone()));
+                                                editing_node.set(Some(id_edit_subgraph.clone()));
                                                 edit_value.set(edit_label.clone());
                                             }
                                         },
@@ -2222,7 +2265,7 @@ pub fn Canvas() -> Element {
                                             move |evt| {
                                                 evt.stop_propagation();
                                                 editing_edge.set(None);
-                                                editing_node.set(Some(id.clone()));
+                                                editing_node.set(Some(id_edit_node.clone()));
                                                 edit_value.set(edit_label.clone());
                                             }
                                         },
@@ -2450,6 +2493,28 @@ mod tests {
             .editor_state
             .selected_items
             .contains(&node_id.to_string()));
+    }
+
+    #[test]
+    fn given_noop_rubber_band_when_released_then_existing_selection_is_preserved() {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new(String::from("n1"));
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_id.clone(), node_at(10.0, 10.0));
+        doc.editor_state.selected_items = doc
+            .editor_state
+            .selected_items
+            .update(node_id.to_string());
+
+        apply_rubber_band_release(&mut doc, (10.0, 10.0), (10.0, 10.0), false);
+
+        assert!(doc
+            .editor_state
+            .selected_items
+            .contains(&node_id.to_string()));
+        assert_eq!(doc.editor_state.selected_items.len(), 1);
     }
 
     #[test]

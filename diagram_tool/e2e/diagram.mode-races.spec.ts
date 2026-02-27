@@ -3,6 +3,7 @@ import {
   clearCanvasOverlays,
   createTextNode,
   nodeCenters,
+  runEffectsSequential,
   runEffect,
   trapPageErrors,
   waitForUiReady,
@@ -13,7 +14,7 @@ async function canvasPoint(
   xOffset: number,
   yOffset: number,
 ) {
-  const canvas = page.locator(".canvas-container");
+  const canvas = page.getByTestId("canvas-container");
   const box = await runEffect(() => canvas.boundingBox());
   if (!box) {
     throw new Error("canvas bounding box not available");
@@ -22,21 +23,10 @@ async function canvasPoint(
 }
 
 async function loadDiagram(page: Page) {
-  let lastError: Error | undefined;
-  for (let attempt = 0; attempt < 3; attempt += 1) {
-    try {
-      await runEffect(() => page.goto("/", { waitUntil: "domcontentloaded" }));
-      await runEffect(() => waitForUiReady(page));
-      return;
-    } catch (error) {
-      lastError = error instanceof Error ? error : new Error(String(error));
-      await runEffect(() => page.waitForTimeout(1_000));
-    }
-  }
-
-  throw new Error(
-    `unable to load diagram after retries: ${lastError?.message ?? "unknown error"}`,
-  );
+  await runEffectsSequential([
+    () => page.goto("/", { waitUntil: "domcontentloaded" }),
+    () => waitForUiReady(page),
+  ]);
 }
 
 test.describe("diagram mode-switch race hardening", () => {
@@ -58,7 +48,7 @@ test.describe("diagram mode-switch race hardening", () => {
       );
     }
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     const box = await runEffect(() => canvas.boundingBox());
     if (!box) {
       throw new Error("canvas bounding box not available");
@@ -88,7 +78,7 @@ test.describe("diagram mode-switch race hardening", () => {
     await loadDiagram(page);
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     await runEffect(() => createTextNode(page, canvas, 520, 220));
     await runEffect(() => createTextNode(page, canvas, 820, 300));
     await expect(page.getByText(/2 nodes/)).toBeVisible();
@@ -122,7 +112,7 @@ test.describe("diagram mode-switch race hardening", () => {
     await loadDiagram(page);
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     await runEffect(() => createTextNode(page, canvas, 540, 240));
     await runEffect(() => createTextNode(page, canvas, 820, 340));
     await expect(page.getByText(/2 nodes/)).toBeVisible();
@@ -167,7 +157,7 @@ test.describe("diagram mode-switch race hardening", () => {
     await runEffect(() => page.mouse.move(end.x, end.y));
     await runEffect(() => page.mouse.up());
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-container");
     await runEffect(() =>
       page.getByRole("button", { name: "Text", exact: true }).click(),
     );
