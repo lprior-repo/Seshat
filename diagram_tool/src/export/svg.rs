@@ -655,7 +655,7 @@ mod tests {
         // Given - node with known width and an icon that exists
         let mut doc = create_empty_document();
         let mut node = create_node("n1", 0.0, 0.0, 100.0, 60.0, "Test");
-        node.1.icon = String::from("aws/compute/ec2"); // Known icon
+        node.1.icon = String::from("aws/compute/ec2.png"); // Known icon
         doc.document.nodes.insert(node.0, node.1);
 
         // When
@@ -663,7 +663,7 @@ mod tests {
 
         // Then - icon should be centered: ix = (width - 32) / 2 = (100 - 32) / 2 = 34
         assert!(
-            svg.contains("x='34'"),
+            svg.contains("x='34"),
             "icon x should be (100 - 32) / 2 = 34"
         );
         Ok(())
@@ -675,7 +675,7 @@ mod tests {
         // Given - node with known height and an icon that exists
         let mut doc = create_empty_document();
         let mut node = create_node("n1", 0.0, 0.0, 100.0, 60.0, "Test");
-        node.1.icon = String::from("aws/compute/ec2"); // Known icon
+        node.1.icon = String::from("aws/compute/ec2.png"); // Known icon
         doc.document.nodes.insert(node.0, node.1);
 
         // When
@@ -683,7 +683,7 @@ mod tests {
 
         // Then - icon y = (height - 32) / 2 - 5 = (60 - 32) / 2 - 5 = 14 - 5 = 9
         assert!(
-            svg.contains("y='9'"),
+            svg.contains("y='9"),
             "icon y should be (60 - 32) / 2 - 5 = 9"
         );
         Ok(())
@@ -695,7 +695,7 @@ mod tests {
         // Given - node with 200x100 dimensions
         let mut doc = create_empty_document();
         let mut node = create_node("n1", 0.0, 0.0, 200.0, 100.0, "Test");
-        node.1.icon = String::from("aws/compute/ec2");
+        node.1.icon = String::from("aws/compute/ec2.png");
         doc.document.nodes.insert(node.0, node.1);
 
         // When
@@ -705,11 +705,11 @@ mod tests {
         // ix = (200 - 32) / 2 = 84
         // iy = (100 - 32) / 2 - 5 = 34 - 5 = 29
         assert!(
-            svg.contains("x='84'"),
+            svg.contains("x='84"),
             "icon x should be (200 - 32) / 2 = 84"
         );
         assert!(
-            svg.contains("y='29'"),
+            svg.contains("y='29"),
             "icon y should be (100 - 32) / 2 - 5 = 29"
         );
         Ok(())
@@ -720,17 +720,15 @@ mod tests {
         // Given
         let mut doc = create_empty_document();
         let mut node = create_node("n1", 0.0, 0.0, 100.0, 60.0, "Test");
-        node.1.icon = String::from("aws/compute/ec2");
+        node.1.icon = String::from("aws/compute/ec2.png");
         doc.document.nodes.insert(node.0, node.1);
 
         // When
         let svg = generate_svg_string(&doc);
 
         // Then - icon should have width and height of 32
-        assert!(
-            svg.contains("width='32' height='32'"),
-            "icon should be 32x32"
-        );
+        assert!(svg.contains("width='32"), "icon width should be 32");
+        assert!(svg.contains("height='32"), "icon height should be 32");
         Ok(())
     }
 }

@@ -341,7 +341,7 @@ impl Default for DiagramDocument {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::{ArrowType, Edge};
+    use super::{ArrowType, Edge, EdgeId, EditorState, NodeId, OrderedFloat, Revision};
 
     #[test]
     fn given_legacy_arrowhead_key_when_deserializing_edge_then_it_is_accepted() {
@@ -365,5 +365,87 @@ mod tests {
             parsed.ok().map(|edge| edge.arrow_type),
             Some(ArrowType::Default)
         );
+    }
+
+    #[test]
+    fn given_node_and_edge_ids_when_stringified_then_values_are_preserved() {
+        let node = NodeId::new(String::from("node-1"));
+        let edge = EdgeId::new(String::from("edge-1"));
+
+        assert_eq!(node.as_str(), "node-1");
+        assert_eq!(edge.as_str(), "edge-1");
+        assert_eq!(node.to_string(), "node-1");
+        assert_eq!(edge.to_string(), "edge-1");
+    }
+
+    #[test]
+    fn given_revision_when_incremented_then_it_increases_exactly_once() {
+        let initial = Revision::INITIAL;
+        let next = initial.increment();
+
+        assert_eq!(
+            serde_json::to_string(&initial).ok(),
+            Some(String::from("0"))
+        );
+        assert_eq!(serde_json::to_string(&next).ok(), Some(String::from("1")));
+    }
+
+    #[test]
+    fn given_ordered_float_operations_when_applied_then_arithmetic_is_exact() {
+        let a = OrderedFloat(8.0);
+        let b = OrderedFloat(2.0);
+
+        assert_eq!((a + b).0, 10.0);
+        assert_eq!((a - b).0, 6.0);
+        assert_eq!((a - 3.0).0, 5.0);
+        assert_eq!((a * 2.5).0, 20.0);
+        assert_eq!((a / 2.0).0, 4.0);
+        assert_eq!(a.to_string(), "8");
+    }
+
+    #[test]
+    fn given_edge_without_directed_field_when_deserializing_then_default_is_true() {
+        let json = r#"{
+            "source": "n1",
+            "target": "n2",
+            "label": "",
+            "style": "solid",
+            "arrowType": "default",
+            "label_offset_t": 0.5,
+            "thickness": 1.5,
+            "bend_points": [],
+            "tags": [],
+            "metadata": {}
+        }"#;
+
+        let parsed = serde_json::from_str::<Edge>(json).ok();
+        assert!(parsed.is_some());
+        assert!(parsed.is_some_and(|edge| edge.directed));
+    }
+
+    #[test]
+    fn given_default_editor_state_when_created_then_snap_and_grid_are_enabled() {
+        let state = EditorState::default();
+
+        assert!(state.snap_to_grid);
+        assert!(state.show_grid);
+    }
+
+    #[test]
+    fn given_editor_state_json_without_snap_flag_when_deserialized_then_snap_defaults_true() {
+        let json = r#"{
+            "camera_x": 0.0,
+            "camera_y": 0.0,
+            "zoom": 1.0,
+            "grid_size": 20.0,
+            "selected_items": [],
+            "editing_edge_id": null,
+            "theme": "system",
+            "show_grid": true,
+            "minimap_visible": false
+        }"#;
+
+        let state = serde_json::from_str::<EditorState>(json).ok();
+        assert!(state.is_some_and(|parsed| parsed.snap_to_grid));
     }
 }

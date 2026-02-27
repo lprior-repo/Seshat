@@ -186,6 +186,23 @@ mod tests {
     }
 
     #[test]
+    fn given_node_with_existing_subgraph_parent_when_validated_then_no_invalid_parent_issue() {
+        let mut doc = DiagramDocument::default();
+        let (parent_id, mut parent) = make_node("P");
+        parent.kind = NodeKind::Subgraph;
+        let (child_id, mut child) = make_node("C");
+        child.parent = Some(parent_id.clone());
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(parent_id, parent)
+            .update(child_id, child);
+
+        let issues = validate_document(&doc);
+        assert!(!issues.iter().any(|i| i.code == "invalid-parent"));
+    }
+
+    #[test]
     fn given_valid_document_when_validated_then_no_issues() {
         let doc = DiagramDocument::default();
         let issues = validate_document(&doc);
