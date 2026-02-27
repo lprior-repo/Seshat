@@ -218,10 +218,6 @@ mod proptests {
         ]
     }
 
-    fn arb_ordered_float() -> impl Strategy<Value = OrderedFloat> {
-        any::<f64>().prop_map(OrderedFloat)
-    }
-
     fn arb_ordered_float_with_specials() -> impl Strategy<Value = OrderedFloat> {
         prop_oneof![
             any::<f64>().prop_map(OrderedFloat),

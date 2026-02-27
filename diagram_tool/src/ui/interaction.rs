@@ -204,10 +204,9 @@ pub fn with_auto_selected_edges(
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::{
-        drag_original_positions, dragged_positions, dragged_positions_with_snap,
-        has_drag_threshold, node_ids_in_rect, node_ids_in_rect_with_mode, select_single,
-        selection_mode_from_drag, snap_point, snap_value, toggle_selection,
-        with_auto_selected_edges, SelectionMode,
+        dragged_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
+        node_ids_in_rect_with_mode, select_single, selection_mode_from_drag, snap_point,
+        snap_value, toggle_selection, with_auto_selected_edges, SelectionMode,
     };
     use crate::models::document::{
         DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId, NodeKind,
@@ -415,8 +414,12 @@ mod tests {
         // Node is [560, 660] x [220, 244]
         // Drag is (572, 224) to (608, 240) -> Rightward -> Contain mode
         let selected = node_ids_in_rect(&doc, (572.0, 224.0), (608.0, 240.0));
-        
-        assert!(selected.is_empty(), "Expected 0 selected, but got {:?}", selected);
+
+        assert!(
+            selected.is_empty(),
+            "Expected 0 selected, but got {:?}",
+            selected
+        );
     }
 
     #[test]
@@ -448,7 +451,7 @@ mod tests {
 
         // Drag is (608, 240) to (572, 224) -> Leftward -> Intersect mode
         let selected = node_ids_in_rect(&doc, (608.0, 240.0), (572.0, 224.0));
-        
+
         assert!(selected.contains("text-node"));
     }
 }

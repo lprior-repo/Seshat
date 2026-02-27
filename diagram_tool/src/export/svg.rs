@@ -791,7 +791,7 @@ mod proptests {
 
         #[test]
         #[allow(clippy::unwrap_used)]
-        fn prop_nan_coordinates_do_not_crash(x in any::<f64>(), y in any::<f64>(), width in any::<f64>(), height in any::<f64>()) {
+        fn prop_nan_coordinates_do_not_crash(_x in any::<f64>(), y in any::<f64>(), width in any::<f64>(), height in any::<f64>()) {
             let mut doc = create_test_document();
             let node = create_test_node("n1", f64::NAN, y, width, height, "NaN Node");
             doc.document.nodes.insert(node.0, node.1);

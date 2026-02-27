@@ -92,7 +92,7 @@ impl History {
 
 #[cfg(test)]
 mod tests {
-    use super::{History, List};
+    use super::History;
     use crate::models::document::{DiagramDocument, Revision};
 
     fn doc_with_revision(steps: u64) -> DiagramDocument {

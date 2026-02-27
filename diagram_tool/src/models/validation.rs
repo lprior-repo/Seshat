@@ -352,23 +352,21 @@ mod proptests {
         }
     }
 
-    fn make_doc_with_nodes(nodes: Vec<(NodeId, Node)>) -> DiagramDocument {
-        let mut doc = DiagramDocument::default();
-        for (id, node) in nodes {
-            doc.document.nodes = doc.document.nodes.update(id, node);
-        }
-        doc
-    }
-
     proptest! {
         fn prop_validate_never_panics_on_finite_geometry(nodes in proptest::collection::vec(arb_node(), 0..10)) {
-            let doc = make_doc_with_nodes(nodes);
+            let mut doc = DiagramDocument::default();
+            for (id, node) in nodes {
+                doc.document.nodes = doc.document.nodes.update(id, node);
+            }
             let issues = validate_document(&doc);
             prop_assert!(issues.iter().all(|i| i.code != "internal-error"));
         }
 
         fn prop_validate_camera_state_ignored(nodes in proptest::collection::vec(arb_node(), 0..5)) {
-            let mut doc = make_doc_with_nodes(nodes);
+            let mut doc = DiagramDocument::default();
+            for (id, node) in nodes {
+                doc.document.nodes = doc.document.nodes.update(id, node);
+            }
             doc.editor_state.camera_x = OrderedFloat(f64::NAN);
             doc.editor_state.camera_y = OrderedFloat(f64::INFINITY);
             doc.editor_state.zoom = OrderedFloat(-100.0);

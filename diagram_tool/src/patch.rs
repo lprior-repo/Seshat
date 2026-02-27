@@ -406,7 +406,7 @@ mod tests {
             nodes in proptest::collection::vec("[a-z]{1,3}", 4..=8),
         ) {
             prop_assume!(nodes.len() >= 4);
-            let mut doc = DiagramDocument::default();
+            let doc = DiagramDocument::default();
             for id in &nodes {
                 let node = Node {
                     kind: NodeKind::Node,
@@ -504,7 +504,7 @@ mod tests {
         #[allow(clippy::unwrap_used)]
         fn prop_patch_move_operations_no_panic(src in "[a-z]{1,5}", tgt in "[a-z]{1,5}") {
             prop_assume!(src != tgt);
-            let mut doc = DiagramDocument::default();
+            let doc = DiagramDocument::default();
             let node = Node {
                 kind: NodeKind::Node,
                 icon: String::new(),
