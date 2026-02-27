@@ -24,7 +24,11 @@ pub fn use_global_keyboard() {
     use_effect(move || {
         let mut eval = document::eval(
             r"
-            window.addEventListener('keydown', (e) => {
+            if (window.__seshat_global_keyboard_cleanup) {
+                window.__seshat_global_keyboard_cleanup();
+            }
+
+            const onKeyDown = (e) => {
                 const active = document.activeElement;
                 const editing = active && (
                     active.tagName === 'INPUT' ||
@@ -47,7 +51,13 @@ pub fn use_global_keyboard() {
                     e.preventDefault();
                     dioxus.send({ type: 'keydown', key: e.key, modifier, shift: e.shiftKey });
                 }
-            });
+            };
+
+            window.addEventListener('keydown', onKeyDown);
+
+            window.__seshat_global_keyboard_cleanup = () => {
+                window.removeEventListener('keydown', onKeyDown);
+            };
         ",
         );
 
@@ -89,5 +99,16 @@ pub fn use_global_keyboard() {
                 }
             }
         });
+    });
+
+    use_drop(move || {
+        let _ = document::eval(
+            r"
+                if (window.__seshat_global_keyboard_cleanup) {
+                    window.__seshat_global_keyboard_cleanup();
+                    window.__seshat_global_keyboard_cleanup = null;
+                }
+            ",
+        );
     });
 }

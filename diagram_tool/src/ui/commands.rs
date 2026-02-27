@@ -157,9 +157,21 @@ pub fn apply_nudge_selection(
     true
 }
 
+pub fn clipboard_has_content() -> bool {
+    CLIPBOARD.with(|slot| {
+        slot.borrow()
+            .as_ref()
+            .is_some_and(|state| !state.nodes.is_empty())
+    })
+}
+
 pub fn apply_copy_selection(doc_signal: Signal<DiagramDocument>) -> bool {
     let doc = doc_signal.read();
-    let selected_nodes = selected_node_ids(&doc);
+    copy_selection_to_clipboard(&doc)
+}
+
+fn copy_selection_to_clipboard(doc: &DiagramDocument) -> bool {
+    let selected_nodes = selected_node_ids(doc);
     if selected_nodes.is_empty() {
         return false;
     }
@@ -239,6 +251,16 @@ pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
 ) -> bool {
+    push_history(history_signal, doc_signal.read().clone());
+    doc_signal.with_mut(|doc| {
+        if !paste_from_clipboard(doc) {
+            return false;
+        }
+        true
+    })
+}
+
+fn paste_from_clipboard(doc: &mut DiagramDocument) -> bool {
     let clipboard = CLIPBOARD.with(|slot| {
         let mut state = slot.borrow_mut();
         state.as_mut().map(|clip| {
@@ -254,10 +276,7 @@ pub fn apply_paste_selection(
         return false;
     }
 
-    push_history(history_signal, doc_signal.read().clone());
-    doc_signal.with_mut(|doc| {
-        paste_from(nodes, edges, serial, doc);
-    });
+    paste_from(nodes, edges, serial, doc);
     true
 }
 
@@ -667,6 +686,191 @@ mod tests {
         let result = zoom_to_center(&mut doc, 1.5, (1e10, 1e10));
         assert!(result);
         assert!(doc.editor_state.zoom.0.is_finite());
+    }
+
+    fn clear_clipboard() {
+        CLIPBOARD.with(|s| *s.borrow_mut() = None);
+    }
+
+    fn make_node(label: &str, x: f64, y: f64) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: label.to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(100.0),
+            height: OrderedFloat(50.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    fn make_doc_with_node(id: &str, x: f64, y: f64) -> DiagramDocument {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new(id.to_string());
+        let _ = doc.document.nodes.insert(node_id, make_node(id, x, y));
+        doc
+    }
+
+    fn make_doc_with_two_nodes_and_edge(
+        id_a: &str,
+        id_b: &str,
+    ) -> (DiagramDocument, crate::models::document::EdgeId) {
+        let mut doc = DiagramDocument::default();
+        let node_a_id = NodeId::new(id_a.to_string());
+        let node_b_id = NodeId::new(id_b.to_string());
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a_id.clone(), make_node(id_a, 0.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b_id.clone(), make_node(id_b, 200.0, 0.0));
+
+        let edge_id = crate::models::document::EdgeId::new("edge-1".to_string());
+        let edge = Edge {
+            source: node_a_id,
+            target: node_b_id,
+            label: String::new(),
+            style: crate::models::document::EdgeStyle::default(),
+            arrow_type: crate::models::document::ArrowType::default(),
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.5),
+            directed: true,
+            bend_points: Vec::new(),
+            tags: Vec::new(),
+            metadata: im::HashMap::new(),
+            font_size: None,
+        };
+        let _ = doc.document.edges.insert(edge_id.clone(), edge);
+        (doc, edge_id)
+    }
+
+    #[test]
+    fn given_empty_selection_when_copy_then_returns_false() {
+        clear_clipboard();
+        let doc = DiagramDocument::default();
+        let result = copy_selection_to_clipboard(&doc);
+        assert!(!result);
+        CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
+    }
+
+    #[test]
+    fn given_single_node_selected_when_copy_then_succeeds() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("node-1", 100.0, 50.0);
+        let _ = doc.editor_state.selected_items.insert("node-1".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            let clip_ref = clip.as_ref();
+            assert!(clip_ref.is_some());
+            if let Some(c) = clip_ref {
+                assert_eq!(c.nodes.len(), 1);
+                assert!(c.edges.is_empty());
+                assert_eq!(c.paste_serial, 0);
+            }
+        });
+    }
+
+    #[test]
+    fn given_multiple_nodes_selected_when_copy_then_includes_edges() {
+        clear_clipboard();
+        let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            let clip_ref = clip.as_ref();
+            assert!(clip_ref.is_some());
+            if let Some(c) = clip_ref {
+                assert_eq!(c.nodes.len(), 2);
+                assert_eq!(c.edges.len(), 1);
+            }
+        });
+    }
+
+    #[test]
+    fn given_empty_clipboard_when_paste_then_returns_false() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_count_before = doc.document.nodes.len();
+
+        let result = paste_from_clipboard(&mut doc);
+
+        assert!(!result);
+        assert_eq!(doc.document.nodes.len(), node_count_before);
+    }
+
+    #[test]
+    fn given_copied_nodes_when_paste_then_creates_new_ids() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let copy_result = copy_selection_to_clipboard(&doc);
+        assert!(copy_result);
+
+        let paste_result = paste_from_clipboard(&mut doc);
+        assert!(paste_result);
+
+        assert_eq!(doc.document.nodes.len(), 2);
+        let original_id = NodeId::new("original-node".to_string());
+        let pasted_ids: Vec<_> = doc
+            .document
+            .nodes
+            .keys()
+            .filter(|id| *id != &original_id)
+            .collect();
+        assert_eq!(pasted_ids.len(), 1);
+    }
+
+    #[test]
+    fn given_copied_nodes_when_paste_then_applies_offset() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        let original_id = NodeId::new("original-node".to_string());
+        let pasted_node = doc
+            .document
+            .nodes
+            .iter()
+            .find(|(id, _)| *id != &original_id)
+            .map(|(_, node)| node.clone());
+
+        assert!(pasted_node.is_some());
+        if let Some(ref p) = pasted_node {
+            assert_eq!(p.x.0, 120.0);
+            assert_eq!(p.y.0, 70.0);
+        }
     }
 }
 

@@ -65,6 +65,14 @@ pub fn Toolbar() -> Element {
     let delete_opacity = if stats.selected_count > 0 { "1" } else { "0.6" };
     let zoom_percent = (doc_signal.read().editor_state.zoom.0 * 100.0).round();
 
+    let undo_disabled = !history_signal.read().can_undo();
+    let undo_opacity = if undo_disabled { "0.4" } else { "1" };
+    let undo_cursor = if undo_disabled { "not-allowed" } else { "pointer" };
+
+    let redo_disabled = !history_signal.read().can_redo();
+    let redo_opacity = if redo_disabled { "0.4" } else { "1" };
+    let redo_cursor = if redo_disabled { "not-allowed" } else { "pointer" };
+
     rsx! {
         div {
             "data-testid": "toolbar-root",
@@ -104,13 +112,15 @@ pub fn Toolbar() -> Element {
 
             button {
                 "data-testid": "toolbar-undo",
-                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                disabled: undo_disabled,
+                style: "padding: 6px 10px; cursor: {undo_cursor}; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN}; opacity: {undo_opacity};",
                 onclick: move |_| actions::undo(doc_signal, history_signal),
                 "Undo"
             }
             button {
                 "data-testid": "toolbar-redo",
-                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                disabled: redo_disabled,
+                style: "padding: 6px 10px; cursor: {redo_cursor}; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN}; opacity: {redo_opacity};",
                 onclick: move |_| actions::redo(doc_signal, history_signal),
                 "Redo"
             }
@@ -147,6 +157,20 @@ pub fn Toolbar() -> Element {
                 onclick: move |_| actions::delete_selection(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
                 "Delete"
+            }
+            button {
+                "data-testid": "toolbar-copy",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::copy_selection(doc_signal),
+                disabled: stats.selected_count == 0,
+                "Copy"
+            }
+            button {
+                "data-testid": "toolbar-paste",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::paste_selection(doc_signal, history_signal),
+                disabled: !actions::can_paste(),
+                "Paste"
             }
 
             div { style: "width: 1px; height: 20px; background: {BORDER};" }

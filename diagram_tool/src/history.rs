@@ -88,6 +88,16 @@ impl History {
             redo_stack: truncate_stack(&self.redo_stack),
         }
     }
+
+    #[must_use]
+    pub fn can_undo(&self) -> bool {
+        !self.undo_stack.is_empty()
+    }
+
+    #[must_use]
+    pub fn can_redo(&self) -> bool {
+        !self.redo_stack.is_empty()
+    }
 }
 
 #[cfg(test)]
@@ -488,6 +498,33 @@ mod tests {
             doc_with_revision(2).revision,
             "second undo should return second-to-last pushed document"
         );
+    }
+
+    #[test]
+    fn test_can_undo_returns_false_for_fresh_history() {
+        let history = History::new();
+        assert!(!history.can_undo());
+    }
+
+    #[test]
+    fn test_can_undo_returns_true_after_push() {
+        let history = History::new().push(doc_with_revision(1));
+        assert!(history.can_undo());
+    }
+
+    #[test]
+    fn test_can_redo_returns_false_for_fresh_history() {
+        let history = History::new();
+        assert!(!history.can_redo());
+    }
+
+    #[test]
+    fn test_can_redo_returns_true_after_undo() {
+        let history = History::new().push(doc_with_revision(1));
+        let Some((_, after_undo)) = history.undo(doc_with_revision(100)) else {
+            panic!("undo should succeed");
+        };
+        assert!(after_undo.can_redo());
     }
 }
 

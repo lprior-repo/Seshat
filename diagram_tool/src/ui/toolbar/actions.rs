@@ -3,7 +3,8 @@ use crate::layout::dag::{dag_layout, DagLayoutSettings};
 use crate::models::document::DiagramDocument;
 use crate::mutation::pipeline::run_mutation;
 use crate::ui::commands::{
-    apply_delete_selected, apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset,
+    apply_copy_selection, apply_delete_selected, apply_paste_selection, apply_redo, apply_undo,
+    apply_zoom_in, apply_zoom_out, apply_zoom_reset, clipboard_has_content,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -63,4 +64,16 @@ pub fn zoom_reset(doc_signal: Signal<DiagramDocument>, history_signal: Signal<Hi
 
 pub fn delete_selection(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
     let _ = apply_delete_selected(doc_signal, history_signal);
+}
+
+pub fn copy_selection(doc_signal: Signal<DiagramDocument>) {
+    let _ = apply_copy_selection(doc_signal);
+}
+
+pub fn paste_selection(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_paste_selection(doc_signal, history_signal);
+}
+
+pub fn can_paste() -> bool {
+    clipboard_has_content()
 }
