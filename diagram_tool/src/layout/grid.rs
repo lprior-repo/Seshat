@@ -61,24 +61,26 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
 
     #[allow(clippy::cast_precision_loss)]
     let cols_target = (unlocked_ids.len() as f64).sqrt().ceil() as i32;
+    let cols = cols_target.max(1);
 
-    let (_, _, _, positions) = unlocked_ids.iter().fold(
-        (occupied_cells, 0_i32, 0_i32, HashMap::new()),
-        |(mut occupied, mut col, mut row, pos_map), id| {
-            let (new_col, new_row) = (0..)
-                .find_map(|_| {
-                    if occupied.contains(&(col, row)) {
-                        col += 1;
-                        if col >= cols_target.max(1) {
-                            col = 0;
-                            row += 1;
-                        }
-                        None
-                    } else {
-                        Some((col, row))
-                    }
-                })
-                .map_or((0, 0), |p| p);
+    let next_free_cell = |occupied: &im::HashSet<(i32, i32)>, start_index: i32| {
+        let max_rows = (unlocked_ids.len() + occupied.len() + 1) as i32;
+        let search_limit = (cols * max_rows).max(cols);
+
+        (0..search_limit)
+            .map(|step| start_index + step)
+            .map(|index| (index.rem_euclid(cols), index.div_euclid(cols)))
+            .find(|cell| !occupied.contains(cell))
+            .map_or(
+                (start_index.rem_euclid(cols), start_index.div_euclid(cols)),
+                |cell| cell,
+            )
+    };
+
+    let (_, _, positions) = unlocked_ids.iter().fold(
+        (occupied_cells, 0_i32, HashMap::new()),
+        |(mut occupied, cursor, pos_map), id| {
+            let (new_col, new_row) = next_free_cell(&occupied, cursor);
 
             let new_pos = (
                 f64::from(new_col) * cell_size,
@@ -86,8 +88,9 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
             );
             let next_pos_map = pos_map.update(id.clone(), new_pos);
             let _ = occupied.insert((new_col, new_row));
+            let next_cursor = new_row * cols + new_col + 1;
 
-            (occupied, new_col + 1, new_row, next_pos_map)
+            (occupied, next_cursor, next_pos_map)
         },
     );
 
@@ -332,8 +335,8 @@ mod tests {
         assert_eq!(positions.len(), 4);
         assert!(positions.contains(&(0.0, 0.0)));
         assert!(positions.contains(&(100.0, 0.0)));
-        assert!(positions.contains(&(200.0, 0.0)));
-        assert!(positions.contains(&(300.0, 0.0)));
+        assert!(positions.contains(&(0.0, 100.0)));
+        assert!(positions.contains(&(100.0, 100.0)));
     }
 }
 
