@@ -35,7 +35,7 @@ async function setupSingleNode(page: Page) {
   await runEffect(() => createTextNode(page, canvas, 680, 300));
   expect(await nodeCount(page)).toBe(1);
 
-  const node = canvas.getByText("Text", { exact: true }).first();
+  const node = canvas.getByTestId("node").first();
   await runEffect(() => node.click());
   expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
 

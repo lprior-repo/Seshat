@@ -3,6 +3,13 @@ import { runEffectsSequential, trapPageErrors, nodeCount, edgeCount, zoomPercent
 import { runTrace } from "../redqueen/harness";
 import { tracesForReplay } from "../redqueen/corpus-manager";
 
+function annotateSeed(seed: number, wave: 1 | 2 | 3, sceneId: string): void {
+  test.info().annotations.push({
+    type: "seed",
+    description: `seed=${seed};wave=${wave};scene=${sceneId}`,
+  });
+}
+
 test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
   test.describe.configure({ mode: "serial" });
 
@@ -31,6 +38,7 @@ test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
       ]);
 
       const { traceForSeed } = await import("../redqueen/operators");
+      annotateSeed(known.seed, known.wave, known.sceneId);
       await runTrace(page, {
         sceneId: known.sceneId,
         seed: known.seed,
@@ -64,6 +72,7 @@ test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
     const pageErrors = trapPageErrors(page);
 
     for (const trace of corpusTraces) {
+      annotateSeed(trace.seed, trace.wave, trace.sceneId);
       await runEffectsSequential([
         () => page.goto("/"),
         () =>
@@ -89,6 +98,7 @@ test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
 
     const { traceForSeed } = await import("../redqueen/operators");
     for (const seed of [1001, 2002, 3003]) {
+      annotateSeed(seed, 2, "scene_mixed_selection_v1");
       await runTrace(page, {
         sceneId: "scene_mixed_selection_v1",
         seed,

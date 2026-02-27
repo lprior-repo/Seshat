@@ -8,18 +8,8 @@ import {
   trapPageErrors,
   waitForNoRebuildOverlay,
   waitForUiReady,
+  zoomPercent,
 } from "./helpers";
-
-async function getZoomLabel(page: Page): Promise<string> {
-  const label = await runEffect(() => page.getByTestId("zoom-reset").textContent().then((t) => t ?? "100%"));
-  return label.trim();
-}
-
-async function getZoomPercent(page: Page): Promise<number> {
-  const label = await getZoomLabel(page);
-  const match = label.match(/(\d+)%/);
-  return match ? Number.parseInt(match[1], 10) : 100;
-}
 
 async function clickZoomButton(page: Page, label: "+" | "-") {
   const buttons = page.getByRole("button", { name: label, exact: true });
@@ -135,19 +125,19 @@ test.describe("diagram numeric stability", () => {
         await clickZoomButton(page, "+");
         await runEffect(() => waitForNoRebuildOverlay(page));
       }
-      let zoom = await getZoomPercent(page);
+      let zoom = await zoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
       expect(zoom).toBeLessThanOrEqual(400);
 
       await runEffect(() => page.keyboard.press("+"));
       await runEffect(() => page.keyboard.press("="));
-      zoom = await getZoomPercent(page);
+      zoom = await zoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
       expect(zoom).toBeLessThanOrEqual(400);
 
       await performWheelZoom(page, canvas, -500, true);
       await performWheelZoom(page, canvas, -500, true);
-      zoom = await getZoomPercent(page);
+      zoom = await zoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
       expect(zoom).toBeLessThanOrEqual(400);
 
@@ -161,13 +151,13 @@ test.describe("diagram numeric stability", () => {
 
       await runEffect(() => page.keyboard.press("-"));
       await runEffect(() => page.keyboard.press("0"));
-      zoom = await getZoomPercent(page);
+      zoom = await zoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
       expect(zoom).toBeLessThanOrEqual(400);
 
       await performWheelZoom(page, canvas, 500, true);
       await performWheelZoom(page, canvas, 500, true);
-      zoom = await getZoomPercent(page);
+      zoom = await zoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
       expect(zoom).toBeLessThanOrEqual(400);
 
@@ -342,7 +332,7 @@ test.describe("diagram numeric stability", () => {
         await runEffect(() => waitForNoRebuildOverlay(page));
       }
 
-      const zoom = await getZoomPercent(page);
+      const zoom = await zoomPercent(page);
       expect(zoom).toBeGreaterThanOrEqual(10);
       expect(zoom).toBeLessThanOrEqual(400);
 

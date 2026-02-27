@@ -3,6 +3,8 @@ import {
   clearCanvasOverlays,
   createTextNode,
   edgeCount,
+  expectEdgeCount,
+  expectNodeCount,
   nodeCenters,
   runEffectsSequential,
   runEffect,
@@ -51,7 +53,7 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 560, 210),
       () => createTextNode(page, canvas, 820, 330),
     ]);
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -65,8 +67,8 @@ test.describe("diagram edges and routing", () => {
     await edgeClick(page, centers[0].x, centers[0].y);
     await edgeClick(page, centers[1].x, centers[1].y);
 
-    await expect(page.getByText(/1 edges/)).toBeVisible();
-    await expect(page.getByText(/\d+ selected/)).toBeVisible();
+    await expectEdgeCount(page, 1);
+    expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -84,7 +86,7 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 760, 230),
       () => createTextNode(page, canvas, 980, 260),
     ]);
-    await expect(page.getByText(/3 nodes/)).toBeVisible();
+    await expectNodeCount(page, 3);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -98,11 +100,11 @@ test.describe("diagram edges and routing", () => {
     await edgeClick(page, centers[0].x, centers[0].y);
     await edgeClick(page, centers[1].x, centers[1].y);
     await edgeClick(page, centers[2].x, centers[2].y);
-    await expect(page.getByText(/2 edges/)).toBeVisible();
+    await expectEdgeCount(page, 2);
 
     await edgeClick(page, centers[2].x, centers[2].y);
     await edgeClick(page, centers[0].x, centers[0].y);
-    await expect(page.getByText(/2 edges/)).toBeVisible();
+    await expectEdgeCount(page, 2);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -121,7 +123,7 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 620, 160),
       () => createTextNode(page, canvas, 620, 480),
     ]);
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await expectNodeCount(page, 4);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -130,7 +132,7 @@ test.describe("diagram edges and routing", () => {
     await edgeClick(page, 830, 332);
     await edgeClick(page, 670, 172);
     await edgeClick(page, 670, 492);
-    await expect(page.getByText(/2 edges/)).toBeVisible();
+    await expectEdgeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Select", exact: true }).click(),
@@ -181,7 +183,7 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 620, 160),
       () => createTextNode(page, canvas, 620, 480),
     ]);
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await expectNodeCount(page, 4);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -190,7 +192,7 @@ test.describe("diagram edges and routing", () => {
     await edgeClick(page, 830, 332);
     await edgeClick(page, 670, 172);
     await edgeClick(page, 670, 492);
-    await expect(page.getByText(/2 edges/)).toBeVisible();
+    await expectEdgeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Select", exact: true }).click(),
@@ -240,7 +242,7 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 680, 160),
       () => createTextNode(page, canvas, 680, 520),
     ]);
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -253,7 +255,7 @@ test.describe("diagram edges and routing", () => {
     const byY = [...centers].sort((a, b) => a.y - b.y);
     await edgeClick(page, byY[0].x, byY[0].y);
     await edgeClick(page, byY[1].x, byY[1].y);
-    await expect(page.getByText(/1 edges/)).toBeVisible();
+    await expectEdgeCount(page, 1);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Select", exact: true }).click(),
@@ -301,7 +303,7 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 860, 260),
       () => createTextNode(page, canvas, 700, 460),
     ]);
-    await expect(page.getByText(/3 nodes/)).toBeVisible();
+    await expectNodeCount(page, 3);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -310,7 +312,7 @@ test.describe("diagram edges and routing", () => {
     await edgeClick(page, 910, 272);
     await edgeClick(page, 750, 472);
     await edgeClick(page, 910, 272);
-    await expect(page.getByText(/2 edges/)).toBeVisible();
+    await expectEdgeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Select", exact: true }).click(),
@@ -360,14 +362,14 @@ test.describe("diagram edges and routing", () => {
       () => createTextNode(page, canvas, 520, 260),
       () => createTextNode(page, canvas, 860, 260),
     ]);
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
     );
     await edgeClick(page, 570, 272);
     await edgeClick(page, 910, 272);
-    await expect(page.getByText(/1 edges/)).toBeVisible();
+    await expectEdgeCount(page, 1);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Select", exact: true }).click(),

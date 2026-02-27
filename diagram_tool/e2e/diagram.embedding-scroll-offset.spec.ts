@@ -2,6 +2,8 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  expectNodeCount,
+  expectSelectedCount,
   minimapViewport,
   mountPageScrollHarness,
   mountScrollableHarness,
@@ -11,6 +13,7 @@ import {
   scrollHarnessTo,
   trapPageErrors,
   waitForUiReady,
+  zoomPercent,
 } from "./helpers";
 
 type BoundingBox = { x: number; y: number; width: number; height: number };
@@ -78,7 +81,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.mouse.click(targetX, targetY),
     ]);
 
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/1 nodes/);
+    await expectNodeCount(page, 1);
     const node = page.getByTestId("node").first();
     const placed = await runEffect(() => node.boundingBox());
     if (!placed) {
@@ -116,7 +119,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.mouse.wheel(0, -180),
     ]);
 
-    await expect(page.getByTestId("zoom-reset")).not.toHaveText("100%");
+    expect(await zoomPercent(page)).not.toBe(100);
     const after = await runEffect(() => node.boundingBox());
     if (!after) {
       throw new Error("node bounds unavailable after wheel zoom");
@@ -185,7 +188,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.getByRole("button", { name: "Text", exact: true }).click(),
       () => page.mouse.click(firstTargetX, firstTargetY),
     ]);
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/1 nodes/);
+    await expectNodeCount(page, 1);
 
     await runEffect(() => scrollHarnessTo(page, 420, 520));
 
@@ -197,7 +200,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.getByRole("button", { name: "Text", exact: true }).click(),
       () => page.mouse.click(secondTargetX, secondTargetY),
     ]);
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/2 nodes/);
+    await expectNodeCount(page, 2);
 
     const secondNode = page.getByTestId("node").nth(1);
     const placed = await runEffect(() => secondNode.boundingBox());
@@ -229,7 +232,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.getByRole("button", { name: "Text", exact: true }).click(),
       () => page.mouse.click(firstTargetX, firstTargetY),
     ]);
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/1 nodes/);
+    await expectNodeCount(page, 1);
 
     await runEffect(() => scrollPageTo(page, 0, 760));
 
@@ -241,7 +244,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.getByRole("button", { name: "Text", exact: true }).click(),
       () => page.mouse.click(secondTargetX, secondTargetY),
     ]);
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/2 nodes/);
+    await expectNodeCount(page, 2);
 
     const secondNode = page.getByTestId("node").nth(1);
     const placed = await runEffect(() => secondNode.boundingBox());
@@ -274,7 +277,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.mouse.click(targetX, targetY),
     ]);
 
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/1 nodes/);
+    await expectNodeCount(page, 1);
     await expectLastNodeNear(page, targetX, targetY, 30);
     expect(pageErrors).toHaveLength(0);
   });
@@ -299,7 +302,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.mouse.click(targetX, targetY),
     ]);
 
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/1 nodes/);
+    await expectNodeCount(page, 1);
     await expectLastNodeNear(page, targetX, targetY, 30);
     expect(pageErrors).toHaveLength(0);
   });
@@ -316,12 +319,12 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
 
     const canvas = page.getByTestId("canvas-root");
     await createTextNode(page, canvas, 500, 280);
-    await expect(page.getByTestId("counter-selected")).toHaveText(/1 selected/);
+    await expectSelectedCount(page, 1);
 
     const clearBox = await canvasBox(page);
     await runEffectsSequential([
       () => page.mouse.click(clearBox.x + 44, clearBox.y + 44),
-      () => expect(page.getByTestId("counter-selected")).toHaveText(/0 selected/),
+      () => expectSelectedCount(page, 0),
       () => scrollPageTo(page, 0, 760),
     ]);
 
@@ -336,7 +339,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
     await runEffectsSequential([
       () => page.mouse.move(anchorX, anchorY),
       () => page.mouse.wheel(0, -220),
-      () => expect(page.getByTestId("zoom-reset")).not.toHaveText("100%"),
+      () => expect.poll(() => zoomPercent(page)).not.toBe(100),
     ]);
 
     const zoomed = await runEffect(() => node.boundingBox());
@@ -348,7 +351,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       page.mouse.click(zoomed.x + zoomed.width / 2, zoomed.y + zoomed.height / 2),
     );
 
-    await expect(page.getByTestId("counter-selected")).toHaveText(/1 selected/);
+    await expectSelectedCount(page, 1);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -373,8 +376,8 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
     await runEffect(() => dragMinimapViewportBy(page, 40, 28));
     await runEffect(() => dragMinimapViewportBy(page, -36, -24));
 
-    await expect(page.getByTestId("counter-nodes")).toHaveText(/2 nodes/);
-    await expect(page.getByTestId("zoom-reset")).toHaveText(/\d+%/);
+    await expectNodeCount(page, 2);
+    expect(await zoomPercent(page)).toBeGreaterThan(0);
     expect(pageErrors).toHaveLength(0);
   });
 });

@@ -12,6 +12,13 @@ type CaseDef = Readonly<{
   description: string;
 }>;
 
+function annotateSeed(seed: number, wave: 1 | 2 | 3, scene: SceneName): void {
+  test.info().annotations.push({
+    type: "seed",
+    description: `seed=${seed};wave=${wave};scene=${scene}`,
+  });
+}
+
 const mk = (
   prefix: string,
   count: number,
@@ -48,6 +55,7 @@ test.describe("redqueen priority matrix wave3 @rq @rq-wave3", () => {
       const sampledSeedA = Math.floor(seededRng(seed % 23) * 10_000);
       const sampledSeedB = Math.floor(seededRng(seed % 29) * 10_000);
 
+      annotateSeed(sampledSeedA, 3, entry.scene);
       await runTrace(page, {
         sceneId: entry.scene,
         seed: sampledSeedA,
@@ -56,6 +64,7 @@ test.describe("redqueen priority matrix wave3 @rq @rq-wave3", () => {
         timestamp: new Date().toISOString(),
       });
 
+      annotateSeed(sampledSeedB, 3, entry.scene);
       await runTrace(page, {
         sceneId: entry.scene,
         seed: sampledSeedB,

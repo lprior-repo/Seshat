@@ -12,6 +12,13 @@ type CaseDef = Readonly<{
   description: string;
 }>;
 
+function annotateSeed(seed: number, wave: 1 | 2 | 3, scene: SceneName): void {
+  test.info().annotations.push({
+    type: "seed",
+    description: `seed=${seed};wave=${wave};scene=${scene}`,
+  });
+}
+
 const mk = (
   prefix: string,
   count: number,
@@ -56,6 +63,7 @@ test.describe("redqueen priority matrix wave1 @rq @rq-wave1", () => {
       await runEffectsSequential([() => page.goto("/"), () => loadScene(entry.scene)]);
 
       const sampledSeed = Math.floor(seededRng(seed % 17) * 10_000);
+      annotateSeed(sampledSeed, 1, entry.scene);
       await runTrace(page, {
         sceneId: entry.scene,
         seed: sampledSeed,

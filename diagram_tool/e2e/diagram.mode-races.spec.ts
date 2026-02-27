@@ -2,6 +2,9 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  expectEdgeCount,
+  expectNodeCount,
+  expectSelectedCount,
   nodeCenters,
   runEffectsSequential,
   runEffect,
@@ -61,8 +64,8 @@ test.describe("diagram mode-switch race hardening", () => {
       () => page.mouse.click(targetX, targetY),
     ]);
 
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
-    const textNode = canvas.getByText("Text", { exact: true }).first();
+    await expectNodeCount(page, 1);
+    const textNode = canvas.getByTestId("node").first();
     const placed = await runEffect(() => textNode.boundingBox());
     if (!placed) {
       throw new Error("text node bounds unavailable after placement");
@@ -83,8 +86,8 @@ test.describe("diagram mode-switch race hardening", () => {
       () => createTextNode(page, canvas, 520, 220),
       () => createTextNode(page, canvas, 820, 300),
     ]);
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
-    await expect(page.getByText(/0 edges/)).toBeVisible();
+    await expectNodeCount(page, 2);
+    await expectEdgeCount(page, 0);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -106,7 +109,7 @@ test.describe("diagram mode-switch race hardening", () => {
       () => page.keyboard.press("Escape"),
     ]);
 
-    await expect(page.getByText(/0 edges/)).toBeVisible();
+    await expectEdgeCount(page, 0);
     await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
@@ -121,7 +124,7 @@ test.describe("diagram mode-switch race hardening", () => {
       () => createTextNode(page, canvas, 540, 240),
       () => createTextNode(page, canvas, 820, 340),
     ]);
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Edge", exact: true }).click(),
@@ -142,8 +145,8 @@ test.describe("diagram mode-switch race hardening", () => {
       () => page.mouse.up(),
     ]);
 
-    await expect(page.getByText(/0 edges/)).toBeVisible();
-    await expect(page.getByText(/1 selected/)).toBeVisible();
+    await expectEdgeCount(page, 0);
+    await expectSelectedCount(page, 1);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -171,8 +174,8 @@ test.describe("diagram mode-switch race hardening", () => {
     );
     await runEffect(() => createTextNode(page, canvas, 700, 260));
 
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
-    await expect(page.getByText(/0 edges/)).toBeVisible();
+    await expectNodeCount(page, 1);
+    await expectEdgeCount(page, 0);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -183,9 +186,9 @@ test.describe("diagram mode-switch race hardening", () => {
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 240));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
 
-    const textNode = canvas.getByText("Text", { exact: true }).first();
+    const textNode = canvas.getByTestId("node").first();
     const before = await runEffect(() => textNode.boundingBox());
     const canvasBox = await runEffect(() => canvas.boundingBox());
     if (!before || !canvasBox) {
@@ -213,7 +216,7 @@ test.describe("diagram mode-switch race hardening", () => {
       page.getByRole("button", { name: "Text", exact: true }).click(),
     );
     await runEffect(() => page.mouse.click(canvasBox.x + 220, canvasBox.y + 120));
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -224,7 +227,7 @@ test.describe("diagram mode-switch race hardening", () => {
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 230));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
 
     const dragStart = await canvasPoint(page, 300, 220);
     const dragMid = await canvasPoint(page, 220, 220);
@@ -246,9 +249,9 @@ test.describe("diagram mode-switch race hardening", () => {
     const dropPoint = await canvasPoint(page, 780, 320);
     await runEffect(() => page.mouse.click(dropPoint.x, dropPoint.y));
 
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
     await expect(page.getByRole("button", { name: "Pan", exact: true })).toBeVisible();
-    await expect(page.getByText(/0 edges/)).toBeVisible();
+    await expectEdgeCount(page, 0);
     expect(pageErrors).toHaveLength(0);
   });
 });

@@ -27,10 +27,11 @@ export default defineConfig({
       },
     },
     {
-      name: "baseline-chromium",
+      name: "baseline",
       retries: 1,
       workers: 4,
       grep: /@baseline/,
+      grepInvert: /@rq/,
       use: {
         browserName: "chromium",
       },

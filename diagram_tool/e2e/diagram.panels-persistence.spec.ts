@@ -7,6 +7,7 @@ import {
   chooseFilesWithFileChooser,
   clearCanvasOverlays,
   createTextNode,
+  edgeCount,
   nodeCount,
   selectedCount,
   runEffectsSequential,
@@ -44,7 +45,7 @@ test.describe("diagram panel persistence and resiliency", () => {
     ]);
     expect(await nodeCount(page)).toBe(2);
 
-    const textNode = canvas.getByText("Text", { exact: true }).first();
+    const textNode = canvas.getByTestId("node").first();
     const before = await runEffect(() => textNode.boundingBox());
     if (!before) {
       throw new Error("text node bounds missing before drag");
@@ -89,7 +90,7 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(await nodeCount(page)).toBe(2);
 
     await runEffect(() => page.getByRole("button", { name: "Edge", exact: true }).click());
-    const textNodes = canvas.getByText("Text", { exact: true });
+    const textNodes = canvas.getByTestId("node");
     const first = await runEffect(() => textNodes.first().boundingBox());
     const second = await runEffect(() => textNodes.nth(1).boundingBox());
     if (!first || !second) {
@@ -101,7 +102,7 @@ test.describe("diagram panel persistence and resiliency", () => {
     await runEffect(() => page.mouse.move(second.x + second.width / 2, second.y + second.height / 2));
     await runEffect(() => page.mouse.down());
     await runEffect(() => page.mouse.up());
-    await expect(page.getByTestId("counter-edges")).toHaveText("1 edges");
+    expect(await edgeCount(page)).toBe(1);
 
     await runEffect(() => page.getByRole("button", { name: "Validate", exact: true }).click());
     if (
@@ -217,7 +218,7 @@ test.describe("diagram panel persistence and resiliency", () => {
 
     await expect(page.getByText("Workspace loaded", { exact: true })).toBeVisible();
     expect(await nodeCount(page)).toBe(3);
-    await expect(page.getByTestId("counter-edges")).toHaveText("1 edges");
+    expect(await edgeCount(page)).toBe(1);
 
     await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
     expect(await nodeCount(page)).toBe(1);
@@ -232,7 +233,7 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("failed import does not change selected-count or consume undo history @baseline", async ({ page }) => {
+  test("failed import does not change selected counter or consume undo history @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
       () => page.goto("/"),
@@ -378,7 +379,7 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("cancelled import leaves selected-count and node positions untouched @baseline", async ({ page }) => {
+  test("cancelled import leaves selected counter and node positions untouched @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
       () => page.goto("/"),

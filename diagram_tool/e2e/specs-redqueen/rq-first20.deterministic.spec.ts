@@ -16,6 +16,13 @@ import { traceForSeed } from "../redqueen/operators";
 type SceneId = "scene_mixed_selection_v1" | "scene_nested_subgraph_v1" | "scene_stress_1k_v1";
 type BoundingBox = { x: number; y: number; width: number; height: number };
 
+function annotateSeed(seed: number, wave: 1 | 2 | 3, sceneId: SceneId): void {
+  test.info().annotations.push({
+    type: "seed",
+    description: `seed=${seed};wave=${wave};scene=${sceneId}`,
+  });
+}
+
 async function bootScene(
   page: Page,
   loadScene: (scene: SceneId) => Promise<void>,
@@ -227,7 +234,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
     const canvas = page.getByTestId("canvas-root");
     const box = await requireBox(canvas);
     await runEffectsSequential([
-      () => page.getByRole("button", { name: "Select", exact: true }).click(),
+      () => page.getByTestId("tool-select").click(),
       () => page.mouse.move(box.x + 130, box.y + 130),
       () => page.mouse.down(),
       () => page.mouse.move(box.x + 720, box.y + 500, { steps: 10 }),
@@ -248,7 +255,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
     const before = await edgeCount(page);
     const node = page.getByTestId("node").first();
     await runEffectsSequential([
-      () => page.getByRole("button", { name: "Edge", exact: true }).click(),
+      () => page.getByTestId("tool-edge").click(),
       () => node.click(),
       () => node.click(),
     ]);
@@ -267,8 +274,8 @@ test.describe("redqueen first-20 deterministic intents", () => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_mixed_selection_v1");
     await runEffectsSequential([
-      () => page.getByRole("button", { name: "Mini", exact: true }).click(),
-      () => page.getByRole("button", { name: "Mini", exact: true }).click(),
+      () => page.getByTestId("panel-mini-toggle").click(),
+      () => page.getByTestId("panel-mini-toggle").click(),
     ]);
     const rect = await minimapViewportRect(page);
     expect(Number.isFinite(rect.x)).toBe(true);
@@ -288,10 +295,10 @@ test.describe("redqueen first-20 deterministic intents", () => {
     await bootScene(page, loadScene, "scene_mixed_selection_v1");
     for (let i = 0; i < 4; i += 1) {
       await runEffectsSequential([
-        () => page.getByRole("button", { name: "Icons", exact: true }).click(),
-        () => page.getByRole("button", { name: "Props", exact: true }).click(),
-        () => page.getByRole("button", { name: "Mini", exact: true }).click(),
-        () => page.getByRole("button", { name: "Valid", exact: true }).click(),
+        () => page.getByTestId("panel-icons-toggle").click(),
+        () => page.getByTestId("panel-props-toggle").click(),
+        () => page.getByTestId("panel-mini-toggle").click(),
+        () => page.getByTestId("panel-valid-toggle").click(),
       ]);
     }
     const node = page.getByTestId("node").first();
@@ -310,6 +317,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
   }) => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_mixed_selection_v1");
+    annotateSeed(1337, 1, "scene_mixed_selection_v1");
     await runTrace(page, {
       sceneId: "scene_mixed_selection_v1",
       seed: 1337,
@@ -330,6 +338,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
   }) => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_nested_subgraph_v1");
+    annotateSeed(4242, 1, "scene_nested_subgraph_v1");
     await runTrace(page, {
       sceneId: "scene_nested_subgraph_v1",
       seed: 4242,
@@ -361,12 +370,14 @@ test.describe("redqueen first-20 deterministic intents", () => {
   }) => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_stress_1k_v1");
+    annotateSeed(1337, 3, "scene_stress_1k_v1");
     await runTrace(page, {
       sceneId: "scene_stress_1k_v1",
       seed: 1337,
       wave: 3,
       operators: traceForSeed(1337, 3),
     });
+    annotateSeed(4242, 3, "scene_stress_1k_v1");
     await runTrace(page, {
       sceneId: "scene_stress_1k_v1",
       seed: 4242,
@@ -388,6 +399,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_stress_1k_v1");
     await runEffectsSequential([() => page.keyboard.press("ControlOrMeta+a")]);
+    annotateSeed(1001, 1, "scene_stress_1k_v1");
     await runTrace(page, {
       sceneId: "scene_stress_1k_v1",
       seed: 1001,
@@ -413,8 +425,8 @@ test.describe("redqueen first-20 deterministic intents", () => {
     await dragBy(page, node, 48, 30);
     for (let i = 0; i < 6; i += 1) {
       await runEffectsSequential([
-        () => page.getByRole("button", { name: "Undo", exact: true }).click(),
-        () => page.getByRole("button", { name: "Redo", exact: true }).click(),
+        () => page.getByTestId("toolbar-undo").click(),
+        () => page.getByTestId("toolbar-redo").click(),
       ]);
     }
     await assertInvariants();
@@ -429,6 +441,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_stress_1k_v1");
     const start = Date.now();
+    annotateSeed(8080, 1, "scene_stress_1k_v1");
     await runTrace(page, {
       sceneId: "scene_stress_1k_v1",
       seed: 8080,
@@ -450,8 +463,8 @@ test.describe("redqueen first-20 deterministic intents", () => {
     await bootScene(page, loadScene, "scene_mixed_selection_v1");
     for (let i = 0; i < 8; i += 1) {
       await runEffectsSequential([
-        () => page.getByRole("button", { name: "Valid", exact: true }).click(),
-        () => page.getByRole("button", { name: "Validate", exact: true }).click(),
+        () => page.getByTestId("panel-valid-toggle").click(),
+        () => page.getByTestId("toolbar-validate").click(),
       ]);
     }
     await expect(page.getByTestId("validation-status")).toHaveText(/Valid|Invalid/);
@@ -468,6 +481,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
     await bootScene(page, loadScene, "scene_nested_subgraph_v1");
     const seeds = [501, 777, 999];
     for (const seed of seeds) {
+      annotateSeed(seed, 3, "scene_nested_subgraph_v1");
       await runTrace(page, {
         sceneId: "scene_nested_subgraph_v1",
         seed,

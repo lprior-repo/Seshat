@@ -7,6 +7,12 @@ tasks:
     options:
       cache: false
 
+  serve-e2e:
+    script: |
+      dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
+    options:
+      cache: false
+
   check:
     script: |
       /usr/bin/cargo check
@@ -28,35 +34,17 @@ tasks:
 
   e2e-baseline:
     script: |
-      npm exec -- playwright test --project baseline-chromium
+      npm exec -- playwright test --project baseline
     options:
       cache: false
 
-  e2e-redqueen-wave1:
-    script: |
-      npm exec -- playwright test --project redqueen-wave1
-    options:
-      cache: false
-
-  e2e-redqueen-wave2:
-    script: |
-      npm exec -- playwright test --project redqueen-wave2
-    options:
-      cache: false
-
-  e2e-redqueen-wave3:
-    script: |
-      npm exec -- playwright test --project redqueen-wave3
-    options:
-      cache: false
-
-  e2e-redqueen:
+  e2e-seeded:
     script: |
       npm exec -- playwright test --project redqueen-seeded --grep @rq
     options:
       cache: false
 
-  e2e-redqueen-stress:
+  e2e-stress:
     script: |
       npm exec -- playwright test --project redqueen-stress
     options:
@@ -64,7 +52,14 @@ tasks:
 
   e2e:
     script: |
-      npm exec -- playwright test
+      moon run :e2e-baseline
+    options:
+      cache: false
+
+  e2e-hardening:
+    script: |
+      moon run :e2e-seeded
+      moon run :e2e-stress
     options:
       cache: false
 
@@ -112,14 +107,15 @@ tasks:
     script: |
       moon run :check
       moon run :clippy
-      moon run :test
+      moon run :test-rust
+      moon run :e2e-baseline
 
   ci-hardening:
     script: |
       moon run :ci
+      moon run :e2e-hardening
 
   ci-nightly:
     script: |
       moon run :ci-hardening
-      moon run :e2e-redqueen-stress
       moon run :mutants-ci

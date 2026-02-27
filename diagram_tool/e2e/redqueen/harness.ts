@@ -1,5 +1,5 @@
 import { Effect } from "effect";
-import type { Page } from "@playwright/test";
+import type { Locator, Page } from "@playwright/test";
 import type { RedQueenOp, RedQueenTrace } from "./types";
  
 const effectStep = <A>(step: () => Promise<A>): Effect.Effect<A, never, never> =>
@@ -9,14 +9,46 @@ const effectStep = <A>(step: () => Promise<A>): Effect.Effect<A, never, never> =
       new Error(error instanceof Error ? error.message : String(error)),
   }).pipe(Effect.orDie);
 
+const toolIds: Readonly<Record<"Select" | "Pan" | "Edge" | "Subgraph" | "Text", string>> = {
+  Select: "tool-select",
+  Pan: "tool-pan",
+  Edge: "tool-edge",
+  Subgraph: "tool-subgraph",
+  Text: "tool-text",
+};
+
+const panelToggleIds: Readonly<Record<"Icons" | "Props" | "Mini" | "Valid", string>> = {
+  Icons: "panel-icons-toggle",
+  Props: "panel-props-toggle",
+  Mini: "panel-mini-toggle",
+  Valid: "panel-valid-toggle",
+};
+
+const toolbarIds: Readonly<Partial<Record<"Undo" | "Redo" | "Delete" | "Auto-Arrange" | "Validate", string>>> = {
+  Undo: "toolbar-undo",
+  Redo: "toolbar-redo",
+  Delete: "toolbar-delete",
+  Validate: "toolbar-validate",
+};
+
 const clickTool = (page: Page, tool: "Select" | "Pan" | "Edge" | "Subgraph" | "Text") =>
-  effectStep(() => page.getByRole("button", { name: tool, exact: true }).click());
+  effectStep(() => page.getByTestId(toolIds[tool]).click());
 
 const clickPanelToggle = (page: Page, toggle: "Icons" | "Props" | "Mini" | "Valid") =>
-  effectStep(() => page.getByRole("button", { name: toggle, exact: true }).click());
+  effectStep(() => page.getByTestId(panelToggleIds[toggle]).click());
+
+const toolbarButton = (
+  page: Page,
+  action: "Undo" | "Redo" | "Delete" | "Auto-Arrange" | "Validate",
+): Locator => {
+  const testId = toolbarIds[action];
+  return testId
+    ? page.getByTestId(testId)
+    : page.getByRole("button", { name: action, exact: true });
+};
 
 const clickToolbar = (page: Page, action: "Undo" | "Redo" | "Delete" | "Auto-Arrange" | "Validate") =>
-  effectStep(() => page.getByRole("button", { name: action, exact: true }).click());
+  effectStep(() => toolbarButton(page, action).click());
 
 const getCanvasBox = async (page: Page) => {
   const canvas = page.getByTestId("canvas-root");
@@ -137,13 +169,13 @@ const opProgram = (page: Page, op: RedQueenOp): Effect.Effect<void, never, never
 
     case "edge_create_cancel":
       return effectStep(async () => {
-        await page.getByRole("button", { name: "Edge", exact: true }).click();
+        await page.getByTestId("tool-edge").click();
         const nodes = await page.getByTestId("node").all();
         if (nodes.length >= 1) {
           await nodes[0].click();
           await page.keyboard.press("Escape");
         }
-        await page.getByRole("button", { name: "Select", exact: true }).click();
+        await page.getByTestId("tool-select").click();
       });
 
     case "subgraph_collapse_expand":
@@ -219,7 +251,7 @@ const opProgram = (page: Page, op: RedQueenOp): Effect.Effect<void, never, never
 
     case "minimap_viewport_drag":
       return effectStep(async () => {
-        await page.getByRole("button", { name: "Mini", exact: true }).click();
+        await page.getByTestId("panel-mini-toggle").click();
         const minimap = page.getByTestId("minimap-viewport");
         const box = await minimap.boundingBox();
         if (box) {

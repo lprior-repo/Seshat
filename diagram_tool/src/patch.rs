@@ -292,7 +292,7 @@ mod tests {
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_patch_100_ops_simultaneous_no_panic(ops_count in 50usize..=150usize) {
-            let mut doc = DiagramDocument::default();
+            let doc = DiagramDocument::default();
             let mut patch_ops = Vec::new();
             for i in 0..ops_count {
                 let node_id = format!("n{}", i);
@@ -406,7 +406,7 @@ mod tests {
             nodes in proptest::collection::vec("[a-z]{1,3}", 4..=8),
         ) {
             prop_assume!(nodes.len() >= 4);
-            let doc = DiagramDocument::default();
+            let mut doc = DiagramDocument::default();
             for id in &nodes {
                 let node = Node {
                     kind: NodeKind::Node,
@@ -504,7 +504,7 @@ mod tests {
         #[allow(clippy::unwrap_used)]
         fn prop_patch_move_operations_no_panic(src in "[a-z]{1,5}", tgt in "[a-z]{1,5}") {
             prop_assume!(src != tgt);
-            let doc = DiagramDocument::default();
+            let mut doc = DiagramDocument::default();
             let node = Node {
                 kind: NodeKind::Node,
                 icon: String::new(),
@@ -673,7 +673,7 @@ mod tests {
                 20..=50
             )
         ) {
-            let mut doc = DiagramDocument::default();
+            let doc = DiagramDocument::default();
             let mut patch_ops = Vec::new();
             let mut node_ids: Vec<String> = Vec::new();
             for (i, (op_type, id_part, coord)) in ops.iter().enumerate() {

@@ -2,6 +2,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  expectNodeCount,
+  expectSelectedCount,
   runEffectsSequential,
   runEffect,
   selectedCount,
@@ -90,9 +92,9 @@ test.describe("diagram transform invariants", () => {
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 240));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
 
-    const node = canvas.getByText("Text", { exact: true }).first();
+    const node = canvas.getByTestId("node").first();
     await runEffect(() => node.click());
     expect(await selectedCount(page)).toBeLessThanOrEqual(2);
 
@@ -124,7 +126,7 @@ test.describe("diagram transform invariants", () => {
 
     expect(afterRealDrag.x - afterTinyDrag.x).toBeGreaterThan(30);
     expect(afterRealDrag.y - afterTinyDrag.y).toBeGreaterThan(20);
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -138,9 +140,9 @@ test.describe("diagram transform invariants", () => {
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 260));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
 
-    const node = canvas.getByText("Text", { exact: true }).first();
+    const node = canvas.getByTestId("node").first();
     await runEffect(() => node.click());
     expect(await selectedCount(page)).toBeGreaterThanOrEqual(0);
     expect(await selectedCount(page)).toBeLessThanOrEqual(2);
@@ -163,7 +165,7 @@ test.describe("diagram transform invariants", () => {
     expect(after.width).toBeGreaterThan(21);
     expect(after.width).toBeLessThan(30);
     expect(Math.abs(after.height - before.height)).toBeLessThan(2);
-    await expect(page.getByText(/1 selected/)).toBeVisible();
+    await expectSelectedCount(page, 1);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -181,7 +183,7 @@ test.describe("diagram transform invariants", () => {
       () => createTextNode(page, canvas, 740, 240),
       () => createTextNode(page, canvas, 960, 260),
     ]);
-    await expect(page.getByText(/3 nodes/)).toBeVisible();
+    await expectNodeCount(page, 3);
 
     const initial = await nodeBoxes(canvas);
     expect(initial).toHaveLength(3);
@@ -243,11 +245,11 @@ test.describe("diagram transform invariants", () => {
       () => createTextNode(page, canvas, 980, 280),
       () => waitForNoRebuildOverlay(page),
     ]);
-    await expect(page.getByText(/3 nodes/)).toBeVisible();
+    await expectNodeCount(page, 3);
 
-    const nodes = canvas.getByText("Text", { exact: true });
+    const nodes = canvas.getByTestId("node");
     await runEffect(() => nodes.nth(2).click());
-    await expect(page.getByText(/1 selected/)).toBeVisible();
+    await expectSelectedCount(page, 1);
 
     const initialBoxes = await nodeBoxes(canvas);
     expect(initialBoxes).toHaveLength(3);
@@ -288,7 +290,7 @@ test.describe("diagram transform invariants", () => {
 
     expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
     expect(await selectedCount(page)).toBeLessThanOrEqual(2);
-    await expect(page.getByText(/3 nodes/)).toBeVisible();
+    await expectNodeCount(page, 3);
     expect(pageErrors).toHaveLength(0);
   });
 });

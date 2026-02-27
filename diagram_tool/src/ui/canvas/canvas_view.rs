@@ -306,7 +306,7 @@ pub(super) fn selection_handles_overlay(
                 for (handle, hx, hy, cursor, stable_test_id) in handles {
                     button {
                         key: "{hx}-{hy}",
-                        "data-testid": "selection-handle",
+                        "data-testid": "{stable_test_id}",
                         "data-handle": match handle {
                             ResizeHandle::Nw => "nw",
                             ResizeHandle::N => "n",
@@ -333,10 +333,7 @@ pub(super) fn selection_handles_overlay(
                                 c.y - origin.1,
                             );
                         },
-                        div {
-                            "data-testid": "{stable_test_id}",
-                            style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
-                        }
+                        div { style: "position:absolute; inset:0; pointer-events:none; opacity:0;" }
                     }
                 }
             }

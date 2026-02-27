@@ -207,18 +207,18 @@ pub fn Toolbar() -> Element {
                 }
             }
 
-            for (label, test_id, stable_test_id, enabled, setter) in [
-                ("Icons", "toggle-icons-panel", "panel-icons-toggle", panel_visibility.read().sidebar, 0_u8),
-                ("Props", "toggle-props-panel", "panel-props-toggle", panel_visibility.read().properties, 1_u8),
-                ("Mini", "toggle-mini-panel", "panel-minimap-toggle", panel_visibility.read().minimap, 2_u8),
-                ("Valid", "toggle-valid-panel", "panel-validation-toggle", panel_visibility.read().validation, 3_u8),
+            for (label, stable_test_id, enabled, setter) in [
+                ("Icons", "panel-icons-toggle", panel_visibility.read().sidebar, 0_u8),
+                ("Props", "panel-props-toggle", panel_visibility.read().properties, 1_u8),
+                ("Mini", "panel-mini-toggle", panel_visibility.read().minimap, 2_u8),
+                ("Valid", "panel-valid-toggle", panel_visibility.read().validation, 3_u8),
             ] {
                 {
                     let bg = if enabled { ACCENT_SOFT } else { BG_BASE };
                     let border = if enabled { format!("1px solid {ACCENT}") } else { format!("1px solid {BORDER}") };
                     rsx! {
                         button {
-                            "data-testid": "{test_id}",
+                            "data-testid": "{stable_test_id}",
                             style: "padding: 6px 8px; cursor: pointer; border-radius: 6px; border: {border}; background: {bg}; color: {TEXT_MAIN}; font-size: 11px;",
                             onclick: move |_| {
                                 panel_visibility.with_mut(|panels| {
@@ -230,10 +230,7 @@ pub fn Toolbar() -> Element {
                                     }
                                 });
                             },
-                            span {
-                                "data-testid": "{stable_test_id}",
-                                "{label}"
-                            }
+                            "{label}"
                         }
                     }
                 }

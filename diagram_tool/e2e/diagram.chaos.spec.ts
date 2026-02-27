@@ -46,7 +46,7 @@ async function readCounters(page: Page): Promise<Counters> {
 }
 
 async function dragRandomNode(page: Page, canvas: Locator, rng: Lcg) {
-  const nodes = canvas.getByText("Text", { exact: true });
+  const nodes = canvas.getByTestId("node");
   const count = await runEffect(() => nodes.count());
   if (count < 1) {
     return;

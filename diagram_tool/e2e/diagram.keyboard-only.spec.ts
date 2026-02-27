@@ -10,6 +10,7 @@ import {
   runEffect,
   trapPageErrors,
   waitForUiReady,
+  zoomPercent,
 } from "./helpers";
 
 async function bootEditor(page: Page) {
@@ -96,7 +97,7 @@ test.describe("diagram keyboard-only workflows", () => {
     await expectCounts(page, { nodes: 3, edges: 0 });
 
     await runEffect(() => pressKey(page, "l"));
-    const textNodes = canvasArea.getByText("Text", { exact: true });
+    const textNodes = canvasArea.getByTestId("node");
     await runEffect(() => textNodes.first().click());
     await runEffect(() => textNodes.nth(1).click());
     await expectCounts(page, { nodes: 3, edges: 1 });
@@ -130,7 +131,7 @@ test.describe("diagram keyboard-only workflows", () => {
     ]);
     await expectCounts(page, { nodes: 2 });
 
-    const textNodes = canvasArea.getByText("Text", { exact: true });
+    const textNodes = canvasArea.getByTestId("node");
     await runEffect(() => textNodes.first().click());
     await expectCounts(page, { selected: 1, nodes: 2 });
 
@@ -157,26 +158,26 @@ test.describe("diagram keyboard-only workflows", () => {
     ]);
 
     const zoomReset = page.getByTestId("zoom-reset");
-    await expect(zoomReset).toHaveText("100%");
+    expect(await zoomPercent(page)).toBe(100);
 
     await runEffect(() => zoomReset.focus());
     await expect(zoomReset).toBeFocused();
 
     await runEffect(() => pressKey(page, "+"));
-    await expect(zoomReset).toHaveText("125%");
+    expect(await zoomPercent(page)).toBe(125);
     await expect(zoomReset).toBeFocused();
 
     await runEffect(() => pressKey(page, "-"));
-    await expect(zoomReset).toHaveText("100%");
+    expect(await zoomPercent(page)).toBe(100);
     await expect(zoomReset).toBeFocused();
 
     await runEffectsSequential([
       () => pressKey(page, "+"),
       () => pressKey(page, "+"),
     ]);
-    await expect(zoomReset).toHaveText("156%");
+    expect(await zoomPercent(page)).toBe(156);
     await runEffect(() => pressKey(page, "0"));
-    await expect(zoomReset).toHaveText("100%");
+    expect(await zoomPercent(page)).toBe(100);
 
     await expectCounts(page, { nodes: 0, edges: 0, selected: 0 });
     expect(pageErrors).toHaveLength(0);
@@ -190,7 +191,7 @@ test.describe("diagram keyboard-only workflows", () => {
     await runEffect(() => createTextNode(page, canvasArea, 320, 220));
     await expectCounts(page, { nodes: 1 });
 
-    const textNode = canvasArea.getByText("Text", { exact: true }).first();
+    const textNode = canvasArea.getByTestId("node").first();
     await runEffect(() => textNode.click());
     await expectCounts(page, { selected: 1, nodes: 1 });
 
@@ -210,10 +211,10 @@ test.describe("diagram keyboard-only workflows", () => {
     await expect(labelInput).toBeFocused();
 
     const zoomReset = page.getByTestId("zoom-reset");
-    await expect(zoomReset).toHaveText("100%");
+    expect(await zoomPercent(page)).toBe(100);
     await runEffect(() => pressKey(page, "+"));
     await expect(labelInput).toHaveValue("h+");
-    await expect(zoomReset).toHaveText("100%");
+    expect(await zoomPercent(page)).toBe(100);
 
     await runEffect(() => pressKey(page, "Escape"));
     await expectCounts(page, { selected: 1, nodes: 1 });

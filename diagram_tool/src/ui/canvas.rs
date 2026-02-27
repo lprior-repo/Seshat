@@ -1304,7 +1304,7 @@ pub fn Canvas() -> Element {
     rsx! {
         div {
             class: "canvas-container",
-            "data-testid": "canvas-container",
+            "data-testid": "canvas-root",
             style: "flex: 1; position: relative; overflow: hidden; overscroll-behavior: none; touch-action: none; background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; user-select: none; border: {border_style}; box-sizing: border-box;",
 
             ondragover: move |evt| { evt.prevent_default(); },
@@ -1709,7 +1709,7 @@ pub fn Canvas() -> Element {
             onmouseleave: move |_| {},
 
             div {
-                "data-testid": "canvas-root",
+                "data-testid": "canvas-hit-layer",
                 style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
             }
 
@@ -1967,7 +1967,7 @@ pub fn Canvas() -> Element {
                     rsx! {
                         div {
                             key: "{id:?}",
-                            "data-testid": "diagram-node",
+                            "data-testid": "node",
                             "data-node-id": "{id_data_attr}",
                             "data-node-kind": match node.kind {
                                 NodeKind::Node => "node",
@@ -2132,7 +2132,7 @@ pub fn Canvas() -> Element {
                             },
 
                             div {
-                                "data-testid": "node",
+                                "data-testid": "node-hitbox",
                                 style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
                             }
 

@@ -31,7 +31,7 @@ test.describe("diagram nodes and selection", () => {
 
     await expectNodeCount(page, 2);
 
-    const textNodes = diagramCanvas.getByText("Text", { exact: true });
+    const textNodes = diagramCanvas.getByTestId("node");
     await runEffect(() => textNodes.first().click());
     await expectSelectedCount(page, 1);
 
@@ -77,7 +77,7 @@ test.describe("diagram nodes and selection", () => {
       () => createTextNode(page, diagramCanvas, 760, 220),
     ]);
 
-    const textNodes = diagramCanvas.getByText("Text", { exact: true });
+    const textNodes = diagramCanvas.getByTestId("node");
     await runEffect(() => textNodes.first().click());
     await expectSelectedCount(page, 1);
 
@@ -101,7 +101,7 @@ test.describe("diagram nodes and selection", () => {
 
     const diagramCanvas = canvas(page);
     await runEffect(() => createTextNode(page, diagramCanvas, 560, 220));
-    const node = diagramCanvas.getByText("Text", { exact: true }).first();
+    const node = diagramCanvas.getByTestId("node").first();
     await runEffect(() => node.click());
     await expectSelectedCount(page, 1);
 
@@ -130,7 +130,7 @@ test.describe("diagram nodes and selection", () => {
 
     const diagramCanvas = canvas(page);
     await runEffect(() => createTextNode(page, diagramCanvas, 560, 220));
-    const node = diagramCanvas.getByText("Text", { exact: true }).first();
+    const node = diagramCanvas.getByTestId("node").first();
     const nodeBounds = await runEffect(() => node.boundingBox());
     if (!nodeBounds) {
       throw new Error("text node bounds missing for marquee direction test");
@@ -171,7 +171,7 @@ test.describe("diagram nodes and selection", () => {
       () => createTextNode(page, diagramCanvas, 760, 220),
     ]);
 
-    const textNodes = diagramCanvas.getByText("Text", { exact: true });
+    const textNodes = diagramCanvas.getByTestId("node");
     await runEffect(() => textNodes.first().click());
     await expectSelectedCount(page, 1);
 

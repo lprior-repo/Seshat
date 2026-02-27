@@ -2,6 +2,7 @@ import { expect, test } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  expectNodeCount,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
@@ -22,19 +23,19 @@ test.describe("diagram undo and redo", () => {
       () => createTextNode(page, canvas, 560, 220),
       () => createTextNode(page, canvas, 790, 320),
     ]);
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
     await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
 
     await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/0 nodes/)).toBeVisible();
+    await expectNodeCount(page, 0);
 
     await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
 
     await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
     expect(pageErrors).toHaveLength(0);
   });

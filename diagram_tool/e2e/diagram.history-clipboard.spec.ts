@@ -21,7 +21,7 @@ async function setupCanvas(page: Page): Promise<Locator> {
 }
 
 async function selectBothTextNodes(page: Page): Promise<void> {
-  const textNodes = canvas(page).getByText("Text", { exact: true });
+  const textNodes = canvas(page).getByTestId("node");
   await runEffectsSequential([
     () => textNodes.first().click(),
     () => page.keyboard.down("Shift"),
@@ -41,7 +41,7 @@ test.describe("diagram history and clipboard", () => {
       () => createTextNode(page, canvas, 800, 320),
     ]);
     await expectNodeCount(page, 2);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
+    await expect(canvas.getByTestId("node")).toHaveCount(2);
 
     await runEffectsSequential([
       () => selectBothTextNodes(page),
@@ -49,7 +49,7 @@ test.describe("diagram history and clipboard", () => {
       () => page.keyboard.press("ControlOrMeta+v"),
     ]);
     await expectNodeCount(page, 4);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(4);
+    await expect(canvas.getByTestId("node")).toHaveCount(4);
 
     await runEffect(() => page.getByTestId("toolbar-delete").click());
     await expectNodeCount(page, 2);
@@ -65,7 +65,7 @@ test.describe("diagram history and clipboard", () => {
 
     await runEffect(() => page.getByTestId("toolbar-redo").click());
     await expectNodeCount(page, 2);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
+    await expect(canvas.getByTestId("node")).toHaveCount(2);
 
     expect(pageErrors).toHaveLength(0);
   });
@@ -88,7 +88,7 @@ test.describe("diagram history and clipboard", () => {
 
     await runEffect(() => page.getByTestId("toolbar-redo").click());
     await expectNodeCount(page, 2);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
+    await expect(canvas.getByTestId("node")).toHaveCount(2);
 
     expect(pageErrors).toHaveLength(0);
   });
@@ -110,11 +110,11 @@ test.describe("diagram history and clipboard", () => {
 
     await runEffect(() => page.keyboard.press("ControlOrMeta+v"));
     await expectNodeCount(page, 4);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(4);
+    await expect(canvas.getByTestId("node")).toHaveCount(4);
 
     await runEffect(() => page.keyboard.press("ControlOrMeta+v"));
     await expectNodeCount(page, 6);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(6);
+    await expect(canvas.getByTestId("node")).toHaveCount(6);
 
     await runEffect(() => page.getByTestId("toolbar-undo").click());
     await expectNodeCount(page, 4);
@@ -131,19 +131,19 @@ test.describe("diagram history and clipboard", () => {
       () => createTextNode(page, canvas, 840, 300),
     ]);
     await expectNodeCount(page, 2);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
+    await expect(canvas.getByTestId("node")).toHaveCount(2);
 
-    const textNodes = canvas.getByText("Text", { exact: true });
+    const textNodes = canvas.getByTestId("node");
     await runEffect(() => textNodes.first().click());
     await expectSelectedCount(page, 1);
 
     await runEffect(() => page.keyboard.press("Delete"));
     await expectNodeCount(page, 1);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(1);
+    await expect(canvas.getByTestId("node")).toHaveCount(1);
 
     await runEffect(() => page.getByTestId("toolbar-undo").click());
     await expectNodeCount(page, 2);
-    await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
+    await expect(canvas.getByTestId("node")).toHaveCount(2);
 
     await runEffect(() => page.getByTestId("toolbar-redo").click());
     await expectNodeCount(page, 1);

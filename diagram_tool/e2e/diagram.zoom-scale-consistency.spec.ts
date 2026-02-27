@@ -59,7 +59,7 @@ async function runResizeScenario(
 
   const canvas = page.getByTestId("canvas-root");
   await runEffect(() => createTextNode(page, canvas, 680, 300));
-  const node = canvas.getByText("Text", { exact: true }).first();
+  const node = canvas.getByTestId("node").first();
   await runEffect(() => node.click());
   expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
 
@@ -112,7 +112,7 @@ test.describe("zoom/scale consistency", () => {
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 700, 320));
-    const node = canvas.getByText("Text", { exact: true }).first();
+    const node = canvas.getByTestId("node").first();
     await runEffect(() => node.click());
     expect(await nodeCount(page)).toBe(1);
     await zoomToAtLeast(page, 300);

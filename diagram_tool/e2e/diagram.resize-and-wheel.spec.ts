@@ -14,7 +14,7 @@ import {
 type BoundingBox = { x: number; y: number; width: number; height: number };
 
 async function firstNodeBox(page: Page): Promise<BoundingBox> {
-  const node = page.getByTestId("canvas-root").getByText("Text", { exact: true }).first();
+  const node = page.getByTestId("canvas-root").getByTestId("node").first();
   const box = await runEffect(() => node.boundingBox());
   if (!box) {
     throw new Error("node bounds unavailable");
@@ -63,7 +63,7 @@ test.describe("diagram resize and wheel behavior", () => {
     await runEffect(() => createTextNode(page, canvas, 620, 280));
     expect(await nodeCount(page)).toBe(1);
 
-    const node = canvas.getByText("Text", { exact: true }).first();
+    const node = canvas.getByTestId("node").first();
     await runEffect(() => node.click());
     expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
 
@@ -107,7 +107,7 @@ test.describe("diagram resize and wheel behavior", () => {
     await runEffect(() => createTextNode(page, canvas, 700, 320));
     expect(await nodeCount(page)).toBe(1);
 
-    const node = canvas.getByText("Text", { exact: true }).first();
+    const node = canvas.getByTestId("node").first();
     await runEffect(() => node.click());
 
     const before = await firstNodeBox(page);
