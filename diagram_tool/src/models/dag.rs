@@ -92,7 +92,9 @@ pub fn validate_dag(
 
         Err(
             match edges.iter().find(|(_, edge)| {
-                cycle_nodes.contains(&edge.source) && cycle_nodes.contains(&edge.target)
+                let endpoints_in_cycle = usize::from(cycle_nodes.contains(&edge.source))
+                    + usize::from(cycle_nodes.contains(&edge.target));
+                endpoints_in_cycle == 2
             }) {
                 Some((id, _)) => CycleError::CycleDetected(id.clone()),
                 None => CycleError::CycleDetected(EdgeId::new(String::from("unknown"))),
