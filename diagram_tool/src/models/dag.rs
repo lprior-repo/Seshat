@@ -7,7 +7,7 @@
 
 use crate::models::document::{Edge, EdgeId, Node, NodeId};
 use im::HashMap;
-use std::collections::VecDeque;
+use std::collections::{HashSet, VecDeque};
 use tap::Tap;
 use thiserror::Error;
 
@@ -66,9 +66,10 @@ pub fn validate_dag(
                     neighbors
                         .into_iter()
                         .fold((q, degs), |(mut cq, cd), neighbor| {
-                            let next_count =
-                                cd.get(&neighbor)
-                                    .map_or(0, |&c| if c > 0 { c - 1 } else { 0 });
+                            let next_count = cd
+                                .get(&neighbor)
+                                .copied()
+                                .map_or(0, |c| c.saturating_sub(1));
                             if next_count == 0 {
                                 cq.push_back(neighbor.clone());
                             }
@@ -83,15 +84,15 @@ pub fn validate_dag(
     if final_state.2 == nodes.len() {
         Ok(())
     } else {
+        let cycle_nodes: HashSet<NodeId> = final_state
+            .1
+            .iter()
+            .filter_map(|(id, &deg)| (deg != 0).then_some(id.clone()))
+            .collect();
+
         Err(
             match edges.iter().find(|(_, edge)| {
-                match (
-                    final_state.1.get(&edge.target),
-                    final_state.1.get(&edge.source),
-                ) {
-                    (Some(&td), Some(&sd)) => td > 0 && sd > 0,
-                    _ => false,
-                }
+                cycle_nodes.contains(&edge.source) && cycle_nodes.contains(&edge.target)
             }) {
                 Some((id, _)) => CycleError::CycleDetected(id.clone()),
                 None => CycleError::CycleDetected(EdgeId::new(String::from("unknown"))),

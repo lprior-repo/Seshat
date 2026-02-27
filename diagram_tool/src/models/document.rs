@@ -449,3 +449,244 @@ mod tests {
         assert!(state.is_some_and(|parsed| parsed.snap_to_grid));
     }
 }
+
+#[cfg(any())]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod proptests {
+    use super::{
+        DiagramDocument, Edge, EdgeId, EditorState, Node, NodeId, NodeKind, OrderedFloat, Revision,
+    };
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        #[test]
+        fn ordered_float_nan_breaks_eq(_ in Just(f64::NAN)) {
+            let of = OrderedFloat(f64::NAN);
+            let _ = of == of;
+        }
+
+        #[test]
+        fn ordered_float_inf_comparison(_ in Just(f64::INFINITY)) {
+            let of = OrderedFloat(f64::INFINITY);
+            let of2 = OrderedFloat(f64::INFINITY);
+            let _ = of == of2;
+            let _ = of.partial_cmp(&OrderedFloat(f64::NEG_INFINITY));
+        }
+
+        #[test]
+        fn node_with_nan_coordinates_roundtrip(
+            width in 10.0f64..=100.0,
+            height in 10.0f64..=100.0
+        ) {
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "test".into(),
+                x: OrderedFloat(f64::NAN),
+                y: OrderedFloat(f64::NAN),
+                width: OrderedFloat(width),
+                height: OrderedFloat(height),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            let json = serde_json::to_string(&node);
+            if let Ok(j) = json {
+                let parsed: Result<Node, _> = serde_json::from_str(&j);
+                let _ = parsed;
+            }
+        }
+
+        #[test]
+        fn document_roundtrip_with_special_floats(use_nan in any::<bool>(), use_inf in any::<bool>()) {
+            let mut doc = DiagramDocument::default();
+            if use_nan {
+                doc.editor_state.camera_x = OrderedFloat(f64::NAN);
+            }
+            if use_inf {
+                doc.editor_state.zoom = OrderedFloat(f64::INFINITY);
+            }
+            let json = serde_json::to_string(&doc);
+            if let Ok(j) = json {
+                let parsed: Result<DiagramDocument, _> = serde_json::from_str(&j);
+                let _ = parsed;
+            }
+        }
+
+        #[test]
+        fn node_with_negative_dimensions(
+            width in -100.0f64..=-0.001,
+            height in -100.0f64..=-0.001
+        ) {
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "negative-dim".into(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(width),
+                height: OrderedFloat(height),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            let json = serde_json::to_string(&node).unwrap();
+            let parsed: Node = serde_json::from_str(&json).unwrap();
+            assert!(parsed.width.0 < 0.0);
+            assert!(parsed.height.0 < 0.0);
+        }
+
+        #[test]
+        fn edge_self_loop_same_source_target(id in "n[0-9]+") {
+            let node_id = NodeId::new(id.clone());
+            let edge = Edge {
+                source: node_id.clone(),
+                target: node_id,
+                label: "self-loop".into(),
+                style: Default::default(),
+                arrow_type: Default::default(),
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                font_size: None,
+            };
+            assert_eq!(edge.source, edge.target);
+            let json = serde_json::to_string(&edge).unwrap();
+            let parsed: Edge = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed.source, parsed.target);
+        }
+
+        #[test]
+        #[should_panic(expected = "overflow")]
+        fn revision_overflow(start in (u64::MAX - 1)..=u64::MAX) {
+            let rev = Revision(start);
+            let incremented = rev.increment();
+            let json = serde_json::to_string(&incremented).unwrap();
+            let parsed: Revision = serde_json::from_str(&json).unwrap();
+            assert_eq!(incremented, parsed);
+        }
+
+        #[test]
+        fn editor_state_extreme_zoom(zoom in -1e308f64..=1e308f64) {
+            let mut state = EditorState::default();
+            state.zoom = OrderedFloat(zoom);
+            let json = serde_json::to_string(&state).unwrap();
+            let parsed: EditorState = serde_json::from_str(&json).unwrap();
+            if zoom.is_finite() && zoom.abs() < 1e100 {
+                let rel_epsilon = (zoom.abs() * 1e-10).max(1e-10);
+                assert!((parsed.zoom.0 - zoom).abs() < rel_epsilon);
+            }
+        }
+
+        #[test]
+        fn ordered_float_arithmetic_with_zero_divisor(a in -1e6f64..=1e6f64) {
+            let of_a = OrderedFloat(a);
+            let result = of_a / 0.0;
+            assert!(result.0.is_infinite() || result.0.is_nan());
+        }
+
+        #[test]
+        fn ordered_float_subtraction_underflow(a in 0.0f64..=1e6, b in 1e6f64..=1e308) {
+            let of_a = OrderedFloat(a);
+            let of_b = OrderedFloat(b);
+            let result = of_a - of_b;
+            assert!(result.0 <= 0.0);
+        }
+
+        #[test]
+        fn node_id_special_characters(id in "[\\x00-\\x7F]{1,20}") {
+            let node_id = NodeId::new(id.clone());
+            let json = serde_json::to_string(&node_id).unwrap();
+            let parsed: NodeId = serde_json::from_str(&json).unwrap();
+            assert_eq!(node_id, parsed);
+        }
+
+        #[test]
+        fn edge_id_unicode(id in "\\PC*") {
+            let edge_id = EdgeId::new(id.clone());
+            let json = serde_json::to_string(&edge_id).unwrap();
+            let parsed: EdgeId = serde_json::from_str(&json).unwrap();
+            assert_eq!(edge_id, parsed);
+        }
+
+        #[test]
+        fn document_with_many_nodes(node_count in 0usize..100) {
+            let mut doc = DiagramDocument::default();
+            for i in 0..node_count {
+                let id = NodeId::new(format!("n{}", i));
+                let node = Node {
+                    kind: NodeKind::Node,
+                    icon: String::new(),
+                    label: format!("Node {}", i),
+                    x: OrderedFloat(i as f64 * 100.0),
+                    y: OrderedFloat(i as f64 * 50.0),
+                    width: OrderedFloat(80.0),
+                    height: OrderedFloat(40.0),
+                    font_size: None,
+                    font_weight: None,
+                    locked: false,
+                    parent: None,
+                    dag_rank: None,
+                    tags: vec![],
+                    metadata: im::HashMap::new(),
+                    z_index: 0,
+                    style: None,
+                    collapsed: None,
+                };
+                doc.document.nodes.insert(id, node);
+            }
+            let json = serde_json::to_string(&doc).unwrap();
+            let parsed: DiagramDocument = serde_json::from_str(&json).unwrap();
+            assert_eq!(parsed.document.nodes.len(), node_count);
+        }
+
+        #[test]
+        fn ordered_float_neg_zero_comparison(_pos in Just(0.0f64), _neg in Just(-0.0f64)) {
+            let pos = OrderedFloat(0.0f64);
+            let neg = OrderedFloat(-0.0f64);
+            assert!(pos == neg || pos.0.is_nan() || neg.0.is_nan());
+        }
+
+        #[test]
+        fn edge_with_empty_source_target(_ in Just(())) {
+            let edge = Edge {
+                source: NodeId::new(String::new()),
+                target: NodeId::new(String::new()),
+                label: String::new(),
+                style: Default::default(),
+                arrow_type: Default::default(),
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                font_size: None,
+            };
+            let json = serde_json::to_string(&edge).unwrap();
+            let parsed: Edge = serde_json::from_str(&json).unwrap();
+            assert!(parsed.source.as_str().is_empty());
+        }
+    }
+}

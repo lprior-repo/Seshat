@@ -128,50 +128,52 @@ fn barycenter_sweep(
     layers: Vec<Vec<NodeIndex>>,
     graph: &DiGraph<NodeId, ()>,
 ) -> Vec<Vec<NodeIndex>> {
-    (0..4_u8).fold(layers, |acc, sweep| {
-        let n = acc.len();
-        if sweep % 2 == 0 {
-            // forward: fix layer l-1, reorder l
-            (1..n).fold(acc, |mut ls, l| {
-                let ref_pos: std::collections::HashMap<NodeIndex, f64> = ls[l - 1]
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &node)| (node, i as f64))
-                    .collect();
-                ls[l].sort_by(|&a, &b| {
-                    barycentre(a, &ref_pos, graph, petgraph::Direction::Incoming)
-                        .partial_cmp(&barycentre(
-                            b,
-                            &ref_pos,
-                            graph,
-                            petgraph::Direction::Incoming,
-                        ))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
-                ls
-            })
-        } else {
-            // backward: fix layer l+1, reorder l
-            (0..n.saturating_sub(1)).rev().fold(acc, |mut ls, l| {
-                let ref_pos: std::collections::HashMap<NodeIndex, f64> = ls[l + 1]
-                    .iter()
-                    .enumerate()
-                    .map(|(i, &node)| (node, i as f64))
-                    .collect();
-                ls[l].sort_by(|&a, &b| {
-                    barycentre(a, &ref_pos, graph, petgraph::Direction::Outgoing)
-                        .partial_cmp(&barycentre(
-                            b,
-                            &ref_pos,
-                            graph,
-                            petgraph::Direction::Outgoing,
-                        ))
-                        .unwrap_or(std::cmp::Ordering::Equal)
-                });
-                ls
-            })
-        }
-    })
+    [true, false, true, false]
+        .into_iter()
+        .fold(layers, |acc, is_forward| {
+            let n = acc.len();
+            if is_forward {
+                // forward: fix layer l-1, reorder l
+                (1..n).fold(acc, |mut ls, l| {
+                    let ref_pos: std::collections::HashMap<NodeIndex, f64> = ls[l - 1]
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &node)| (node, i as f64))
+                        .collect();
+                    ls[l].sort_by(|&a, &b| {
+                        barycentre(a, &ref_pos, graph, petgraph::Direction::Incoming)
+                            .partial_cmp(&barycentre(
+                                b,
+                                &ref_pos,
+                                graph,
+                                petgraph::Direction::Incoming,
+                            ))
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    ls
+                })
+            } else {
+                // backward: fix layer l+1, reorder l
+                (0..n.saturating_sub(1)).rev().fold(acc, |mut ls, l| {
+                    let ref_pos: std::collections::HashMap<NodeIndex, f64> = ls[l + 1]
+                        .iter()
+                        .enumerate()
+                        .map(|(i, &node)| (node, i as f64))
+                        .collect();
+                    ls[l].sort_by(|&a, &b| {
+                        barycentre(a, &ref_pos, graph, petgraph::Direction::Outgoing)
+                            .partial_cmp(&barycentre(
+                                b,
+                                &ref_pos,
+                                graph,
+                                petgraph::Direction::Outgoing,
+                            ))
+                            .unwrap_or(std::cmp::Ordering::Equal)
+                    });
+                    ls
+                })
+            }
+        })
 }
 
 /// Assign (x, y) coordinates from the layered, ordered structure.
