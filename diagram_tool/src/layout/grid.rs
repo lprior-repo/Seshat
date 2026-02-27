@@ -338,6 +338,74 @@ mod tests {
         assert!(positions.contains(&(0.0, 100.0)));
         assert!(positions.contains(&(100.0, 100.0)));
     }
+
+    #[test]
+    fn given_sparse_locked_cells_when_layout_runs_then_scan_order_is_stable() {
+        let lock00 = NodeId::new(String::from("lock00"));
+        let lock11 = NodeId::new(String::from("lock11"));
+        let free_a = NodeId::new(String::from("free_a"));
+        let free_b = NodeId::new(String::from("free_b"));
+        let free_c = NodeId::new(String::from("free_c"));
+
+        let mut doc = DiagramDocument::default();
+        doc.document.nodes = HashMap::new()
+            .update(lock00, node(0.0, 0.0, true, None))
+            .update(lock11, node(100.0, 100.0, true, None))
+            .update(free_a.clone(), node(5.0, 5.0, false, None))
+            .update(free_b.clone(), node(5.0, 5.0, false, None))
+            .update(free_c.clone(), node(5.0, 5.0, false, None));
+
+        let next = calculate_grid_layout(&doc, 100.0);
+        let pa = next
+            .document
+            .nodes
+            .get(&free_a)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let pb = next
+            .document
+            .nodes
+            .get(&free_b)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+        let pc = next
+            .document
+            .nodes
+            .get(&free_c)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+
+        assert_eq!(pa, (100.0, 0.0));
+        assert_eq!(pb, (0.0, 100.0));
+        assert_eq!(pc, (0.0, 200.0));
+    }
+
+    #[test]
+    fn given_locked_prefix_cells_when_layout_runs_then_it_advances_to_next_open_row() {
+        let lock00 = NodeId::new(String::from("lock00"));
+        let lock10 = NodeId::new(String::from("lock10"));
+        let lock01 = NodeId::new(String::from("lock01"));
+        let lock11 = NodeId::new(String::from("lock11"));
+        let lock02 = NodeId::new(String::from("lock02"));
+        let lock12 = NodeId::new(String::from("lock12"));
+        let free = NodeId::new(String::from("free"));
+
+        let mut doc = DiagramDocument::default();
+        doc.document.nodes = HashMap::new()
+            .update(lock00, node(0.0, 0.0, true, None))
+            .update(lock10, node(100.0, 0.0, true, None))
+            .update(lock01, node(0.0, 100.0, true, None))
+            .update(lock11, node(100.0, 100.0, true, None))
+            .update(lock02, node(0.0, 200.0, true, None))
+            .update(lock12, node(100.0, 200.0, true, None))
+            .update(free.clone(), node(5.0, 5.0, false, None));
+
+        let next = calculate_grid_layout(&doc, 100.0);
+        let free_pos = next
+            .document
+            .nodes
+            .get(&free)
+            .map_or((0.0, 0.0), |n| (n.x.0, n.y.0));
+
+        assert_eq!(free_pos, (0.0, 300.0));
+    }
 }
 
 #[cfg(test)]
