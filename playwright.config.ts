@@ -2,11 +2,12 @@ import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "diagram_tool/e2e",
+  outputDir: "/tmp/seshat-playwright/test-results",
   fullyParallel: true,
   timeout: 45_000,
-  reporter: [["list"], ["html", { open: "never" }]],
+  reporter: [["list"], ["html", { open: "never", outputFolder: "/tmp/seshat-playwright/report" }]],
   use: {
-    baseURL: "http://127.0.0.1:8081",
+    baseURL: "http://127.0.0.1:8082",
     headless: true,
     viewport: { width: 1600, height: 980 },
     timezoneId: "UTC",
@@ -19,7 +20,7 @@ export default defineConfig({
     {
       name: "e2e-smoke",
       retries: 0,
-      workers: 4,
+      workers: 1,
       grep: /@baseline/,
       grepInvert: /@rq/,
       use: {
@@ -83,8 +84,9 @@ export default defineConfig({
     },
   ],
   webServer: {
-    command: "moon run :serve",
-    url: "http://127.0.0.1:8081",
+    command:
+      "moon run :serve-e2e",
+    url: "http://127.0.0.1:8082",
     reuseExistingServer: true,
     timeout: 300_000,
   },

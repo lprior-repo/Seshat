@@ -3,13 +3,13 @@ $schema: "https://moonrepo.dev/schemas/project.json"
 tasks:
   serve:
     script: |
-      dx serve --platform web --port 8081
+      dx serve --platform web --port 8081 --watch false --hot-reload false
     options:
       cache: false
 
   serve-e2e:
     script: |
-      dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
+      dx serve --platform web --port 8082 --open false --watch false --hot-reload false --interactive false
     options:
       cache: false
 
