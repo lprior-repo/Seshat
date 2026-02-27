@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
@@ -26,7 +27,7 @@ type Point = {
 async function nodeBoxes(canvas: Locator): Promise<Box[]> {
   return runEffect(() =>
     canvas
-      .getByTestId("diagram-node")
+      .getByTestId("node")
       .evaluateAll((elements) =>
         elements
           .map((element) => {
@@ -54,17 +55,19 @@ async function canvasPoint(canvas: Locator, offset: Point): Promise<Point> {
 }
 
 async function dragMouse(page: Page, from: Point, to: Point) {
-  await page.mouse.move(from.x, from.y);
-  await page.mouse.down();
-  await page.mouse.move(to.x, to.y, { steps: 6 });
-  await page.mouse.up();
+  await runEffectsSequential([
+    () => page.mouse.move(from.x, from.y),
+    () => page.mouse.down(),
+    () => page.mouse.move(to.x, to.y, { steps: 6 }),
+    () => page.mouse.up(),
+  ]);
 }
 
 async function resizeHandleCenters(canvas: Locator, cursor: string): Promise<Point[]> {
   const handleName = cursor === "ew-resize" ? "e" : "se";
   return runEffect(() =>
     canvas
-      .locator(`[data-testid="selection-handle"][data-handle="${handleName}"]`)
+      .getByTestId(`resize-handle-${handleName}`)
       .evaluateAll((elements) =>
         elements
           .map((element) => {
@@ -79,11 +82,13 @@ async function resizeHandleCenters(canvas: Locator, cursor: string): Promise<Poi
 test.describe("diagram transform invariants", () => {
   test("drag threshold no-op vs real drag", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 240));
     await expect(page.getByText(/1 nodes/)).toBeVisible();
 
@@ -125,11 +130,13 @@ test.describe("diagram transform invariants", () => {
 
   test("resize min clamp behavior", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 260));
     await expect(page.getByText(/1 nodes/)).toBeVisible();
 
@@ -162,14 +169,18 @@ test.describe("diagram transform invariants", () => {
 
   test("shift multi-select drag moves cohort", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 520, 220));
-    await runEffect(() => createTextNode(page, canvas, 740, 240));
-    await runEffect(() => createTextNode(page, canvas, 960, 260));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 520, 220),
+      () => createTextNode(page, canvas, 740, 240),
+      () => createTextNode(page, canvas, 960, 260),
+    ]);
     await expect(page.getByText(/3 nodes/)).toBeVisible();
 
     const initial = await nodeBoxes(canvas);
@@ -178,11 +189,11 @@ test.describe("diagram transform invariants", () => {
     await runEffect(() =>
       page.mouse.click(initial[0].x + initial[0].width / 2, initial[0].y + initial[0].height / 2),
     );
-    await runEffect(() => page.keyboard.down("Shift"));
-    await runEffect(() =>
-      page.mouse.click(initial[1].x + initial[1].width / 2, initial[1].y + initial[1].height / 2),
-    );
-    await runEffect(() => page.keyboard.up("Shift"));
+    await runEffectsSequential([
+      () => page.keyboard.down("Shift"),
+      () => page.mouse.click(initial[1].x + initial[1].width / 2, initial[1].y + initial[1].height / 2),
+      () => page.keyboard.up("Shift"),
+    ]);
     expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
     expect(await selectedCount(page)).toBeLessThanOrEqual(2);
 
@@ -219,15 +230,19 @@ test.describe("diagram transform invariants", () => {
 
   test("rubber-band selection invariants", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 520, 220));
-    await runEffect(() => createTextNode(page, canvas, 700, 240));
-    await runEffect(() => createTextNode(page, canvas, 980, 280));
-    await runEffect(() => waitForNoRebuildOverlay(page));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 520, 220),
+      () => createTextNode(page, canvas, 700, 240),
+      () => createTextNode(page, canvas, 980, 280),
+      () => waitForNoRebuildOverlay(page),
+    ]);
     await expect(page.getByText(/3 nodes/)).toBeVisible();
 
     const nodes = canvas.getByText("Text", { exact: true });

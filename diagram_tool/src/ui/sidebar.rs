@@ -209,6 +209,7 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
     rsx! {
         button {
             class: "icon-item",
+            "data-testid": "icon-item",
             title: "{icon.display_name}\n{icon_key_for_title}\n{category_for_title}",
             draggable: "true",
             onmousedown: move |_| {

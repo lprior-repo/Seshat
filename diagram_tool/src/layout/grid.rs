@@ -64,17 +64,18 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
     let cols = cols_target.max(1);
 
     let next_free_cell = |occupied: &im::HashSet<(i32, i32)>, start_index: i32| {
-        let max_rows = (unlocked_ids.len() + occupied.len() + 1) as i32;
+        let max_rows_candidate = unlocked_ids
+            .len()
+            .saturating_add(occupied.len())
+            .saturating_add(1);
+        let max_rows = i32::try_from(max_rows_candidate).unwrap_or(i32::MAX);
         let search_limit = (cols * max_rows).max(cols);
 
         (0..search_limit)
             .map(|step| start_index + step)
             .map(|index| (index.rem_euclid(cols), index.div_euclid(cols)))
             .find(|cell| !occupied.contains(cell))
-            .map_or(
-                (start_index.rem_euclid(cols), start_index.div_euclid(cols)),
-                |cell| cell,
-            )
+            .unwrap_or_else(|| (start_index.rem_euclid(cols), start_index.div_euclid(cols)))
     };
 
     let (_, _, positions) = unlocked_ids.iter().fold(

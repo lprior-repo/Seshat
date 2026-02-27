@@ -1,8 +1,13 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
+  canvas,
   clearCanvasOverlays,
+  edgeCount,
   nodeCenters,
+  nodeCount,
+  runEffectsSequential,
   runEffect,
+  selectedCount,
   trapPageErrors,
   waitForNoRebuildOverlay,
   waitForUiReady,
@@ -31,24 +36,11 @@ class Lcg {
   }
 }
 
-async function readCount(page: Page, label: "nodes" | "edges" | "selected"): Promise<number> {
-  const text = await runEffect(() =>
-    page.evaluate((targetLabel) => {
-      const pattern = new RegExp(`(\\d+) ${targetLabel}`);
-      const body = document.body.innerText;
-      const matched = body.match(pattern);
-      return matched ? matched[0] : `0 ${targetLabel}`;
-    }, label),
-  );
-  const parsed = Number.parseInt(text, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
-}
-
 async function readCounters(page: Page): Promise<Counters> {
   const [nodes, edges, selected] = await Promise.all([
-    readCount(page, "nodes"),
-    readCount(page, "edges"),
-    readCount(page, "selected"),
+    nodeCount(page),
+    edgeCount(page),
+    selectedCount(page),
   ]);
   return { nodes, edges, selected };
 }
@@ -68,12 +60,12 @@ async function dragRandomNode(page: Page, canvas: Locator, rng: Lcg) {
 
   const dx = (rng.next() - 0.5) * 140;
   const dy = (rng.next() - 0.5) * 100;
-  await runEffect(() => page.mouse.move(box.x + box.width / 2, box.y + box.height / 2));
-  await runEffect(() => page.mouse.down());
-  await runEffect(() =>
-    page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 5 }),
-  );
-  await runEffect(() => page.mouse.up());
+  await runEffectsSequential([
+    () => page.mouse.move(box.x + box.width / 2, box.y + box.height / 2),
+    () => page.mouse.down(),
+    () => page.mouse.move(box.x + box.width / 2 + dx, box.y + box.height / 2 + dy, { steps: 5 }),
+    () => page.mouse.up(),
+  ]);
 }
 
 async function createTextNodeSafe(page: Page, canvas: Locator, x: number, y: number) {
@@ -92,9 +84,11 @@ async function recoverFromRebuildOverlay(page: Page) {
     return;
   }
 
-  await runEffect(() => page.reload({ waitUntil: "domcontentloaded", timeout: 5_000 }));
-  await runEffect(() => waitForUiReady(page));
-  await runEffect(() => clearCanvasOverlays(page));
+  await runEffectsSequential([
+    () => page.reload({ waitUntil: "domcontentloaded", timeout: 5_000 }),
+    () => waitForUiReady(page),
+    () => clearCanvasOverlays(page),
+  ]);
 }
 
 async function createRandomEdge(page: Page, canvas: Locator, rng: Lcg) {
@@ -110,16 +104,45 @@ async function createRandomEdge(page: Page, canvas: Locator, rng: Lcg) {
   }
 
   await clickFirstVisibleButton(page, "Edge");
-  await runEffect(() => page.mouse.move(centers[a].x, centers[a].y));
-  await runEffect(() => page.mouse.down());
-  await runEffect(() => page.mouse.up());
-  await runEffect(() => page.mouse.move(centers[b].x, centers[b].y));
-  await runEffect(() => page.mouse.down());
-  await runEffect(() => page.mouse.up());
-  await runEffect(() => page.keyboard.press("Escape"));
+  await runEffectsSequential([
+    () => page.mouse.move(centers[a].x, centers[a].y),
+    () => page.mouse.down(),
+    () => page.mouse.up(),
+    () => page.mouse.move(centers[b].x, centers[b].y),
+    () => page.mouse.down(),
+    () => page.mouse.up(),
+    () => page.keyboard.press("Escape"),
+  ]);
 }
 
 async function clickFirstVisibleButton(page: Page, label: string) {
+  const testIdByLabel: Record<string, string> = {
+    Select: "tool-select",
+    Pan: "tool-pan",
+    Edge: "tool-edge",
+    Subgraph: "tool-subgraph",
+    Text: "tool-text",
+    Undo: "toolbar-undo",
+    Redo: "toolbar-redo",
+    Delete: "toolbar-delete",
+    Validate: "toolbar-validate",
+    Icons: "panel-icons-toggle",
+    Props: "panel-props-toggle",
+    Mini: "panel-mini-toggle",
+    Valid: "panel-valid-toggle",
+    "+": "zoom-in",
+    "-": "zoom-out",
+  };
+  const maybeTestId = testIdByLabel[label];
+  if (maybeTestId) {
+    const byTestId = page.getByTestId(maybeTestId);
+    const visible = await runEffect(() => byTestId.isVisible().catch(() => false));
+    if (visible) {
+      await runEffect(() => byTestId.click({ timeout: 1_500 }));
+      return;
+    }
+  }
+
   const buttons = page.getByRole("button", { name: label, exact: true });
   const count = await runEffect(() => buttons.count());
   for (let i = 0; i < count; i += 1) {
@@ -182,20 +205,22 @@ async function randomOp(page: Page, canvas: Locator, rng: Lcg) {
 
 async function runSeededChaos(page: Page, seed: number, steps: number) {
   const rng = new Lcg(seed);
-  await runEffect(() => page.goto("/"));
-  await runEffect(() => waitForUiReady(page));
-  await runEffect(() => clearCanvasOverlays(page));
+  await runEffectsSequential([
+    () => page.goto("/"),
+    () => waitForUiReady(page),
+    () => clearCanvasOverlays(page),
+  ]);
 
-  const canvas = page.locator(".canvas-container");
-  await createTextNodeSafe(page, canvas, 540, 220);
-  await createTextNodeSafe(page, canvas, 760, 260);
-  await createTextNodeSafe(page, canvas, 940, 300);
+  const canvasArea = canvas(page);
+  await createTextNodeSafe(page, canvasArea, 540, 220);
+  await createTextNodeSafe(page, canvasArea, 760, 260);
+  await createTextNodeSafe(page, canvasArea, 940, 300);
 
   for (let i = 0; i < steps; i += 1) {
     if (i % 8 === 0) {
       await runEffect(() => waitForNoRebuildOverlay(page));
     }
-    await randomOp(page, canvas, rng);
+    await randomOp(page, canvasArea, rng);
     const counters = await readCounters(page);
     expect(counters.nodes).toBeGreaterThanOrEqual(0);
     expect(counters.edges).toBeGreaterThanOrEqual(0);
@@ -210,14 +235,14 @@ test.describe("diagram chaos hardening", () => {
   test("survives deterministic mixed-interaction chaos seed 1337", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runSeededChaos(page, 1337, 24);
-    await expect(page.locator(".canvas-container")).toBeVisible();
+    await expect(canvas(page)).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
 
   test("survives deterministic mixed-interaction chaos seed 4242", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runSeededChaos(page, 4242, 24);
-    await expect(page.locator(".canvas-container")).toBeVisible();
+    await expect(canvas(page)).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
 });

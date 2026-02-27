@@ -5,7 +5,7 @@
 {"kind":"visibility","role":"agent","can_see":["specs/flow-wasm-v1.yaml","tests/","src/","specs/linter/rules.yaml","ACCEPTANCE CRITERIA"],"cannot_see":["../scenarios-vault/","holdout assertions","step sequences","raw validation results"]}
 {"kind":"framework","name":"dioxus","version":"0.7","reactivity":"use_signal, use_memo, use_resource","state_hierarchy":"use_signal (atomic), use_store + #[derive(Store)] (nested)","props":"ReadOnlySignal<T>","styling":"Tailwind class: attribute","events":"move |_| closures","architecture":"flat RSX, #[component] modular","assets":"asset!() macro"}
 {"kind":"code_intelligence","tool":"codanna","required":"mcp__codanna__*","forbidden":["grep","rg","ripgrep","find","cat for search"],"workflow":["semantic_search_with_context → anchor","find_symbol/search_symbols → lock","get_calls/find_callers/analyze_impact → hints","Read tool → confirm"]}
-{"kind":"build_system","tool":"moon","allowed":[":serve",":check",":test",":clippy",":fmt",":build-web",":ci --force"],"forbidden":["dx directly","cargo directly","npm directly"]}
+{"kind":"build_system","tool":"moon","allowed":[":serve",":check",":test",":clippy",":fmt",":build-web",":e2e-smoke",":e2e-full",":ci --force",":ci-hardening --force"],"forbidden":["dx directly","cargo directly","npm directly"]}
 {"kind":"quality_gate","approach":"hidden behavioral scenarios","feedback":"sanitized (category, spec reference, hints, no exact values)","purpose":"prevent teaching to test"}
 {"kind":"invariants","rules":["never access ../scenarios-vault/","never ask about holdout scenarios","build genuine spec implementation","all acceptance criteria satisfied"]}
 {"kind":"directive","text":"Use Dioxus 0.7 Signals and Stores. Never use use_state.","reason":"prevents legacy API, ensures reactivity"}
@@ -31,6 +31,6 @@
 |------|------|
 | **Workspace** | specs, tests, src visible; scenarios-vault hidden |
 | **State** | `use_signal` / `use_store`, NEVER `use_state` |
-| **Build** | Moon only, `moon run :ci --force` |
+| **Build** | Moon only, `moon run :ci-hardening --force` |
 | **Code Search** | Codanna MCP tools ONLY |
 | **Quality** | Hidden scenarios, sanitized feedback |

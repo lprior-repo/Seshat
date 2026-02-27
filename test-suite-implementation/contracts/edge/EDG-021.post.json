@@ -1,0 +1,75 @@
+{
+  "$comment": "TODO: Replace with real postconditions for EDG-021. This placeholder enforces only basic state shape and numeric ranges.",
+  "$defs": {
+    "element": {
+      "additionalProperties": true,
+      "properties": {
+        "h": {
+          "maximum": 1000000000000.0,
+          "minimum": 0,
+          "type": "number"
+        },
+        "id": {
+          "maxLength": 128,
+          "minLength": 1,
+          "type": "string"
+        },
+        "rotation": {
+          "maximum": 3600,
+          "minimum": -3600,
+          "type": "number"
+        },
+        "type": {
+          "maxLength": 40,
+          "minLength": 1,
+          "type": "string"
+        },
+        "w": {
+          "maximum": 1000000000000.0,
+          "minimum": 0,
+          "type": "number"
+        },
+        "x": {
+          "maximum": 1000000000000.0,
+          "minimum": -1000000000000.0,
+          "type": "number"
+        },
+        "y": {
+          "maximum": 1000000000000.0,
+          "minimum": -1000000000000.0,
+          "type": "number"
+        }
+      },
+      "required": [
+        "id",
+        "type"
+      ],
+      "type": "object"
+    }
+  },
+  "$id": "urn:whiteboard:contracts:edge:EDG-021:post:1",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "additionalProperties": true,
+  "properties": {
+    "scene": {
+      "additionalProperties": true,
+      "properties": {
+        "elements": {
+          "items": {
+            "$ref": "#/$defs/element"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "elements"
+      ],
+      "type": "object"
+    }
+  },
+  "required": [
+    "scene"
+  ],
+  "title": "Postcondition placeholder: EDG-021",
+  "type": "object"
+}

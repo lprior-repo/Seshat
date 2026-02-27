@@ -1,5 +1,12 @@
-import { expect, type Locator, type Page } from "@playwright/test";
+import { expect, type FileChooser, type Locator, type Page } from "@playwright/test";
 import { Effect } from "effect";
+
+const SELECTOR_CANVAS = '[data-testid="canvas-root"]';
+const SELECTOR_COUNTER_NODES = '[data-testid="counter-nodes"]';
+const SELECTOR_COUNTER_EDGES = '[data-testid="counter-edges"]';
+const SELECTOR_COUNTER_SELECTED = '[data-testid="counter-selected"]';
+const SELECTOR_ZOOM_RESET = '[data-testid="zoom-reset"]';
+const SELECTOR_MINIMAP_VIEWPORT = '[data-testid="minimap-viewport"]';
 
 export async function runEffect<A>(thunk: () => Promise<A>): Promise<A> {
   return Effect.runPromise(
@@ -36,26 +43,73 @@ export async function runEffectsSequential(
 export async function waitForUiReady(page: Page) {
   await ensureDeterministicUi(page);
   await expect(canvas(page)).toBeVisible();
-  await expect(page.getByTestId("node-count")).toHaveText(/\d+ nodes/, {
-    timeout: 30_000,
-  });
+  await expect(page.locator(SELECTOR_COUNTER_NODES).first()).toBeVisible({ timeout: 30_000 });
   await waitForNoRebuildOverlay(page);
 }
 
 export function canvas(page: Page): Locator {
-  return page.getByTestId("canvas-container");
+  return page.locator(SELECTOR_CANVAS).first();
+}
+
+export function minimapViewport(page: Page): Locator {
+  return page.locator(SELECTOR_MINIMAP_VIEWPORT).first();
+}
+
+export async function chooseFilesWithFileChooser(
+  page: Page,
+  trigger: () => Promise<unknown>,
+  files: Parameters<FileChooser["setFiles"]>[0],
+) {
+  const [chooser] = await Promise.all([page.waitForEvent("filechooser"), trigger()]);
+  await chooser.setFiles(files);
+}
+
+export async function cancelFileChooser(
+  page: Page,
+  trigger: () => Promise<unknown>,
+) {
+  await chooseFilesWithFileChooser(page, trigger, []);
 }
 
 export async function expectNodeCount(page: Page, count: number) {
-  await expect(page.getByTestId("node-count")).toHaveText(`${count} nodes`);
+  await expect.poll(() => nodeCount(page)).toBe(count);
 }
 
 export async function expectEdgeCount(page: Page, count: number) {
-  await expect(page.getByTestId("edge-count")).toHaveText(`${count} edges`);
+  await expect.poll(() => edgeCount(page)).toBe(count);
 }
 
 export async function expectSelectedCount(page: Page, count: number) {
-  await expect(page.getByTestId("selected-count")).toHaveText(`${count} selected`);
+  await expect.poll(() => selectedCount(page)).toBe(count);
+}
+
+async function readNumericCounter(page: Page, selector: string, fallbackPattern: RegExp): Promise<number> {
+  return runEffect(() =>
+    page.evaluate(
+      ({ selectorText, fallbackSource }) => {
+        const el = document.querySelector(selectorText);
+        if (!el) {
+          return 0;
+        }
+
+        const dataCount = el.getAttribute("data-count")?.trim() ?? "";
+        if (/^\d+$/.test(dataCount)) {
+          return Number.parseInt(dataCount, 10);
+        }
+
+        const fallback = new RegExp(fallbackSource);
+        const text = el.textContent ?? "";
+        const match = text.match(fallback);
+        const digits = match?.[1] ?? "0";
+        const parsed = Number.parseInt(digits, 10);
+        return Number.isNaN(parsed) ? 0 : parsed;
+      },
+      {
+        selectorText: selector,
+        fallbackSource: fallbackPattern.source,
+      },
+    ),
+  );
 }
 
 export async function ensureDeterministicUi(page: Page) {
@@ -206,7 +260,7 @@ export async function createTextNode(
 ) {
   await runEffectsSequential([
     () => waitForNoRebuildOverlay(page),
-    () => page.getByRole("button", { name: "Text", exact: true }).click(),
+    () => page.locator('[data-testid="tool-text"]').first().click(),
   ]);
   const box = await runEffect(() => canvas.boundingBox());
   if (!box) {
@@ -219,12 +273,16 @@ export async function clearCanvasOverlays(page: Page) {
   await runEffect(() => waitForNoRebuildOverlay(page));
   const iconsPanel = page.getByRole("heading", { name: "Diagram Icons" });
   if (await runEffect(() => iconsPanel.isVisible().catch(() => false))) {
-    await runEffect(() => page.getByRole("button", { name: "Icons", exact: true }).click());
+    await runEffect(() =>
+      page.locator('[data-testid="panel-icons-toggle"]').first().click(),
+    );
   }
 
   const propertiesPanel = page.getByRole("heading", { name: "Properties" });
   if (await runEffect(() => propertiesPanel.isVisible().catch(() => false))) {
-    await runEffect(() => page.getByRole("button", { name: "Props", exact: true }).click());
+    await runEffect(() =>
+      page.locator('[data-testid="panel-props-toggle"]').first().click(),
+    );
   }
 }
 
@@ -232,7 +290,7 @@ export async function nodeCenters(
   canvas: Locator,
 ): Promise<Array<{ x: number; y: number }>> {
   const boxes = await canvas
-    .getByTestId("diagram-node")
+    .getByTestId("node")
     .evaluateAll((elements) =>
       elements
         .map((element) => {
@@ -254,7 +312,7 @@ export async function nodeFrameByLabel(
 ): Promise<{ x: number; y: number; width: number; height: number }> {
   const frame = await runEffect(() =>
     page
-      .getByTestId("diagram-node")
+      .getByTestId("node")
       .filter({ hasText: label })
       .nth(index)
       .boundingBox(),
@@ -267,33 +325,35 @@ export async function nodeFrameByLabel(
 }
 
 export async function selectedCount(page: Page): Promise<number> {
-  const text = await runEffect(() => page.getByTestId("selected-count").innerText());
-  const match = text.match(/(\d+)\s+selected/);
-  const digits = match ? match[1] : "0";
-  const parsed = Number.parseInt(digits, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return readNumericCounter(page, SELECTOR_COUNTER_SELECTED, /(\d+)\s+selected/);
 }
 
 export async function nodeCount(page: Page): Promise<number> {
-  const text = await runEffect(() => page.getByTestId("node-count").innerText());
-  const match = text.match(/(\d+)\s+nodes/);
-  const digits = match ? match[1] : "0";
-  const parsed = Number.parseInt(digits, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return readNumericCounter(page, SELECTOR_COUNTER_NODES, /(\d+)\s+nodes/);
 }
 
 export async function edgeCount(page: Page): Promise<number> {
-  const text = await runEffect(() => page.getByTestId("edge-count").innerText());
-  const match = text.match(/(\d+)\s+edges/);
-  const digits = match ? match[1] : "0";
-  const parsed = Number.parseInt(digits, 10);
-  return Number.isNaN(parsed) ? 0 : parsed;
+  return readNumericCounter(page, SELECTOR_COUNTER_EDGES, /(\d+)\s+edges/);
 }
 
 export async function zoomPercent(page: Page): Promise<number> {
-  const text = await runEffect(() => page.getByTestId("zoom-percent").innerText());
-  const match = text.match(/(\d+)%/);
-  const digits = match ? match[1] : "100";
-  const parsed = Number.parseInt(digits, 10);
-  return Number.isNaN(parsed) ? 100 : parsed;
+  return runEffect(() =>
+    page.evaluate((selectorText) => {
+      const el = document.querySelector(selectorText);
+      if (!el) {
+        return 100;
+      }
+
+      const dataZoom = el instanceof HTMLElement ? (el.dataset.zoomPercent?.trim() ?? "") : "";
+      if (/^\d+$/.test(dataZoom)) {
+        return Number.parseInt(dataZoom, 10);
+      }
+
+      const text = el.textContent ?? "";
+      const match = text.match(/(\d+)%/);
+      const digits = match?.[1] ?? "100";
+      const parsed = Number.parseInt(digits, 10);
+      return Number.isNaN(parsed) ? 100 : parsed;
+    }, SELECTOR_ZOOM_RESET),
+  );
 }

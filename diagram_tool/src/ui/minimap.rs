@@ -275,6 +275,7 @@ pub fn Minimap() -> Element {
 
     rsx! {
         div {
+            "data-testid": "minimap-root",
             style: "position: absolute; right: 12px; bottom: 12px; width: {view_w}px; height: {view_h}px; border: 1px solid {BORDER}; border-radius: 10px; background: linear-gradient(180deg, {BG_ELEVATED}f2 0%, {BG_SURFACE}ea 100%); backdrop-filter: blur(8px); overflow: hidden; z-index: 20; user-select:none; box-shadow: 0 8px 20px color-mix(in oklch, black 28%, transparent);",
             onmousedown: move |evt| {
                 evt.stop_propagation();
@@ -323,6 +324,7 @@ pub fn Minimap() -> Element {
                     }
                 }
                 rect {
+                    "data-testid": "minimap-viewport",
                     x: "{vp_x}",
                     y: "{vp_y}",
                     width: "{(vp_w * scale).max(4.0)}",

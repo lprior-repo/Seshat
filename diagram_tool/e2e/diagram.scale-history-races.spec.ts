@@ -3,6 +3,7 @@ import {
   clearCanvasOverlays,
   createTextNode,
   nodeCount,
+  runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
@@ -20,15 +21,17 @@ async function requireBox(target: Locator): Promise<Box> {
 }
 
 async function eastHandle(canvas: Locator): Promise<Box> {
-  return requireBox(canvas.locator('[data-testid="selection-handle"][data-handle="e"]').first());
+  return requireBox(canvas.getByTestId("resize-handle-e").first());
 }
 
 async function setupSingleNode(page: Page) {
-  await runEffect(() => page.goto("/"));
-  await runEffect(() => waitForUiReady(page));
-  await runEffect(() => clearCanvasOverlays(page));
+  await runEffectsSequential([
+    () => page.goto("/"),
+    () => waitForUiReady(page),
+    () => clearCanvasOverlays(page),
+  ]);
 
-  const canvas = page.getByTestId("canvas-container");
+  const canvas = page.getByTestId("canvas-root");
   await runEffect(() => createTextNode(page, canvas, 680, 300));
   expect(await nodeCount(page)).toBe(1);
 
@@ -40,7 +43,57 @@ async function setupSingleNode(page: Page) {
 }
 
 test.describe("scale history and race safety", () => {
-  test("one long resize gesture maps to one undo and one redo", async ({ page }) => {
+  test("drag gesture stays single-history under duplicate release events @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    const { node } = await setupSingleNode(page);
+
+    const before = await requireBox(node);
+    const startX = before.x + before.width / 2;
+    const startY = before.y + before.height / 2;
+    const endX = startX + 140;
+    const endY = startY + 12;
+
+    await runEffectsSequential([
+      () => page.mouse.move(startX, startY),
+      () => page.mouse.down(),
+      () => page.mouse.move(endX, endY, { steps: 6 }),
+      () => page.mouse.up(),
+      () =>
+        page.evaluate(
+          ({ x, y }) => {
+            window.dispatchEvent(
+              new PointerEvent("pointerup", {
+                clientX: x,
+                clientY: y,
+                bubbles: true,
+              }),
+            );
+            window.dispatchEvent(
+              new MouseEvent("mouseup", {
+                clientX: x,
+                clientY: y,
+                bubbles: true,
+              }),
+            );
+          },
+          { x: endX, y: endY },
+        ),
+    ]);
+
+    const after = await requireBox(node);
+    expect(after.x).toBeGreaterThan(before.x + 20);
+
+    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
+    const undone = await requireBox(node);
+    expect(Math.abs(undone.x - before.x)).toBeLessThanOrEqual(2);
+
+    await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
+    const redone = await requireBox(node);
+    expect(Math.abs(redone.x - after.x)).toBeLessThanOrEqual(2);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test("one long resize gesture maps to one undo and one redo @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const { canvas, node } = await setupSingleNode(page);
 
@@ -49,12 +102,34 @@ test.describe("scale history and race safety", () => {
     const hx = handle.x + handle.width / 2;
     const hy = handle.y + handle.height / 2;
 
-    await runEffect(() => page.mouse.move(hx, hy));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(hx - 30, hy, { steps: 3 }));
-    await runEffect(() => page.mouse.move(hx - 70, hy, { steps: 4 }));
-    await runEffect(() => page.mouse.move(hx - 110, hy, { steps: 5 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(hx, hy),
+      () => page.mouse.down(),
+      () => page.mouse.move(hx - 30, hy, { steps: 3 }),
+      () => page.mouse.move(hx - 70, hy, { steps: 4 }),
+      () => page.mouse.move(hx - 110, hy, { steps: 5 }),
+      () => page.mouse.up(),
+      () =>
+        page.evaluate(
+          ({ x, y }) => {
+            window.dispatchEvent(
+              new PointerEvent("pointerup", {
+                clientX: x,
+                clientY: y,
+                bubbles: true,
+              }),
+            );
+            window.dispatchEvent(
+              new MouseEvent("mouseup", {
+                clientX: x,
+                clientY: y,
+                bubbles: true,
+              }),
+            );
+          },
+          { x: hx - 110, y: hy },
+        ),
+    ]);
 
     const after = await requireBox(node);
     expect(after.width).toBeLessThanOrEqual(before.width);
@@ -69,7 +144,7 @@ test.describe("scale history and race safety", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("release pointer outside canvas finalizes resize cleanly", async ({ page }) => {
+  test("release pointer outside canvas finalizes resize cleanly @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const { canvas, node } = await setupSingleNode(page);
 
@@ -79,10 +154,12 @@ test.describe("scale history and race safety", () => {
     const hy = handle.y + handle.height / 2;
     const canvasBox = await requireBox(canvas);
 
-    await runEffect(() => page.mouse.move(hx, hy));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(canvasBox.x - 60, canvasBox.y - 40, { steps: 6 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(hx, hy),
+      () => page.mouse.down(),
+      () => page.mouse.move(canvasBox.x - 60, canvasBox.y - 40, { steps: 6 }),
+      () => page.mouse.up(),
+    ]);
 
     const after = await requireBox(node);
     expect(Number.isFinite(after.width)).toBe(true);

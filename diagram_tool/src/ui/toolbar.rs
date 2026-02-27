@@ -67,6 +67,7 @@ pub fn Toolbar() -> Element {
 
     rsx! {
         div {
+            "data-testid": "toolbar-root",
             class: "toolbar",
             style: "height: 56px; background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_ELEVATED} 100%); color: {TEXT_MAIN}; display: flex; align-items: center; padding: 0 12px; gap: 8px; border-bottom: 1px solid {BORDER_SUBTLE}; box-shadow: 0 4px 16px color-mix(in oklch, black 22%, transparent); overflow-x: auto;",
 
@@ -121,11 +122,15 @@ pub fn Toolbar() -> Element {
                 "+"
             }
             button {
-                "data-testid": "zoom-percent",
+                "data-testid": "zoom-reset",
+                "data-zoom-percent": "{zoom_percent:.0}",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {ACCENT}; background: color-mix(in oklch, {ACCENT_SOFT} 65%, {BG_BASE}); color: {TEXT_MAIN}; min-width: 72px;",
                 onclick: move |_| actions::zoom_reset(doc_signal, history_signal),
                 title: "Reset zoom",
-                "{zoom_percent:.0}%"
+                span {
+                    "data-testid": "zoom-percent",
+                    "{zoom_percent:.0}%"
+                }
             }
             button {
                 "data-testid": "zoom-out",
@@ -202,11 +207,11 @@ pub fn Toolbar() -> Element {
                 }
             }
 
-            for (label, test_id, enabled, setter) in [
-                ("Icons", "toggle-icons-panel", panel_visibility.read().sidebar, 0_u8),
-                ("Props", "toggle-props-panel", panel_visibility.read().properties, 1_u8),
-                ("Mini", "toggle-mini-panel", panel_visibility.read().minimap, 2_u8),
-                ("Valid", "toggle-valid-panel", panel_visibility.read().validation, 3_u8),
+            for (label, test_id, stable_test_id, enabled, setter) in [
+                ("Icons", "toggle-icons-panel", "panel-icons-toggle", panel_visibility.read().sidebar, 0_u8),
+                ("Props", "toggle-props-panel", "panel-props-toggle", panel_visibility.read().properties, 1_u8),
+                ("Mini", "toggle-mini-panel", "panel-minimap-toggle", panel_visibility.read().minimap, 2_u8),
+                ("Valid", "toggle-valid-panel", "panel-validation-toggle", panel_visibility.read().validation, 3_u8),
             ] {
                 {
                     let bg = if enabled { ACCENT_SOFT } else { BG_BASE };
@@ -225,7 +230,10 @@ pub fn Toolbar() -> Element {
                                     }
                                 });
                             },
-                            "{label}"
+                            span {
+                                "data-testid": "{stable_test_id}",
+                                "{label}"
+                            }
                         }
                     }
                 }
@@ -251,18 +259,30 @@ pub fn Toolbar() -> Element {
 
             span {
                 "data-testid": "node-count",
+                "data-count": "{stats.node_count}",
                 style: "font-size: 11px; color: {TEXT_MUTED}; margin-left: 8px;",
-                "{stats.node_count} nodes"
+                span {
+                    "data-testid": "counter-nodes",
+                    "{stats.node_count} nodes"
+                }
             }
             span {
                 "data-testid": "edge-count",
+                "data-count": "{stats.edge_count}",
                 style: "font-size: 11px; color: {TEXT_MUTED};",
-                "{stats.edge_count} edges"
+                span {
+                    "data-testid": "counter-edges",
+                    "{stats.edge_count} edges"
+                }
             }
             span {
                 "data-testid": "selected-count",
+                "data-count": "{stats.selected_count}",
                 style: "font-size: 11px; color: {TEXT_MUTED};",
-                "{stats.selected_count} selected"
+                span {
+                    "data-testid": "counter-selected",
+                    "{stats.selected_count} selected"
+                }
             }
         }
     }

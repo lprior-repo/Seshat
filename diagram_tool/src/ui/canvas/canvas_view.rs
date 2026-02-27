@@ -215,6 +215,7 @@ pub(super) const fn edge_marker_ref(selected: bool) -> &'static str {
 }
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::too_many_lines)]
 pub(super) fn selection_handles_overlay(
     doc: &DiagramDocument,
     interaction_mode: Signal<InteractionMode>,
@@ -236,19 +237,62 @@ pub(super) fn selection_handles_overlay(
         let box_h = (2.0_f64).mul_add(pad, sh);
         let hs = if is_multi { 8.0 } else { 7.0 };
         let handles = [
-            (ResizeHandle::Nw, sx - pad, sy - pad, "nwse-resize"),
-            (ResizeHandle::N, sx + (sw / 2.0), sy - pad, "ns-resize"),
-            (ResizeHandle::Ne, sx + sw + pad, sy - pad, "nesw-resize"),
-            (ResizeHandle::E, sx + sw + pad, sy + (sh / 2.0), "ew-resize"),
+            (
+                ResizeHandle::Nw,
+                sx - pad,
+                sy - pad,
+                "nwse-resize",
+                "resize-handle-nw",
+            ),
+            (
+                ResizeHandle::N,
+                sx + (sw / 2.0),
+                sy - pad,
+                "ns-resize",
+                "resize-handle-n",
+            ),
+            (
+                ResizeHandle::Ne,
+                sx + sw + pad,
+                sy - pad,
+                "nesw-resize",
+                "resize-handle-ne",
+            ),
+            (
+                ResizeHandle::E,
+                sx + sw + pad,
+                sy + (sh / 2.0),
+                "ew-resize",
+                "resize-handle-e",
+            ),
             (
                 ResizeHandle::Se,
                 sx + sw + pad,
                 sy + sh + pad,
                 "nwse-resize",
+                "resize-handle-se",
             ),
-            (ResizeHandle::S, sx + (sw / 2.0), sy + sh + pad, "ns-resize"),
-            (ResizeHandle::Sw, sx - pad, sy + sh + pad, "nesw-resize"),
-            (ResizeHandle::W, sx - pad, sy + (sh / 2.0), "ew-resize"),
+            (
+                ResizeHandle::S,
+                sx + (sw / 2.0),
+                sy + sh + pad,
+                "ns-resize",
+                "resize-handle-s",
+            ),
+            (
+                ResizeHandle::Sw,
+                sx - pad,
+                sy + sh + pad,
+                "nesw-resize",
+                "resize-handle-sw",
+            ),
+            (
+                ResizeHandle::W,
+                sx - pad,
+                sy + (sh / 2.0),
+                "ew-resize",
+                "resize-handle-w",
+            ),
         ];
 
         rsx! {
@@ -259,7 +303,7 @@ pub(super) fn selection_handles_overlay(
                 }
             }
             if !selected_nodes.is_empty() {
-                for (handle, hx, hy, cursor) in handles {
+                for (handle, hx, hy, cursor, stable_test_id) in handles {
                     button {
                         key: "{hx}-{hy}",
                         "data-testid": "selection-handle",
@@ -288,6 +332,10 @@ pub(super) fn selection_handles_overlay(
                                 c.x - origin.0,
                                 c.y - origin.1,
                             );
+                        },
+                        div {
+                            "data-testid": "{stable_test_id}",
+                            style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
                         }
                     }
                 }
@@ -585,6 +633,54 @@ mod tests {
 
         let hit = find_edge_at(&doc, 109.0, 12.0);
         assert_eq!(hit, Some(edge_id));
+    }
+
+    #[test]
+    fn given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across_zooms() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("e1"));
+
+        let mut doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(40.0, 0.0))
+                    .update(target_id.clone(), node_at(40.0, 120.0)),
+                edges: HashMap::new().update(edge_id.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        for zoom in [0.5_f64, 1.0_f64, 2.0_f64, 3.0_f64] {
+            doc.editor_state.zoom = OrderedFloat(zoom);
+            let hit = find_edge_at(&doc, 47.0, 65.0);
+            assert_eq!(hit, Some(edge_id.clone()));
+        }
+    }
+
+    #[test]
+    fn given_endpoint_tie_when_clicking_shared_target_then_selection_is_stable_by_edge_id() {
+        let source_a = NodeId::new(String::from("source-a"));
+        let source_b = NodeId::new(String::from("source-b"));
+        let target = NodeId::new(String::from("target"));
+        let edge_a = EdgeId::new(String::from("edge-a"));
+        let edge_b = EdgeId::new(String::from("edge-b"));
+
+        let doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_a.clone(), node_at(0.0, 0.0))
+                    .update(source_b.clone(), node_at(0.0, 100.0))
+                    .update(target.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new()
+                    .update(edge_b, edge(source_b, target.clone()))
+                    .update(edge_a.clone(), edge(source_a, target)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        let hit = find_edge_at(&doc, 105.0, 5.0);
+        assert_eq!(hit, Some(edge_a));
     }
 }
 

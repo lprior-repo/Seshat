@@ -4,6 +4,7 @@ import {
   createTextNode,
   nodeCount,
   nodeFrameByLabel,
+  runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
@@ -21,7 +22,7 @@ async function requireBox(target: Locator): Promise<Box> {
 }
 
 async function pickSouthEastHandle(canvas: Locator): Promise<Box> {
-  const handles = canvas.locator('[data-testid="selection-handle"][data-handle="se"]');
+  const handles = canvas.getByTestId("resize-handle-se");
   const count = await runEffect(() => handles.count());
   if (count < 1) {
     throw new Error("no resize handles found");
@@ -47,13 +48,17 @@ async function center(box: Box) {
 }
 
 async function setupSubgraphWithNodes(page: Page) {
-  await runEffect(() => page.goto("/"));
-  await runEffect(() => waitForUiReady(page));
-  await runEffect(() => clearCanvasOverlays(page));
-  const canvas = page.locator(".canvas-container");
+  await runEffectsSequential([
+    () => page.goto("/"),
+    () => waitForUiReady(page),
+    () => clearCanvasOverlays(page),
+  ]);
+  const canvas = page.getByTestId("canvas-root");
 
-  await runEffect(() => createTextNode(page, canvas, 620, 250));
-  await runEffect(() => createTextNode(page, canvas, 760, 330));
+  await runEffectsSequential([
+    () => createTextNode(page, canvas, 620, 250),
+    () => createTextNode(page, canvas, 760, 330),
+  ]);
   expect(await nodeCount(page)).toBe(2);
 
   await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
@@ -62,10 +67,12 @@ async function setupSubgraphWithNodes(page: Page) {
   const sy = canvasBox.y + 210;
   const ex = canvasBox.x + 860;
   const ey = canvasBox.y + 420;
-  await runEffect(() => page.mouse.move(sx, sy));
-  await runEffect(() => page.mouse.down());
-  await runEffect(() => page.mouse.move(ex, ey, { steps: 8 }));
-  await runEffect(() => page.mouse.up());
+  await runEffectsSequential([
+    () => page.mouse.move(sx, sy),
+    () => page.mouse.down(),
+    () => page.mouse.move(ex, ey, { steps: 8 }),
+    () => page.mouse.up(),
+  ]);
 
   expect(await nodeCount(page)).toBe(3);
   return canvas;
@@ -87,10 +94,12 @@ test.describe("subgraph proportional resize", () => {
 
     const seHandle = await pickSouthEastHandle(canvas);
     const seCenter = await center(seHandle);
-    await runEffect(() => page.mouse.move(seCenter.x, seCenter.y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(seCenter.x + 140, seCenter.y + 110, { steps: 8 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(seCenter.x, seCenter.y),
+      () => page.mouse.down(),
+      () => page.mouse.move(seCenter.x + 140, seCenter.y + 110, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
 
     const subAfter = await nodeFrameByLabel(page, "Subgraph");
     const nodeAfter = await nodeFrameByLabel(page, "Text", 0);
@@ -112,10 +121,12 @@ test.describe("subgraph proportional resize", () => {
 
     await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
     const canvasBox = await requireBox(canvas);
-    await runEffect(() => page.mouse.move(canvasBox.x + 640, canvasBox.y + 250));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(canvasBox.x + 800, canvasBox.y + 360, { steps: 8 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(canvasBox.x + 640, canvasBox.y + 250),
+      () => page.mouse.down(),
+      () => page.mouse.move(canvasBox.x + 800, canvasBox.y + 360, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
 
     expect(await nodeCount(page)).toBe(4);
     await runEffect(() => page.keyboard.press("Control+a"));
@@ -128,10 +139,12 @@ test.describe("subgraph proportional resize", () => {
 
     const seHandle = await pickSouthEastHandle(canvas);
     const seCenter = await center(seHandle);
-    await runEffect(() => page.mouse.move(seCenter.x, seCenter.y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(seCenter.x + 160, seCenter.y + 120, { steps: 8 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(seCenter.x, seCenter.y),
+      () => page.mouse.down(),
+      () => page.mouse.move(seCenter.x + 160, seCenter.y + 120, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
 
     const outerAfter = await nodeFrameByLabel(page, "Subgraph", 0);
     const innerAfter = await nodeFrameByLabel(page, "Subgraph", 1);

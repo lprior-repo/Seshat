@@ -555,6 +555,7 @@ pub fn Canvas() -> Element {
     let mut viewport_size = use_context::<Signal<(f64, f64)>>();
     let mut pending_pointer_sample = use_signal(|| Option::<(f64, f64)>::None);
     let mut pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
+    let mut multi_touch_active = use_signal(|| false);
     let mut canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let mut ordered_node_cache = use_signal(Vec::<NodeId>::new);
     let mut ordered_node_revision = use_signal(|| Option::<Revision>::None);
@@ -765,8 +766,68 @@ pub fn Canvas() -> Element {
                     window.__seshat_canvas_pointer_global_cleanup();
                     window.__seshat_canvas_pointer_global_cleanup = null;
                 }
+                if (window.__seshat_canvas_touch_guard_cleanup) {
+                    window.__seshat_canvas_touch_guard_cleanup();
+                    window.__seshat_canvas_touch_guard_cleanup = null;
+                }
             ",
         );
+    });
+
+    use_effect(move || {
+        let mut eval = document::eval(
+            r"
+                if (window.__seshat_canvas_touch_guard_cleanup) {
+                    window.__seshat_canvas_touch_guard_cleanup();
+                }
+
+                const reportTouches = (event) => {
+                    const target = event.target;
+                    const inCanvas = target && target.closest && target.closest('.canvas-container');
+                    if (!inCanvas) {
+                        return;
+                    }
+                    const touches = event.touches ? event.touches.length : 0;
+                    dioxus.send({ type: 'touchmeta', touches });
+                };
+
+                const onTouchStart = (event) => reportTouches(event);
+                const onTouchMove = (event) => reportTouches(event);
+                const onTouchEnd = (event) => reportTouches(event);
+                const onTouchCancel = (event) => reportTouches(event);
+
+                window.addEventListener('touchstart', onTouchStart, { passive: true, capture: true });
+                window.addEventListener('touchmove', onTouchMove, { passive: true, capture: true });
+                window.addEventListener('touchend', onTouchEnd, { passive: true, capture: true });
+                window.addEventListener('touchcancel', onTouchCancel, { passive: true, capture: true });
+
+                window.__seshat_canvas_touch_guard_cleanup = () => {
+                    window.removeEventListener('touchstart', onTouchStart, true);
+                    window.removeEventListener('touchmove', onTouchMove, true);
+                    window.removeEventListener('touchend', onTouchEnd, true);
+                    window.removeEventListener('touchcancel', onTouchCancel, true);
+                };
+            ",
+        );
+
+        spawn(async move {
+            while let Ok(json) = eval.recv::<serde_json::Value>().await {
+                if json["type"].as_str() != Some("touchmeta") {
+                    continue;
+                }
+
+                let touch_count = json["touches"].as_u64().map_or(0_u64, |v| v);
+                let is_multi_touch = touch_count >= 2;
+                multi_touch_active.set(is_multi_touch);
+
+                if is_multi_touch {
+                    pending_pointer_sample.set(None);
+                    pending_wheel_sample.set(None);
+                    space_pan_active.set(false);
+                    interaction_mode.set(InteractionMode::Select);
+                }
+            }
+        });
     });
 
     use_effect(move || {
@@ -947,6 +1008,10 @@ pub fn Canvas() -> Element {
                 let origin = *canvas_origin.read();
                 let local_x = client_x - origin.0;
                 let local_y = client_y - origin.1;
+
+                if *multi_touch_active.read() {
+                    continue;
+                }
 
                 if event_type == "pointermove" {
                     interaction_mode.with_mut(|mode| match mode {
@@ -1304,6 +1369,9 @@ pub fn Canvas() -> Element {
             },
 
             onwheel: move |evt| {
+                if *multi_touch_active.read() {
+                    return;
+                }
                 evt.prevent_default();
                 let (dx, dy, discrete_wheel) = match evt.data.delta() {
                     WheelDelta::Pixels(v) => (v.x, v.y, v.y.abs() >= 50.0),
@@ -1326,6 +1394,9 @@ pub fn Canvas() -> Element {
             },
 
             onmousedown: move |evt| {
+                if *multi_touch_active.read() {
+                    return;
+                }
                 if editing_node.read().is_some() || editing_edge.read().is_some() {
                     commit_inline_edit(
                         doc_signal,
@@ -1637,6 +1708,11 @@ pub fn Canvas() -> Element {
 
             onmouseleave: move |_| {},
 
+            div {
+                "data-testid": "canvas-root",
+                style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
+            }
+
             svg {
                 style: "position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;",
                 defs {
@@ -1910,6 +1986,9 @@ pub fn Canvas() -> Element {
                             },
 
                             onmousedown: move |evt| {
+                                if *multi_touch_active.read() {
+                                    return;
+                                }
                                 evt.stop_propagation();
                                 let tool = *tool_signal.read();
                                 let doc = doc_signal.read().clone();
@@ -2052,6 +2131,11 @@ pub fn Canvas() -> Element {
                                 }
                             },
 
+                            div {
+                                "data-testid": "node",
+                                style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
+                            }
+
                             if node.kind == NodeKind::Text {
                                 if is_editing_node {
                                     input {
@@ -2084,6 +2168,7 @@ pub fn Canvas() -> Element {
                                     }
                                 } else {
                                     span {
+                                        "data-testid": "node-label",
                                         style: "font-size: {font_px}px; color: {TEXT_MAIN};",
                                         ondoubleclick: {
                                             let edit_label = node.label.clone();
@@ -2132,6 +2217,7 @@ pub fn Canvas() -> Element {
                                     }
                                 } else {
                                     span {
+                                        "data-testid": "node-label",
                                         style: "position:absolute; top:8px; left:10px; font-size:{font_px}px; color:{TEXT_MUTED};",
                                         ondoubleclick: {
                                             let edit_label = node.label.clone();
@@ -2259,6 +2345,7 @@ pub fn Canvas() -> Element {
                                     }
                                 } else {
                                     span {
+                                        "data-testid": "node-label",
                                         style: "position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:{font_px}px; color:{TEXT_MAIN};",
                                         ondoubleclick: {
                                             let edit_label = node.label.clone();

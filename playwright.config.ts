@@ -1,15 +1,14 @@
-import { defineConfig, devices } from "@playwright/test";
+import { defineConfig } from "@playwright/test";
 
 export default defineConfig({
   testDir: "diagram_tool/e2e",
   fullyParallel: true,
-  workers: 4,
   timeout: 45_000,
-  retries: 1,
   reporter: [["list"], ["html", { open: "never" }]],
   use: {
     baseURL: "http://127.0.0.1:8081",
     headless: true,
+    viewport: { width: 1600, height: 980 },
     timezoneId: "UTC",
     locale: "en-US",
     trace: "retain-on-failure",
@@ -18,47 +17,72 @@ export default defineConfig({
   },
   projects: [
     {
+      name: "e2e-smoke",
+      retries: 0,
+      workers: 4,
+      grep: /@baseline/,
+      grepInvert: /@rq/,
+      use: {
+        browserName: "chromium",
+      },
+    },
+    {
       name: "baseline-chromium",
+      retries: 1,
+      workers: 4,
+      grep: /@baseline/,
       use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1600, height: 980 },
+        browserName: "chromium",
       },
-      testIgnore: ["**/specs-redqueen/**"],
     },
     {
-      name: "baseline-iphone-13",
+      name: "redqueen-wave1",
+      retries: 0,
+      workers: 2,
+      grep: /(?=.*@rq)(?=.*@rq-wave1)/,
       use: {
-        ...devices["iPhone 13"],
+        browserName: "chromium",
       },
-      testIgnore: ["**/specs-redqueen/**"],
     },
     {
-      name: "baseline-pixel-7",
+      name: "redqueen-wave2",
+      retries: 1,
+      workers: 2,
+      grep: /(?=.*@rq)(?=.*@rq-wave2)/,
       use: {
-        ...devices["Pixel 7"],
+        browserName: "chromium",
       },
-      testIgnore: ["**/specs-redqueen/**"],
     },
     {
-      name: "rq-wave1",
+      name: "redqueen-wave3",
+      retries: 0,
+      workers: 1,
+      grep: /(?=.*@rq)(?=.*@rq-wave3)/,
       use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1600, height: 980 },
+        browserName: "chromium",
       },
-      testMatch: ["**/specs-redqueen/**/*.wave1.spec.ts"],
     },
     {
-      name: "rq-wave3",
+      name: "redqueen-seeded",
+      retries: 0,
+      workers: 2,
+      grep: /(?=.*@rq)(?=.*@seeded)/,
       use: {
-        ...devices["Desktop Chrome"],
-        viewport: { width: 1600, height: 980 },
+        browserName: "chromium",
       },
-      timeout: 75_000,
-      testMatch: ["**/specs-redqueen/**/*.wave3.spec.ts"],
+    },
+    {
+      name: "redqueen-stress",
+      retries: 0,
+      workers: 1,
+      grep: /(?=.*@rq)(?=.*@stress)/,
+      use: {
+        browserName: "chromium",
+      },
     },
   ],
   webServer: {
-    command: "dx serve --platform web --port 8081 --watch false --hot-reload false",
+    command: "moon run :serve",
     url: "http://127.0.0.1:8081",
     reuseExistingServer: true,
     timeout: 300_000,

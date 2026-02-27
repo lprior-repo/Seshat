@@ -273,6 +273,7 @@ pub fn PropertiesPanel() -> Element {
                             div {
                                 label { style: "display: block; font-size: 12px; color: {TEXT_MUTED};", "Label" }
                                 input {
+                                    "data-testid": "node-label-input",
                                     style: "width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                     value: "{node.label}",
                                     onfocus: move |_| {

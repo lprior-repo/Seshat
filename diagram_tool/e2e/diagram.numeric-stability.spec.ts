@@ -2,6 +2,8 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  minimapViewport,
+  runEffectsSequential,
   runEffect,
   trapPageErrors,
   waitForNoRebuildOverlay,
@@ -9,14 +11,7 @@ import {
 } from "./helpers";
 
 async function getZoomLabel(page: Page): Promise<string> {
-  const label = await runEffect(() =>
-    page
-      .locator("div")
-      .filter({ hasText: /^\d+%$/ })
-      .first()
-      .textContent()
-      .then((t) => t ?? "100%"),
-  );
+  const label = await runEffect(() => page.getByTestId("zoom-reset").textContent().then((t) => t ?? "100%"));
   return label.trim();
 }
 
@@ -68,7 +63,7 @@ async function performWheelZoom(page: Page, canvas: Locator, deltaY: number, ctr
 }
 
 async function dragNodeBy(page: Page, canvas: Locator, dx: number, dy: number) {
-  const nodes = canvas.getByTestId("diagram-node").first();
+  const nodes = canvas.getByTestId("node").first();
   const box = await runEffect(() => nodes.boundingBox());
   if (!box) return;
   await runEffect(() => page.mouse.move(box.x + box.width / 2, box.y + box.height / 2));
@@ -85,9 +80,8 @@ async function getMinimapViewportRect(page: Page): Promise<{
   width: number;
   height: number;
 } | null> {
-  const minimap = page.locator("div").filter({ hasText: /^\d+%$/ }).first().locator("..");
   const rect = await runEffect(() =>
-    minimap.locator("rect").nth(2).evaluate((el) => {
+    minimapViewport(page).evaluate((el) => {
       const x = Number.parseFloat(el.getAttribute("x") ?? "NaN");
       const y = Number.parseFloat(el.getAttribute("y") ?? "NaN");
       const width = Number.parseFloat(el.getAttribute("width") ?? "NaN");
@@ -108,8 +102,7 @@ async function enableMinimap(page: Page) {
 }
 
 async function dragMinimapViewport(page: Page, dx: number, dy: number) {
-  const minimap = page.locator("div").filter({ hasText: /^\d+%$/ }).first().locator("..");
-  const viewportRect = minimap.locator("rect").nth(2);
+  const viewportRect = minimapViewport(page);
   const box = await runEffect(() => viewportRect.boundingBox());
   if (!box) return;
   await runEffect(() => page.mouse.move(box.x + box.width / 2, box.y + box.height / 2));
@@ -129,11 +122,13 @@ test.describe("diagram numeric stability", () => {
 
   test("zoom_clamps_at_extremes_under_mixed_inputs", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
 
     for (let burst = 0; burst < 3; burst += 1) {
       for (let i = 0; i < 8; i += 1) {
@@ -186,14 +181,16 @@ test.describe("diagram numeric stability", () => {
 
   test("resize_handle_cross_over_keeps_dimensions_finite", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await createTextNode(page, canvas, 400, 250);
 
-    const node = canvas.getByTestId("diagram-node").first();
+    const node = canvas.getByTestId("node").first();
     const initialBox = await runEffect(() => node.boundingBox());
     expect(initialBox).not.toBeNull();
 
@@ -244,17 +241,19 @@ test.describe("diagram numeric stability", () => {
 
   test("multi_node_resize_near_minimum_never_produces_invalid_boxes", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
 
     await createTextNode(page, canvas, 300, 200);
     await createTextNode(page, canvas, 450, 200);
     await createTextNode(page, canvas, 600, 200);
 
-    const nodes = canvas.getByTestId("diagram-node");
+    const nodes = canvas.getByTestId("node");
     const count = await runEffect(() => nodes.count());
     expect(count).toBeGreaterThanOrEqual(3);
 
@@ -321,11 +320,13 @@ test.describe("diagram numeric stability", () => {
 
   test("minimap_drag_at_zoom_extremes_keeps_viewport_rect_valid", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
 
     await createTextNode(page, canvas, 300, 200);
     await createTextNode(page, canvas, 700, 400);

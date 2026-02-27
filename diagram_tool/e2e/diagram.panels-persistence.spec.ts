@@ -1,9 +1,15 @@
 import { expect, test } from "@playwright/test";
 import { Buffer } from "node:buffer";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import {
+  cancelFileChooser,
+  chooseFilesWithFileChooser,
   clearCanvasOverlays,
   createTextNode,
   nodeCount,
+  selectedCount,
+  runEffectsSequential,
   runEffect,
   trapPageErrors,
   waitForNoRebuildOverlay,
@@ -13,11 +19,11 @@ import {
 test.describe("diagram panel persistence and resiliency", () => {
   test("panel toggles preserve canvas interactivity", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() =>
-      expect(page.getByTestId("canvas-container")).toBeVisible({ timeout: 30_000 }),
-    );
-    await runEffect(() => waitForUiReady(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => expect(page.getByTestId("canvas-root")).toBeVisible({ timeout: 30_000 }),
+      () => waitForUiReady(page),
+    ]);
 
     const icons = page.getByRole("button", { name: "Icons", exact: true });
     const props = page.getByRole("button", { name: "Props", exact: true });
@@ -31,9 +37,11 @@ test.describe("diagram panel persistence and resiliency", () => {
       await runEffect(() => valid.click());
     }
 
-    const canvas = page.getByTestId("canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 560, 220));
-    await runEffect(() => createTextNode(page, canvas, 780, 320));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 560, 220),
+      () => createTextNode(page, canvas, 780, 320),
+    ]);
     expect(await nodeCount(page)).toBe(2);
 
     const textNode = canvas.getByText("Text", { exact: true }).first();
@@ -42,10 +50,12 @@ test.describe("diagram panel persistence and resiliency", () => {
       throw new Error("text node bounds missing before drag");
     }
 
-    await runEffect(() => page.mouse.move(before.x + 8, before.y + 8));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(before.x + 52, before.y + 40));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(before.x + 8, before.y + 8),
+      () => page.mouse.down(),
+      () => page.mouse.move(before.x + 52, before.y + 40),
+      () => page.mouse.up(),
+    ]);
 
     const after = await runEffect(() => textNode.boundingBox());
     if (!after) {
@@ -59,9 +69,11 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("validation panel badge update path stays stable", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
     await runEffect(() => page.getByRole("button", { name: "Valid", exact: true }).click());
     await expect(page.getByText("Validation", { exact: true })).toBeVisible();
@@ -69,9 +81,11 @@ test.describe("diagram panel persistence and resiliency", () => {
     const badge = page.getByTestId("validation-status");
     await expect(badge).toHaveText("Valid");
 
-    const canvas = page.getByTestId("canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 560, 220));
-    await runEffect(() => createTextNode(page, canvas, 780, 320));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 560, 220),
+      () => createTextNode(page, canvas, 780, 320),
+    ]);
     expect(await nodeCount(page)).toBe(2);
 
     await runEffect(() => page.getByRole("button", { name: "Edge", exact: true }).click());
@@ -87,7 +101,7 @@ test.describe("diagram panel persistence and resiliency", () => {
     await runEffect(() => page.mouse.move(second.x + second.width / 2, second.y + second.height / 2));
     await runEffect(() => page.mouse.down());
     await runEffect(() => page.mouse.up());
-    await expect(page.getByTestId("edge-count")).toHaveText("1 edges");
+    await expect(page.getByTestId("counter-edges")).toHaveText("1 edges");
 
     await runEffect(() => page.getByRole("button", { name: "Validate", exact: true }).click());
     if (
@@ -108,21 +122,25 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("export buttons survive populated canvas without runtime errors", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 520, 210));
-    await runEffect(() => createTextNode(page, canvas, 740, 290));
-    await runEffect(() => createTextNode(page, canvas, 900, 360));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 520, 210),
+      () => createTextNode(page, canvas, 740, 290),
+      () => createTextNode(page, canvas, 900, 360),
+    ]);
     expect(await nodeCount(page)).toBe(3);
 
     await runEffect(() => page.getByRole("button", { name: "Export JSON", exact: true }).click());
     await runEffect(() => page.getByRole("button", { name: "Export SVG", exact: true }).click());
     await runEffect(() => page.getByRole("button", { name: "Export PNG", exact: true }).click());
 
-    await expect(page.getByTestId("canvas-container")).toBeVisible();
+    await expect(page.getByTestId("canvas-root")).toBeVisible();
     expect(await nodeCount(page)).toBe(3);
     await runEffect(() => waitForNoRebuildOverlay(page));
     expect(pageErrors).toHaveLength(0);
@@ -130,11 +148,13 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("icon sidebar search and load-more remain sane", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+    ]);
 
     await expect(page.getByRole("heading", { name: "Diagram Icons" })).toBeVisible();
-    const iconGridItems = page.locator(".icon-item");
+    const iconGridItems = page.getByTestId("icon-item");
     await expect(iconGridItems.first()).toBeVisible();
 
     const search = page.getByPlaceholder("Search icons...");
@@ -165,17 +185,66 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("malformed import does not mutate scene or consume undo history", async ({ page }) => {
+  test("valid import replaces scene and undo restores pre-import scene @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
+    await runEffect(() => createTextNode(page, canvas, 960, 420));
+    expect(await nodeCount(page)).toBe(1);
+
+    const preImportNode = page.getByTestId("node").first();
+    const preImportBounds = await runEffect(() => preImportNode.boundingBox());
+    if (!preImportBounds) {
+      throw new Error("node bounds missing before valid import");
+    }
+
+    const scenePath = join(process.cwd(), "diagram_tool", "e2e", "scenes", "scene_mixed_selection_v1.json");
+    const validScene = readFileSync(scenePath, "utf8");
+    await runEffect(() =>
+      chooseFilesWithFileChooser(page, () => page.getByTestId("toolbar-open").click(), [
+        {
+          name: "scene_mixed_selection_v1.json",
+          mimeType: "application/json",
+          buffer: Buffer.from(validScene, "utf8"),
+        },
+      ]),
+    );
+
+    await expect(page.getByText("Workspace loaded", { exact: true })).toBeVisible();
+    expect(await nodeCount(page)).toBe(3);
+    await expect(page.getByTestId("counter-edges")).toHaveText("1 edges");
+
+    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
+    expect(await nodeCount(page)).toBe(1);
+
+    const restoredNode = page.getByTestId("node").first();
+    const restoredBounds = await runEffect(() => restoredNode.boundingBox());
+    if (!restoredBounds) {
+      throw new Error("node bounds missing after undo of valid import");
+    }
+    expect(Math.abs(restoredBounds.x - preImportBounds.x)).toBeLessThanOrEqual(2);
+    expect(Math.abs(restoredBounds.y - preImportBounds.y)).toBeLessThanOrEqual(2);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test("failed import does not change selected-count or consume undo history @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 260));
     expect(await nodeCount(page)).toBe(1);
 
-    const node = page.getByTestId("diagram-node").first();
+    const node = page.getByTestId("node").first();
     const beforeDrag = await runEffect(() => node.boundingBox());
     if (!beforeDrag) {
       throw new Error("node bounds missing before drag");
@@ -187,6 +256,9 @@ test.describe("diagram panel persistence and resiliency", () => {
     await runEffect(() => page.mouse.move(beforeDrag.x + 56, beforeDrag.y + 44));
     await runEffect(() => page.mouse.up());
 
+    const selectedBeforeImport = await selectedCount(page);
+    expect(selectedBeforeImport).toBeGreaterThanOrEqual(1);
+
     const afterDrag = await runEffect(() => node.boundingBox());
     if (!afterDrag) {
       throw new Error("node bounds missing after drag");
@@ -194,11 +266,8 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 14);
     expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 14);
 
-    const chooserPromise = page.waitForEvent("filechooser");
-    await runEffect(() => page.getByTestId("toolbar-open").click());
-    const chooser = await chooserPromise;
     await runEffect(() =>
-      chooser.setFiles([
+      chooseFilesWithFileChooser(page, () => page.getByTestId("toolbar-open").click(), [
         {
           name: "broken.json",
           mimeType: "application/json",
@@ -209,6 +278,7 @@ test.describe("diagram panel persistence and resiliency", () => {
 
     await expect(page.getByText("Load failed", { exact: true })).toBeVisible();
     expect(await nodeCount(page)).toBe(1);
+    expect(await selectedCount(page)).toBe(selectedBeforeImport);
 
     const afterFailedImport = await runEffect(() => node.boundingBox());
     if (!afterFailedImport) {
@@ -230,17 +300,19 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("schema-invalid import does not mutate scene or consume undo history", async ({ page }) => {
+  test("schema-invalid import does not mutate scene or consume undo history @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 600, 250));
     expect(await nodeCount(page)).toBe(1);
 
-    const node = page.getByTestId("diagram-node").first();
+    const node = page.getByTestId("node").first();
     const beforeDrag = await runEffect(() => node.boundingBox());
     if (!beforeDrag) {
       throw new Error("node bounds missing before schema-invalid import test");
@@ -259,11 +331,8 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 14);
     expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 10);
 
-    const chooserPromise = page.waitForEvent("filechooser");
-    await runEffect(() => page.getByTestId("toolbar-open").click());
-    const chooser = await chooserPromise;
     await runEffect(() =>
-      chooser.setFiles([
+      chooseFilesWithFileChooser(page, () => page.getByTestId("toolbar-open").click(), [
         {
           name: "schema-invalid.json",
           mimeType: "application/json",
@@ -309,17 +378,19 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("cancelled import picker does not mutate scene or history", async ({ page }) => {
+  test("cancelled import leaves selected-count and node positions untouched @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 610, 255));
     expect(await nodeCount(page)).toBe(1);
 
-    const node = page.getByTestId("diagram-node").first();
+    const node = page.getByTestId("node").first();
     const beforeDrag = await runEffect(() => node.boundingBox());
     if (!beforeDrag) {
       throw new Error("node bounds missing before cancel-import test");
@@ -331,6 +402,9 @@ test.describe("diagram panel persistence and resiliency", () => {
     await runEffect(() => page.mouse.move(beforeDrag.x + 42, beforeDrag.y + 30));
     await runEffect(() => page.mouse.up());
 
+    const selectedBeforeCancel = await selectedCount(page);
+    expect(selectedBeforeCancel).toBeGreaterThanOrEqual(1);
+
     const afterDrag = await runEffect(() => node.boundingBox());
     if (!afterDrag) {
       throw new Error("node bounds missing after drag in cancel-import test");
@@ -338,13 +412,13 @@ test.describe("diagram panel persistence and resiliency", () => {
     expect(afterDrag.x).toBeGreaterThan(beforeDrag.x + 12);
     expect(afterDrag.y).toBeGreaterThan(beforeDrag.y + 8);
 
-    const chooserPromise = page.waitForEvent("filechooser");
-    await runEffect(() => page.getByTestId("toolbar-open").click());
-    const chooser = await chooserPromise;
-    await runEffect(() => chooser.setFiles([]));
+    await runEffect(() =>
+      cancelFileChooser(page, () => page.getByTestId("toolbar-open").click()),
+    );
 
     await expect(page.getByText("Load failed", { exact: true })).toHaveCount(0);
     expect(await nodeCount(page)).toBe(1);
+    expect(await selectedCount(page)).toBe(selectedBeforeCancel);
 
     const afterCancel = await runEffect(() => node.boundingBox());
     if (!afterCancel) {

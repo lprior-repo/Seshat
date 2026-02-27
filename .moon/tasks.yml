@@ -27,22 +27,42 @@ tasks:
       dx build --platform web
 
   e2e-smoke:
-    command: "npm exec playwright test -- --project baseline-chromium --grep @p0-smoke"
+    command: "npm exec playwright test -- --project e2e-smoke"
+    options:
+      cache: false
+
+  e2e-baseline:
+    command: "npm exec playwright test -- --project baseline-chromium"
     options:
       cache: false
 
   e2e-redqueen-wave1:
-    command: "npm exec playwright test -- --project rq-wave1"
+    command: "npm exec playwright test -- --project redqueen-wave1"
     options:
       cache: false
 
-  e2e-redqueen-replay:
-    command: "npm exec playwright test -- --project rq-wave1 --grep RQ-A01"
+  e2e-redqueen-wave2:
+    command: "npm exec playwright test -- --project redqueen-wave2"
     options:
       cache: false
 
   e2e-redqueen-wave3:
-    command: "npm exec playwright test -- --project rq-wave3"
+    command: "npm exec playwright test -- --project redqueen-wave3"
+    options:
+      cache: false
+
+  e2e-redqueen:
+    command: "npm exec playwright test -- --project redqueen-seeded --grep @rq"
+    options:
+      cache: false
+
+  e2e-redqueen-stress:
+    command: "npm exec playwright test -- --project redqueen-stress"
+    options:
+      cache: false
+
+  e2e:
+    command: "moon run :e2e-baseline"
     options:
       cache: false
 
@@ -60,7 +80,7 @@ tasks:
       moon run :test
       moon run :clippy
       moon run :e2e-smoke
-      moon run :e2e-redqueen-replay
+      moon run :e2e-redqueen-wave2
     options:
       cache: true
 
@@ -71,3 +91,10 @@ tasks:
       moon run :e2e-redqueen-wave3
     options:
       cache: true
+
+  ci-nightly:
+    script: |
+      moon run :ci-hardening
+      moon run :e2e-redqueen-stress
+    options:
+      cache: false

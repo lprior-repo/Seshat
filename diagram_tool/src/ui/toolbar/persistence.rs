@@ -11,6 +11,43 @@ use rfd::FileDialog;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 
+#[derive(Debug)]
+enum ImportTransitionError {
+    Parse(String),
+    Validation(String),
+}
+
+fn prepare_import_transition(
+    current: &DiagramDocument,
+    contents: &str,
+) -> Result<(DiagramDocument, History), ImportTransitionError> {
+    let mut loaded_doc = super::persistence_compat::parse_diagram_document_with_compat(contents)
+        .map_err(ImportTransitionError::Parse)?;
+    loaded_doc.revision = Revision::INITIAL;
+
+    run_mutation_with_policy(current, RevisionPolicy::Preserve, |_| Ok(loaded_doc))
+        .map(|next_doc| (next_doc, History::new().push(current.clone())))
+        .map_err(|err| {
+            ImportTransitionError::Validation(super::mutation_error_code(&err).to_string())
+        })
+}
+
+fn apply_import_contents(
+    doc: &mut DiagramDocument,
+    history: &mut History,
+    contents: &str,
+) -> Result<(), ImportTransitionError> {
+    let current = doc.clone();
+    match prepare_import_transition(&current, contents) {
+        Ok((next_doc, next_history)) => {
+            *doc = next_doc;
+            *history = next_history;
+            Ok(())
+        }
+        Err(err) => Err(err),
+    }
+}
+
 pub fn save_workspace(
     doc_signal: Signal<DiagramDocument>,
     tool_signal: Signal<ToolMode>,
@@ -170,40 +207,31 @@ pub fn open_workspace(
                     }
 
                     let contents = msg["contents"].as_str().map_or("", |v| v);
-                    match super::persistence_compat::parse_diagram_document_with_compat(contents) {
-                        Err(err) => {
+                    let mut next_doc = doc_signal.read().clone();
+                    let mut next_history = history_signal.read().clone();
+                    match apply_import_contents(&mut next_doc, &mut next_history, contents) {
+                        Ok(()) => {
+                            *doc_signal.write() = next_doc;
+                            *history_signal.write() = next_history;
+                            update_load_save_success(
+                                toast_handle,
+                                "Workspace loaded",
+                                String::from("Loaded from local JSON"),
+                            );
+                        }
+                        Err(ImportTransitionError::Parse(err)) => {
                             update_load_save_error(
                                 toast_handle,
                                 "Load failed",
                                 format!("Parse error: {err}"),
                             );
                         }
-                        Ok(mut loaded_doc) => {
-                            loaded_doc.revision = Revision::INITIAL;
-                            let current = doc_signal.read().clone();
-                            match run_mutation_with_policy(
-                                &current,
-                                RevisionPolicy::Preserve,
-                                |_| Ok(loaded_doc),
-                            ) {
-                                Ok(next_doc) => {
-                                    *doc_signal.write() = next_doc;
-                                    *history_signal.write() = History::new().push(current);
-                                    update_load_save_success(
-                                        toast_handle,
-                                        "Workspace loaded",
-                                        String::from("Loaded from local JSON"),
-                                    );
-                                }
-                                Err(err) => update_load_save_error(
-                                    toast_handle,
-                                    "Load failed",
-                                    format!(
-                                        "Load validation error: {}",
-                                        super::mutation_error_code(&err)
-                                    ),
-                                ),
-                            }
+                        Err(ImportTransitionError::Validation(code)) => {
+                            update_load_save_error(
+                                toast_handle,
+                                "Load failed",
+                                format!("Load validation error: {code}"),
+                            );
                         }
                     }
                 }
@@ -233,40 +261,29 @@ pub fn open_workspace(
                         format!("Read error: {e}"),
                     ),
                     Ok(contents) => {
-                        match super::persistence_compat::parse_diagram_document_with_compat(
-                            &contents,
-                        ) {
-                            Err(e) => update_load_save_error(
+                        let mut next_doc = doc_signal.read().clone();
+                        let mut next_history = history_signal.read().clone();
+                        match apply_import_contents(&mut next_doc, &mut next_history, &contents) {
+                            Ok(()) => {
+                                *doc_signal.write() = next_doc;
+                                *history_signal.write() = next_history;
+                                update_load_save_success(
+                                    toast_handle,
+                                    "Workspace loaded",
+                                    format!("Loaded from {}", p.display()),
+                                );
+                            }
+                            Err(ImportTransitionError::Parse(e)) => update_load_save_error(
                                 toast_handle,
                                 "Load failed",
                                 format!("Parse error: {e}"),
                             ),
-                            Ok(mut loaded_doc) => {
-                                loaded_doc.revision = Revision::INITIAL;
-                                let current = doc_signal.read().clone();
-                                match run_mutation_with_policy(
-                                    &current,
-                                    RevisionPolicy::Preserve,
-                                    |_| Ok(loaded_doc),
-                                ) {
-                                    Ok(next_doc) => {
-                                        *doc_signal.write() = next_doc;
-                                        *history_signal.write() = History::new().push(current);
-                                        update_load_save_success(
-                                            toast_handle,
-                                            "Workspace loaded",
-                                            format!("Loaded from {}", p.display()),
-                                        );
-                                    }
-                                    Err(err) => update_load_save_error(
-                                        toast_handle,
-                                        "Load failed",
-                                        format!(
-                                            "Load validation error: {}",
-                                            super::mutation_error_code(&err)
-                                        ),
-                                    ),
-                                }
+                            Err(ImportTransitionError::Validation(code)) => {
+                                update_load_save_error(
+                                    toast_handle,
+                                    "Load failed",
+                                    format!("Load validation error: {code}"),
+                                );
                             }
                         }
                     }
@@ -290,4 +307,159 @@ fn update_load_save_error(toast_handle: ToastHandle, title: &str, detail: String
         intent: Some(ToastIntent::Error),
         action: None,
     });
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::{apply_import_contents, prepare_import_transition, ImportTransitionError};
+    use crate::history::History;
+    use crate::models::document::{
+        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    };
+    use im::{HashMap, HashSet};
+
+    fn sample_doc_with_node(id: &str, x: f64) -> DiagramDocument {
+        let mut doc = DiagramDocument::default();
+        let _ = doc.document.nodes.insert(
+            NodeId::new(id.to_string()),
+            Node {
+                kind: NodeKind::Text,
+                icon: String::new(),
+                label: String::from("Text"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(120.0),
+                width: OrderedFloat(100.0),
+                height: OrderedFloat(24.0),
+                font_size: None,
+                font_weight: None,
+                locked: true,
+                parent: None,
+                dag_rank: None,
+                tags: Vec::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            },
+        );
+        doc
+    }
+
+    #[test]
+    fn given_malformed_import_when_preparing_transition_then_returns_parse_error() {
+        let current = sample_doc_with_node("n-current", 40.0);
+        let result = prepare_import_transition(&current, "{this-is-not-json");
+        assert!(matches!(result, Err(ImportTransitionError::Parse(_))));
+    }
+
+    #[test]
+    fn given_semantically_invalid_import_when_preparing_transition_then_returns_validation_error() {
+        let current = sample_doc_with_node("n-current", 40.0);
+        let invalid = r#"{
+            "version": 2,
+            "revision": 0,
+            "document": {
+                "nodes": {},
+                "edges": {
+                    "e1": {
+                        "source": "missing-a",
+                        "target": "missing-b"
+                    }
+                }
+            }
+        }"#;
+
+        let result = prepare_import_transition(&current, invalid);
+        assert!(matches!(result, Err(ImportTransitionError::Validation(_))));
+    }
+
+    #[test]
+    fn given_valid_import_when_preparing_transition_then_new_doc_and_history_are_atomic() {
+        let current = sample_doc_with_node("n-current", 40.0);
+        let valid = serde_json::to_string_pretty(&sample_doc_with_node("n-import", 260.0)).unwrap();
+
+        let (next_doc, next_history) = prepare_import_transition(&current, &valid)
+            .expect("valid import should produce a transition");
+        assert!(next_doc.document.nodes.contains_key(&NodeId::new(String::from("n-import"))));
+        assert!(!next_doc.document.nodes.contains_key(&NodeId::new(String::from("n-current"))));
+
+        let undone = next_history.undo(next_doc.clone());
+        assert!(undone.is_some(), "history should include pre-import snapshot");
+        let (restored, _) = undone.expect("undo should restore prior state");
+        assert!(restored.document.nodes.contains_key(&NodeId::new(String::from("n-current"))));
+        assert!(!restored.document.nodes.contains_key(&NodeId::new(String::from("n-import"))));
+
+        let fresh_history = History::new();
+        assert!(fresh_history.undo(current).is_none());
+    }
+
+    #[test]
+    fn given_import_error_when_applying_contents_then_doc_and_history_remain_unchanged() {
+        let mut doc = sample_doc_with_node("n-current", 40.0);
+        let previous = sample_doc_with_node("n-prev", 12.0);
+        let mut history = History::new().push(previous.clone());
+
+        let doc_before = doc.clone();
+        let undo_before = history
+            .clone()
+            .undo(doc.clone())
+            .map(|(snapshot, _)| snapshot);
+
+        let result = apply_import_contents(&mut doc, &mut history, "{not-valid-json");
+        assert!(matches!(result, Err(ImportTransitionError::Parse(_))));
+        assert_eq!(doc, doc_before);
+
+        let undo_after = history.undo(doc.clone()).map(|(snapshot, _)| snapshot);
+        assert_eq!(undo_after, undo_before);
+        assert_eq!(undo_after, Some(previous));
+    }
+
+    #[test]
+    fn given_validation_error_when_applying_contents_then_doc_and_history_remain_unchanged() {
+        let mut doc = sample_doc_with_node("n-current", 40.0);
+        let previous = sample_doc_with_node("n-prev", 12.0);
+        let mut history = History::new().push(previous.clone());
+
+        let invalid = r#"{
+            "version": 2,
+            "revision": 0,
+            "document": {
+                "nodes": {},
+                "edges": {
+                    "e1": {
+                        "source": "missing-a",
+                        "target": "missing-b"
+                    }
+                }
+            }
+        }"#;
+
+        let doc_before = doc.clone();
+        let undo_before = history
+            .clone()
+            .undo(doc.clone())
+            .map(|(snapshot, _)| snapshot);
+
+        let result = apply_import_contents(&mut doc, &mut history, invalid);
+        assert!(matches!(result, Err(ImportTransitionError::Validation(_))));
+        assert_eq!(doc, doc_before);
+
+        let undo_after = history.undo(doc.clone()).map(|(snapshot, _)| snapshot);
+        assert_eq!(undo_after, undo_before);
+        assert_eq!(undo_after, Some(previous));
+    }
+
+    #[test]
+    fn given_import_error_when_selection_exists_then_selection_is_preserved() {
+        let mut doc = sample_doc_with_node("n-current", 40.0);
+        doc.editor_state.selected_items = HashSet::new().update(String::from("n-current"));
+        let mut history = History::new();
+
+        let selected_before = doc.editor_state.selected_items.clone();
+        let result = apply_import_contents(&mut doc, &mut history, "{not-valid-json");
+
+        assert!(matches!(result, Err(ImportTransitionError::Parse(_))));
+        assert_eq!(doc.editor_state.selected_items, selected_before);
+    }
 }

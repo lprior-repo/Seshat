@@ -14,7 +14,7 @@ async function canvasPoint(
   xOffset: number,
   yOffset: number,
 ) {
-  const canvas = page.getByTestId("canvas-container");
+  const canvas = page.getByTestId("canvas-root");
   const box = await runEffect(() => canvas.boundingBox());
   if (!box) {
     throw new Error("canvas bounding box not available");
@@ -48,7 +48,7 @@ test.describe("diagram mode-switch race hardening", () => {
       );
     }
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     const box = await runEffect(() => canvas.boundingBox());
     if (!box) {
       throw new Error("canvas bounding box not available");
@@ -56,10 +56,10 @@ test.describe("diagram mode-switch race hardening", () => {
 
     const targetX = box.x + 320;
     const targetY = box.y + 180;
-    await runEffect(() =>
-      page.getByRole("button", { name: "Text", exact: true }).click(),
-    );
-    await runEffect(() => page.mouse.click(targetX, targetY));
+    await runEffectsSequential([
+      () => page.getByRole("button", { name: "Text", exact: true }).click(),
+      () => page.mouse.click(targetX, targetY),
+    ]);
 
     await expect(page.getByText(/1 nodes/)).toBeVisible();
     const textNode = canvas.getByText("Text", { exact: true }).first();
@@ -78,9 +78,11 @@ test.describe("diagram mode-switch race hardening", () => {
     await loadDiagram(page);
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.getByTestId("canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 520, 220));
-    await runEffect(() => createTextNode(page, canvas, 820, 300));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 520, 220),
+      () => createTextNode(page, canvas, 820, 300),
+    ]);
     await expect(page.getByText(/2 nodes/)).toBeVisible();
     await expect(page.getByText(/0 edges/)).toBeVisible();
 
@@ -93,14 +95,16 @@ test.describe("diagram mode-switch race hardening", () => {
       throw new Error("expected at least two nodes for edge cancel test");
     }
 
-    await runEffect(() => page.mouse.move(centers[0].x, centers[0].y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.up());
-    await runEffect(() => page.keyboard.press("Escape"));
-    await runEffect(() => page.mouse.move(centers[1].x, centers[1].y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.up());
-    await runEffect(() => page.keyboard.press("Escape"));
+    await runEffectsSequential([
+      () => page.mouse.move(centers[0].x, centers[0].y),
+      () => page.mouse.down(),
+      () => page.mouse.up(),
+      () => page.keyboard.press("Escape"),
+      () => page.mouse.move(centers[1].x, centers[1].y),
+      () => page.mouse.down(),
+      () => page.mouse.up(),
+      () => page.keyboard.press("Escape"),
+    ]);
 
     await expect(page.getByText(/0 edges/)).toBeVisible();
     await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
@@ -112,9 +116,11 @@ test.describe("diagram mode-switch race hardening", () => {
     await loadDiagram(page);
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.getByTestId("canvas-container");
-    await runEffect(() => createTextNode(page, canvas, 540, 240));
-    await runEffect(() => createTextNode(page, canvas, 820, 340));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 540, 240),
+      () => createTextNode(page, canvas, 820, 340),
+    ]);
     await expect(page.getByText(/2 nodes/)).toBeVisible();
 
     await runEffect(() =>
@@ -126,15 +132,15 @@ test.describe("diagram mode-switch race hardening", () => {
       throw new Error("expected at least two nodes for tool switch test");
     }
 
-    await runEffect(() => page.mouse.move(centers[0].x, centers[0].y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.up());
-    await runEffect(() =>
-      page.getByRole("button", { name: "Select", exact: true }).click(),
-    );
-    await runEffect(() => page.mouse.move(centers[1].x, centers[1].y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(centers[0].x, centers[0].y),
+      () => page.mouse.down(),
+      () => page.mouse.up(),
+      () => page.getByRole("button", { name: "Select", exact: true }).click(),
+      () => page.mouse.move(centers[1].x, centers[1].y),
+      () => page.mouse.down(),
+      () => page.mouse.up(),
+    ]);
 
     await expect(page.getByText(/0 edges/)).toBeVisible();
     await expect(page.getByText(/1 selected/)).toBeVisible();
@@ -152,12 +158,14 @@ test.describe("diagram mode-switch race hardening", () => {
     await runEffect(() =>
       page.getByRole("button", { name: "Pan", exact: true }).click(),
     );
-    await runEffect(() => page.mouse.move(start.x, start.y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(end.x, end.y));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(start.x, start.y),
+      () => page.mouse.down(),
+      () => page.mouse.move(end.x, end.y),
+      () => page.mouse.up(),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() =>
       page.getByRole("button", { name: "Text", exact: true }).click(),
     );
@@ -173,7 +181,7 @@ test.describe("diagram mode-switch race hardening", () => {
     await loadDiagram(page);
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 240));
     await expect(page.getByText(/1 nodes/)).toBeVisible();
 
@@ -184,12 +192,16 @@ test.describe("diagram mode-switch race hardening", () => {
       throw new Error("missing bounds for outside-release drag test");
     }
 
-    await runEffect(() => page.mouse.move(before.x + 8, before.y + 8));
-    await runEffect(() => page.mouse.down());
+    await runEffectsSequential([
+      () => page.mouse.move(before.x + 8, before.y + 8),
+      () => page.mouse.down(),
+    ]);
     const outsideX = canvasBox.x + canvasBox.width + 40;
     const outsideY = before.y + 24;
-    await runEffect(() => page.mouse.move(outsideX, outsideY));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(outsideX, outsideY),
+      () => page.mouse.up(),
+    ]);
 
     const after = await runEffect(() => textNode.boundingBox());
     if (!after) {
@@ -210,7 +222,7 @@ test.describe("diagram mode-switch race hardening", () => {
     await loadDiagram(page);
     await runEffect(() => clearCanvasOverlays(page));
 
-    const canvas = page.locator(".canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 230));
     await expect(page.getByText(/1 nodes/)).toBeVisible();
 
@@ -218,13 +230,15 @@ test.describe("diagram mode-switch race hardening", () => {
     const dragMid = await canvasPoint(page, 220, 220);
     const dragEnd = await canvasPoint(page, 360, 220);
 
-    await runEffect(() => page.keyboard.down(" "));
-    await runEffect(() => page.mouse.move(dragStart.x, dragStart.y));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(dragMid.x, dragMid.y));
-    await runEffect(() => page.keyboard.up(" "));
-    await runEffect(() => page.mouse.move(dragEnd.x, dragEnd.y));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.keyboard.down(" "),
+      () => page.mouse.move(dragStart.x, dragStart.y),
+      () => page.mouse.down(),
+      () => page.mouse.move(dragMid.x, dragMid.y),
+      () => page.keyboard.up(" "),
+      () => page.mouse.move(dragEnd.x, dragEnd.y),
+      () => page.mouse.up(),
+    ]);
 
     await runEffect(() =>
       page.getByRole("button", { name: "Text", exact: true }).click(),

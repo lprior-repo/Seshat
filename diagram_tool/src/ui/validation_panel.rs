@@ -23,20 +23,34 @@ pub fn ValidationPanel(issues: ReadSignal<Vec<ValidationIssue>>) -> Element {
 
     rsx! {
         div {
+            "data-testid": "validation-panel",
             style: "padding: 8px; border-top: 1px solid {BORDER_SUBTLE}; background: {BG_SURFACE}; max-height: 200px; overflow-y: auto;",
 
             div {
+                "data-testid": "validation-header",
                 style: "display: flex; align-items: center; gap: 8px; margin-bottom: 4px;",
-                span { style: "font-weight: bold; font-size: 12px; color: {TEXT_MAIN};", "Validation" }
+                span {
+                    "data-testid": "validation-title",
+                    style: "font-weight: bold; font-size: 12px; color: {TEXT_MAIN};",
+                    "Validation"
+                }
                 if has_issues {
                     span {
+                        "data-testid": "validation-status",
                         style: "background: {ERROR}; color: {TEXT_MAIN}; border-radius: 9999px; padding: 1px 7px; font-size: 11px;",
-                        "{error_count}"
+                        span {
+                            "data-testid": "validation-badge-status",
+                            "{error_count}"
+                        }
                     }
                 } else {
                     span {
+                        "data-testid": "validation-status",
                         style: "background: {SUCCESS}; color: {TEXT_MAIN}; border-radius: 9999px; padding: 1px 7px; font-size: 11px;",
-                        "Valid"
+                        span {
+                            "data-testid": "validation-badge-status",
+                            "Valid"
+                        }
                     }
                 }
             }

@@ -286,6 +286,29 @@ mod tests {
     }
 
     #[test]
+    fn given_resize_end_when_finalized_twice_then_revision_bumps_once() {
+        let mut doc = DiagramDocument::default();
+        let mut mode = InteractionMode::ResizingSelection {
+            handle: ResizeHandle::E,
+            original_bounds: (0.0, 0.0, 10.0, 10.0),
+            originals: HashMap::new(),
+            anchor: (0.0, 0.0),
+            did_resize: true,
+        };
+
+        let first = finalize_motion_release(&mut mode, &mut doc);
+        let second = finalize_motion_release(&mut mode, &mut doc);
+
+        assert!(first);
+        assert!(!second);
+        assert_eq!(
+            doc.revision,
+            DiagramDocument::default().revision.increment()
+        );
+        assert_eq!(mode, InteractionMode::Select);
+    }
+
+    #[test]
     fn given_selected_subgraph_when_collecting_resize_targets_then_interior_nodes_included() {
         let mut doc = DiagramDocument::default();
         let subgraph = NodeId::new(String::from("sub"));

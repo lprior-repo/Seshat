@@ -4,6 +4,7 @@ import {
   createTextNode,
   nodeCount,
   nodeFrameByLabel,
+  runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
@@ -33,7 +34,7 @@ async function zoomToAtLeast(page: Page, target: number) {
 
 async function southEastHandle(canvas: Locator): Promise<Box> {
   const selected = await runEffect(() =>
-    canvas.locator('[data-testid="selection-handle"][data-handle="se"]').first().boundingBox(),
+    canvas.getByTestId("resize-handle-se").first().boundingBox(),
   );
   if (!selected) {
     throw new Error("missing south-east handle");
@@ -50,11 +51,13 @@ async function runResizeScenario(
   zoomTarget: number,
   dragPixels: number,
 ): Promise<{ beforeWorld: number; afterWorld: number; deltaWorld: number }> {
-  await runEffect(() => page.goto("/"));
-  await runEffect(() => waitForUiReady(page));
-  await runEffect(() => clearCanvasOverlays(page));
+  await runEffectsSequential([
+    () => page.goto("/"),
+    () => waitForUiReady(page),
+    () => clearCanvasOverlays(page),
+  ]);
 
-  const canvas = page.getByTestId("canvas-container");
+  const canvas = page.getByTestId("canvas-root");
   await runEffect(() => createTextNode(page, canvas, 680, 300));
   const node = canvas.getByText("Text", { exact: true }).first();
   await runEffect(() => node.click());
@@ -68,10 +71,12 @@ async function runResizeScenario(
   const handle = await southEastHandle(canvas);
   const hx = handle.x + handle.width / 2;
   const hy = handle.y + handle.height / 2;
-  await runEffect(() => page.mouse.move(hx, hy));
-  await runEffect(() => page.mouse.down());
-  await runEffect(() => page.mouse.move(hx + dragPixels, hy + dragPixels * 0.7, { steps: 6 }));
-  await runEffect(() => page.mouse.up());
+  await runEffectsSequential([
+    () => page.mouse.move(hx, hy),
+    () => page.mouse.down(),
+    () => page.mouse.move(hx + dragPixels, hy + dragPixels * 0.7, { steps: 6 }),
+    () => page.mouse.up(),
+  ]);
 
   const after = await nodeFrameByLabel(page, "Text", 0);
   const zoomAfter = await zoomPercent(page);
@@ -99,12 +104,14 @@ test.describe("zoom/scale consistency", () => {
 
   test("after resize at high zoom node remains selectable by center click", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-  const canvas = page.getByTestId("canvas-container");
-  await runEffect(() => createTextNode(page, canvas, 700, 320));
+    const canvas = page.getByTestId("canvas-root");
+    await runEffect(() => createTextNode(page, canvas, 700, 320));
     const node = canvas.getByText("Text", { exact: true }).first();
     await runEffect(() => node.click());
     expect(await nodeCount(page)).toBe(1);
@@ -113,10 +120,12 @@ test.describe("zoom/scale consistency", () => {
     const handle = await southEastHandle(canvas);
     const hx = handle.x + handle.width / 2;
     const hy = handle.y + handle.height / 2;
-    await runEffect(() => page.mouse.move(hx, hy));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(hx - 120, hy, { steps: 6 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(hx, hy),
+      () => page.mouse.down(),
+      () => page.mouse.move(hx - 120, hy, { steps: 6 }),
+      () => page.mouse.up(),
+    ]);
 
     const nodeAfter = await nodeFrameByLabel(page, "Text", 0);
     await runEffect(() =>

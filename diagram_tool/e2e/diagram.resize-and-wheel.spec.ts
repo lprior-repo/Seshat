@@ -1,8 +1,9 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
   nodeCount,
+  runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
@@ -10,8 +11,10 @@ import {
   zoomPercent,
 } from "./helpers";
 
-async function firstNodeBox(page: Parameters<typeof test>[0]["page"]) {
-  const node = page.getByTestId("canvas-container").getByText("Text", { exact: true }).first();
+type BoundingBox = { x: number; y: number; width: number; height: number };
+
+async function firstNodeBox(page: Page): Promise<BoundingBox> {
+  const node = page.getByTestId("canvas-root").getByText("Text", { exact: true }).first();
   const box = await runEffect(() => node.boundingBox());
   if (!box) {
     throw new Error("node bounds unavailable");
@@ -22,21 +25,25 @@ async function firstNodeBox(page: Parameters<typeof test>[0]["page"]) {
 test.describe("diagram resize and wheel behavior", () => {
   test("wheel on canvas zooms editor and does not scroll page @p0-smoke", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
     expect(await zoomPercent(page)).toBe(100);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     const box = await runEffect(() => canvas.boundingBox());
     if (!box) {
       throw new Error("canvas bounds unavailable");
     }
 
     const beforeScroll = await runEffect(() => page.evaluate(() => window.scrollY));
-    await runEffect(() => page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4));
-    await runEffect(() => page.mouse.wheel(0, -180));
+    await runEffectsSequential([
+      () => page.mouse.move(box.x + box.width * 0.5, box.y + box.height * 0.4),
+      () => page.mouse.wheel(0, -180),
+    ]);
     expect(await zoomPercent(page)).not.toBe(100);
 
     const afterScroll = await runEffect(() => page.evaluate(() => window.scrollY));
@@ -46,11 +53,13 @@ test.describe("diagram resize and wheel behavior", () => {
 
   test("resize interaction updates dimensions progressively and stays finite", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 280));
     expect(await nodeCount(page)).toBe(1);
 
@@ -60,18 +69,22 @@ test.describe("diagram resize and wheel behavior", () => {
 
     const before = await firstNodeBox(page);
     const east = await runEffect(() =>
-      canvas.locator('[data-testid="selection-handle"][data-handle="e"]').first().boundingBox(),
+      canvas.getByTestId("resize-handle-e").first().boundingBox(),
     );
     if (!east) {
       throw new Error("resize handle bounds unavailable");
     }
 
-    await runEffect(() => page.mouse.move(east.x + east.width / 2, east.y + east.height / 2));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(east.x - 60, east.y, { steps: 4 }));
+    await runEffectsSequential([
+      () => page.mouse.move(east.x + east.width / 2, east.y + east.height / 2),
+      () => page.mouse.down(),
+      () => page.mouse.move(east.x - 60, east.y, { steps: 4 }),
+    ]);
     const mid = await firstNodeBox(page);
-    await runEffect(() => page.mouse.move(east.x - 140, east.y, { steps: 4 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(east.x - 140, east.y, { steps: 4 }),
+      () => page.mouse.up(),
+    ]);
     const after = await firstNodeBox(page);
 
     expect(Number.isFinite(mid.width)).toBe(true);
@@ -84,11 +97,13 @@ test.describe("diagram resize and wheel behavior", () => {
 
   test("small handle drag does not jump from viewport-offset math", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffect(() => page.goto("/"));
-    await runEffect(() => waitForUiReady(page));
-    await runEffect(() => clearCanvasOverlays(page));
+    await runEffectsSequential([
+      () => page.goto("/"),
+      () => waitForUiReady(page),
+      () => clearCanvasOverlays(page),
+    ]);
 
-    const canvas = page.getByTestId("canvas-container");
+    const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 700, 320));
     expect(await nodeCount(page)).toBe(1);
 
@@ -97,7 +112,7 @@ test.describe("diagram resize and wheel behavior", () => {
 
     const before = await firstNodeBox(page);
     const east = await runEffect(() =>
-      canvas.locator('[data-testid="selection-handle"][data-handle="e"]').first().boundingBox(),
+      canvas.getByTestId("resize-handle-e").first().boundingBox(),
     );
     if (!east) {
       throw new Error("east resize handle unavailable");
@@ -105,10 +120,12 @@ test.describe("diagram resize and wheel behavior", () => {
 
     const cx = east.x + east.width / 2;
     const cy = east.y + east.height / 2;
-    await runEffect(() => page.mouse.move(cx, cy));
-    await runEffect(() => page.mouse.down());
-    await runEffect(() => page.mouse.move(cx - 12, cy, { steps: 3 }));
-    await runEffect(() => page.mouse.up());
+    await runEffectsSequential([
+      () => page.mouse.move(cx, cy),
+      () => page.mouse.down(),
+      () => page.mouse.move(cx - 12, cy, { steps: 3 }),
+      () => page.mouse.up(),
+    ]);
 
     const after = await firstNodeBox(page);
     const delta = Math.abs(after.width - before.width);

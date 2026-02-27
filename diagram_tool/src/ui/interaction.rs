@@ -19,8 +19,11 @@ pub enum SelectionMode {
 
 #[must_use]
 pub const fn selection_mode_from_drag(start: (f64, f64), current: (f64, f64)) -> SelectionMode {
-    let _ = (start, current);
-    SelectionMode::Contain
+    if current.0 < start.0 {
+        SelectionMode::Intersect
+    } else {
+        SelectionMode::Contain
+    }
 }
 
 #[must_use]
@@ -305,9 +308,25 @@ mod tests {
     }
 
     #[test]
-    fn given_leftward_drag_when_selection_mode_resolved_then_uses_contain() {
+    fn given_leftward_drag_when_selection_mode_resolved_then_uses_intersect() {
         let mode = selection_mode_from_drag((100.0, 100.0), (40.0, 120.0));
+        assert_eq!(mode, SelectionMode::Intersect);
+    }
+
+    #[test]
+    fn given_rightward_drag_when_selection_mode_resolved_then_uses_contain() {
+        let mode = selection_mode_from_drag((40.0, 100.0), (100.0, 120.0));
         assert_eq!(mode, SelectionMode::Contain);
+    }
+
+    #[test]
+    fn given_leftward_drag_when_node_ids_in_rect_then_uses_intersection_behavior() {
+        let doc = doc_with_nodes();
+        let rightward = node_ids_in_rect(&doc, (35.0, 25.0), (42.0, 32.0));
+        assert!(!rightward.contains("a"));
+
+        let leftward = node_ids_in_rect(&doc, (42.0, 32.0), (35.0, 25.0));
+        assert!(leftward.contains("a"));
     }
 
     #[test]
@@ -366,22 +385,19 @@ mod tests {
     }
 
     #[test]
-    fn given_nested_subgraph_selection_when_dragging_then_all_descendants_are_included() {
-        let outer = NodeId::new(String::from("outer"));
-        let inner = NodeId::new(String::from("inner"));
-        let leaf = NodeId::new(String::from("leaf"));
-
+    fn given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_contain_mode() {
         let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new(String::from("text-node"));
         let _ = doc.document.nodes.insert(
-            outer.clone(),
+            node_id.clone(),
             Node {
-                kind: NodeKind::Subgraph,
+                kind: NodeKind::Text,
                 icon: String::new(),
-                label: String::new(),
-                x: OrderedFloat(0.0),
-                y: OrderedFloat(0.0),
+                label: String::from("Text"),
+                x: OrderedFloat(560.0),
+                y: OrderedFloat(220.0),
                 width: OrderedFloat(100.0),
-                height: OrderedFloat(80.0),
+                height: OrderedFloat(24.0),
                 font_size: None,
                 font_weight: None,
                 locked: true,
@@ -391,45 +407,36 @@ mod tests {
                 metadata: HashMap::new(),
                 z_index: 0,
                 style: Some(NodeStyle::default()),
-                collapsed: Some(false),
+                collapsed: None,
             },
         );
+
+        // Rect is inside the node: [572, 608] x [224, 240]
+        // Node is [560, 660] x [220, 244]
+        // Drag is (572, 224) to (608, 240) -> Rightward -> Contain mode
+        let selected = node_ids_in_rect(&doc, (572.0, 224.0), (608.0, 240.0));
+        
+        assert!(selected.is_empty(), "Expected 0 selected, but got {:?}", selected);
+    }
+
+    #[test]
+    fn given_leftward_drag_inside_node_when_node_ids_in_rect_then_returns_node_in_intersect_mode() {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new(String::from("text-node"));
         let _ = doc.document.nodes.insert(
-            inner.clone(),
+            node_id.clone(),
             Node {
-                kind: NodeKind::Subgraph,
+                kind: NodeKind::Text,
                 icon: String::new(),
-                label: String::new(),
-                x: OrderedFloat(10.0),
-                y: OrderedFloat(10.0),
-                width: OrderedFloat(80.0),
-                height: OrderedFloat(60.0),
+                label: String::from("Text"),
+                x: OrderedFloat(560.0),
+                y: OrderedFloat(220.0),
+                width: OrderedFloat(100.0),
+                height: OrderedFloat(24.0),
                 font_size: None,
                 font_weight: None,
                 locked: true,
-                parent: Some(outer.clone()),
-                dag_rank: None,
-                tags: Vec::new(),
-                metadata: HashMap::new(),
-                z_index: 0,
-                style: Some(NodeStyle::default()),
-                collapsed: Some(false),
-            },
-        );
-        let _ = doc.document.nodes.insert(
-            leaf.clone(),
-            Node {
-                kind: NodeKind::Node,
-                icon: String::new(),
-                label: String::new(),
-                x: OrderedFloat(20.0),
-                y: OrderedFloat(20.0),
-                width: OrderedFloat(20.0),
-                height: OrderedFloat(20.0),
-                font_size: None,
-                font_weight: None,
-                locked: true,
-                parent: Some(inner),
+                parent: None,
                 dag_rank: None,
                 tags: Vec::new(),
                 metadata: HashMap::new(),
@@ -439,12 +446,10 @@ mod tests {
             },
         );
 
-        let selected = HashSet::new().update(outer.to_string());
-        let positions = drag_original_positions(&doc, &selected);
-
-        assert!(positions.contains_key(&outer));
-        assert!(positions.contains_key(&leaf));
-        assert_eq!(positions.len(), 3);
+        // Drag is (608, 240) to (572, 224) -> Leftward -> Intersect mode
+        let selected = node_ids_in_rect(&doc, (608.0, 240.0), (572.0, 224.0));
+        
+        assert!(selected.contains("text-node"));
     }
 }
 

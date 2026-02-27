@@ -1,26 +1,34 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
+  canvas,
   clearCanvasOverlays,
   createTextNode,
+  expectNodeCount,
+  expectSelectedCount,
+  runEffectsSequential,
   runEffect,
   trapPageErrors,
   waitForUiReady,
 } from "./helpers";
 
-async function setupCanvas(page: Parameters<typeof test>[0]["page"]) {
-  await runEffect(() => page.goto("/"));
-  await runEffect(() => waitForUiReady(page));
-  await runEffect(() => clearCanvasOverlays(page));
-  return page.locator(".canvas-container");
+async function setupCanvas(page: Page): Promise<Locator> {
+  await runEffectsSequential([
+    () => page.goto("/"),
+    () => waitForUiReady(page),
+    () => clearCanvasOverlays(page),
+  ]);
+  return canvas(page);
 }
 
-async function selectBothTextNodes(page: Parameters<typeof test>[0]["page"]) {
-  const textNodes = page.locator(".canvas-container").getByText("Text", { exact: true });
-  await runEffect(() => textNodes.first().click());
-  await runEffect(() => page.keyboard.down("Shift"));
-  await runEffect(() => textNodes.nth(1).click());
-  await runEffect(() => page.keyboard.up("Shift"));
-  await expect(page.getByText(/2 selected/)).toBeVisible();
+async function selectBothTextNodes(page: Page): Promise<void> {
+  const textNodes = canvas(page).getByText("Text", { exact: true });
+  await runEffectsSequential([
+    () => textNodes.first().click(),
+    () => page.keyboard.down("Shift"),
+    () => textNodes.nth(1).click(),
+    () => page.keyboard.up("Shift"),
+  ]);
+  await expectSelectedCount(page, 2);
 }
 
 test.describe("diagram history and clipboard", () => {
@@ -28,31 +36,35 @@ test.describe("diagram history and clipboard", () => {
     const pageErrors = trapPageErrors(page);
     const canvas = await setupCanvas(page);
 
-    await runEffect(() => createTextNode(page, canvas, 560, 220));
-    await runEffect(() => createTextNode(page, canvas, 800, 320));
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 560, 220),
+      () => createTextNode(page, canvas, 800, 320),
+    ]);
+    await expectNodeCount(page, 2);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
 
-    await runEffect(() => selectBothTextNodes(page));
-    await runEffect(() => page.keyboard.press("ControlOrMeta+c"));
-    await runEffect(() => page.keyboard.press("ControlOrMeta+v"));
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await runEffectsSequential([
+      () => selectBothTextNodes(page),
+      () => page.keyboard.press("ControlOrMeta+c"),
+      () => page.keyboard.press("ControlOrMeta+v"),
+    ]);
+    await expectNodeCount(page, 4);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(4);
 
-    await runEffect(() => page.getByRole("button", { name: "Delete", exact: true }).click());
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-delete").click());
+    await expectNodeCount(page, 2);
 
-    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-undo").click());
+    await expectNodeCount(page, 4);
 
-    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-undo").click());
+    await expectNodeCount(page, 2);
 
-    await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-redo").click());
+    await expectNodeCount(page, 4);
 
-    await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-redo").click());
+    await expectNodeCount(page, 2);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
 
     expect(pageErrors).toHaveLength(0);
@@ -62,18 +74,20 @@ test.describe("diagram history and clipboard", () => {
     const pageErrors = trapPageErrors(page);
     const canvas = await setupCanvas(page);
 
-    await runEffect(() => createTextNode(page, canvas, 520, 200));
-    await runEffect(() => createTextNode(page, canvas, 760, 300));
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 520, 200),
+      () => createTextNode(page, canvas, 760, 300),
+    ]);
+    await expectNodeCount(page, 2);
 
-    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-undo").click());
+    await expectNodeCount(page, 1);
 
     await runEffect(() => createTextNode(page, canvas, 920, 360));
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await expectNodeCount(page, 2);
 
-    await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-redo").click());
+    await expectNodeCount(page, 2);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
 
     expect(pageErrors).toHaveLength(0);
@@ -83,23 +97,27 @@ test.describe("diagram history and clipboard", () => {
     const pageErrors = trapPageErrors(page);
     const canvas = await setupCanvas(page);
 
-    await runEffect(() => createTextNode(page, canvas, 500, 200));
-    await runEffect(() => createTextNode(page, canvas, 740, 280));
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 500, 200),
+      () => createTextNode(page, canvas, 740, 280),
+    ]);
+    await expectNodeCount(page, 2);
 
-    await runEffect(() => selectBothTextNodes(page));
-    await runEffect(() => page.keyboard.press("ControlOrMeta+c"));
+    await runEffectsSequential([
+      () => selectBothTextNodes(page),
+      () => page.keyboard.press("ControlOrMeta+c"),
+    ]);
 
     await runEffect(() => page.keyboard.press("ControlOrMeta+v"));
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await expectNodeCount(page, 4);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(4);
 
     await runEffect(() => page.keyboard.press("ControlOrMeta+v"));
-    await expect(page.getByText(/6 nodes/)).toBeVisible();
+    await expectNodeCount(page, 6);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(6);
 
-    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/4 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-undo").click());
+    await expectNodeCount(page, 4);
 
     expect(pageErrors).toHaveLength(0);
   });
@@ -108,25 +126,27 @@ test.describe("diagram history and clipboard", () => {
     const pageErrors = trapPageErrors(page);
     const canvas = await setupCanvas(page);
 
-    await runEffect(() => createTextNode(page, canvas, 600, 220));
-    await runEffect(() => createTextNode(page, canvas, 840, 300));
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffectsSequential([
+      () => createTextNode(page, canvas, 600, 220),
+      () => createTextNode(page, canvas, 840, 300),
+    ]);
+    await expectNodeCount(page, 2);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
 
     const textNodes = canvas.getByText("Text", { exact: true });
     await runEffect(() => textNodes.first().click());
-    await expect(page.getByText(/1 selected/)).toBeVisible();
+    await expectSelectedCount(page, 1);
 
     await runEffect(() => page.keyboard.press("Delete"));
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await expectNodeCount(page, 1);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(1);
 
-    await runEffect(() => page.getByRole("button", { name: "Undo", exact: true }).click());
-    await expect(page.getByText(/2 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-undo").click());
+    await expectNodeCount(page, 2);
     await expect(canvas.getByText("Text", { exact: true })).toHaveCount(2);
 
-    await runEffect(() => page.getByRole("button", { name: "Redo", exact: true }).click());
-    await expect(page.getByText(/1 nodes/)).toBeVisible();
+    await runEffect(() => page.getByTestId("toolbar-redo").click());
+    await expectNodeCount(page, 1);
 
     expect(pageErrors).toHaveLength(0);
   });

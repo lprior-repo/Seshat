@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { runEffect } from "./helpers";
+import { runEffect, runEffectsSequential } from "./helpers";
 import {
   attachPerfMetric,
   createPageErrorGuard,
@@ -17,39 +17,35 @@ const FRAME_MAX_MS = 220;
 const APP_URL = process.env.PLAYWRIGHT_TEST_BASE_URL ?? "http://127.0.0.1:8081/";
 
 async function bootPerformancePage(page: Page): Promise<void> {
-  await runEffect(() =>
-    page.addInitScript(() => {
-      const originalFetch = window.fetch.bind(window);
-      window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-        const url =
-          typeof input === "string"
-            ? input
-            : input instanceof URL
-              ? input.toString()
-              : input.url;
+  await runEffectsSequential([
+    () =>
+      page.addInitScript(() => {
+        const originalFetch = window.fetch.bind(window);
+        window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+          const url =
+            typeof input === "string"
+              ? input
+              : input instanceof URL
+                ? input.toString()
+                : input.url;
 
-        if (url.includes("/_dioxus")) {
-          return Promise.resolve(
-            new Response("{}", {
-              status: 200,
-              headers: { "content-type": "application/json" },
-            }),
-          );
-        }
+          if (url.includes("/_dioxus")) {
+            return Promise.resolve(
+              new Response("{}", {
+                status: 200,
+                headers: { "content-type": "application/json" },
+              }),
+            );
+          }
 
-        return originalFetch(input, init);
-      };
-    }),
-  );
-  await runEffect(() => page.goto(APP_URL, { waitUntil: "domcontentloaded" }));
+          return originalFetch(input, init);
+        };
+      }),
+    () => page.goto(APP_URL, { waitUntil: "domcontentloaded" }),
+  ]);
+  await expect(page.getByTestId("canvas-root")).toBeVisible({ timeout: 10_000 });
   await runEffect(() =>
-    page.waitForSelector(".canvas-container", {
-      state: "attached",
-      timeout: 10_000,
-    }),
-  );
-  await runEffect(() =>
-    page.getByRole("button", { name: "Validate", exact: true }).waitFor({
+    page.getByTestId("toolbar-validate").waitFor({
       state: "visible",
       timeout: 10_000,
     }),
@@ -58,23 +54,21 @@ async function bootPerformancePage(page: Page): Promise<void> {
 
 async function sampleButtonLatency(
   page: Page,
-  labels: readonly string[],
+  testIds: readonly string[],
   iterations: number,
 ): Promise<number[]> {
   return runEffect(() =>
     page.evaluate(
-      ({ labels: requestedLabels, iterations: repeats }) => {
-        const byExactLabel = (label: string): HTMLButtonElement => {
-          const node = Array.from(document.querySelectorAll("button")).find(
-            (candidate) => candidate.textContent?.trim() === label,
-          );
+      ({ ids, iterations: repeats }) => {
+        const byTestId = (testId: string): HTMLButtonElement => {
+          const node = document.querySelector(`[data-testid="${testId}"]`);
           if (!(node instanceof HTMLButtonElement)) {
-            throw new Error(`button not found: ${label}`);
+            throw new Error(`button not found: ${testId}`);
           }
           return node;
         };
 
-        const buttons = requestedLabels.map(byExactLabel);
+        const buttons = ids.map(byTestId);
         const frame = () =>
           new Promise<number>((resolve) => {
             requestAnimationFrame((ts) => resolve(ts));
@@ -94,7 +88,7 @@ async function sampleButtonLatency(
           return samples;
         })();
       },
-      { labels, iterations },
+      { ids: testIds, iterations },
     ),
   );
 }
@@ -105,19 +99,17 @@ async function sampleFrameJank(
 ): Promise<number[]> {
   return runEffect(() =>
     page.evaluate(({ totalFrames: frames }) => {
-      const byExactLabel = (label: string): HTMLButtonElement => {
-        const node = Array.from(document.querySelectorAll("button")).find(
-          (candidate) => candidate.textContent?.trim() === label,
-        );
+      const byTestId = (testId: string): HTMLButtonElement => {
+        const node = document.querySelector(`[data-testid="${testId}"]`);
         if (!(node instanceof HTMLButtonElement)) {
-          throw new Error(`button not found: ${label}`);
+          throw new Error(`button not found: ${testId}`);
         }
         return node;
       };
 
-      const propsButton = byExactLabel("Props");
-      const validButton = byExactLabel("Valid");
-      const validateButton = byExactLabel("Validate");
+      const propsButton = byTestId("panel-props-toggle");
+      const validButton = byTestId("panel-valid-toggle");
+      const validateButton = byTestId("toolbar-validate");
       const deltas: number[] = [];
 
       return (async () => {
@@ -153,14 +145,22 @@ test.describe("diagram editor performance hardening", () => {
     const pageErrors = createPageErrorGuard(page);
     await bootPerformancePage(page);
 
-    const panelSamples = await sampleButtonLatency(page, ["Props", "Valid"], 16);
+    const panelSamples = await sampleButtonLatency(
+      page,
+      ["panel-props-toggle", "panel-valid-toggle"],
+      16,
+    );
     const panelSummary = summarizeLatency(panelSamples);
     attachPerfMetric(testInfo, "panel-toggle-latency-ms", panelSummary);
 
     expect(panelSummary.p95Ms).toBeLessThanOrEqual(OPERATION_P95_MS);
     expect(panelSummary.maxMs).toBeLessThanOrEqual(OPERATION_MAX_MS);
 
-    const validateZoomSamples = await sampleButtonLatency(page, ["Validate", "+", "-"], 10);
+    const validateZoomSamples = await sampleButtonLatency(
+      page,
+      ["toolbar-validate", "zoom-in", "zoom-out"],
+      10,
+    );
     const validateZoomSummary = summarizeLatency(validateZoomSamples);
     attachPerfMetric(testInfo, "validate-zoom-latency-ms", validateZoomSummary);
 
