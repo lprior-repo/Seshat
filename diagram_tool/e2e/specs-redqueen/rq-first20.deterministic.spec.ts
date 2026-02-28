@@ -28,7 +28,7 @@ async function bootScene(
   loadScene: (scene: SceneId) => Promise<void>,
   sceneId: SceneId,
 ) {
-  await runEffectsSequential([() => page.goto("/"), () => loadScene(sceneId)]);
+  await runEffectsSequential([() => page.goto("/"), () => page.waitForTimeout(2000), () => loadScene(sceneId)]);
 }
 
 async function requireBox(target: Locator): Promise<BoundingBox> {

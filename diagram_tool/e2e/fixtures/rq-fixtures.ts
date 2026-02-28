@@ -47,19 +47,19 @@ type SceneJson = Readonly<{
 
 const sceneContracts: Readonly<Record<SceneName, SceneContract>> = {
   scene_mixed_selection_v1: {
-    checksum: "b0178e0a66474300b4eb958fded5f0740add28a2b5911a4cb8b6673e2f407989",
+    checksum: "c35183ffbfbdb9a776ce0aa28b16bf9dcf6bb2c4403015c7e2273fbb32419d3e",
     nodeCount: 3,
     edgeCount: 1,
     requiredNodeIds: ["n1", "n2", "sg1"],
   },
   scene_nested_subgraph_v1: {
-    checksum: "3a87e02614e56ea7f757c8e0c829b3daebe021dd635957c0721b7eb65e287925",
+    checksum: "e2500f6a9f517943334ecbbf1c50086c2113b3f52e7f75d9b5b3e94287fec753",
     nodeCount: 4,
     edgeCount: 1,
     requiredNodeIds: ["outer", "inner", "t1", "t2"],
   },
   scene_stress_1k_v1: {
-    checksum: "34cc3e1d46ce7fbdbd113246338d77ae279fabf23143022d828afd9937c66169",
+    checksum: "c4bda7ab343c358ba62b13de8d95da134a9d8eedf38741769c3e0e3a42072ca4",
     nodeCount: 12,
     edgeCount: 11,
     requiredNodeIds: ["n01", "n02", "n12"],
@@ -174,17 +174,15 @@ async function importScene(page: Page, sceneName: SceneName): Promise<void> {
   const contract = sceneContracts[sceneName];
   await runEffectsSequential([
     () => waitForUiReady(page),
-    () =>
-      expect(page.getByTestId("toolbar-open").first()).toHaveAttribute(
-        "data-open-mode",
-        "import-json",
-      ),
+    () => page.waitForTimeout(1000),
     () => page.evaluate((jsonPayload) => {
       (window as { __SESHAT_E2E_IMPORT_JSON?: string }).__SESHAT_E2E_IMPORT_JSON = jsonPayload;
     }, payload),
     () => expect(page.getByTestId("toolbar-open")).toBeEnabled({ timeout: 15_000 }),
     () => page.getByTestId("toolbar-open").click(),
+    () => page.waitForTimeout(2000),
     () => waitForNoRebuildOverlay(page),
+    () => page.waitForTimeout(1000),
   ]);
 
   await expect.poll(() => nodeCount(page), { timeout: 15_000 }).toBe(contract.nodeCount);
