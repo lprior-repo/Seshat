@@ -18,8 +18,11 @@ use crate::ui::panels::PanelVisibility;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
-use crate::ui::toolbar::{Toolbar, ToolbarStats};
+use crate::ui::toolbar::{auto_save, Toolbar, ToolbarStats};
+
 use crate::ui::ValidationPanel;
+#[allow(unused_imports)]
+use auto_save::AUTO_SAVE_KEY;
 use dioxus::prelude::*;
 
 const VALIDATION_IDLE_MS: u64 = 220;
@@ -62,6 +65,12 @@ pub fn App() -> Element {
     let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
 
     use_sidebar_mobile_bridge(sidebar_ui, panels);
+
+    // Auto-save: track last saved revision for change detection (WASM only)
+    #[cfg(target_arch = "wasm32")]
+    let mut last_saved_revision = use_signal(auto_save::default_revision);
+    #[cfg(not(target_arch = "wasm32"))]
+    let _last_saved_revision = auto_save::default_revision();
 
     let mut validation_issues = use_signal(move || {
         let doc = doc_signal.read();
@@ -153,6 +162,102 @@ pub fn App() -> Element {
             queued_validation_revision_signal.set(None);
         });
     });
+
+    // Auto-save: Load from localStorage on first mount (WASM only)
+    #[cfg(target_arch = "wasm32")]
+    {
+        let doc_signal = doc_signal.clone();
+        let tool_signal = use_context::<Signal<ToolMode>>();
+        let edge_style_signal = use_context::<Signal<EdgeStyle>>();
+        let arrow_type_signal = use_context::<Signal<ArrowType>>();
+        let last_saved_revision = last_saved_revision.clone();
+
+        use_effect(move || {
+            let mut eval = document::eval(&format!(
+                r#"
+                (() => {{
+                    const key = "{AUTO_SAVE_KEY}";
+                    let data = null;
+                    try {{
+                        data = localStorage.getItem(key);
+                    }} catch (_) {{}}
+                    dioxus.send({{ data }});
+                }})();
+                "#
+            ));
+
+            let doc_signal = doc_signal.clone();
+            let tool_signal = tool_signal.clone();
+            let edge_style_signal = edge_style_signal.clone();
+            let arrow_type_signal = arrow_type_signal.clone();
+            let mut last_saved_revision = last_saved_revision.clone();
+
+            spawn(async move {
+                if let Ok(msg) = eval.recv::<serde_json::Value>().await {
+                    if let Some(data) =
+                        msg["data"]
+                            .as_str()
+                            .and_then(|s| if s.is_empty() { None } else { Some(s) })
+                    {
+                        if let Ok(saved) = auto_save::deserialize_diagram(data) {
+                            // Restore document state from localStorage
+                            let mut doc = doc_signal.write();
+                            *doc = saved.document;
+                            last_saved_revision.set(doc.revision);
+
+                            // Restore tool mode
+                            if let Some(mode) = ToolMode::from_persisted_key(&saved.tool_mode) {
+                                *tool_signal.write() = mode;
+                            }
+
+                            // Restore edge/arrow styles
+                            *edge_style_signal.write() = saved.edge_style;
+                            *arrow_type_signal.write() = saved.arrow_type;
+                        }
+                    }
+                }
+            });
+        });
+    }
+
+    // Auto-save: Save to localStorage when document changes (WASM only)
+    #[cfg(target_arch = "wasm32")]
+    {
+        let doc_signal = doc_signal.clone();
+        let tool_signal = use_context::<Signal<ToolMode>>();
+        let edge_style_signal = use_context::<Signal<EdgeStyle>>();
+        let arrow_type_signal = use_context::<Signal<ArrowType>>();
+        let mut last_saved_revision = last_saved_revision.clone();
+
+        use_effect(move || {
+            let doc = doc_signal.read();
+            let current_revision = doc.revision;
+
+            if auto_save::has_revision_changed(current_revision, Some(*last_saved_revision.read()))
+            {
+                let saved = auto_save::AutoSavedDiagram::new(
+                    &doc,
+                    &tool_signal.read(),
+                    *edge_style_signal.read(),
+                    *arrow_type_signal.read(),
+                );
+
+                if let Ok(json) = auto_save::serialize_diagram(&saved) {
+                    let _eval = document::eval(&format!(
+                        r#"
+                        (() => {{
+                            try {{
+                                localStorage.setItem("{AUTO_SAVE_KEY}", "{json}");
+                            }} catch (_) {{}}
+                        }})();
+                        "#
+                    ));
+                }
+
+                last_saved_revision.set(current_revision);
+            }
+        });
+    }
 
     rsx! {
         ThemeProvider {

@@ -55,6 +55,12 @@ pub fn use_e2e_reset_hook() {
                 dioxus.send({ type: "reset" });
             };
 
+            const isWebDriver = navigator.webdriver === true;
+            if (isWebDriver) {
+                try { localStorage.clear(); } catch (_) {}
+                try { sessionStorage.clear(); } catch (_) {}
+            }
+
             window.__seshatResetDocument = () => {
                 return new Promise((resolve) => {
                     window.__seshat_e2e_reset_resolve = resolve;
@@ -68,6 +74,10 @@ pub fn use_e2e_reset_hook() {
                 delete window.__seshat_e2e_reset_resolve;
                 delete window.__seshat_e2e_reset_cleanup;
             };
+
+            if (isWebDriver) {
+                queueMicrotask(handler);
+            }
             "#,
         );
 

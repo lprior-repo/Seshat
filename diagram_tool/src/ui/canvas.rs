@@ -1563,7 +1563,16 @@ pub fn Canvas() -> Element {
                     ToolMode::Select => {
                         interaction_mode.set(InteractionMode::RubberBand { start: pos, current: pos });
                     }
-                    ToolMode::Edge | ToolMode::Pan => {}
+                    ToolMode::Edge => {
+                        let doc = doc_signal.read().clone();
+                        if let Some(from_node) = find_node_at(&doc, pos.0, pos.1) {
+                            interaction_mode.set(InteractionMode::DrawingEdge {
+                                from_node,
+                                current_pos: pos,
+                            });
+                        }
+                    }
+                    ToolMode::Pan => {}
                 }
             },
 

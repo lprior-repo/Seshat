@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 mod actions;
+pub mod auto_save;
 mod export_actions;
 mod persistence;
 mod persistence_compat;
