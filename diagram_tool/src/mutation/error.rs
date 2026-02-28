@@ -10,8 +10,6 @@ use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum MutationError {
-    #[error("transform error: {0}")]
-    Transform(String),
     #[error("schema error: {0}")]
     Schema(String),
     #[error("semantic validation error: {0}")]

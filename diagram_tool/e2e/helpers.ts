@@ -131,54 +131,17 @@ export async function ensureDeterministicUi(page: Page) {
       style.textContent = [
         "* { animation: none !important; transition: none !important; }",
         "html, body { scroll-behavior: auto !important; }",
-        '[data-seshat-e2e-overlay="rebuild"] { pointer-events: none !important; opacity: 0 !important; visibility: hidden !important; }',
       ].join("\n");
       document.head.append(style);
-
-      const neutralizeRebuildOverlay = () => {
-        const heading = Array.from(document.querySelectorAll("h1, h2, h3, h4"))
-          .find((node) => node.textContent?.trim() === "Your app is being rebuilt.");
-
-        if (!heading) {
-          return;
-        }
-
-        let root = heading.parentElement;
-        while (root?.parentElement && root.parentElement !== document.body) {
-          root = root.parentElement;
-        }
-
-        if (root instanceof HTMLElement) {
-          root.dataset.seshatE2eOverlay = "rebuild";
-        }
-      };
-
-      neutralizeRebuildOverlay();
-      const observer = new MutationObserver(() => {
-        neutralizeRebuildOverlay();
-      });
-      observer.observe(document.documentElement, { childList: true, subtree: true });
     }),
   );
 }
 
 export async function waitForNoRebuildOverlay(page: Page) {
-  await expect
-    .poll(
-      () =>
-        page.evaluate(() => {
-          const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
-          return headings.some((heading) => {
-            if (heading.textContent?.trim() !== "Your app is being rebuilt.") {
-              return false;
-            }
-            const style = window.getComputedStyle(heading);
-            return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
-          });
-        }),
-      { timeout: 60_000 },
-    )
-    .toBe(false);
+  const rebuilding = page.getByRole("heading", {
+    name: "Your app is being rebuilt.",
+  });
+  await expect.poll(async () => rebuilding.count(), { timeout: 60_000 }).toBe(0);
 }
 
 export function trapPageErrors(page: Page) {
@@ -206,7 +169,9 @@ export async function mountScrollableHarness(page: Page) {
         return;
       }
 
-      const appRoot = document.body.firstElementChild as HTMLElement | null;
+      const appRoot = Array.from(document.body.children).find((child) =>
+        child.querySelector('[data-testid="canvas-root"]'),
+      ) as HTMLElement | undefined;
       if (!appRoot) {
         throw new Error("unable to mount scroll harness: missing app root");
       }
@@ -236,13 +201,25 @@ export async function mountScrollableHarness(page: Page) {
 
 export async function scrollHarnessTo(page: Page, left: number, top: number) {
   await runEffect(() =>
-    page.evaluate(
-      ({ x, y }) => {
+    page.evaluate(async ({ x, y }) => {
+      const waitForFrames = () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => resolve());
+          });
+        });
+
         const shell = document.getElementById("e2e-scroll-shell") as HTMLElement | null;
         if (!shell) {
           throw new Error("scroll harness not mounted");
         }
         shell.scrollTo({ left: x, top: y, behavior: "auto" });
+        await waitForFrames();
+
+        if (Math.abs(shell.scrollLeft - x) > 1 || Math.abs(shell.scrollTop - y) > 1) {
+          shell.scrollTo({ left: x, top: y, behavior: "auto" });
+          await waitForFrames();
+        }
       },
       { x: left, y: top },
     ),
@@ -256,7 +233,9 @@ export async function mountPageScrollHarness(page: Page) {
         return;
       }
 
-      const appRoot = document.body.firstElementChild as HTMLElement | null;
+      const appRoot = Array.from(document.body.children).find((child) =>
+        child.querySelector('[data-testid="canvas-root"]'),
+      ) as HTMLElement | undefined;
       if (!appRoot) {
         throw new Error("unable to mount page scroll harness: missing app root");
       }
@@ -286,9 +265,21 @@ export async function mountPageScrollHarness(page: Page) {
 
 export async function scrollPageTo(page: Page, x: number, y: number) {
   await runEffect(() =>
-    page.evaluate(
-      ({ scrollX, scrollY }) => {
+    page.evaluate(async ({ scrollX, scrollY }) => {
+      const waitForFrames = () =>
+        new Promise<void>((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => resolve());
+          });
+        });
+
         window.scrollTo({ left: scrollX, top: scrollY, behavior: "auto" });
+        await waitForFrames();
+
+        if (Math.abs(window.scrollX - scrollX) > 1 || Math.abs(window.scrollY - scrollY) > 1) {
+          window.scrollTo({ left: scrollX, top: scrollY, behavior: "auto" });
+          await waitForFrames();
+        }
       },
       { scrollX: x, scrollY: y },
     ),
@@ -374,16 +365,17 @@ export async function createTextNode(
   await runEffectsSequential([
     () => waitForNoRebuildOverlay(page),
     () => page.locator('[data-testid="tool-text"]').first().click(),
-    // Allow Dioxus signal propagation for tool mode switch before
-    // clicking on the canvas.  Without this, clicks may land while the
-    // canvas is still in Select mode.
-    () => page.waitForTimeout(60),
+    // Wait for tool mode switch deterministically: ensure the text tool
+    // button is clickable again (indicating signal propagation completed).
+    () => page.locator('[data-testid="tool-text"]').first().waitFor({ state: "visible" }),
   ]);
   const box = await runEffect(() => canvas.boundingBox());
   if (!box) {
     throw new Error("canvas bounding box not available");
   }
   await runEffect(() => page.mouse.click(box.x + x, box.y + y));
+  // Wait for node creation to complete and any rebuild to finish
+  await waitForNoRebuildOverlay(page);
 }
 
 export async function clearCanvasOverlays(page: Page) {

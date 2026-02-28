@@ -337,6 +337,172 @@ mod tests {
         assert!(targets.contains(&inside));
         assert!(!targets.contains(&outside));
     }
+
+    // History atomicity regression tests for gesture finalization
+    // Ensures one completed user gesture maps to exactly one history entry
+    // See: contract bd-1yu - history: guarantee gesture atomicity
+
+    #[test]
+    fn given_already_in_select_mode_when_finalized_then_no_revision_change() {
+        // Simulates duplicate pointerup/mouseup events arriving after gesture completed
+        let mut doc = DiagramDocument::default();
+        let initial_revision = doc.revision;
+        let mut mode = InteractionMode::Select;
+
+        let result = finalize_motion_release(&mut mode, &mut doc);
+
+        assert!(!result, "Should return false when already in Select mode");
+        assert_eq!(doc.revision, initial_revision, "Revision should not change");
+        assert_eq!(mode, InteractionMode::Select);
+    }
+
+    #[test]
+    fn given_drag_gesture_when_duplicate_events_arrive_then_history_single_entry() {
+        // Simulates the E2E test scenario: normal mouseup + duplicate pointerup/mouseup
+        let mut doc = DiagramDocument::default();
+        let initial_revision = doc.revision;
+
+        // First event: normal drag completion
+        let mut mode = InteractionMode::DraggingSelection {
+            anchor_canvas: (0.0, 0.0),
+            anchor_client: (0.0, 0.0),
+            original_positions: HashMap::new(),
+            did_move: true,
+        };
+
+        let first_result = finalize_motion_release(&mut mode, &mut doc);
+        let first_revision = doc.revision;
+
+        assert!(first_result, "First finalize should succeed");
+        assert_eq!(mode, InteractionMode::Select);
+
+        // Second event: duplicate pointerup arrives after already finalized
+        let second_result = finalize_motion_release(&mut mode, &mut doc);
+        let second_revision = doc.revision;
+
+        assert!(!second_result, "Second finalize should be idempotent");
+        assert_eq!(
+            first_revision, second_revision,
+            "Revision should not change on duplicate"
+        );
+
+        // Third event: another duplicate mouseup
+        let third_result = finalize_motion_release(&mut mode, &mut doc);
+        let third_revision = doc.revision;
+
+        assert!(!third_result, "Third finalize should also be idempotent");
+        assert_eq!(
+            second_revision, third_revision,
+            "Revision should remain unchanged"
+        );
+
+        // Verify only one revision increment occurred
+        assert_eq!(
+            third_revision,
+            initial_revision.increment(),
+            "Exactly one revision increment for entire gesture"
+        );
+    }
+
+    #[test]
+    fn given_resize_gesture_when_duplicate_events_arrive_then_history_single_entry() {
+        // Similar to drag test but for resize gestures
+        let mut doc = DiagramDocument::default();
+        let initial_revision = doc.revision;
+
+        // First event: normal resize completion
+        let mut mode = InteractionMode::ResizingSelection {
+            handle: ResizeHandle::E,
+            original_bounds: (0.0, 0.0, 100.0, 100.0),
+            originals: HashMap::new(),
+            anchor: (50.0, 50.0),
+            did_resize: true,
+        };
+
+        let first_result = finalize_motion_release(&mut mode, &mut doc);
+        assert!(first_result);
+        assert_eq!(mode, InteractionMode::Select);
+
+        // Duplicate events after finalization
+        for _ in 0..5 {
+            let result = finalize_motion_release(&mut mode, &mut doc);
+            assert!(!result, "Finalize should be idempotent after first call");
+        }
+
+        // Verify only one revision increment
+        assert_eq!(
+            doc.revision,
+            initial_revision.increment(),
+            "Exactly one revision increment for resize gesture"
+        );
+    }
+
+    #[test]
+    fn given_no_op_gesture_when_finalized_then_no_revision_bump() {
+        // Drag without movement should not create history entry
+        let mut doc = DiagramDocument::default();
+        let initial_revision = doc.revision;
+
+        let mut mode = InteractionMode::DraggingSelection {
+            anchor_canvas: (0.0, 0.0),
+            anchor_client: (0.0, 0.0),
+            original_positions: HashMap::new(),
+            did_move: false, // No actual movement
+        };
+
+        let result = finalize_motion_release(&mut mode, &mut doc);
+
+        assert!(result, "Should return true (mode transitioned)");
+        assert_eq!(doc.revision, initial_revision, "No revision bump for no-op");
+        assert_eq!(mode, InteractionMode::Select);
+    }
+
+    #[test]
+    fn given_mixed_gesture_sequence_when_finalized_then_correct_revisions() {
+        // Simulates a realistic sequence: select -> drag -> select -> resize -> select
+        let mut doc = DiagramDocument::default();
+        let initial_revision = doc.revision;
+
+        // First: select (no-op)
+        let mut mode = InteractionMode::Select;
+        let result = finalize_motion_release(&mut mode, &mut doc);
+        assert!(!result);
+        assert_eq!(doc.revision, initial_revision);
+
+        // Second: drag gesture
+        mode = InteractionMode::DraggingSelection {
+            anchor_canvas: (0.0, 0.0),
+            anchor_client: (0.0, 0.0),
+            original_positions: HashMap::new(),
+            did_move: true,
+        };
+        let result = finalize_motion_release(&mut mode, &mut doc);
+        assert!(result);
+        assert_eq!(doc.revision, initial_revision.increment());
+
+        // Third: resize gesture
+        mode = InteractionMode::ResizingSelection {
+            handle: ResizeHandle::Se,
+            original_bounds: (0.0, 0.0, 100.0, 100.0),
+            originals: HashMap::new(),
+            anchor: (50.0, 50.0),
+            did_resize: true,
+        };
+        let result = finalize_motion_release(&mut mode, &mut doc);
+        assert!(result);
+        assert_eq!(doc.revision, initial_revision.increment().increment());
+
+        // Duplicate finalizations should not change anything
+        for _ in 0..3 {
+            let result = finalize_motion_release(&mut mode, &mut doc);
+            assert!(!result);
+        }
+        assert_eq!(
+            doc.revision,
+            initial_revision.increment().increment(),
+            "No additional revisions after gestures complete"
+        );
+    }
 }
 
 #[cfg(test)]

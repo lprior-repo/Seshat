@@ -187,7 +187,7 @@ fn apply_z_order_operation(
 
         for (idx, id) in reordered.iter().enumerate() {
             if let Some(node) = next.document.nodes.get_mut(id) {
-                node.z_index = min_z + idx as i64;
+                node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
             }
         }
 

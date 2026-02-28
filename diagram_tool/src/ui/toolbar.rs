@@ -364,7 +364,6 @@ pub fn Toolbar() -> Element {
 
 const fn mutation_error_code(err: &MutationError) -> &'static str {
     match err {
-        MutationError::Transform(_) => "transform_error",
         MutationError::Schema(_) => "schema_error",
         MutationError::Semantic(_) => "semantic_error",
     }

@@ -316,9 +316,7 @@ pub fn Minimap() -> Element {
                         fill: if is_subgraph { "none" } else { provider_color },
                         stroke: if is_subgraph {
                             format!("color-mix(in oklch, {TEXT_MUTED} 55%, transparent)")
-                        } else {
-                            String::from(ACCENT)
-                        },
+                        } else { String::from(ACCENT) },
                         stroke_width: "0.8",
                         opacity: "0.85",
                     }

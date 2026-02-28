@@ -87,7 +87,7 @@ export default defineConfig({
     command:
       "moon run :serve-e2e",
     url: "http://127.0.0.1:8082",
-    reuseExistingServer: true,
+    reuseExistingServer: !process.env.CI,
     timeout: 300_000,
   },
 });

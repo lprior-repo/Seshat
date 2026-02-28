@@ -52,8 +52,12 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
     let mut nodes: Vec<_> = doc.document.nodes.values().collect();
     nodes.sort_by_key(|node| node.z_index);
 
-    nodes.iter().for_each(|node| {
-        let _ = write!(&mut svg, "<g transform='translate({}, {})'>", node.x.0, node.y.0);
+    for node in &nodes {
+        let _ = write!(
+            &mut svg,
+            "<g transform='translate({}, {})'>",
+            node.x.0, node.y.0
+        );
         let _ = write!(
             &mut svg,
             "<rect width='{}' height='{}' fill='white' stroke='black' rx='4' ry='4'/>",
@@ -79,7 +83,7 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             node.label
         );
         let _ = write!(&mut svg, "</g>");
-    });
+    }
 
     let _ = write!(&mut svg, "</svg>");
     svg

@@ -261,3 +261,168 @@ fn given_patch_without_first_revision_test_when_patch_runs_then_fail_closed_erro
     );
     Ok(())
 }
+
+#[test]
+fn given_stale_revision_document_when_patch_runs_then_it_fails_with_stale_revision_error(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let dir = unique_test_dir("stale-revision");
+    let input = dir.join("input.json");
+    let patch = dir.join("patch.json");
+    let output_path = dir.join("patched.json");
+    write_sample_doc(&input)?;
+
+    let patch_content = r#"[
+  {"op":"test","path":"/revision","value":999},
+  {"op":"replace","path":"/document/nodes/n1/label","value":"Stale"}
+]"#;
+    fs::write(&patch, patch_content)?;
+
+    let output = run_diagram_tool(&[
+        "patch",
+        "--input",
+        input.to_string_lossy().as_ref(),
+        "--patch",
+        patch.to_string_lossy().as_ref(),
+        "--output",
+        output_path.to_string_lossy().as_ref(),
+    ])?;
+
+    assert!(
+        !output.status.success(),
+        "patch should fail when revision is stale"
+    );
+
+    let events = parse_jsonl_events(output.stdout)?;
+    assert!(
+        events.iter().any(|v| {
+            v.get("event") == Some(&Value::String(String::from("error")))
+                && v.get("code") == Some(&Value::String(String::from("stale_revision")))
+        }),
+        "JSONL output must contain stale_revision error for stale revision"
+    );
+    Ok(())
+}
+
+#[test]
+fn given_dag_cycle_document_when_validate_runs_then_it_fails_with_dag_error(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let dir = unique_test_dir("dag-cycle");
+    let input = dir.join("cycle.json");
+
+    let cycle_doc = r#"{"version":2,"revision":1,"document":{"nodes":{"n1":{"kind":"node","icon":"","label":"A","x":0.0,"y":0.0,"width":80.0,"height":60.0,"locked":false,"parent":null,"dag_rank":null,"tags":[],"metadata":{},"z_index":0,"style":"box"},"n2":{"kind":"node","icon":"","label":"B","x":100.0,"y":0.0,"width":80.0,"height":60.0,"locked":false,"parent":null,"dag_rank":null,"tags":[],"metadata":{},"z_index":0,"style":"box"}},"edges":{"e1":{"source":"n1","target":"n2","label":"","style":"solid","arrowType":"default","label_offset_t":0.5,"color":null,"thickness":1.5,"directed":true,"bend_points":[],"tags":[],"metadata":{}},"e2":{"source":"n2","target":"n1","label":"","style":"solid","arrowType":"default","label_offset_t":0.5,"color":null,"thickness":1.5,"directed":true,"bend_points":[],"tags":[],"metadata":{}}}},"editor_state":{"camera_x":0.0,"camera_y":0.0,"zoom":1.0,"grid_size":20.0,"snap_to_grid":true,"selected_items":[],"editing_edge_id":null,"theme":"system","show_grid":true,"minimap_visible":false}}"#;
+    fs::write(&input, cycle_doc)?;
+
+    let output = run_diagram_tool(&["validate", "--input", input.to_string_lossy().as_ref()])?;
+
+    assert!(
+        !output.status.success(),
+        "validate should fail on DAG cycle"
+    );
+
+    let events = parse_jsonl_events(output.stdout)?;
+    assert!(
+        events.iter().any(|v| {
+            v.get("event") == Some(&Value::String(String::from("error")))
+                && v.get("code") == Some(&Value::String(String::from("dag_violation")))
+        }),
+        "JSONL output must contain dag_violation error for cycle"
+    );
+    Ok(())
+}
+
+#[test]
+fn given_dangling_edge_document_when_validate_runs_then_it_fails_with_dangling_error(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let dir = unique_test_dir("dangling-edge");
+    let input = dir.join("dangling.json");
+
+    let dangling_doc = r#"{"version":2,"revision":1,"document":{"nodes":{"n1":{"kind":"node","icon":"","label":"A","x":0.0,"y":0.0,"width":80.0,"height":60.0,"locked":false,"parent":null,"dag_rank":null,"tags":[],"metadata":{},"z_index":0,"style":"box"}},"edges":{"e1":{"source":"n1","target":"nonexistent","label":"","style":"solid","arrowType":"default","label_offset_t":0.5,"color":null,"thickness":1.5,"directed":true,"bend_points":[],"tags":[],"metadata":{}}}},"editor_state":{"camera_x":0.0,"camera_y":0.0,"zoom":1.0,"grid_size":20.0,"snap_to_grid":true,"selected_items":[],"editing_edge_id":null,"theme":"system","show_grid":true,"minimap_visible":false}}"#;
+    fs::write(&input, dangling_doc)?;
+
+    let output = run_diagram_tool(&["validate", "--input", input.to_string_lossy().as_ref()])?;
+
+    assert!(
+        !output.status.success(),
+        "validate should fail on dangling edge"
+    );
+
+    let events = parse_jsonl_events(output.stdout)?;
+    assert!(
+        events.iter().any(|v| {
+            v.get("event") == Some(&Value::String(String::from("error")))
+                && v.get("code") == Some(&Value::String(String::from("dangling_reference")))
+        }),
+        "JSONL output must contain dangling_reference error"
+    );
+    Ok(())
+}
+
+#[test]
+fn given_failed_patch_when_last_known_good_exists_then_original_is_preserved(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let dir = unique_test_dir("lkg-preservation");
+    let input = dir.join("input.json");
+    let patch = dir.join("patch.json");
+    let output_path = dir.join("patched.json");
+
+    let original_doc = r#"{"version":2,"revision":1,"document":{"nodes":{"n1":{"kind":"node","icon":"aws/compute/ec2","label":"API","x":10.0,"y":20.0,"width":80.0,"height":60.0,"locked":true,"parent":null,"dag_rank":null,"tags":[],"metadata":{},"z_index":0,"style":"box"}},"edges":{}},"editor_state":{"camera_x":0.0,"camera_y":0.0,"zoom":1.0,"grid_size":20.0,"snap_to_grid":true,"selected_items":[],"editing_edge_id":null,"theme":"system","show_grid":true,"minimap_visible":false}}"#;
+    fs::write(&input, original_doc)?;
+
+    let patch_content = r#"[
+  {"op":"test","path":"/revision","value":999},
+  {"op":"replace","path":"/document/nodes/n1/label","value":"StalePatch"}
+]"#;
+    fs::write(&patch, patch_content)?;
+
+    let output = run_diagram_tool(&[
+        "patch",
+        "--input",
+        input.to_string_lossy().as_ref(),
+        "--patch",
+        patch.to_string_lossy().as_ref(),
+        "--output",
+        output_path.to_string_lossy().as_ref(),
+    ])?;
+
+    assert!(!output.status.success(), "patch should fail");
+
+    let lkg_path = dir.join(".lkg").join("input.json.lkg");
+    assert!(
+        lkg_path.exists(),
+        "last known good should exist after failed patch"
+    );
+
+    let lkg_content = fs::read_to_string(&lkg_path)?;
+    assert!(
+        lkg_content.contains("API"),
+        "lkg should contain original label"
+    );
+    Ok(())
+}
+
+#[test]
+fn given_self_loop_edge_when_validate_runs_then_it_fails_with_dag_error(
+) -> Result<(), Box<dyn std::error::Error>> {
+    let dir = unique_test_dir("self-loop");
+    let input = dir.join("self-loop.json");
+
+    let self_loop_doc = r#"{"version":2,"revision":1,"document":{"nodes":{"n1":{"kind":"node","icon":"","label":"Loop","x":0.0,"y":0.0,"width":80.0,"height":60.0,"locked":false,"parent":null,"dag_rank":null,"tags":[],"metadata":{},"z_index":0,"style":"box"}},"edges":{"e1":{"source":"n1","target":"n1","label":"self","style":"solid","arrowType":"default","label_offset_t":0.5,"color":null,"thickness":1.5,"directed":true,"bend_points":[],"tags":[],"metadata":{}}}},"editor_state":{"camera_x":0.0,"camera_y":0.0,"zoom":1.0,"grid_size":20.0,"snap_to_grid":true,"selected_items":[],"editing_edge_id":null,"theme":"system","show_grid":true,"minimap_visible":false}}"#;
+    fs::write(&input, self_loop_doc)?;
+
+    let output = run_diagram_tool(&["validate", "--input", input.to_string_lossy().as_ref()])?;
+
+    assert!(
+        !output.status.success(),
+        "validate should fail on self-loop edge"
+    );
+
+    let events = parse_jsonl_events(output.stdout)?;
+    assert!(
+        events.iter().any(|v| {
+            v.get("event") == Some(&Value::String(String::from("error")))
+                && v.get("code") == Some(&Value::String(String::from("dag_violation")))
+        }),
+        "JSONL output must contain dag_violation error for self-loop"
+    );
+    Ok(())
+}

@@ -11,14 +11,13 @@ use crate::cli_persistence::{
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
 use crate::models::document::DiagramDocument;
-use crate::mutation::ops::{apply_layout, apply_patch};
+use crate::mutation::ops::apply_layout;
 use crate::mutation::pipeline::run_mutation;
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
-use json_patch::Patch;
 use serde::Serialize;
 use std::fs::File;
-use std::io::{BufReader, Write};
+use std::io::Write;
 use std::path::Path;
 
 #[derive(Parser, Debug, Clone)]
@@ -35,14 +34,6 @@ pub enum Commands {
     Render {
         #[arg(long)]
         input: String,
-        #[arg(long)]
-        output: String,
-    },
-    Patch {
-        #[arg(long)]
-        input: String,
-        #[arg(long)]
-        patch: String,
         #[arg(long)]
         output: String,
     },
@@ -130,7 +121,6 @@ impl CliEvent {
 fn command_name(cmd: &Commands) -> String {
     match cmd {
         Commands::Render { .. } => String::from("render"),
-        Commands::Patch { .. } => String::from("patch"),
         Commands::Layout { .. } => String::from("layout"),
         Commands::Validate { .. } => String::from("validate"),
     }
@@ -192,24 +182,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     "unknown output format; expected .png or .svg extension"
                 ));
             }
-        }
-        Commands::Patch {
-            input,
-            patch,
-            output,
-        } => {
-            emit_stage_event(
-                "validating",
-                &StageDetails::new().with_path(Path::new(input)),
-            );
-            let doc = load_doc(input)?;
-            let patch_file = File::open(patch).context("Failed to open patch file")?;
-            let patch_data: Patch = serde_json::from_reader(BufReader::new(patch_file))
-                .context("Failed to parse patch JSON")?;
-            let patched_doc = run_mutation(&doc, |current| apply_patch(current, &patch_data))
-                .map_err(|err| anyhow!(err.to_string()))?;
-            save_workspace_atomic(&patched_doc, Path::new(output))
-                .map_err(|e| anyhow!("Failed to save workspace: {e}"))?;
         }
         Commands::Layout { input, output } => {
             emit_stage_event(

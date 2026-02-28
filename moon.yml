@@ -31,6 +31,12 @@ tasks:
     options:
       cache: false
 
+  e2e-full:
+    script: |
+      npm exec -- playwright test
+    options:
+      cache: false
+
   e2e-baseline:
     script: |
       npm exec -- playwright test --project baseline
@@ -111,8 +117,11 @@ tasks:
 
   ci-hardening:
     script: |
-      moon run :ci
-      moon run :e2e-hardening
+      moon run :check
+      moon run :test
+      moon run :clippy
+      moon run :e2e-smoke
+      moon run :e2e-full
 
   ci-nightly:
     script: |

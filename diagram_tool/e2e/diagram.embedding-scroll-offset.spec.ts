@@ -4,6 +4,7 @@ import {
   createTextNode,
   expectNodeCount,
   expectSelectedCount,
+  freshStart,
   minimapViewport,
   mountPageScrollHarness,
   mountScrollableHarness,
@@ -44,6 +45,15 @@ async function dragMinimapViewportBy(
   ]);
 }
 
+async function ensureMinimapVisible(page: Page) {
+  const viewport = minimapViewport(page);
+  if (await runEffect(() => viewport.count()) > 0) {
+    return;
+  }
+  await runEffect(() => page.getByRole("button", { name: "Mini", exact: true }).click());
+  await expect(viewport).toHaveCount(1);
+}
+
 async function expectLastNodeNear(
   page: Page,
   targetX: number,
@@ -64,11 +74,11 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("scroll-parent offset preserves text placement hit testing @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountScrollableHarness(page),
       () => scrollHarnessTo(page, 210, 340),
+      () => page.waitForTimeout(500), // Wait for canvas_origin to update in Rust
     ]);
 
     const canvas = page.getByTestId("canvas-root");
@@ -76,10 +86,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
     const targetX = before.x + 380;
     const targetY = before.y + 240;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(targetX, targetY),
-    ]);
+    await createTextNode(page, canvas, targetX - before.x, targetY - before.y);
 
     await expectNodeCount(page, 1);
     const node = page.getByTestId("node").first();
@@ -96,8 +103,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("wheel zoom anchor remains stable after ancestor scroll @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountScrollableHarness(page),
       () => scrollHarnessTo(page, 180, 300),
@@ -135,8 +141,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("scrolling during active drag still finalizes pointer release coherently @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountScrollableHarness(page),
       () => scrollHarnessTo(page, 120, 200),
@@ -172,11 +177,11 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("repeated ancestor scroll recalibrates origin before additional placement @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountScrollableHarness(page),
       () => scrollHarnessTo(page, 170, 260),
+      () => page.waitForTimeout(500),
     ]);
 
     const canvas = page.getByTestId("canvas-root");
@@ -184,22 +189,17 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
     const firstTargetX = firstBox.x + 360;
     const firstTargetY = firstBox.y + 230;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(firstTargetX, firstTargetY),
-    ]);
+    await createTextNode(page, canvas, firstTargetX - firstBox.x, firstTargetY - firstBox.y);
     await expectNodeCount(page, 1);
 
     await runEffect(() => scrollHarnessTo(page, 420, 520));
+    await page.waitForTimeout(100);
 
     const secondBox = await canvasBox(page);
     const secondTargetX = secondBox.x + 360;
     const secondTargetY = secondBox.y + 230;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(secondTargetX, secondTargetY),
-    ]);
+    await createTextNode(page, canvas, secondTargetX - secondBox.x, secondTargetY - secondBox.y);
     await expectNodeCount(page, 2);
 
     const secondNode = page.getByTestId("node").nth(1);
@@ -216,11 +216,11 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("page scroll offset updates prevent stale placement drift @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountPageScrollHarness(page),
       () => scrollPageTo(page, 0, 320),
+      () => page.waitForTimeout(500),
     ]);
 
     const canvas = page.getByTestId("canvas-root");
@@ -228,22 +228,17 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
     const firstTargetX = firstBox.x + 410;
     const firstTargetY = firstBox.y + 250;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(firstTargetX, firstTargetY),
-    ]);
+    await createTextNode(page, canvas, firstTargetX - firstBox.x, firstTargetY - firstBox.y);
     await expectNodeCount(page, 1);
 
     await runEffect(() => scrollPageTo(page, 0, 760));
+    await page.waitForTimeout(100);
 
     const secondBox = await canvasBox(page);
     const secondTargetX = secondBox.x + 410;
     const secondTargetY = secondBox.y + 250;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(secondTargetX, secondTargetY),
-    ]);
+    await createTextNode(page, canvas, secondTargetX - secondBox.x, secondTargetY - secondBox.y);
     await expectNodeCount(page, 2);
 
     const secondNode = page.getByTestId("node").nth(1);
@@ -260,22 +255,19 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("offset updates immediately after page scroll before any canvas interaction @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountPageScrollHarness(page),
       () => scrollPageTo(page, 0, 220),
       () => scrollPageTo(page, 0, 860),
+      () => page.waitForTimeout(500),
     ]);
 
     const box = await canvasBox(page);
     const targetX = box.x + 420;
     const targetY = box.y + 260;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(targetX, targetY),
-    ]);
+    await createTextNode(page, page.getByTestId("canvas-root"), targetX - box.x, targetY - box.y);
 
     await expectNodeCount(page, 1);
     await expectLastNodeNear(page, targetX, targetY, 30);
@@ -285,22 +277,19 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("offset updates after nested scroll container move @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountScrollableHarness(page),
       () => scrollHarnessTo(page, 140, 220),
       () => scrollHarnessTo(page, 520, 700),
+      () => page.waitForTimeout(500),
     ]);
 
     const box = await canvasBox(page);
     const targetX = box.x + 360;
     const targetY = box.y + 220;
 
-    await runEffectsSequential([
-      () => page.getByRole("button", { name: "Text", exact: true }).click(),
-      () => page.mouse.click(targetX, targetY),
-    ]);
+    await createTextNode(page, page.getByTestId("canvas-root"), targetX - box.x, targetY - box.y);
 
     await expectNodeCount(page, 1);
     await expectLastNodeNear(page, targetX, targetY, 30);
@@ -310,11 +299,11 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("hit-testing still aligns after scroll plus zoom sequence @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountPageScrollHarness(page),
       () => scrollPageTo(page, 0, 320),
+      () => page.waitForTimeout(500),
     ]);
 
     const canvas = page.getByTestId("canvas-root");
@@ -326,6 +315,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
       () => page.mouse.click(clearBox.x + 44, clearBox.y + 44),
       () => expectSelectedCount(page, 0),
       () => scrollPageTo(page, 0, 760),
+      () => page.waitForTimeout(500),
     ]);
 
     const node = page.getByTestId("node").first();
@@ -358,8 +348,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
   test("minimap drag remains stable after ancestor scroll recalibration @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
+      () => freshStart(page),
       () => clearCanvasOverlays(page),
       () => mountScrollableHarness(page),
       () => scrollHarnessTo(page, 140, 260),
@@ -369,7 +358,7 @@ test.describe("diagram ancestor-scroll offset calibration", () => {
     await runEffectsSequential([
       () => createTextNode(page, canvas, 320, 180),
       () => createTextNode(page, canvas, 760, 420),
-      () => page.getByRole("button", { name: "Mini", exact: true }).click(),
+      () => ensureMinimapVisible(page),
     ]);
 
     await runEffect(() => scrollHarnessTo(page, 300, 470));

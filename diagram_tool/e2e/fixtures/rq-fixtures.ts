@@ -26,6 +26,11 @@ async function recoverFromRebuildOverlay(page: Page): Promise<void> {
   ]);
 }
 
+async function hasVisibleRebuildOverlay(page: Page): Promise<boolean> {
+  const rebuilding = page.getByRole("heading", { name: "Your app is being rebuilt." });
+  return runEffect(() => rebuilding.isVisible().catch(() => false));
+}
+
 type SceneName =
   | "scene_mixed_selection_v1"
   | "scene_nested_subgraph_v1"
@@ -179,30 +184,37 @@ function seededAt(seed: number, step: number): number {
 }
 
 async function importScene(page: Page, sceneName: SceneName): Promise<void> {
-  // Recover from any stale rebuild overlay before loading
-  await recoverFromRebuildOverlay(page);
-
   const cwdPath = resolve(process.cwd(), "diagram_tool", "e2e", "scenes", `${sceneName}.json`);
   const fixtureRelativePath = resolve(__dirname, "..", "scenes", `${sceneName}.json`);
   const filePath = existsSync(cwdPath) ? cwdPath : fixtureRelativePath;
   const payload = readFileSync(filePath, "utf8");
   parseAndValidateScenePayload(sceneName, payload);
   const contract = sceneContracts[sceneName];
-  await runEffectsSequential([
-    () => waitForUiReady(page),
-    () => page.waitForTimeout(1000),
-    () => page.evaluate((jsonPayload) => {
-      (window as { __SESHAT_E2E_IMPORT_JSON?: string }).__SESHAT_E2E_IMPORT_JSON = jsonPayload;
-    }, payload),
-    () => expect(page.getByTestId("toolbar-open")).toBeEnabled({ timeout: 15_000 }),
-    () => page.getByTestId("toolbar-open").click(),
-    () => page.waitForTimeout(2000),
-    () => waitForNoRebuildOverlay(page),
-    () => page.waitForTimeout(1000),
-  ]);
 
-  await expect.poll(() => nodeCount(page), { timeout: 15_000 }).toBe(contract.nodeCount);
-  await expect.poll(() => edgeCount(page), { timeout: 15_000 }).toBe(contract.edgeCount);
+  const importOnce = async () => {
+    await runEffectsSequential([
+      () => waitForUiReady(page),
+      () => page.evaluate((jsonPayload) => {
+        (window as { __SESHAT_E2E_IMPORT_JSON?: string }).__SESHAT_E2E_IMPORT_JSON = jsonPayload;
+      }, payload),
+      () => expect(page.getByTestId("toolbar-open")).toBeEnabled({ timeout: 15_000 }),
+      () => page.getByTestId("toolbar-open").click(),
+      () => waitForNoRebuildOverlay(page),
+    ]);
+
+    await expect.poll(() => nodeCount(page), { timeout: 15_000 }).toBe(contract.nodeCount);
+    await expect.poll(() => edgeCount(page), { timeout: 15_000 }).toBe(contract.edgeCount);
+  };
+
+  // Recover from stale overlay before import.
+  await recoverFromRebuildOverlay(page);
+  await importOnce();
+
+  // Some runs surface a transient rebuild overlay after import; recover and re-import once.
+  if (await hasVisibleRebuildOverlay(page)) {
+    await recoverFromRebuildOverlay(page);
+    await importOnce();
+  }
 }
 
 export const test = base.extend<Fixtures>({

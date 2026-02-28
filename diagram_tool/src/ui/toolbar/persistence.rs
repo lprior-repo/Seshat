@@ -1,5 +1,3 @@
-#[cfg(target_arch = "wasm32")]
-use crate::backend::{save_workspace_to_backend, PersistedWorkspace};
 use crate::history::History;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::models::canonical_json::to_canonical_pretty_json;
@@ -63,37 +61,13 @@ pub fn save_workspace(
     );
     #[cfg(target_arch = "wasm32")]
     {
-        let doc_snapshot = doc_signal.read().clone();
-        let tool_mode = tool_signal.read().persisted_key().to_string();
-        let edge_style = *edge_style_signal.read();
-        let arrow_type = *arrow_type_signal.read();
-        spawn(async move {
-            let workspace = PersistedWorkspace {
-                schema_version: PersistedWorkspace::SCHEMA_VERSION,
-                document: doc_snapshot,
-                tool_mode,
-                edge_style,
-                arrow_type,
-            };
-            match save_workspace_to_backend(workspace).await {
-                Ok(saved) => {
-                    let _ = toast_handle.update(ToastUpdate {
-                        title: Some(String::from("Workspace saved")),
-                        detail: Some(Some(saved)),
-                        intent: Some(ToastIntent::Success),
-                        action: None,
-                    });
-                }
-                Err(err) => {
-                    let _ = toast_handle.update(ToastUpdate {
-                        title: Some(String::from("Save failed")),
-                        detail: Some(Some(format!("Backend save error: {err}"))),
-                        intent: Some(ToastIntent::Error),
-                        action: None,
-                    });
-                }
-            }
-        });
+        let _ = doc_signal;
+        let _ = toast_handle.dismiss();
+        let toast_api = ToastApi::from_signal(toasts);
+        let _ = toast_api.toast(
+            ToastOptions::new(ToastIntent::Error, "Save not available")
+                .with_detail("Backend has been decommissioned"),
+        );
     }
     #[cfg(not(target_arch = "wasm32"))]
     {

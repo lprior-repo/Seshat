@@ -19,7 +19,7 @@ mod icons;
 mod layout;
 mod models;
 mod mutation;
-mod patch;
+mod store;
 mod ui;
 
 use crate::app::App;

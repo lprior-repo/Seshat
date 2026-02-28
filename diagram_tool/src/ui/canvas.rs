@@ -240,7 +240,6 @@ fn apply_rubber_band_release(
     additive: bool,
 ) {
     if !has_drag_threshold(start, current) {
-        doc.editor_state.selected_items.clear();
         return;
     }
 
@@ -252,6 +251,8 @@ fn apply_rubber_band_release(
                 toggle_selection(&acc, id)
             })
     } else {
+        // Clear existing selection before applying new marquee selection
+        doc.editor_state.selected_items.clear();
         boxed
     };
     doc.editor_state.selected_items = with_auto_selected_edges(doc, &selected);
@@ -937,7 +938,6 @@ pub fn Canvas() -> Element {
                     let lastTop = Number.NaN;
                     let lastWidth = Number.NaN;
                     let lastHeight = Number.NaN;
-
                     const notify = (left, top, width, height) => {
                         if (
                             Math.abs(left - lastLeft) < 0.5 &&
@@ -968,15 +968,38 @@ pub fn Canvas() -> Element {
                     const ro = new ResizeObserver(() => scheduleNotify());
                     ro.observe(target);
 
+                    // Use requestAnimationFrame loop to continuously update canvas origin.
+                    // This catches scroll events from nested containers that don't bubble to window.
+                    // Send update every frame to ensure we always have current position.
+                    const pollOrigin = () => {
+                        const rect = target.getBoundingClientRect();
+                        dioxus.send({ type: 'resize', left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                        rafId = window.requestAnimationFrame(pollOrigin);
+                    };
+                    rafId = window.requestAnimationFrame(pollOrigin);
+
+                    // Send immediate update on scroll to minimize race condition
+                    // between scroll and pointerdown
+                    const onScroll = () => {
+                        const rect = target.getBoundingClientRect();
+                        dioxus.send({ type: 'resize', left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                    };
+                    window.addEventListener('scroll', onScroll, { passive: true });
+                    document.addEventListener('scroll', onScroll, { passive: true });
+
                     window.addEventListener('resize', scheduleNotify, { passive: true });
-                    window.addEventListener('scroll', scheduleNotify, { passive: true, capture: true });
+                    // Listen in bubble phase (capture: false) to catch scroll events from
+                    // nested scrollable containers. Also listen on document for better coverage.
+                    window.addEventListener('scroll', scheduleNotify, { passive: true });
+                    document.addEventListener('scroll', scheduleNotify, { passive: true });
                     window.__seshat_canvas_resize_cleanup = () => {
                         ro.disconnect();
-                        window.removeEventListener('resize', scheduleNotify);
-                        window.removeEventListener('scroll', scheduleNotify, true);
                         if (rafId !== 0) {
                             window.cancelAnimationFrame(rafId);
                         }
+                        window.removeEventListener('resize', scheduleNotify);
+                        window.removeEventListener('scroll', scheduleNotify);
+                        document.removeEventListener('scroll', scheduleNotify);
                     };
 
                     scheduleNotify();
@@ -1011,20 +1034,66 @@ pub fn Canvas() -> Element {
                     window.__seshat_canvas_pointer_global_cleanup();
                 }
 
+                // Global function to get current canvas origin - can be called from Rust
+                window.__seshat_get_canvas_origin = () => {
+                    const target = document.querySelector('.canvas-container');
+                    if (!target) return { x: 0, y: 0 };
+                    const rect = target.getBoundingClientRect();
+                    return { x: rect.left, y: rect.top };
+                };
+
+                const getCanvasOrigin = () => {
+                    const target = document.querySelector('.canvas-container');
+                    if (!target) return { x: 0, y: 0 };
+                    const rect = target.getBoundingClientRect();
+                    return { x: rect.left, y: rect.top };
+                };
+
                 const onPointerMove = (event) => {
-                    dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY });
+                    const origin = getCanvasOrigin();
+                    dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y });
                 };
 
                 const onPointerUp = (event) => {
-                    dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY });
+                    const origin = getCanvasOrigin();
+                    dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y });
+                };
+
+                const onPointerDown = (event) => {
+                    // Prevent default and stop propagation to prevent Dioxus onmousedown from running
+                    // We handle everything in the message handler instead
+                    event.preventDefault();
+                    event.stopPropagation();
+                    
+                    // Get fresh origin before anything else
+                    const origin = getCanvasOrigin();
+                    // Store in global for Rust to read via any means necessary
+                    window.__seshat_current_origin = { x: origin.x, y: origin.y };
+                    // Send pointerdown with ALL the information Rust needs
+                    // Rust will handle the actual logic
+                    dioxus.send({ 
+                        type: 'pointerdown', 
+                        x: event.clientX, 
+                        y: event.clientY, 
+                        originX: origin.x, 
+                        originY: origin.y, 
+                        button: event.button.toString(),
+                        // Include current tool and modifier state
+                        tool: window.__seshat_current_tool || 'select',
+                        shiftKey: event.shiftKey,
+                        ctrlKey: event.ctrlKey,
+                        metaKey: event.metaKey,
+                    });
                 };
 
                 window.addEventListener('pointermove', onPointerMove, { passive: true });
                 window.addEventListener('pointerup', onPointerUp, { passive: true });
+                window.addEventListener('pointerdown', onPointerDown, { passive: false });
 
                 window.__seshat_canvas_pointer_global_cleanup = () => {
                     window.removeEventListener('pointermove', onPointerMove);
                     window.removeEventListener('pointerup', onPointerUp);
+                    window.removeEventListener('pointerdown', onPointerDown);
                 };
             ",
         );
@@ -1032,11 +1101,154 @@ pub fn Canvas() -> Element {
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 let event_type = json["type"].as_str().map_or("", |s| s);
+
+                // Also handle resize messages from pointerdown handler to update canvas_origin
+                if event_type == "resize" {
+                    canvas_origin.set((
+                        json["left"].as_f64().map_or(0.0, |v| v),
+                        json["top"].as_f64().map_or(0.0, |v| v),
+                    ));
+                    continue;
+                }
+
+                // Get client coordinates
                 let client_x = json["x"].as_f64().map_or(0.0, |v| v);
                 let client_y = json["y"].as_f64().map_or(0.0, |v| v);
-                let origin = *canvas_origin.read();
-                let local_x = client_x - origin.0;
-                let local_y = client_y - origin.1;
+                // Compute local coordinates from message - uses origin from the message directly
+                let origin_x = json["originX"].as_f64().map_or(0.0, |v| v);
+                let origin_y = json["originY"].as_f64().map_or(0.0, |v| v);
+                let local_x = client_x - origin_x;
+                let local_y = client_y - origin_y;
+
+                // Handle pointerdown - use fresh origin from the message directly
+                if event_type == "pointerdown" {
+                    // Update canvas_origin with the fresh origin from this message
+                    canvas_origin.set((origin_x, origin_y));
+
+                    // Handle editing commit
+                    if editing_node.read().is_some() || editing_edge.read().is_some() {
+                        commit_inline_edit(
+                            doc_signal,
+                            history_signal,
+                            editing_node,
+                            editing_edge,
+                            edit_value,
+                        );
+                    }
+
+                    let button = json["button"].as_str().map_or("0", |s| s);
+                    let is_middle = button == "1";
+                    let is_right = button == "2";
+                    let tool = *tool_signal.read();
+                    let shift = json["shiftKey"].as_bool().unwrap_or(false);
+                    let ctrl = json["ctrlKey"].as_bool().unwrap_or(false);
+                    let meta = json["metaKey"].as_bool().unwrap_or(false);
+
+                    if *space_pressed.read() || is_middle || is_right || tool == ToolMode::Pan {
+                        space_pan_active.set(
+                            *space_pressed.read()
+                                && !is_middle
+                                && !is_right
+                                && tool != ToolMode::Pan,
+                        );
+                        interaction_mode.set(InteractionMode::Panning {
+                            last_pos: (local_x, local_y),
+                        });
+                        continue;
+                    }
+
+                    // Only handle primary button (button "0")
+                    if button != "0" {
+                        continue;
+                    }
+
+                    let pos = {
+                        let doc = doc_signal.read();
+                        to_canvas_coords(
+                            local_x,
+                            local_y,
+                            doc.editor_state.camera_x.0,
+                            doc.editor_state.camera_y.0,
+                            doc.editor_state.zoom.0,
+                        )
+                    };
+
+                    if tool == ToolMode::Select {
+                        let doc = doc_signal.read().clone();
+                        if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
+                            let additive = shift || ctrl || meta;
+                            doc_signal.with_mut(|d| {
+                                d.editor_state.selected_items = if additive {
+                                    toggle_selection(
+                                        &d.editor_state.selected_items,
+                                        &edge_id.to_string(),
+                                    )
+                                } else {
+                                    select_single(edge_id.to_string())
+                                };
+                            });
+                            interaction_mode.set(InteractionMode::Select);
+                            continue;
+                        }
+                    }
+
+                    match tool {
+                        ToolMode::Text => {
+                            let id = NodeId::new(Uuid::new_v4().to_string());
+                            let current = doc_signal.read().clone();
+                            let history = history_signal.read().clone();
+                            *history_signal.write() = history.push(current);
+                            doc_signal.with_mut(|doc| {
+                                let (x, y) = snap_point(
+                                    pos,
+                                    doc.editor_state.snap_to_grid,
+                                    doc.editor_state.grid_size,
+                                );
+                                let _ = doc.document.nodes.insert(
+                                    id.clone(),
+                                    Node {
+                                        kind: NodeKind::Text,
+                                        icon: String::new(),
+                                        label: String::from("Text"),
+                                        x: OrderedFloat(x),
+                                        y: OrderedFloat(y),
+                                        width: OrderedFloat(100.0),
+                                        height: OrderedFloat(24.0),
+                                        font_size: None,
+                                        font_weight: None,
+                                        locked: false,
+                                        parent: None,
+                                        dag_rank: None,
+                                        tags: Vec::new(),
+                                        metadata: HashMap::new(),
+                                        z_index: 0,
+                                        style: Some(NodeStyle::default()),
+                                        collapsed: None,
+                                    },
+                                );
+                                doc.editor_state.selected_items.clear();
+                                let _ = doc.editor_state.selected_items.insert(id.to_string());
+                                doc.revision = doc.revision.increment();
+                            });
+                            editing_edge.set(None);
+                            editing_node.set(None);
+                            edit_value.set(String::new());
+                            tool_signal.set(ToolMode::Select);
+                        }
+                        _ => {
+                            // For other tools, let the Dioxus handler deal with it
+                        }
+                    }
+                    continue;
+                }
+
+                let client_x = json["x"].as_f64().map_or(0.0, |v| v);
+                let client_y = json["y"].as_f64().map_or(0.0, |v| v);
+                // Use origin from the message (synchronously fetched from DOM) instead of cached signal
+                let origin_x = json["originX"].as_f64().map_or(0.0, |v| v);
+                let origin_y = json["originY"].as_f64().map_or(0.0, |v| v);
+                let local_x = client_x - origin_x;
+                let local_y = client_y - origin_y;
 
                 if *multi_touch_active.read() {
                     continue;
@@ -1483,6 +1695,8 @@ pub fn Canvas() -> Element {
                     );
                 }
                 let coords = evt.data.coordinates().client();
+                // Use origin from the signal - it should be fresh now because the JS pointerdown
+                // handler sends a 'resize' message first to update it
                 let origin = *canvas_origin.read();
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
@@ -2669,7 +2883,7 @@ mod tests {
     }
 
     #[test]
-    fn given_noop_rubber_band_when_released_then_selection_is_cleared() {
+    fn given_noop_rubber_band_when_released_then_selection_is_preserved() {
         let mut doc = DiagramDocument::default();
         let node_id = NodeId::new(String::from("n1"));
         doc.document.nodes = doc
@@ -2681,7 +2895,39 @@ mod tests {
 
         apply_rubber_band_release(&mut doc, (10.0, 10.0), (10.0, 10.0), false);
 
-        assert!(doc.editor_state.selected_items.is_empty());
+        assert!(doc
+            .editor_state
+            .selected_items
+            .contains(&node_id.to_string()));
+    }
+
+    #[test]
+    fn given_existing_selection_when_rubber_band_released_then_selection_is_cleared() {
+        let mut doc = DiagramDocument::default();
+        // Create two nodes
+        let node1_id = NodeId::new(String::from("n1"));
+        let node2_id = NodeId::new(String::from("n2"));
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node1_id.clone(), node_at(10.0, 10.0))
+            .update(node2_id.clone(), node_at(100.0, 100.0));
+        // Select node1 first
+        doc.editor_state.selected_items =
+            doc.editor_state.selected_items.update(node1_id.to_string());
+
+        // Apply rubber band that only contains node2
+        apply_rubber_band_release(&mut doc, (50.0, 50.0), (150.0, 150.0), false);
+
+        // Selection should be cleared and only node2 should be selected
+        assert!(!doc
+            .editor_state
+            .selected_items
+            .contains(&node1_id.to_string()));
+        assert!(doc
+            .editor_state
+            .selected_items
+            .contains(&node2_id.to_string()));
     }
 
     #[test]

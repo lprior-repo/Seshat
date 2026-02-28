@@ -411,10 +411,12 @@ pub(super) fn subgraph_preview_overlay(
 }
 
 pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<EdgeId> {
-    let zoom = doc.editor_state.zoom.0.max(0.1);
-    // Scale hit radius by zoom to maintain consistent screen-space hit testing
-    let hit_radius_world = 8.0 / zoom;
-    let endpoint_hit_radius_world = 10.0 / zoom;
+    // Screen-consistent hit radius: 17.0 screen pixels scaled to world coordinates
+    // This ensures hit testing behaves consistently regardless of zoom level
+    let zoom = doc.editor_state.zoom.0;
+    let screen_hit_radius = 17.0;
+    let hit_radius_world = screen_hit_radius / zoom;
+    let endpoint_hit_radius_world = 21.0 / zoom;
     doc.document
         .edges
         .iter()

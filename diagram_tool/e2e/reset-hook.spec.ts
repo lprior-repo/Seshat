@@ -1,5 +1,5 @@
 import { expect, test } from "@playwright/test";
-import { freshStart, nodeCount, edgeCount, selectedCount } from "./helpers";
+import { freshStart, nodeCount, edgeCount, selectedCount, expectNodeCount } from "./helpers";
 
 test.describe("e2e reset hook @baseline", () => {
   test("freshStart creates clean state", async ({ page }) => {
@@ -19,7 +19,9 @@ test.describe("e2e reset hook @baseline", () => {
     const canvas = page.getByTestId("canvas-root");
     const box = await canvas.boundingBox();
     await page.mouse.dblclick(box!.x + 200, box!.y + 200);
-    await page.waitForTimeout(500);
+    
+    // Wait deterministically for node creation
+    await expectNodeCount(page, 1);
     
     // Verify node was created
     expect(await nodeCount(page)).toBeGreaterThan(0);

@@ -1,7 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
-  createTextNode,
   freshStart,
   nodeCount,
   runEffect,
@@ -21,7 +20,7 @@ async function requireBox(target: Locator): Promise<Box> {
 }
 
 async function eastHandle(canvas: Locator): Promise<Box> {
-  return requireBox(canvas.getByTestId("resize-handle-e").first());
+  return requireBox(canvas.getByTestId("resize-handle-se").first());
 }
 
 async function setupSingleNode(page: Page) {
@@ -29,9 +28,11 @@ async function setupSingleNode(page: Page) {
   await clearCanvasOverlays(page);
 
   const canvas = page.getByTestId("canvas-root");
-  await runEffect(() => createTextNode(page, canvas, 680, 300));
+  const bounds = await requireBox(canvas);
+  await runEffect(() => page.mouse.dblclick(bounds.x + 680, bounds.y + 300));
   expect(await nodeCount(page)).toBe(1);
 
+  await runEffect(() => page.getByRole("button", { name: "Select", exact: true }).click());
   const node = canvas.getByTestId("node").first();
   await runEffect(() => node.click());
   expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
