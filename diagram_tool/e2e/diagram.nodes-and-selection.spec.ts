@@ -7,20 +7,17 @@ import {
   createTextNode,
   expectNodeCount,
   expectSelectedCount,
+  freshStart,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 test.describe("diagram nodes and selection", () => {
   test("creates, selects, and drags text nodes", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const diagramCanvas = canvas(page);
 
@@ -65,11 +62,8 @@ test.describe("diagram nodes and selection", () => {
   });
 
   test("control-or-meta click toggles additive selection parity @baseline", async ({ page }) => {
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const diagramCanvas = canvas(page);
     await runEffectsSequential([
@@ -93,11 +87,8 @@ test.describe("diagram nodes and selection", () => {
   });
 
   test("no-op marquee does not clear existing selection @baseline", async ({ page }) => {
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const diagramCanvas = canvas(page);
     await runEffect(() => createTextNode(page, diagramCanvas, 560, 220));
@@ -122,11 +113,8 @@ test.describe("diagram nodes and selection", () => {
   });
 
   test("marquee drag direction deterministically switches contain vs intersect", async ({ page }) => {
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const diagramCanvas = canvas(page);
     await runEffect(() => createTextNode(page, diagramCanvas, 560, 220));
@@ -159,11 +147,8 @@ test.describe("diagram nodes and selection", () => {
   });
 
   test("selection survives failed import attempt @baseline", async ({ page }) => {
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const diagramCanvas = canvas(page);
     await runEffectsSequential([

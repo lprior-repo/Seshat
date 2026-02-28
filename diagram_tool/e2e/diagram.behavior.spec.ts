@@ -4,10 +4,10 @@ import {
   expectEdgeCount,
   expectNodeCount,
   expectSelectedCount,
-  runEffectsSequential,
+  freshStart,
   runEffect,
+  runEffectsSequential,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 test.describe("diagram editor hardening", () => {
@@ -15,7 +15,7 @@ test.describe("diagram editor hardening", () => {
 
   test("loads with core panels and controls", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     await expect(page.getByRole("button", { name: "Auto-Arrange" })).toBeVisible();
     await expect(page.getByRole("button", { name: "Validate" })).toBeVisible();
@@ -26,7 +26,7 @@ test.describe("diagram editor hardening", () => {
 
   test("survives rapid panel toggles", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     const icons = page.getByRole("button", { name: "Icons", exact: true });
     const props = page.getByRole("button", { name: "Props", exact: true });
@@ -47,7 +47,7 @@ test.describe("diagram editor hardening", () => {
 
   test("survives validate storm while toggling panels", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     const validate = page.getByRole("button", { name: "Validate", exact: true });
     const valid = page.getByRole("button", { name: "Valid", exact: true });
@@ -68,7 +68,7 @@ test.describe("diagram editor hardening", () => {
 
   test("handles aggressive zoom and theme flips", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     const zoomIn = page.getByRole("button", { name: "+", exact: true }).first();
     const zoomOut = page.getByRole("button", { name: "-", exact: true });
@@ -90,7 +90,7 @@ test.describe("diagram editor hardening", () => {
 
   test("survives keyboard shortcut fuzzing", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     const keys = ["v", "h", "l", "r", "t", "Escape", "Delete", "Backspace", "0"];
     for (let i = 0; i < 6; i += 1) {
@@ -109,7 +109,7 @@ test.describe("diagram editor hardening", () => {
 
   test("survives wheel and space-pan stress", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     const canvasArea = canvas(page);
     const box = await runEffect(() => canvasArea.boundingBox());
@@ -147,7 +147,7 @@ test.describe("diagram editor hardening", () => {
 
   test("keeps pan controls responsive after stress", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => waitForUiReady(page)]);
+    await freshStart(page);
 
     const canvasArea = canvas(page);
     const canvasBox = await runEffect(() => canvasArea.boundingBox());

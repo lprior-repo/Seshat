@@ -382,9 +382,9 @@ fn flush_pending_pointer_update(
                 );
                 let has_changes = positions.iter().any(|(id, (nx, ny))| {
                     doc.document.nodes.get(id).is_some_and(|node| {
-                        (node.x.0 - *nx).abs() > f64::EPSILON
-                            || (node.y.0 - *ny).abs() > f64::EPSILON
-                            || !node.locked
+                        !node.locked
+                            && ((node.x.0 - *nx).abs() > f64::EPSILON
+                                || (node.y.0 - *ny).abs() > f64::EPSILON)
                     })
                 });
 
@@ -393,9 +393,9 @@ fn flush_pending_pointer_update(
                         for (id, (nx, ny)) in positions.iter() {
                             let should_update =
                                 doc_mut.document.nodes.get(id).is_some_and(|node| {
-                                    (node.x.0 - *nx).abs() > f64::EPSILON
-                                        || (node.y.0 - *ny).abs() > f64::EPSILON
-                                        || !node.locked
+                                    !node.locked
+                                        && ((node.x.0 - *nx).abs() > f64::EPSILON
+                                            || (node.y.0 - *ny).abs() > f64::EPSILON)
                                 });
                             if should_update {
                                 doc_mut.document.nodes = doc_mut.document.nodes.alter(
@@ -403,7 +403,6 @@ fn flush_pending_pointer_update(
                                         n.map(|node| Node {
                                             x: OrderedFloat(*nx),
                                             y: OrderedFloat(*ny),
-                                            locked: true,
                                             ..node
                                         })
                                     },
@@ -1246,7 +1245,7 @@ pub fn Canvas() -> Element {
                             height: OrderedFloat(64.0),
                             font_size: None,
                             font_weight: None,
-                            locked: true,
+                            locked: false,
                             parent: None,
                             dag_rank: None,
                             tags,
@@ -1366,6 +1365,51 @@ pub fn Canvas() -> Element {
                     editing_node.set(None);
                     editing_edge.set(Some(eid));
                     edit_value.set(label);
+                    return;
+                }
+
+                // Double-click on empty canvas creates a new node in Select mode
+                let tool = *tool_signal.read();
+                if tool == ToolMode::Select {
+                    let id = NodeId::new(Uuid::new_v4().to_string());
+                    let current = doc_signal.read().clone();
+                    let history = history_signal.read().clone();
+                    *history_signal.write() = history.push(current);
+                    doc_signal.with_mut(|d| {
+                        let (x, y) = snap_point(
+                            pos,
+                            d.editor_state.snap_to_grid,
+                            d.editor_state.grid_size.0,
+                        );
+                        let _ = d.document.nodes.insert(
+                            id.clone(),
+                            Node {
+                                kind: NodeKind::Node,
+                                icon: String::new(),
+                                label: String::from("Node"),
+                                x: OrderedFloat(x - 32.0),
+                                y: OrderedFloat(y - 32.0),
+                                width: OrderedFloat(64.0),
+                                height: OrderedFloat(64.0),
+                                font_size: None,
+                                font_weight: None,
+                                locked: false,
+                                parent: None,
+                                dag_rank: None,
+                                tags: Vec::new(),
+                                metadata: HashMap::new(),
+                                z_index: 0,
+                                style: Some(NodeStyle::default()),
+                                collapsed: None,
+                            },
+                        );
+                        d.editor_state.selected_items.clear();
+                        let _ = d.editor_state.selected_items.insert(id.to_string());
+                        d.revision = d.revision.increment();
+                    });
+                    editing_edge.set(None);
+                    editing_node.set(None);
+                    edit_value.set(String::new());
                 }
             },
 
@@ -1480,7 +1524,7 @@ pub fn Canvas() -> Element {
                                     height: OrderedFloat(24.0),
                                     font_size: None,
                                     font_weight: None,
-                                    locked: true,
+                                    locked: false,
                                     parent: None,
                                     dag_rank: None,
                                     tags: Vec::new(),

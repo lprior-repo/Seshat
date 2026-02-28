@@ -1,10 +1,8 @@
 import { expect, test, type Page } from "@playwright/test";
-import { runEffectsSequential } from "./helpers";
+import { freshStart } from "./helpers";
 
 async function setupPage(page: Page) {
-  await runEffectsSequential([
-    () => page.goto("/"),
-  ]);
+  await freshStart(page);
 }
 
 test.describe("DOC contracts @baseline", () => {
