@@ -67,11 +67,19 @@ pub fn Toolbar() -> Element {
 
     let undo_disabled = !history_signal.read().can_undo();
     let undo_opacity = if undo_disabled { "0.4" } else { "1" };
-    let undo_cursor = if undo_disabled { "not-allowed" } else { "pointer" };
+    let undo_cursor = if undo_disabled {
+        "not-allowed"
+    } else {
+        "pointer"
+    };
 
     let redo_disabled = !history_signal.read().can_redo();
     let redo_opacity = if redo_disabled { "0.4" } else { "1" };
-    let redo_cursor = if redo_disabled { "not-allowed" } else { "pointer" };
+    let redo_cursor = if redo_disabled {
+        "not-allowed"
+    } else {
+        "pointer"
+    };
 
     rsx! {
         div {

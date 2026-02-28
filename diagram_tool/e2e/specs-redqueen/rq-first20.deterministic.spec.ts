@@ -28,7 +28,12 @@ async function bootScene(
   loadScene: (scene: SceneId) => Promise<void>,
   sceneId: SceneId,
 ) {
-  await runEffectsSequential([() => page.goto("/"), () => page.waitForTimeout(2000), () => loadScene(sceneId)]);
+  // Force a full page reload to ensure clean state between tests
+  await runEffectsSequential([
+    () => page.reload({ waitUntil: "domcontentloaded" }),
+    () => page.waitForTimeout(2000),
+    () => loadScene(sceneId),
+  ]);
 }
 
 async function requireBox(target: Locator): Promise<BoundingBox> {

@@ -8,6 +8,12 @@ const SELECTOR_COUNTER_SELECTED = '[data-testid="counter-selected"]';
 const SELECTOR_ZOOM_RESET = '[data-testid="zoom-reset"]';
 const SELECTOR_MINIMAP_VIEWPORT = '[data-testid="minimap-viewport"]';
 
+/** Timeout (ms) for waiting for the WASM app to expose reset hooks. */
+const E2E_READY_TIMEOUT = 30_000;
+
+/** Interval (ms) between polls when waiting for __seshatE2eReady. */
+const E2E_READY_POLL_MS = 100;
+
 export async function runEffect<A>(thunk: () => Promise<A>): Promise<A> {
   return Effect.runPromise(
     Effect.tryPromise({
@@ -252,6 +258,76 @@ export async function scrollPageTo(page: Page, x: number, y: number) {
   );
 }
 
+/**
+ * Wait for the Dioxus WASM app to signal that the e2e reset hook is ready.
+ * This polls `window.__seshatE2eReady` until it becomes `true`.
+ */
+export async function waitForE2eReady(page: Page) {
+  await expect
+    .poll(
+      () =>
+        page.evaluate(
+          () => (window as { __seshatE2eReady?: boolean }).__seshatE2eReady === true,
+        ),
+      { timeout: E2E_READY_TIMEOUT, intervals: [E2E_READY_POLL_MS] },
+    )
+    .toBe(true);
+}
+
+/**
+ * Reset the Dioxus document state to defaults without a page reload.
+ *
+ * Calls `window.__seshatResetDocument()` which is registered by the Rust
+ * `use_e2e_reset_hook`. The call returns a Promise that resolves once
+ * all signals have been `.set()` back to their defaults on the Rust side.
+ */
+export async function resetDocument(page: Page) {
+  await runEffect(() =>
+    page.evaluate(async () => {
+      const win = window as {
+        __seshatResetDocument?: () => Promise<void>;
+      };
+      if (typeof win.__seshatResetDocument === "function") {
+        await win.__seshatResetDocument();
+      }
+    }),
+  );
+}
+
+/**
+ * Verify the app is in a clean state: 0 nodes, 0 edges, 0 selected.
+ * Useful as a post-reset sanity check.
+ */
+export async function waitForCleanState(page: Page) {
+  await expect.poll(() => nodeCount(page), { timeout: 10_000 }).toBe(0);
+  await expect.poll(() => edgeCount(page), { timeout: 5_000 }).toBe(0);
+  await expect.poll(() => selectedCount(page), { timeout: 5_000 }).toBe(0);
+}
+
+/**
+ * Full fresh-start sequence for a test:
+ * 1. Clear browser storage (localStorage, cookies)
+ * 2. Navigate to "/"
+ * 3. Wait for UI ready + e2e hooks
+ * 4. Reset document state (in case prior navigation preserved state)
+ * 5. Verify clean state
+ */
+export async function freshStart(page: Page) {
+  await runEffectsSequential([
+    // Clear any persisted state from prior runs.
+    () => page.context().clearCookies(),
+    () => page.evaluate(() => {
+      try { localStorage.clear(); } catch (_) { /* noop */ }
+      try { sessionStorage.clear(); } catch (_) { /* noop */ }
+    }),
+    () => page.goto("/", { waitUntil: "load" }),
+    () => waitForUiReady(page),
+    () => waitForE2eReady(page),
+    () => resetDocument(page),
+    () => waitForCleanState(page),
+  ]);
+}
+
 export async function createTextNode(
   page: Page,
   canvas: Locator,
@@ -261,6 +337,10 @@ export async function createTextNode(
   await runEffectsSequential([
     () => waitForNoRebuildOverlay(page),
     () => page.locator('[data-testid="tool-text"]').first().click(),
+    // Allow Dioxus signal propagation for tool mode switch before
+    // clicking on the canvas.  Without this, clicks may land while the
+    // canvas is still in Select mode.
+    () => page.waitForTimeout(60),
   ]);
   const box = await runEffect(() => canvas.boundingBox());
   if (!box) {

@@ -234,6 +234,7 @@ pub const BORDER_SUBTLE: &str = "var(--border-subtle)";
 
 pub const TEXT_MAIN: &str = "var(--text-main)";
 pub const TEXT_MUTED: &str = "var(--text-muted)";
+#[allow(dead_code)]
 pub const TEXT_DIM: &str = "var(--text-dim)";
 
 pub const ACCENT: &str = "var(--accent)";

@@ -224,7 +224,7 @@ pub(super) fn selection_handles_overlay(
     to_screen_coords: impl Fn(f64, f64, f64, f64, f64) -> (f64, f64),
 ) -> Element {
     let selected_nodes = selected_node_ids(doc);
-    let selected_count = selected_nodes.len();
+    let _selected_count = selected_nodes.len();
     let selection = selection_bounds(doc);
     if let Some((bx, by, bw, bh)) = selection {
         let s = &doc.editor_state;
@@ -232,8 +232,8 @@ pub(super) fn selection_handles_overlay(
         let sw = bw * s.zoom.0;
         let sh = bh * s.zoom.0;
         let pad = 4.0;
-        let box_w = sw + (2.0 * pad);
-        let box_h = sh + (2.0 * pad);
+        let box_w = f64::mul_add(2.0, pad, sw);
+        let box_h = f64::mul_add(2.0, pad, sh);
         let hs = 7.0;
 
         let handles = [

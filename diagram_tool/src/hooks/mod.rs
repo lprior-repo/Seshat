@@ -5,4 +5,5 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
+pub mod e2e_reset;
 pub mod keyboard;

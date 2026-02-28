@@ -19,8 +19,8 @@ export default defineConfig({
   projects: [
     {
       name: "e2e-smoke",
-      retries: 0,
-      workers: 1,
+      retries: 2,
+      workers: 12,
       grep: /@baseline/,
       grepInvert: /@rq/,
       use: {
@@ -29,8 +29,8 @@ export default defineConfig({
     },
     {
       name: "baseline",
-      retries: 1,
-      workers: 4,
+      retries: 2,
+      workers: 12,
       grep: /@baseline/,
       grepInvert: /@rq/,
       use: {
@@ -39,8 +39,8 @@ export default defineConfig({
     },
     {
       name: "redqueen-wave1",
-      retries: 0,
-      workers: 2,
+      retries: 1,
+      workers: 6,
       grep: /(?=.*@rq)(?=.*@rq-wave1)/,
       use: {
         browserName: "chromium",
@@ -48,8 +48,8 @@ export default defineConfig({
     },
     {
       name: "redqueen-wave2",
-      retries: 1,
-      workers: 2,
+      retries: 2,
+      workers: 6,
       grep: /(?=.*@rq)(?=.*@rq-wave2)/,
       use: {
         browserName: "chromium",
@@ -57,8 +57,8 @@ export default defineConfig({
     },
     {
       name: "redqueen-wave3",
-      retries: 0,
-      workers: 1,
+      retries: 1,
+      workers: 4,
       grep: /(?=.*@rq)(?=.*@rq-wave3)/,
       use: {
         browserName: "chromium",
@@ -66,8 +66,8 @@ export default defineConfig({
     },
     {
       name: "redqueen-seeded",
-      retries: 0,
-      workers: 2,
+      retries: 1,
+      workers: 6,
       grep: /(?=.*@rq)(?=.*@seeded)/,
       use: {
         browserName: "chromium",
@@ -75,8 +75,8 @@ export default defineConfig({
     },
     {
       name: "redqueen-stress",
-      retries: 0,
-      workers: 1,
+      retries: 1,
+      workers: 4,
       grep: /(?=.*@rq)(?=.*@stress)/,
       use: {
         browserName: "chromium",

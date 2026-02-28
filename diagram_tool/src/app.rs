@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 use crate::history::History;
+use crate::hooks::e2e_reset::use_e2e_reset_hook;
 use crate::hooks::keyboard::use_global_keyboard;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::validation::validate_document_data;
@@ -52,6 +53,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(0_u64));
 
     use_global_keyboard();
+    use_e2e_reset_hook();
 
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let validate_trigger = use_context::<Signal<u64>>();

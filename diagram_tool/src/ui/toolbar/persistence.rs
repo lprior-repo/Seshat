@@ -152,6 +152,12 @@ pub fn open_workspace(
             let mut eval = document::eval(
                 r#"
                 (function() {
+                    if (window.__SESHAT_E2E_IMPORT_JSON) {
+                        const contents = window.__SESHAT_E2E_IMPORT_JSON;
+                        delete window.__SESHAT_E2E_IMPORT_JSON;
+                        dioxus.send({ ok: true, contents });
+                        return;
+                    }
                     const input = document.createElement('input');
                     input.type = 'file';
                     input.accept = '.json,application/json';
@@ -381,14 +387,29 @@ mod tests {
 
         let (next_doc, next_history) = prepare_import_transition(&current, &valid)
             .expect("valid import should produce a transition");
-        assert!(next_doc.document.nodes.contains_key(&NodeId::new(String::from("n-import"))));
-        assert!(!next_doc.document.nodes.contains_key(&NodeId::new(String::from("n-current"))));
+        assert!(next_doc
+            .document
+            .nodes
+            .contains_key(&NodeId::new(String::from("n-import"))));
+        assert!(!next_doc
+            .document
+            .nodes
+            .contains_key(&NodeId::new(String::from("n-current"))));
 
         let undone = next_history.undo(next_doc.clone());
-        assert!(undone.is_some(), "history should include pre-import snapshot");
+        assert!(
+            undone.is_some(),
+            "history should include pre-import snapshot"
+        );
         let (restored, _) = undone.expect("undo should restore prior state");
-        assert!(restored.document.nodes.contains_key(&NodeId::new(String::from("n-current"))));
-        assert!(!restored.document.nodes.contains_key(&NodeId::new(String::from("n-import"))));
+        assert!(restored
+            .document
+            .nodes
+            .contains_key(&NodeId::new(String::from("n-current"))));
+        assert!(!restored
+            .document
+            .nodes
+            .contains_key(&NodeId::new(String::from("n-import"))));
 
         let fresh_history = History::new();
         assert!(fresh_history.undo(current).is_none());

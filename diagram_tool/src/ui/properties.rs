@@ -14,6 +14,7 @@ use crate::ui::theme::{
 };
 use dioxus::prelude::*;
 
+#[allow(dead_code)]
 fn remove_selected(doc: &mut DiagramDocument) {
     let selected = doc.editor_state.selected_items.clone();
     if selected.is_empty() {
@@ -45,6 +46,7 @@ fn remove_selected(doc: &mut DiagramDocument) {
     doc.revision = doc.revision.increment();
 }
 
+#[allow(dead_code)]
 fn parse_edge_style(v: &str) -> EdgeStyle {
     match v {
         "dashed" => EdgeStyle::Dashed,
@@ -53,6 +55,7 @@ fn parse_edge_style(v: &str) -> EdgeStyle {
     }
 }
 
+#[allow(dead_code)]
 fn parse_arrow_type(v: &str) -> ArrowType {
     match v {
         "straight" | "open" => ArrowType::Straight,
@@ -63,6 +66,7 @@ fn parse_arrow_type(v: &str) -> ArrowType {
     }
 }
 
+#[allow(dead_code)]
 const fn edge_style_str(v: EdgeStyle) -> &'static str {
     match v {
         EdgeStyle::Solid => "solid",
@@ -71,6 +75,7 @@ const fn edge_style_str(v: EdgeStyle) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 const fn arrow_type_str(v: ArrowType) -> &'static str {
     match v {
         ArrowType::Default => "default",
@@ -81,6 +86,7 @@ const fn arrow_type_str(v: ArrowType) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 const fn node_kind_str(kind: &NodeKind) -> &'static str {
     match kind {
         NodeKind::Node => "node",
@@ -89,6 +95,7 @@ const fn node_kind_str(kind: &NodeKind) -> &'static str {
     }
 }
 
+#[allow(dead_code)]
 fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
     doc.document.nodes.get(id).map_or_else(
         || id.to_string(),

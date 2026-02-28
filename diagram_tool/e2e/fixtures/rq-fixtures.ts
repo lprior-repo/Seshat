@@ -7,11 +7,24 @@ import {
   edgeCount,
   nodeCount,
   runEffectsSequential,
+  runEffect,
   selectedCount,
   waitForNoRebuildOverlay,
   waitForUiReady,
   zoomPercent,
 } from "../helpers";
+
+async function recoverFromRebuildOverlay(page: Page): Promise<void> {
+  const rebuilding = page.getByRole("heading", { name: "Your app is being rebuilt." });
+  const visible = await runEffect(() => rebuilding.isVisible().catch(() => false));
+  if (!visible) {
+    return;
+  }
+  await runEffectsSequential([
+    () => page.reload({ waitUntil: "domcontentloaded", timeout: 5_000 }),
+    () => waitForUiReady(page),
+  ]);
+}
 
 type SceneName =
   | "scene_mixed_selection_v1"
@@ -166,6 +179,9 @@ function seededAt(seed: number, step: number): number {
 }
 
 async function importScene(page: Page, sceneName: SceneName): Promise<void> {
+  // Recover from any stale rebuild overlay before loading
+  await recoverFromRebuildOverlay(page);
+
   const cwdPath = resolve(process.cwd(), "diagram_tool", "e2e", "scenes", `${sceneName}.json`);
   const fixtureRelativePath = resolve(__dirname, "..", "scenes", `${sceneName}.json`);
   const filePath = existsSync(cwdPath) ? cwdPath : fixtureRelativePath;

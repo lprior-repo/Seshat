@@ -149,7 +149,6 @@ pub fn apply_nudge_selection(
             if let Some(node) = doc.document.nodes.get_mut(&node_id) {
                 node.x = OrderedFloat(node.x.0 + dx);
                 node.y = OrderedFloat(node.y.0 + dy);
-                node.locked = true;
             }
         }
         doc.revision = doc.revision.increment();
