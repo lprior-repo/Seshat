@@ -1130,7 +1130,9 @@ pub fn Canvas() -> Element {
                             }
                         }
                         InteractionMode::RubberBand { start, current } => {
-                            let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
+                            let additive = *shift_pressed.read()
+                                || *ctrl_pressed.read()
+                                || *meta_pressed.read();
                             doc_signal.with_mut(|doc| {
                                 apply_rubber_band_release(doc, *start, *current, additive);
                             });
@@ -2635,10 +2637,8 @@ mod tests {
             .document
             .nodes
             .update(node_id.clone(), node_at(10.0, 10.0));
-        doc.editor_state.selected_items = doc
-            .editor_state
-            .selected_items
-            .update(node_id.to_string());
+        doc.editor_state.selected_items =
+            doc.editor_state.selected_items.update(node_id.to_string());
 
         apply_rubber_band_release(&mut doc, (10.0, 10.0), (10.0, 10.0), false);
 

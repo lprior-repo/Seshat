@@ -3,6 +3,7 @@ import {
   canvas,
   clearCanvasOverlays,
   edgeCount,
+  freshStart,
   nodeCenters,
   nodeCount,
   runEffectsSequential,
@@ -10,7 +11,6 @@ import {
   selectedCount,
   trapPageErrors,
   waitForNoRebuildOverlay,
-  waitForUiReady,
 } from "./helpers";
 
 type Counters = {
@@ -86,7 +86,7 @@ async function recoverFromRebuildOverlay(page: Page) {
 
   await runEffectsSequential([
     () => page.reload({ waitUntil: "domcontentloaded", timeout: 5_000 }),
-    () => waitForUiReady(page),
+    () => freshStart(page),
     () => clearCanvasOverlays(page),
   ]);
 }
@@ -205,11 +205,8 @@ async function randomOp(page: Page, canvas: Locator, rng: Lcg) {
 
 async function runSeededChaos(page: Page, seed: number, steps: number) {
   const rng = new Lcg(seed);
-  await runEffectsSequential([
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-    () => clearCanvasOverlays(page),
-  ]);
+  await freshStart(page);
+  await clearCanvasOverlays(page);
 
   const canvasArea = canvas(page);
   await createTextNodeSafe(page, canvasArea, 540, 220);
