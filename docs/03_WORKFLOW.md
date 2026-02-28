@@ -1,6 +1,5 @@
-# Workflow: Pull -> Isolate -> Verify -> Merge
+# Workflow: Verify -> Merge
 
-1. **Pull**: `bv` discover new beads.
-2. **Isolate**: `zjj spawn <bead-id>`.
-3. **Verify**: `moon run :ci-hardening --force`.
-4. **Merge**: `zjj done`.
+1. **Discover**: Find beads via `bv` or issue tracker.
+2. **Verify**: `moon run :ci-hardening --force`.
+3. **Merge**: Commit and push.

@@ -939,12 +939,14 @@ pub fn Canvas() -> Element {
                     const ro = new ResizeObserver(() => scheduleNotify());
                     ro.observe(target);
 
+                    // Removed scroll event listener - ResizeObserver handles position changes
+                    // from layout shifts, and window resize events handle viewport changes.
+                    // This prevents issues with scroll events from unrelated page elements.
+
                     window.addEventListener('resize', scheduleNotify, { passive: true });
-                    window.addEventListener('scroll', scheduleNotify, { passive: true, capture: true });
                     window.__seshat_canvas_resize_cleanup = () => {
                         ro.disconnect();
                         window.removeEventListener('resize', scheduleNotify);
-                        window.removeEventListener('scroll', scheduleNotify, { capture: true });
                         if (rafId !== 0) {
                             window.cancelAnimationFrame(rafId);
                         }

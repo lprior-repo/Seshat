@@ -1,3 +1,3 @@
 # Jujutsu Workspaces
 
-Instant isolation via `jj workspace add`. Managed automatically by `zjj`.
+Use `jj workspace add` for instant isolation.
