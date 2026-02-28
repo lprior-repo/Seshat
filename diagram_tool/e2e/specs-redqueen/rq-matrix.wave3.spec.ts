@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/rq-fixtures";
-import { runEffectsSequential, trapPageErrors } from "../helpers";
+import { freshStart, trapPageErrors, waitForUiReady } from "../helpers";
 import { runTrace } from "../redqueen/harness";
 import { traceForSeed } from "../redqueen/operators";
 
@@ -50,7 +50,9 @@ test.describe("redqueen priority matrix wave3 @rq @rq-wave3", () => {
       seededRng,
     }) => {
       const pageErrors = trapPageErrors(page);
-      await runEffectsSequential([() => page.goto("/"), () => loadScene(entry.scene)]);
+      await freshStart(page);
+      await waitForUiReady(page);
+      await loadScene(entry.scene);
 
       const sampledSeedA = Math.floor(seededRng(seed % 23) * 10_000);
       const sampledSeedB = Math.floor(seededRng(seed % 29) * 10_000);

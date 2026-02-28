@@ -1,5 +1,5 @@
 import { test, expect } from "../fixtures/rq-fixtures";
-import { runEffectsSequential, trapPageErrors, nodeCount, edgeCount, zoomPercent } from "../helpers";
+import { freshStart, nodeCount, edgeCount, zoomPercent, trapPageErrors, waitForUiReady } from "../helpers";
 import { runTrace } from "../redqueen/harness";
 import { tracesForReplay } from "../redqueen/corpus-manager";
 
@@ -32,10 +32,9 @@ test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
       assertInvariants,
     }) => {
       const pageErrors = trapPageErrors(page);
-      await runEffectsSequential([
-        () => page.goto("/"),
-        () => loadScene(known.sceneId as "scene_mixed_selection_v1" | "scene_nested_subgraph_v1" | "scene_stress_1k_v1"),
-      ]);
+      await freshStart(page);
+      await waitForUiReady(page);
+      await loadScene(known.sceneId as "scene_mixed_selection_v1" | "scene_nested_subgraph_v1" | "scene_stress_1k_v1");
 
       const { traceForSeed } = await import("../redqueen/operators");
       annotateSeed(known.seed, known.wave, known.sceneId);
@@ -73,13 +72,9 @@ test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
 
     for (const trace of corpusTraces) {
       annotateSeed(trace.seed, trace.wave, trace.sceneId);
-      await runEffectsSequential([
-        () => page.goto("/"),
-        () =>
-          loadScene(
-            trace.sceneId as "scene_mixed_selection_v1" | "scene_nested_subgraph_v1" | "scene_stress_1k_v1",
-          ),
-      ]);
+      await freshStart(page);
+      await waitForUiReady(page);
+      await loadScene(trace.sceneId as "scene_mixed_selection_v1" | "scene_nested_subgraph_v1" | "scene_stress_1k_v1");
 
       await runTrace(page, trace);
       await assertInvariants();
@@ -94,7 +89,9 @@ test.describe("redqueen wave2 replay gate @rq @rq-wave2", () => {
     assertInvariants,
   }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([() => page.goto("/"), () => loadScene("scene_mixed_selection_v1")]);
+    await freshStart(page);
+    await waitForUiReady(page);
+    await loadScene("scene_mixed_selection_v1");
 
     const { traceForSeed } = await import("../redqueen/operators");
     for (const seed of [1001, 2002, 3003]) {
