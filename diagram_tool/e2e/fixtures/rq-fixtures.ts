@@ -1,14 +1,14 @@
 import { expect, test as base, type Page } from "@playwright/test";
 import { Effect } from "effect";
 import { createHash } from "node:crypto";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 import {
-  chooseFilesWithFileChooser,
   edgeCount,
   nodeCount,
   runEffectsSequential,
   selectedCount,
+  waitForNoRebuildOverlay,
   waitForUiReady,
   zoomPercent,
 } from "../helpers";
@@ -47,19 +47,19 @@ type SceneJson = Readonly<{
 
 const sceneContracts: Readonly<Record<SceneName, SceneContract>> = {
   scene_mixed_selection_v1: {
-    checksum: "c35183ffbfbdb9a776ce0aa28b16bf9dcf6bb2c4403015c7e2273fbb32419d3e",
+    checksum: "b0178e0a66474300b4eb958fded5f0740add28a2b5911a4cb8b6673e2f407989",
     nodeCount: 3,
     edgeCount: 1,
     requiredNodeIds: ["n1", "n2", "sg1"],
   },
   scene_nested_subgraph_v1: {
-    checksum: "e2500f6a9f517943334ecbbf1c50086c2113b3f52e7f75d9b5b3e94287fec753",
+    checksum: "3a87e02614e56ea7f757c8e0c829b3daebe021dd635957c0721b7eb65e287925",
     nodeCount: 4,
     edgeCount: 1,
     requiredNodeIds: ["outer", "inner", "t1", "t2"],
   },
   scene_stress_1k_v1: {
-    checksum: "c4bda7ab343c358ba62b13de8d95da134a9d8eedf38741769c3e0e3a42072ca4",
+    checksum: "34cc3e1d46ce7fbdbd113246338d77ae279fabf23143022d828afd9937c66169",
     nodeCount: 12,
     edgeCount: 11,
     requiredNodeIds: ["n01", "n02", "n12"],
@@ -166,22 +166,29 @@ function seededAt(seed: number, step: number): number {
 }
 
 async function importScene(page: Page, sceneName: SceneName): Promise<void> {
-  const filePath = join(process.cwd(), "diagram_tool", "e2e", "scenes", `${sceneName}.json`);
+  const cwdPath = resolve(process.cwd(), "diagram_tool", "e2e", "scenes", `${sceneName}.json`);
+  const fixtureRelativePath = resolve(__dirname, "..", "scenes", `${sceneName}.json`);
+  const filePath = existsSync(cwdPath) ? cwdPath : fixtureRelativePath;
   const payload = readFileSync(filePath, "utf8");
   parseAndValidateScenePayload(sceneName, payload);
+  const contract = sceneContracts[sceneName];
   await runEffectsSequential([
-    () =>
-      chooseFilesWithFileChooser(
-        page,
-        () => page.getByTestId("toolbar-open").click(),
-        {
-          name: `${sceneName}.json`,
-          mimeType: "application/json",
-          buffer: Buffer.from(payload, "utf8"),
-        },
-      ),
     () => waitForUiReady(page),
+    () =>
+      expect(page.getByTestId("toolbar-open").first()).toHaveAttribute(
+        "data-open-mode",
+        "import-json",
+      ),
+    () => page.evaluate((jsonPayload) => {
+      (window as { __SESHAT_E2E_IMPORT_JSON?: string }).__SESHAT_E2E_IMPORT_JSON = jsonPayload;
+    }, payload),
+    () => expect(page.getByTestId("toolbar-open")).toBeEnabled({ timeout: 15_000 }),
+    () => page.getByTestId("toolbar-open").click(),
+    () => waitForNoRebuildOverlay(page),
   ]);
+
+  await expect.poll(() => nodeCount(page), { timeout: 15_000 }).toBe(contract.nodeCount);
+  await expect.poll(() => edgeCount(page), { timeout: 15_000 }).toBe(contract.edgeCount);
 }
 
 export const test = base.extend<Fixtures>({
@@ -245,6 +252,9 @@ export const test = base.extend<Fixtures>({
   },
   assertNoNaNOrInf: async ({ page }, use) => {
     await use(async () => {
+      const zoom = await zoomPercent(page);
+      expect(Number.isFinite(zoom)).toBe(true);
+
       const allNumeric = await Effect.runPromise(
         Effect.tryPromise(() =>
           page.evaluate(() => {
@@ -284,6 +294,7 @@ export const test = base.extend<Fixtures>({
         ),
       );
 
+      expect(allNumeric.length).toBeGreaterThan(0);
       for (const item of allNumeric) {
         expect(item.isFinite).toBe(true);
       }
