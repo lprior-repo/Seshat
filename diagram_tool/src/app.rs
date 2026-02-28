@@ -186,10 +186,10 @@ pub fn App() -> Element {
                 "#
             ));
 
-            let doc_signal = doc_signal.clone();
-            let tool_signal = tool_signal.clone();
-            let edge_style_signal = edge_style_signal.clone();
-            let arrow_type_signal = arrow_type_signal.clone();
+            let mut doc_signal = doc_signal.clone();
+            let mut tool_signal = tool_signal.clone();
+            let mut edge_style_signal = edge_style_signal.clone();
+            let mut arrow_type_signal = arrow_type_signal.clone();
             let mut last_saved_revision = last_saved_revision.clone();
 
             spawn(async move {
@@ -243,15 +243,17 @@ pub fn App() -> Element {
                 );
 
                 if let Ok(json) = auto_save::serialize_diagram(&saved) {
-                    let _eval = document::eval(&format!(
-                        r#"
-                        (() => {{
-                            try {{
-                                localStorage.setItem("{AUTO_SAVE_KEY}", "{json}");
-                            }} catch (_) {{}}
-                        }})();
-                        "#
-                    ));
+                    if let Ok(payload_literal) = serde_json::to_string(&json) {
+                        let _eval = document::eval(&format!(
+                            r#"
+                            (() => {{
+                                try {{
+                                    localStorage.setItem("{AUTO_SAVE_KEY}", {payload_literal});
+                                }} catch (_) {{}}
+                            }})();
+                            "#
+                        ));
+                    }
                 }
 
                 last_saved_revision.set(current_revision);

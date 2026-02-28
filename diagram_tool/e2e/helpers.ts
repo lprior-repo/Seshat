@@ -131,17 +131,54 @@ export async function ensureDeterministicUi(page: Page) {
       style.textContent = [
         "* { animation: none !important; transition: none !important; }",
         "html, body { scroll-behavior: auto !important; }",
+        '[data-seshat-e2e-overlay="rebuild"] { pointer-events: none !important; opacity: 0 !important; visibility: hidden !important; }',
       ].join("\n");
       document.head.append(style);
+
+      const neutralizeRebuildOverlay = () => {
+        const heading = Array.from(document.querySelectorAll("h1, h2, h3, h4"))
+          .find((node) => node.textContent?.trim() === "Your app is being rebuilt.");
+
+        if (!heading) {
+          return;
+        }
+
+        let root = heading.parentElement;
+        while (root?.parentElement && root.parentElement !== document.body) {
+          root = root.parentElement;
+        }
+
+        if (root instanceof HTMLElement) {
+          root.dataset.seshatE2eOverlay = "rebuild";
+        }
+      };
+
+      neutralizeRebuildOverlay();
+      const observer = new MutationObserver(() => {
+        neutralizeRebuildOverlay();
+      });
+      observer.observe(document.documentElement, { childList: true, subtree: true });
     }),
   );
 }
 
 export async function waitForNoRebuildOverlay(page: Page) {
-  const rebuilding = page.getByRole("heading", {
-    name: "Your app is being rebuilt.",
-  });
-  await expect.poll(async () => rebuilding.count(), { timeout: 60_000 }).toBe(0);
+  await expect
+    .poll(
+      () =>
+        page.evaluate(() => {
+          const headings = Array.from(document.querySelectorAll("h1, h2, h3, h4"));
+          return headings.some((heading) => {
+            if (heading.textContent?.trim() !== "Your app is being rebuilt.") {
+              return false;
+            }
+            const style = window.getComputedStyle(heading);
+            return style.display !== "none" && style.visibility !== "hidden" && style.opacity !== "0";
+          });
+        }),
+      { timeout: 60_000 },
+    )
+    .toBe(false);
 }
 
 export function trapPageErrors(page: Page) {

@@ -21,6 +21,12 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
 
     // 1. Validate Nodes
     nodes.iter().try_for_each(|(id, node)| {
+        if node.width.0 < 0.0 {
+            bail!("Node {id} has negative width: {}", node.width.0);
+        }
+        if node.height.0 < 0.0 {
+            bail!("Node {id} has negative height: {}", node.height.0);
+        }
         if let Some(parent_id) = &node.parent {
             if !node_ids.contains(parent_id) {
                 bail!("Node {id} references non-existent parent {parent_id}");
@@ -35,28 +41,42 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
         Ok(())
     })?;
 
-    // 1b. Check for circular parent chains
+    // 1b. Check for circular parent chains using functional recursion
     for (id, _) in nodes.iter() {
-        let mut visited = HashSet::new();
-        let mut current = id.clone();
-
-        loop {
-            if visited.contains(&current) {
-                bail!("Circular parent chain detected involving node {current}");
-            }
-            visited.insert(current.clone());
-
-            if let Some(node) = nodes.get(&current) {
-                if let Some(parent_id) = &node.parent {
-                    current = parent_id.clone();
-                } else {
-                    break;
-                }
-            } else {
-                break;
-            }
+        let has_cycle = check_parent_cycle(nodes, id, &HashSet::new());
+        if has_cycle {
+            bail!("Circular parent chain detected involving node {id}");
         }
     }
+
+    // 2. Validate Edges and DAG
+    validate_edges_and_dag(doc)?;
+
+    Ok(())
+}
+
+#[allow(clippy::redundant_clone)]
+fn check_parent_cycle(
+    nodes: &im::HashMap<NodeId, crate::models::document::Node>,
+    current: &NodeId,
+    visited: &im::HashSet<NodeId>,
+) -> bool {
+    if visited.contains(current) {
+        return true;
+    }
+    let mut next_visited = visited.clone();
+    next_visited.insert(current.clone());
+
+    nodes
+        .get(current)
+        .and_then(|n| n.parent.as_ref())
+        .is_some_and(|parent| check_parent_cycle(nodes, parent, &next_visited))
+}
+
+/// Validate edges and DAG after parent chain validation
+fn validate_edges_and_dag(doc: &DiagramDocument) -> Result<()> {
+    let nodes = &doc.document.nodes;
+    let node_ids = nodes.keys().cloned().collect::<HashSet<NodeId>>();
 
     // 2. Validate Edges
     doc.document.edges.iter().try_for_each(|(id, edge)| {
@@ -66,6 +86,17 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
         if !node_ids.contains(&edge.target) {
             bail!("Edge {id:?} references non-existent target {}", edge.target);
         }
+        if edge.label_offset_t.0 < 0.0 || edge.label_offset_t.0 > 1.0 {
+            bail!(
+                "Edge {id:?} has label_offset_t {} outside valid range [0, 1]",
+                edge.label_offset_t.0
+            );
+        }
+        if let Some(ref color) = edge.color {
+            if !is_valid_hex_color(color) {
+                bail!("Edge {id:?} has invalid color format: {color}");
+            }
+        }
         Ok(())
     })?;
 
@@ -73,6 +104,29 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
     validate_dag(nodes, &doc.document.edges).map_err(|e| anyhow!("DAG Validation Failed: {e}"))?;
 
     Ok(())
+}
+
+fn is_valid_hex_color(color: &str) -> bool {
+    color.starts_with('#')
+        && match color.len() {
+            4 => {
+                // #RGB
+                color[1..].chars().all(|c| c.is_ascii_hexdigit())
+            }
+            7 => {
+                // #RRGGBB
+                color[1..].chars().all(|c| c.is_ascii_hexdigit())
+            }
+            5 => {
+                // #RGBA
+                color[1..].chars().all(|c| c.is_ascii_hexdigit())
+            }
+            9 => {
+                // #RRGGBBAA
+                color[1..].chars().all(|c| c.is_ascii_hexdigit())
+            }
+            _ => false,
+        }
 }
 
 #[cfg(test)]

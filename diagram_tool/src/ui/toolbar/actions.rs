@@ -3,7 +3,8 @@ use crate::layout::dag::{dag_layout, DagLayoutSettings};
 use crate::models::document::DiagramDocument;
 use crate::mutation::pipeline::run_mutation;
 use crate::ui::commands::{
-    apply_copy_selection, apply_delete_selected, apply_paste_selection, apply_redo, apply_undo,
+    apply_bring_forward, apply_bring_to_front, apply_copy_selection, apply_delete_selected,
+    apply_paste_selection, apply_redo, apply_send_backward, apply_send_to_back, apply_undo,
     apply_zoom_in, apply_zoom_out, apply_zoom_reset, clipboard_has_content,
 };
 use crate::ui::toast::ToastApi;
@@ -81,6 +82,22 @@ pub fn paste_selection(doc_signal: Signal<DiagramDocument>, history_signal: Sign
 
 pub fn can_paste() -> bool {
     clipboard_has_content()
+}
+
+pub fn bring_forward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_bring_forward(doc_signal, history_signal);
+}
+
+pub fn send_backward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_send_backward(doc_signal, history_signal);
+}
+
+pub fn bring_to_front(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_bring_to_front(doc_signal, history_signal);
+}
+
+pub fn send_to_back(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_send_to_back(doc_signal, history_signal);
 }
 
 pub fn toggle_grid(mut doc_signal: Signal<DiagramDocument>) {

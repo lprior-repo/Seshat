@@ -201,9 +201,13 @@ fn scale_selected_nodes(doc: &mut DiagramDocument, factor: f64) -> bool {
     let center_y = by + (bh / 2.0);
     let snap = doc.editor_state.snap_to_grid;
     let grid = doc.editor_state.grid_size;
+    let mut changed = false;
 
     for node_id in selected {
         if let Some(node) = doc.document.nodes.get_mut(&node_id) {
+            if node.locked && node.kind != NodeKind::Subgraph {
+                continue;
+            }
             let rel_x = node.x.0 - center_x;
             let rel_y = node.y.0 - center_y;
             let mut next_x = center_x + (rel_x * factor);
@@ -222,10 +226,11 @@ fn scale_selected_nodes(doc: &mut DiagramDocument, factor: f64) -> bool {
             node.y = OrderedFloat(next_y);
             node.width = OrderedFloat(next_w);
             node.height = OrderedFloat(next_h);
+            changed = true;
         }
     }
 
-    true
+    changed
 }
 
 fn apply_rubber_band_release(
@@ -368,7 +373,17 @@ fn flush_pending_pointer_update(
                 doc.editor_state.zoom.0,
             );
 
-            if !*did_move && has_drag_threshold(*anchor_client, (client_x, client_y)) {
+            let has_movable_nodes = original_positions.keys().any(|id| {
+                doc.document
+                    .nodes
+                    .get(id)
+                    .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+            });
+
+            if !*did_move
+                && has_movable_nodes
+                && has_drag_threshold(*anchor_client, (client_x, client_y))
+            {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc.clone());
                 *did_move = true;
@@ -438,7 +453,15 @@ fn flush_pending_pointer_update(
             let dx = snap_value(delta_x_raw, snap, grid);
             let dy = snap_value(delta_y_raw, snap, grid);
 
-            if !*did_resize && (dx != 0.0 || dy != 0.0) {
+            let has_resizable_nodes = originals.keys().any(|id| {
+                doc_for_mouse
+                    .document
+                    .nodes
+                    .get(id)
+                    .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+            });
+
+            if !*did_resize && has_resizable_nodes && (dx != 0.0 || dy != 0.0) {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc_for_mouse);
                 *did_resize = true;
@@ -499,6 +522,9 @@ fn flush_pending_pointer_update(
                 doc_signal.with_mut(|doc_mut| {
                     for (id, (ox, oy, ow, oh)) in originals.iter() {
                         if let Some(node) = doc_mut.document.nodes.get_mut(id) {
+                            if node.locked && node.kind != NodeKind::Subgraph {
+                                continue;
+                            }
                             let nxx = (ox - obx).mul_add(scale_x, nx);
                             let nyy = (oy - oby).mul_add(scale_y, ny);
                             let nww = (ow * scale_x).max(24.0);
@@ -2544,13 +2570,13 @@ pub fn Canvas() -> Element {
                                 disabled: !can_scale,
                                 onclick: move |_| {
                                     let current = doc_signal.read().clone();
-                                    let history = history_signal.read().clone();
-                                    *history_signal.write() = history.push(current);
-                                    doc_signal.with_mut(|d| {
-                                        if scale_selected_nodes(d, 0.8) {
-                                            d.revision = d.revision.increment();
-                                        }
-                                    });
+                                    let mut next = current.clone();
+                                    if scale_selected_nodes(&mut next, 0.8) {
+                                        next.revision = next.revision.increment();
+                                        let history = history_signal.read().clone();
+                                        *history_signal.write() = history.push(current);
+                                        *doc_signal.write() = next;
+                                    }
                                 },
                                 "Shrink"
                             }
@@ -2559,13 +2585,13 @@ pub fn Canvas() -> Element {
                                 disabled: !can_scale,
                                 onclick: move |_| {
                                     let current = doc_signal.read().clone();
-                                    let history = history_signal.read().clone();
-                                    *history_signal.write() = history.push(current);
-                                    doc_signal.with_mut(|d| {
-                                        if scale_selected_nodes(d, 1.25) {
-                                            d.revision = d.revision.increment();
-                                        }
-                                    });
+                                    let mut next = current.clone();
+                                    if scale_selected_nodes(&mut next, 1.25) {
+                                        next.revision = next.revision.increment();
+                                        let history = history_signal.read().clone();
+                                        *history_signal.write() = history.push(current);
+                                        *doc_signal.write() = next;
+                                    }
                                 },
                                 "Grow"
                             }

@@ -145,7 +145,7 @@ pub fn Toolbar() -> Element {
                 "data-zoom-percent": "{zoom_percent:.0}",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {ACCENT}; background: color-mix(in oklch, {ACCENT_SOFT} 65%, {BG_BASE}); color: {TEXT_MAIN}; min-width: 72px;",
                 onclick: move |_| {
-                    actions::zoom_reset(doc_signal, history_signal, viewport_size_signal)
+                    actions::zoom_reset(doc_signal, history_signal, viewport_size_signal);
                 },
                 title: "Reset zoom",
                 span {
@@ -182,6 +182,35 @@ pub fn Toolbar() -> Element {
                 onclick: move |_| actions::paste_selection(doc_signal, history_signal),
                 disabled: !actions::can_paste(),
                 "Paste"
+            }
+
+            button {
+                "data-testid": "toolbar-send-backward",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::send_backward(doc_signal, history_signal),
+                disabled: stats.selected_count == 0,
+                "Back"
+            }
+            button {
+                "data-testid": "toolbar-bring-forward",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::bring_forward(doc_signal, history_signal),
+                disabled: stats.selected_count == 0,
+                "Forward"
+            }
+            button {
+                "data-testid": "toolbar-send-to-back",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::send_to_back(doc_signal, history_signal),
+                disabled: stats.selected_count == 0,
+                "To Back"
+            }
+            button {
+                "data-testid": "toolbar-bring-to-front",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::bring_to_front(doc_signal, history_signal),
+                disabled: stats.selected_count == 0,
+                "To Front"
             }
 
             div { style: "width: 1px; height: 20px; background: {BORDER};" }

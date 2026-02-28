@@ -1,6 +1,8 @@
 #[cfg(target_arch = "wasm32")]
 use crate::backend::{save_workspace_to_backend, PersistedWorkspace};
 use crate::history::History;
+#[cfg(not(target_arch = "wasm32"))]
+use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
 use crate::ui::editor::ToolMode;
@@ -106,7 +108,7 @@ pub fn save_workspace(
                 None => {
                     let _ = toast_handle.dismiss();
                 }
-                Some(p) => match serde_json::to_string_pretty(&doc_snapshot) {
+                Some(p) => match to_canonical_pretty_json(&doc_snapshot) {
                     Ok(json_str) => match fs::write(&p, json_str.as_bytes()) {
                         Ok(()) => {
                             update_load_save_success(

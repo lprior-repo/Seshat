@@ -1,75 +1,285 @@
 {
-  "$comment": "TODO: Replace with real postconditions for DOC-009. This placeholder enforces only basic state shape and numeric ranges.",
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:whiteboard:contracts:doc:DOC-009:post:2",
+  "title": "Postcondition contract: DOC-009",
+  "$comment": "Concrete postcondition for DOC-009. Validates canonical persisted diagram state shape after command execution.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "version",
+    "revision",
+    "document",
+    "editor_state"
+  ],
   "$defs": {
-    "element": {
+    "node": {
+      "type": "object",
       "additionalProperties": true,
+      "required": [
+        "kind",
+        "label",
+        "x",
+        "y",
+        "width",
+        "height",
+        "locked",
+        "parent",
+        "tags",
+        "metadata",
+        "z_index"
+      ],
       "properties": {
-        "h": {
-          "maximum": 1000000000000.0,
-          "minimum": 0,
-          "type": "number"
+        "kind": {
+          "type": "string",
+          "enum": [
+            "node",
+            "subgraph",
+            "text"
+          ]
         },
-        "id": {
-          "maxLength": 128,
-          "minLength": 1,
+        "label": {
           "type": "string"
-        },
-        "rotation": {
-          "maximum": 3600,
-          "minimum": -3600,
-          "type": "number"
-        },
-        "type": {
-          "maxLength": 40,
-          "minLength": 1,
-          "type": "string"
-        },
-        "w": {
-          "maximum": 1000000000000.0,
-          "minimum": 0,
-          "type": "number"
         },
         "x": {
-          "maximum": 1000000000000.0,
-          "minimum": -1000000000000.0,
           "type": "number"
         },
         "y": {
-          "maximum": 1000000000000.0,
-          "minimum": -1000000000000.0,
           "type": "number"
-        }
-      },
-      "required": [
-        "id",
-        "type"
-      ],
-      "type": "object"
-    }
-  },
-  "$id": "urn:whiteboard:contracts:doc:DOC-009:post:1",
-  "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "additionalProperties": true,
-  "properties": {
-    "scene": {
-      "additionalProperties": true,
-      "properties": {
-        "elements": {
+        },
+        "width": {
+          "type": "number",
+          "minimum": 0
+        },
+        "height": {
+          "type": "number",
+          "minimum": 0
+        },
+        "fontSize": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "font_weight": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "locked": {
+          "type": "boolean"
+        },
+        "parent": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "dag_rank": {
+          "type": [
+            "integer",
+            "null"
+          ]
+        },
+        "tags": {
+          "type": "array",
           "items": {
-            "$ref": "#/$defs/element"
-          },
-          "type": "array"
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "z_index": {
+          "type": "integer"
+        },
+        "style": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "collapsed": {
+          "type": [
+            "boolean",
+            "null"
+          ]
         }
-      },
+      }
+    },
+    "edge": {
+      "type": "object",
+      "additionalProperties": true,
       "required": [
-        "elements"
+        "source",
+        "target",
+        "label",
+        "style",
+        "arrowType",
+        "label_offset_t",
+        "thickness",
+        "directed",
+        "bend_points",
+        "tags",
+        "metadata"
       ],
-      "type": "object"
+      "properties": {
+        "source": {
+          "type": "string",
+          "minLength": 1
+        },
+        "target": {
+          "type": "string",
+          "minLength": 1
+        },
+        "label": {
+          "type": "string"
+        },
+        "style": {
+          "type": "string"
+        },
+        "arrowType": {
+          "type": "string"
+        },
+        "label_offset_t": {
+          "type": "number"
+        },
+        "color": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "thickness": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "directed": {
+          "type": "boolean"
+        },
+        "bend_points": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "x",
+              "y"
+            ],
+            "properties": {
+              "x": {
+                "type": "number"
+              },
+              "y": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "metadata": {
+          "type": "object"
+        },
+        "fontSize": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "editor_state": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "camera_x",
+        "camera_y",
+        "zoom",
+        "grid_size",
+        "snap_to_grid",
+        "selected_items",
+        "theme",
+        "show_grid",
+        "minimap_visible"
+      ],
+      "properties": {
+        "camera_x": {
+          "type": "number"
+        },
+        "camera_y": {
+          "type": "number"
+        },
+        "zoom": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "grid_size": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "snap_to_grid": {
+          "type": "boolean"
+        },
+        "selected_items": {
+          "type": "array",
+          "items": {
+            "type": "string"
+          }
+        },
+        "editing_edge_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "theme": {
+          "type": "string"
+        },
+        "show_grid": {
+          "type": "boolean"
+        },
+        "minimap_visible": {
+          "type": "boolean"
+        }
+      }
     }
   },
-  "required": [
-    "scene"
-  ],
-  "title": "Postcondition placeholder: DOC-009",
-  "type": "object"
+  "properties": {
+    "version": {
+      "const": 2
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "document": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "nodes",
+        "edges"
+      ],
+      "properties": {
+        "nodes": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/node"
+          }
+        },
+        "edges": {
+          "type": "object",
+          "additionalProperties": {
+            "$ref": "#/$defs/edge"
+          }
+        }
+      }
+    },
+    "editor_state": {
+      "$ref": "#/$defs/editor_state"
+    }
+  }
 }

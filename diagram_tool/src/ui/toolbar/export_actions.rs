@@ -1,6 +1,7 @@
 #[cfg(not(target_arch = "wasm32"))]
 use crate::export::png::export_png as export_png_file;
 use crate::export::svg::generate_svg_string;
+use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::DiagramDocument;
 #[cfg(target_arch = "wasm32")]
 use crate::ui::toast::ToastIntent;
@@ -82,15 +83,16 @@ pub fn export_svg(doc_signal: Signal<DiagramDocument>) {
 
 pub fn export_json(doc_signal: Signal<DiagramDocument>) {
     let doc = doc_signal.read().clone();
-    if let Ok(json) = serde_json::to_vec_pretty(&doc) {
+    if let Ok(json) = to_canonical_pretty_json(&doc) {
+        let bytes = json.into_bytes();
         #[cfg(target_arch = "wasm32")]
         {
-            wasm_download_bytes("diagram.json", "application/json", &json);
+            wasm_download_bytes("diagram.json", "application/json", &bytes);
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
             if let Ok(mut file) = File::create("diagram.json") {
-                let _ = file.write_all(&json);
+                let _ = file.write_all(&bytes);
             }
         }
     }

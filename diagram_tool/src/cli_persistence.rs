@@ -13,6 +13,7 @@
 #![warn(clippy::pedantic)]
 #![forbid(unsafe_code)]
 
+use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::DiagramDocument;
 use crate::models::schema::validate_schema;
 use serde::Serialize;
@@ -191,7 +192,7 @@ pub fn save_workspace_atomic(
 
     let mut writer = BufWriter::new(temp_file);
 
-    let json_content = serde_json::to_string_pretty(doc)?;
+    let json_content = to_canonical_pretty_json(doc)?;
     writer.write_all(json_content.as_bytes())?;
     writer.flush()?;
 

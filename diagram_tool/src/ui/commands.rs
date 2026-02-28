@@ -14,6 +14,14 @@ use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 
+#[derive(Clone, Copy)]
+enum ZOrderOp {
+    BringForward,
+    SendBackward,
+    BringToFront,
+    SendToBack,
+}
+
 #[derive(Clone)]
 struct ClipboardState {
     nodes: Vec<(NodeId, Node)>,
@@ -62,6 +70,166 @@ fn selected_nodes_from_selection(
         .map(|id| NodeId::new(id.clone()))
         .filter(|id| nodes.contains_key(id))
         .collect()
+}
+
+fn ordered_layer_node_ids(doc: &DiagramDocument, subgraph_layer: bool) -> Vec<NodeId> {
+    let mut node_ids = doc
+        .document
+        .nodes
+        .iter()
+        .filter_map(|(id, node)| {
+            let is_subgraph = node.kind == NodeKind::Subgraph;
+            if is_subgraph == subgraph_layer {
+                Some(id.clone())
+            } else {
+                None
+            }
+        })
+        .collect::<Vec<_>>();
+
+    node_ids.sort_by(|a, b| {
+        doc.document
+            .nodes
+            .get(a)
+            .zip(doc.document.nodes.get(b))
+            .map_or(std::cmp::Ordering::Equal, |(na, nb)| {
+                (na.z_index, a.to_string()).cmp(&(nb.z_index, b.to_string()))
+            })
+    });
+
+    node_ids
+}
+
+fn apply_z_order_to_ids(ids: &mut Vec<NodeId>, selected: &BTreeSet<NodeId>, op: ZOrderOp) {
+    if ids.len() < 2 {
+        return;
+    }
+
+    match op {
+        ZOrderOp::BringForward => {
+            for idx in (0..(ids.len() - 1)).rev() {
+                let current_selected = selected.contains(&ids[idx]);
+                let next_selected = selected.contains(&ids[idx + 1]);
+                if current_selected && !next_selected {
+                    ids.swap(idx, idx + 1);
+                }
+            }
+        }
+        ZOrderOp::SendBackward => {
+            for idx in 1..ids.len() {
+                let current_selected = selected.contains(&ids[idx]);
+                let previous_selected = selected.contains(&ids[idx - 1]);
+                if current_selected && !previous_selected {
+                    ids.swap(idx - 1, idx);
+                }
+            }
+        }
+        ZOrderOp::BringToFront => {
+            let mut reordered = ids
+                .iter()
+                .filter(|id| !selected.contains(*id))
+                .cloned()
+                .collect::<Vec<_>>();
+            reordered.extend(ids.iter().filter(|id| selected.contains(*id)).cloned());
+            *ids = reordered;
+        }
+        ZOrderOp::SendToBack => {
+            let mut reordered = ids
+                .iter()
+                .filter(|id| selected.contains(*id))
+                .cloned()
+                .collect::<Vec<_>>();
+            reordered.extend(ids.iter().filter(|id| !selected.contains(*id)).cloned());
+            *ids = reordered;
+        }
+    }
+}
+
+fn apply_z_order_operation(
+    mut doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    op: ZOrderOp,
+) -> bool {
+    let current = doc_signal.read().clone();
+    let selected = selected_node_ids(&current)
+        .into_iter()
+        .filter(|id| {
+            current
+                .document
+                .nodes
+                .get(id)
+                .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+        })
+        .collect::<BTreeSet<_>>();
+    if selected.is_empty() {
+        return false;
+    }
+
+    let mut next = current.clone();
+    let mut changed = false;
+
+    for is_subgraph_layer in [false, true] {
+        let ordered = ordered_layer_node_ids(&next, is_subgraph_layer);
+        if ordered.len() < 2 {
+            continue;
+        }
+        let mut reordered = ordered.clone();
+        apply_z_order_to_ids(&mut reordered, &selected, op);
+        if reordered == ordered {
+            continue;
+        }
+
+        let min_z = ordered
+            .iter()
+            .filter_map(|id| next.document.nodes.get(id).map(|node| node.z_index))
+            .min()
+            .unwrap_or(0);
+
+        for (idx, id) in reordered.iter().enumerate() {
+            if let Some(node) = next.document.nodes.get_mut(id) {
+                node.z_index = min_z + idx as i64;
+            }
+        }
+
+        changed = true;
+    }
+
+    if !changed {
+        return false;
+    }
+
+    next.revision = next.revision.increment();
+    push_history(history_signal, current);
+    *doc_signal.write() = next;
+    true
+}
+
+pub fn apply_bring_forward(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+) -> bool {
+    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringForward)
+}
+
+pub fn apply_send_backward(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+) -> bool {
+    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendBackward)
+}
+
+pub fn apply_bring_to_front(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+) -> bool {
+    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringToFront)
+}
+
+pub fn apply_send_to_back(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+) -> bool {
+    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendToBack)
 }
 
 pub fn apply_select_all(mut doc_signal: Signal<DiagramDocument>) {
@@ -147,6 +315,9 @@ pub fn apply_nudge_selection(
     doc_signal.with_mut(|doc| {
         for node_id in selected_nodes {
             if let Some(node) = doc.document.nodes.get_mut(&node_id) {
+                if node.locked && node.kind != NodeKind::Subgraph {
+                    continue;
+                }
                 node.x = OrderedFloat(node.x.0 + dx);
                 node.y = OrderedFloat(node.y.0 + dy);
             }
@@ -250,13 +421,12 @@ pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
 ) -> bool {
-    push_history(history_signal, doc_signal.read().clone());
-    doc_signal.with_mut(|doc| {
-        if !paste_from_clipboard(doc) {
-            return false;
-        }
-        true
-    })
+    let current = doc_signal.read().clone();
+    let did_paste = doc_signal.with_mut(paste_from_clipboard);
+    if did_paste {
+        push_history(history_signal, current);
+    }
+    did_paste
 }
 
 fn paste_from_clipboard(doc: &mut DiagramDocument) -> bool {
@@ -885,6 +1055,50 @@ mod tests {
             assert_eq!(p.x.0, 120.0);
             assert_eq!(p.y.0, 70.0);
         }
+    }
+
+    #[test]
+    fn given_selected_middle_node_when_bring_to_front_then_relative_order_preserved() {
+        let mut ids = vec![
+            NodeId::new(String::from("a")),
+            NodeId::new(String::from("b")),
+            NodeId::new(String::from("c")),
+        ];
+        let mut selected = BTreeSet::new();
+        let _ = selected.insert(NodeId::new(String::from("b")));
+
+        apply_z_order_to_ids(&mut ids, &selected, ZOrderOp::BringToFront);
+
+        assert_eq!(
+            ids,
+            vec![
+                NodeId::new(String::from("a")),
+                NodeId::new(String::from("c")),
+                NodeId::new(String::from("b")),
+            ]
+        );
+    }
+
+    #[test]
+    fn given_selected_middle_node_when_send_to_back_then_relative_order_preserved() {
+        let mut ids = vec![
+            NodeId::new(String::from("a")),
+            NodeId::new(String::from("b")),
+            NodeId::new(String::from("c")),
+        ];
+        let mut selected = BTreeSet::new();
+        let _ = selected.insert(NodeId::new(String::from("b")));
+
+        apply_z_order_to_ids(&mut ids, &selected, ZOrderOp::SendToBack);
+
+        assert_eq!(
+            ids,
+            vec![
+                NodeId::new(String::from("b")),
+                NodeId::new(String::from("a")),
+                NodeId::new(String::from("c")),
+            ]
+        );
     }
 }
 

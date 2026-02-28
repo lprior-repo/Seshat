@@ -74,6 +74,7 @@ pub fn parse_diagram_document_with_compat(contents: &str) -> Result<DiagramDocum
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
+    use crate::models::canonical_json::to_canonical_pretty_json;
     use crate::models::document::DiagramDocument;
 
     #[test]
@@ -182,5 +183,108 @@ mod tests {
 
         let loaded = super::parse_diagram_document_with_compat(json);
         assert!(loaded.is_ok(), "{:?}", loaded.err());
+    }
+
+    #[test]
+    fn given_equivalent_legacy_aliases_when_parsed_then_canonical_json_is_identical() {
+        let legacy_a = r#"{
+          "version": 2,
+          "revision": 0,
+          "document": {
+            "nodes": {
+              "n1": {
+                "id": "n1",
+                "kind": "node",
+                "icon": "",
+                "label": "A",
+                "x": 0,
+                "y": 0,
+                "width": 80,
+                "height": 60,
+                "locked": false,
+                "parent": null,
+                "tags": [],
+                "metadata": {},
+                "font_size": 12,
+                "dagRank": 7
+              }
+            },
+            "edges": {
+              "e1": {
+                "id": "e1",
+                "source": "n1",
+                "target": "n1",
+                "label": "",
+                "style": "solid",
+                "arrow_type": "diamond",
+                "labelOffsetT": 0.25,
+                "bendPoints": [],
+                "directed": true,
+                "metadata": {}
+              }
+            }
+          },
+          "editor_state": {
+            "camera_x": 0,
+            "camera_y": 0,
+            "zoom": 1,
+            "grid_size": 20,
+            "snap_to_grid": true,
+            "selected_items": []
+          }
+        }"#;
+
+        let legacy_b = r#"{
+          "version": 2,
+          "revision": 0,
+          "document": {
+            "nodes": {
+              "n1": {
+                "kind": "node",
+                "icon": "",
+                "label": "A",
+                "x": 0,
+                "y": 0,
+                "width": 80,
+                "height": 60,
+                "locked": false,
+                "parent": null,
+                "tags": [],
+                "metadata": {},
+                "fontSize": 12,
+                "dag_rank": 7
+              }
+            },
+            "edges": {
+              "e1": {
+                "source": "n1",
+                "target": "n1",
+                "label": "",
+                "style": "solid",
+                "arrowType": "step",
+                "label_offset_t": 0.25,
+                "bend_points": [],
+                "directed": true,
+                "metadata": {}
+              }
+            }
+          },
+          "editor_state": {
+            "camera_x": 0,
+            "camera_y": 0,
+            "zoom": 1,
+            "grid_size": 20,
+            "snap_to_grid": true,
+            "selected_items": []
+          }
+        }"#;
+
+        let parsed_a = super::parse_diagram_document_with_compat(legacy_a).unwrap();
+        let parsed_b = super::parse_diagram_document_with_compat(legacy_b).unwrap();
+
+        let canonical_a = to_canonical_pretty_json(&parsed_a).unwrap();
+        let canonical_b = to_canonical_pretty_json(&parsed_b).unwrap();
+
+        assert_eq!(canonical_a, canonical_b);
     }
 }

@@ -27,7 +27,7 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
         "<svg xmlns='http://www.w3.org/2000/svg' viewBox='{view_min_x} {view_min_y} {width} {height}' width='{width}' height='{height}'>"
     );
 
-    // Edges
+    // Edges (rendered first, below nodes)
     doc.document.edges.values().for_each(|edge| {
         if let Some((src, tgt)) = doc
             .document
@@ -39,15 +39,20 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             let sy = src.y.0 + src.height.0 / 2.0;
             let tx = tgt.x.0 + tgt.width.0 / 2.0;
             let ty = tgt.y.0 + tgt.height.0 / 2.0;
+            let stroke_color = edge.color.as_deref().unwrap_or("black");
             let _ = write!(
                 &mut svg,
-                "<line x1='{sx}' y1='{sy}' x2='{tx}' y2='{ty}' stroke='black' stroke-width='2' />"
+                "<line x1='{sx}' y1='{sy}' x2='{tx}' y2='{ty}' stroke='{}' stroke-width='{}' />",
+                stroke_color, edge.thickness.0
             );
         }
     });
 
-    // Nodes
-    doc.document.nodes.values().for_each(|node| {
+    // Nodes sorted by z_index for proper layering
+    let mut nodes: Vec<_> = doc.document.nodes.values().collect();
+    nodes.sort_by_key(|node| node.z_index);
+
+    nodes.iter().for_each(|node| {
         let _ = write!(&mut svg, "<g transform='translate({}, {})'>", node.x.0, node.y.0);
         let _ = write!(
             &mut svg,
