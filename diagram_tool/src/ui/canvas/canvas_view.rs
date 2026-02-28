@@ -411,8 +411,10 @@ pub(super) fn subgraph_preview_overlay(
 }
 
 pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<EdgeId> {
-    let hit_radius_world = 8.0;
-    let endpoint_hit_radius_world = 10.0;
+    let zoom = doc.editor_state.zoom.0.max(0.1);
+    // Scale hit radius by zoom to maintain consistent screen-space hit testing
+    let hit_radius_world = 8.0 / zoom;
+    let endpoint_hit_radius_world = 10.0 / zoom;
     doc.document
         .edges
         .iter()
