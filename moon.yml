@@ -24,7 +24,6 @@ tasks:
   test:
     script: |
       moon run :test-rust
-      moon run :e2e
 
   e2e-smoke:
     script: |

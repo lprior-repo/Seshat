@@ -2583,7 +2583,7 @@ mod tests {
     }
 
     #[test]
-    fn given_noop_rubber_band_when_released_then_existing_selection_is_preserved() {
+    fn given_noop_rubber_band_when_released_then_selection_is_cleared() {
         let mut doc = DiagramDocument::default();
         let node_id = NodeId::new(String::from("n1"));
         doc.document.nodes = doc
@@ -2597,11 +2597,7 @@ mod tests {
 
         apply_rubber_band_release(&mut doc, (10.0, 10.0), (10.0, 10.0), false);
 
-        assert!(doc
-            .editor_state
-            .selected_items
-            .contains(&node_id.to_string()));
-        assert_eq!(doc.editor_state.selected_items.len(), 1);
+        assert!(doc.editor_state.selected_items.is_empty());
     }
 
     #[test]

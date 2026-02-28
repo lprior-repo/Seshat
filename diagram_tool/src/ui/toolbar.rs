@@ -233,9 +233,8 @@ pub fn Toolbar() -> Element {
 
             for (label, stable_test_id, enabled, setter) in [
                 ("Icons", "panel-icons-toggle", panel_visibility.read().sidebar, 0_u8),
-                ("Props", "panel-props-toggle", panel_visibility.read().properties, 1_u8),
-                ("Mini", "panel-mini-toggle", panel_visibility.read().minimap, 2_u8),
-                ("Valid", "panel-valid-toggle", panel_visibility.read().validation, 3_u8),
+                ("Mini", "panel-mini-toggle", panel_visibility.read().minimap, 1_u8),
+                ("Valid", "panel-valid-toggle", panel_visibility.read().validation, 2_u8),
             ] {
                 {
                     let bg = if enabled { ACCENT_SOFT } else { BG_BASE };
@@ -248,8 +247,7 @@ pub fn Toolbar() -> Element {
                                 panel_visibility.with_mut(|panels| {
                                     match setter {
                                         0 => panels.sidebar = !panels.sidebar,
-                                        1 => panels.properties = !panels.properties,
-                                        2 => panels.minimap = !panels.minimap,
+                                        1 => panels.minimap = !panels.minimap,
                                         _ => panels.validation = !panels.validation,
                                     }
                                 });

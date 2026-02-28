@@ -231,13 +231,12 @@ pub(super) fn selection_handles_overlay(
         let (sx, sy) = to_screen_coords(bx, by, s.camera_x.0, s.camera_y.0, s.zoom.0);
         let sw = bw * s.zoom.0;
         let sh = bh * s.zoom.0;
-        let is_multi = selected_count >= 2;
-        let pad = if is_multi { 6.0 } else { 4.0 };
-        let box_w = (2.0_f64).mul_add(pad, sw);
-        let box_h = (2.0_f64).mul_add(pad, sh);
-        let hs = if is_multi { 8.0 } else { 7.0 };
+        let pad = 4.0;
+        let box_w = sw + (2.0 * pad);
+        let box_h = sh + (2.0 * pad);
+        let hs = 7.0;
 
-        let corner_handles = [
+        let handles = [
             (
                 ResizeHandle::Nw,
                 sx - pad,
@@ -268,49 +267,10 @@ pub(super) fn selection_handles_overlay(
             ),
         ];
 
-        let edge_handles = [
-            (
-                ResizeHandle::N,
-                sx + (sw / 2.0),
-                sy - pad,
-                "ns-resize",
-                "resize-handle-n",
-            ),
-            (
-                ResizeHandle::E,
-                sx + sw + pad,
-                sy + (sh / 2.0),
-                "ew-resize",
-                "resize-handle-e",
-            ),
-            (
-                ResizeHandle::S,
-                sx + (sw / 2.0),
-                sy + sh + pad,
-                "ns-resize",
-                "resize-handle-s",
-            ),
-            (
-                ResizeHandle::W,
-                sx - pad,
-                sy + (sh / 2.0),
-                "ew-resize",
-                "resize-handle-w",
-            ),
-        ];
-
-        let handles: Vec<_> = if is_multi {
-            corner_handles.iter().chain(edge_handles.iter()).collect()
-        } else {
-            corner_handles.iter().collect()
-        };
-
         rsx! {
-            if is_multi {
-                div {
-                    "data-testid": "selection-bounds",
-                    style: "position:absolute; left:{sx - pad}px; top:{sy - pad}px; width:{box_w}px; height:{box_h}px; border:{SELECTION_BOUNDS_STROKE}; pointer-events:none; z-index:15;"
-                }
+            div {
+                "data-testid": "selection-bounds",
+                style: "position:absolute; left:{sx - pad}px; top:{sy - pad}px; width:{box_w}px; height:{box_h}px; border:{SELECTION_BOUNDS_STROKE}; pointer-events:none; z-index:15;"
             }
             if !selected_nodes.is_empty() {
                 for (handle, hx, hy, cursor, stable_test_id) in handles {

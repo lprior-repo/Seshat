@@ -14,7 +14,6 @@ use crate::ui::editor::ToolMode;
 use crate::ui::minimap::Minimap;
 use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
 use crate::ui::panels::PanelVisibility;
-use crate::ui::properties::PropertiesPanel;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
@@ -176,13 +175,9 @@ pub fn App() -> Element {
                         Minimap {}
                     }
                 }
-                if panels.read().properties {
-                    PropertiesPanel {}
+                if panels.read().validation {
+                    ValidationPanel { issues: validation_issues }
                 }
-            }
-
-            if panels.read().validation {
-                ValidationPanel { issues: validation_issues }
             }
         }
     }

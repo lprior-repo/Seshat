@@ -9,7 +9,6 @@
 #[allow(clippy::struct_excessive_bools)]
 pub struct PanelVisibility {
     pub sidebar: bool,
-    pub properties: bool,
     pub minimap: bool,
     pub validation: bool,
 }
@@ -18,7 +17,6 @@ impl Default for PanelVisibility {
     fn default() -> Self {
         Self {
             sidebar: true,
-            properties: true,
             minimap: true,
             validation: false,
         }
@@ -30,8 +28,10 @@ mod tests {
     use super::PanelVisibility;
 
     #[test]
-    fn given_default_panel_visibility_when_created_then_properties_is_visible() {
+    fn given_default_panel_visibility_when_created_then_sidebar_and_minimap_visible() {
         let panels = PanelVisibility::default();
-        assert!(panels.properties);
+        assert!(panels.sidebar);
+        assert!(panels.minimap);
+        assert!(!panels.validation);
     }
 }
