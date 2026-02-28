@@ -234,6 +234,7 @@ fn apply_rubber_band_release(
     additive: bool,
 ) {
     if !has_drag_threshold(start, current) {
+        doc.editor_state.selected_items.clear();
         return;
     }
 
