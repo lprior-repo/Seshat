@@ -3,20 +3,17 @@ import {
   clearCanvasOverlays,
   createTextNode,
   expectNodeCount,
+  freshStart,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 test.describe("diagram undo and redo", () => {
   test("restores node counts across undo and redo", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffectsSequential([

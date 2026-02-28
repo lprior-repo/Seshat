@@ -5,11 +5,11 @@ import {
   expectEdgeCount,
   expectNodeCount,
   expectSelectedCount,
+  freshStart,
   nodeCenters,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 async function canvasPoint(
@@ -26,10 +26,7 @@ async function canvasPoint(
 }
 
 async function loadDiagram(page: Page) {
-  await runEffectsSequential([
-    () => page.goto("/", { waitUntil: "domcontentloaded" }),
-    () => waitForUiReady(page),
-  ]);
+  await freshStart(page);
 }
 
 test.describe("diagram mode-switch race hardening", () => {

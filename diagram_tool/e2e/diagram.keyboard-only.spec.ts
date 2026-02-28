@@ -6,19 +6,15 @@ import {
   expectEdgeCount,
   expectNodeCount,
   expectSelectedCount,
+  freshStart,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
-  waitForUiReady,
   zoomPercent,
 } from "./helpers";
 
 async function bootEditor(page: Page) {
-  await runEffectsSequential([
-    () => page.addInitScript(() => window.localStorage.clear()),
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-  ]);
+  await freshStart(page);
 }
 
 function toolButton(page: Page, label: string): Locator {

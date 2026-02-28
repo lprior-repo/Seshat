@@ -4,18 +4,15 @@ import {
   clearCanvasOverlays,
   createTextNode,
   expectSelectedCount,
-  runEffectsSequential,
+  freshStart,
   runEffect,
+  runEffectsSequential,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 async function setupFreshPage(page: Page): Promise<Locator> {
-  await runEffectsSequential([
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-    () => clearCanvasOverlays(page),
-  ]);
+  await freshStart(page);
+  await clearCanvasOverlays(page);
   return canvas(page);
 }
 

@@ -2,12 +2,12 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   nodeCount,
-  runEffectsSequential,
   runEffect,
+  runEffectsSequential,
   selectedCount,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -25,11 +25,8 @@ async function eastHandle(canvas: Locator): Promise<Box> {
 }
 
 async function setupSingleNode(page: Page) {
-  await runEffectsSequential([
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-    () => clearCanvasOverlays(page),
-  ]);
+  await freshStart(page);
+  await clearCanvasOverlays(page);
 
   const canvas = page.getByTestId("canvas-root");
   await runEffect(() => createTextNode(page, canvas, 680, 300));
