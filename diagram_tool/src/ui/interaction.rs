@@ -6,6 +6,7 @@
 #![forbid(unsafe_code)]
 
 use crate::models::document::{DiagramDocument, NodeId};
+use crate::ui::grid::{snap_point as grid_snap_point, snap_value as grid_snap_value, GridSize};
 use im::{HashMap, HashSet};
 
 const DRAG_THRESHOLD_PX: f64 = 3.0;
@@ -94,21 +95,19 @@ pub fn node_ids_in_rect_with_mode(
 }
 
 #[must_use]
+#[allow(dead_code)]
+#[deprecated(since = "0.1.0", note = "Use crate::ui::grid::snap_value instead")]
 pub fn snap_value(value: f64, snap_to_grid: bool, grid_size: f64) -> f64 {
-    if !snap_to_grid {
-        return value;
-    }
-
-    let step = grid_size.max(1.0);
-    (value / step).round() * step
+    let grid = GridSize::new(grid_size).unwrap_or_default();
+    grid_snap_value(value, snap_to_grid, grid)
 }
 
 #[must_use]
+#[allow(dead_code)]
+#[deprecated(since = "0.1.0", note = "Use crate::ui::grid::snap_point instead")]
 pub fn snap_point(point: (f64, f64), snap_to_grid: bool, grid_size: f64) -> (f64, f64) {
-    (
-        snap_value(point.0, snap_to_grid, grid_size),
-        snap_value(point.1, snap_to_grid, grid_size),
-    )
+    let grid = GridSize::new(grid_size).unwrap_or_default();
+    grid_snap_point(point, snap_to_grid, grid)
 }
 
 #[must_use]
@@ -118,7 +117,7 @@ pub fn dragged_positions(
     anchor: (f64, f64),
     current: (f64, f64),
 ) -> HashMap<NodeId, (f64, f64)> {
-    dragged_positions_with_snap(originals, anchor, current, false, 1.0)
+    dragged_positions_with_snap(originals, anchor, current, false, GridSize::default())
 }
 
 #[must_use]
@@ -127,11 +126,11 @@ pub fn dragged_positions_with_snap(
     anchor: (f64, f64),
     current: (f64, f64),
     snap_to_grid: bool,
-    grid_size: f64,
+    grid_size: GridSize,
 ) -> HashMap<NodeId, (f64, f64)> {
     let dx = current.0 - anchor.0;
     let dy = current.1 - anchor.1;
-    let (dx, dy) = snap_point((dx, dy), snap_to_grid, grid_size);
+    let (dx, dy) = grid_snap_point((dx, dy), snap_to_grid, grid_size);
     originals
         .iter()
         .fold(HashMap::new(), |acc, (id, (ox, oy))| {
@@ -201,7 +200,7 @@ pub fn with_auto_selected_edges(
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used, deprecated)]
 mod tests {
     use super::{
         dragged_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
@@ -212,6 +211,7 @@ mod tests {
         DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId, NodeKind,
         NodeStyle, OrderedFloat, Revision,
     };
+    use crate::ui::grid::GridSize;
     use im::{HashMap, HashSet};
 
     fn node(x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -293,7 +293,8 @@ mod tests {
     #[test]
     fn given_snap_enabled_when_dragging_then_positions_use_grid_delta() {
         let originals = HashMap::new().update(NodeId::new(String::from("a")), (3.0, 7.0));
-        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (14.0, 26.0), true, 20.0);
+        let grid = GridSize::new(20.0).unwrap();
+        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (14.0, 26.0), true, grid);
         let pos = updated.get(&NodeId::new(String::from("a"))).copied();
         assert_eq!(pos, Some((23.0, 27.0)));
     }
@@ -457,8 +458,10 @@ mod tests {
 }
 
 #[cfg(test)]
+#[allow(deprecated)]
 mod proptests {
     use super::*;
+    use crate::ui::grid::GridSize;
     use proptest::prelude::*;
 
     prop_compose! {
@@ -542,7 +545,7 @@ mod proptests {
             let originals = HashMap::new()
                 .update(NodeId::new("a".to_string()), (x1, y1))
                 .update(NodeId::new("b".to_string()), (x2, y2));
-            let result = dragged_positions_with_snap(&originals, anchor, current, false, 20.0);
+            let result = dragged_positions_with_snap(&originals, anchor, current, false, GridSize::default());
             prop_assert_eq!(result.len(), originals.len());
         }
 
@@ -553,7 +556,7 @@ mod proptests {
         ) {
             let originals = HashMap::new()
                 .update(NodeId::new("a".to_string()), (x, y));
-            let result = dragged_positions_with_snap(&originals, point, point, false, 20.0);
+            let result = dragged_positions_with_snap(&originals, point, point, false, GridSize::default());
             let pos = result.get(&NodeId::new("a".to_string()));
             if let Some((rx, ry)) = pos {
                 prop_assert!((rx - x).abs() < f64::EPSILON);
@@ -568,7 +571,7 @@ mod proptests {
         ) {
             let originals = HashMap::new()
                 .update(NodeId::new("a".to_string()), (x, y));
-            let result = dragged_positions_with_snap(&originals, (f64::NAN, f64::NAN), current, false, 20.0);
+            let result = dragged_positions_with_snap(&originals, (f64::NAN, f64::NAN), current, false, GridSize::default());
             let pos = result.get(&NodeId::new("a".to_string()));
             if let Some((rx, ry)) = pos {
                 if x.is_finite() && y.is_finite() {

@@ -5,6 +5,7 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
+use crate::ui::grid::GridSize;
 use im::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -267,8 +268,8 @@ pub struct EditorState {
     pub camera_x: OrderedFloat,
     pub camera_y: OrderedFloat,
     pub zoom: OrderedFloat,
-    #[serde(default = "default_grid_size")]
-    pub grid_size: OrderedFloat,
+    #[serde(default)]
+    pub grid_size: GridSize,
     #[serde(default = "default_snap")]
     pub snap_to_grid: bool,
     #[serde(default)]
@@ -289,7 +290,7 @@ impl Default for EditorState {
             camera_x: OrderedFloat(0.0),
             camera_y: OrderedFloat(0.0),
             zoom: OrderedFloat(1.0),
-            grid_size: default_grid_size(),
+            grid_size: GridSize::default(),
             snap_to_grid: true,
             selected_items: im::HashSet::new(),
             editing_edge_id: None,
@@ -298,10 +299,6 @@ impl Default for EditorState {
             minimap_visible: false,
         }
     }
-}
-
-const fn default_grid_size() -> OrderedFloat {
-    OrderedFloat(20.0)
 }
 
 const fn default_snap() -> bool {

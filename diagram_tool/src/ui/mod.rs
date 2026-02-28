@@ -1,6 +1,7 @@
 pub mod canvas;
 pub mod commands;
 pub mod editor;
+pub mod grid;
 pub mod interaction;
 pub mod minimap;
 pub mod mobile;
