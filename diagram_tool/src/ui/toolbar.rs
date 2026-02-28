@@ -143,7 +143,9 @@ pub fn Toolbar() -> Element {
                 "data-testid": "zoom-reset",
                 "data-zoom-percent": "{zoom_percent:.0}",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {ACCENT}; background: color-mix(in oklch, {ACCENT_SOFT} 65%, {BG_BASE}); color: {TEXT_MAIN}; min-width: 72px;",
-                onclick: move |_| actions::zoom_reset(doc_signal, history_signal),
+                onclick: move |_| {
+                    actions::zoom_reset(doc_signal, history_signal, viewport_size_signal)
+                },
                 title: "Reset zoom",
                 span {
                     "data-testid": "zoom-percent",
@@ -262,6 +264,21 @@ pub fn Toolbar() -> Element {
                             },
                             "{label}"
                         }
+                    }
+                }
+            }
+
+            {
+                let grid_enabled = doc_signal.read().editor_state.show_grid;
+                let grid_bg = if grid_enabled { ACCENT_SOFT } else { BG_BASE };
+                let grid_border = if grid_enabled { format!("1px solid {ACCENT}") } else { format!("1px solid {BORDER}") };
+                rsx! {
+                    button {
+                        "data-testid": "grid-toggle",
+                        "data-checked": "{grid_enabled}",
+                        style: "padding: 6px 8px; cursor: pointer; border-radius: 6px; border: {grid_border}; background: {grid_bg}; color: {TEXT_MAIN}; font-size: 11px;",
+                        onclick: move |_| actions::toggle_grid(doc_signal),
+                        "Grid"
                     }
                 }
             }

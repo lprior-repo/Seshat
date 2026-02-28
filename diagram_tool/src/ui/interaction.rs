@@ -98,7 +98,8 @@ pub fn node_ids_in_rect_with_mode(
 #[allow(dead_code)]
 #[deprecated(since = "0.1.0", note = "Use crate::ui::grid::snap_value instead")]
 pub fn snap_value(value: f64, snap_to_grid: bool, grid_size: f64) -> f64 {
-    let grid = GridSize::new(grid_size).unwrap_or_default();
+    let clamped = grid_size.clamp(GridSize::MIN, GridSize::MAX);
+    let grid = GridSize::new(clamped).unwrap_or_default();
     grid_snap_value(value, snap_to_grid, grid)
 }
 
@@ -106,7 +107,8 @@ pub fn snap_value(value: f64, snap_to_grid: bool, grid_size: f64) -> f64 {
 #[allow(dead_code)]
 #[deprecated(since = "0.1.0", note = "Use crate::ui::grid::snap_point instead")]
 pub fn snap_point(point: (f64, f64), snap_to_grid: bool, grid_size: f64) -> (f64, f64) {
-    let grid = GridSize::new(grid_size).unwrap_or_default();
+    let clamped = grid_size.clamp(GridSize::MIN, GridSize::MAX);
+    let grid = GridSize::new(clamped).unwrap_or_default();
     grid_snap_point(point, snap_to_grid, grid)
 }
 
@@ -496,7 +498,7 @@ mod proptests {
         #[test]
         fn prop_snap_value_enabled_is_multiple_of_grid(value in arb_finite_f64(), grid in arb_positive_f64()) {
             let result = snap_value(value, true, grid);
-            let effective_grid = grid.max(1.0);
+            let effective_grid = grid.clamp(GridSize::MIN, GridSize::MAX).max(1.0);
             let remainder = (result / effective_grid).round() * effective_grid - result;
             prop_assert!(remainder.abs() < f64::EPSILON || !result.is_finite());
         }

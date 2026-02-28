@@ -23,6 +23,6 @@ pub enum LockError {
 
 impl From<crate::mutation::error::MutationError> for LockError {
     fn from(err: crate::mutation::error::MutationError) -> Self {
-        LockError::MutationError(err.to_string())
+        Self::MutationError(err.to_string())
     }
 }

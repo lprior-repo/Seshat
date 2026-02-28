@@ -729,7 +729,8 @@ pub fn Canvas() -> Element {
                             let _ = apply_zoom_out(doc_signal, history_signal, viewport_size_now);
                         }
                         "0" if !modifier => {
-                            let _ = apply_zoom_reset(doc_signal, history_signal);
+                            let viewport_size_now = *viewport_size.read();
+                            let _ = apply_zoom_reset(doc_signal, history_signal, viewport_size_now);
                         }
                         "v" | "V" if !modifier => tool_signal.set(ToolMode::Select),
                         "h" | "H" if !modifier => tool_signal.set(ToolMode::Pan),
@@ -941,14 +942,12 @@ pub fn Canvas() -> Element {
                     const ro = new ResizeObserver(() => scheduleNotify());
                     ro.observe(target);
 
-                    // Removed scroll event listener - ResizeObserver handles position changes
-                    // from layout shifts, and window resize events handle viewport changes.
-                    // This prevents issues with scroll events from unrelated page elements.
-
                     window.addEventListener('resize', scheduleNotify, { passive: true });
+                    window.addEventListener('scroll', scheduleNotify, { passive: true, capture: true });
                     window.__seshat_canvas_resize_cleanup = () => {
                         ro.disconnect();
                         window.removeEventListener('resize', scheduleNotify);
+                        window.removeEventListener('scroll', scheduleNotify, true);
                         if (rafId !== 0) {
                             window.cancelAnimationFrame(rafId);
                         }

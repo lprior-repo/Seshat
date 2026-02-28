@@ -478,14 +478,18 @@ fn selected_subgraphs_for_ungroup(doc: &DiagramDocument) -> BTreeSet<NodeId> {
         .collect::<BTreeSet<_>>()
 }
 
-fn zoom_to_center(doc: &mut DiagramDocument, factor: f64, viewport_size: (f64, f64)) -> bool {
+fn set_zoom_centered(
+    doc: &mut DiagramDocument,
+    target_zoom: f64,
+    viewport_size: (f64, f64),
+) -> bool {
     let raw_old_zoom = doc.editor_state.zoom.0;
     let old_zoom = if raw_old_zoom.is_finite() && raw_old_zoom > f64::EPSILON {
         raw_old_zoom
     } else {
         1.0
     };
-    let new_zoom = (old_zoom * factor).clamp(0.1, 4.0);
+    let new_zoom = target_zoom.clamp(0.1, 4.0);
     if (new_zoom - old_zoom).abs() < f64::EPSILON {
         return false;
     }
@@ -502,6 +506,16 @@ fn zoom_to_center(doc: &mut DiagramDocument, factor: f64, viewport_size: (f64, f
     doc.editor_state.camera_y.0 = (cy - doc.editor_state.camera_y.0).mul_add(-factor, cy);
     doc.editor_state.zoom.0 = new_zoom;
     true
+}
+
+fn zoom_to_center(doc: &mut DiagramDocument, factor: f64, viewport_size: (f64, f64)) -> bool {
+    let raw_old_zoom = doc.editor_state.zoom.0;
+    let old_zoom = if raw_old_zoom.is_finite() && raw_old_zoom > f64::EPSILON {
+        raw_old_zoom
+    } else {
+        1.0
+    };
+    set_zoom_centered(doc, old_zoom * factor, viewport_size)
 }
 
 pub fn apply_zoom_in(
@@ -550,6 +564,7 @@ pub fn apply_zoom_out(
 pub fn apply_zoom_reset(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    viewport_size: (f64, f64),
 ) -> bool {
     let changed = (doc_signal.read().editor_state.zoom.0 - 1.0).abs() >= f64::EPSILON;
     if !changed {
@@ -558,7 +573,7 @@ pub fn apply_zoom_reset(
 
     push_history(history_signal, doc_signal.read().clone());
     doc_signal.with_mut(|doc| {
-        doc.editor_state.zoom.0 = 1.0;
+        let _ = set_zoom_centered(doc, 1.0, viewport_size);
         doc.revision = doc.revision.increment();
     });
     true

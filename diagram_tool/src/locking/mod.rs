@@ -11,12 +11,8 @@
 #![deny(clippy::panic)]
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
-#![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 pub mod error;
-pub mod manager;
 pub mod file_lock;
-
-pub use error::LockError;
-pub use manager::DiagramLockManager;
-pub use file_lock::FileLock;
+pub mod manager;

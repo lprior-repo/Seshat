@@ -58,8 +58,13 @@ pub fn zoom_out(
     let _ = apply_zoom_out(doc_signal, history_signal, viewport_size);
 }
 
-pub fn zoom_reset(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_zoom_reset(doc_signal, history_signal);
+pub fn zoom_reset(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    viewport_size_signal: Signal<(f64, f64)>,
+) {
+    let viewport_size = *viewport_size_signal.read();
+    let _ = apply_zoom_reset(doc_signal, history_signal, viewport_size);
 }
 
 pub fn delete_selection(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
@@ -76,4 +81,10 @@ pub fn paste_selection(doc_signal: Signal<DiagramDocument>, history_signal: Sign
 
 pub fn can_paste() -> bool {
     clipboard_has_content()
+}
+
+pub fn toggle_grid(mut doc_signal: Signal<DiagramDocument>) {
+    doc_signal.with_mut(|doc| {
+        doc.editor_state.show_grid = !doc.editor_state.show_grid;
+    });
 }
