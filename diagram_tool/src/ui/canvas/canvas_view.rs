@@ -236,20 +236,14 @@ pub(super) fn selection_handles_overlay(
         let box_w = (2.0_f64).mul_add(pad, sw);
         let box_h = (2.0_f64).mul_add(pad, sh);
         let hs = if is_multi { 8.0 } else { 7.0 };
-        let handles = [
+
+        let corner_handles = [
             (
                 ResizeHandle::Nw,
                 sx - pad,
                 sy - pad,
                 "nwse-resize",
                 "resize-handle-nw",
-            ),
-            (
-                ResizeHandle::N,
-                sx + (sw / 2.0),
-                sy - pad,
-                "ns-resize",
-                "resize-handle-n",
             ),
             (
                 ResizeHandle::Ne,
@@ -259,18 +253,35 @@ pub(super) fn selection_handles_overlay(
                 "resize-handle-ne",
             ),
             (
-                ResizeHandle::E,
-                sx + sw + pad,
-                sy + (sh / 2.0),
-                "ew-resize",
-                "resize-handle-e",
-            ),
-            (
                 ResizeHandle::Se,
                 sx + sw + pad,
                 sy + sh + pad,
                 "nwse-resize",
                 "resize-handle-se",
+            ),
+            (
+                ResizeHandle::Sw,
+                sx - pad,
+                sy + sh + pad,
+                "nesw-resize",
+                "resize-handle-sw",
+            ),
+        ];
+
+        let edge_handles = [
+            (
+                ResizeHandle::N,
+                sx + (sw / 2.0),
+                sy - pad,
+                "ns-resize",
+                "resize-handle-n",
+            ),
+            (
+                ResizeHandle::E,
+                sx + sw + pad,
+                sy + (sh / 2.0),
+                "ew-resize",
+                "resize-handle-e",
             ),
             (
                 ResizeHandle::S,
@@ -280,13 +291,6 @@ pub(super) fn selection_handles_overlay(
                 "resize-handle-s",
             ),
             (
-                ResizeHandle::Sw,
-                sx - pad,
-                sy + sh + pad,
-                "nesw-resize",
-                "resize-handle-sw",
-            ),
-            (
                 ResizeHandle::W,
                 sx - pad,
                 sy + (sh / 2.0),
@@ -294,6 +298,12 @@ pub(super) fn selection_handles_overlay(
                 "resize-handle-w",
             ),
         ];
+
+        let handles: Vec<_> = if is_multi {
+            corner_handles.iter().chain(edge_handles.iter()).collect()
+        } else {
+            corner_handles.iter().collect()
+        };
 
         rsx! {
             if is_multi {
