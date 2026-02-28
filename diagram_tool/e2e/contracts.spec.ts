@@ -96,13 +96,15 @@ test.describe("DOC contracts @baseline", () => {
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     
-    await page.mouse.click(box!.x + 200, box!.y + 200);
+    // Create a node first using double-click
+    await page.mouse.dblclick(box!.x + 200, box!.y + 200);
     await page.waitForTimeout(500);
     
     const node = page.getByTestId("node").first();
     const before = await node.boundingBox();
     expect(before).not.toBeNull();
     
+    // Drag the node
     await page.mouse.move(before!.x + before!.width / 2, before!.y + before!.height / 2);
     await page.mouse.down();
     await page.mouse.move(before!.x + before!.width / 2 + 30, before!.y + before!.height / 2 + 30, { steps: 3 });
@@ -121,11 +123,18 @@ test.describe("DOC contracts @baseline", () => {
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     
-    await page.mouse.click(box!.x + 100, box!.y + 200);
+    // Create two nodes using double-clicks with spacing
+    await page.mouse.dblclick(box!.x + 100, box!.y + 200);
     await page.waitForTimeout(300);
-    await page.keyboard.down("Shift");
-    await page.mouse.click(box!.x + 200, box!.y + 200);
-    await page.keyboard.up("Shift");
+    await page.mouse.dblclick(box!.x + 300, box!.y + 200);
+    await page.waitForTimeout(300);
+    
+    // Verify nodes were created
+    const nodes = await page.getByTestId("node").all();
+    expect(nodes.length).toBe(2);
+    
+    // Select all nodes using Ctrl+A
+    await page.keyboard.press("ControlOrMeta+a");
     await page.waitForTimeout(500);
     
     const selected = await page.getByTestId("counter-selected").textContent();
@@ -140,10 +149,15 @@ test.describe("DOC contracts @baseline", () => {
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     
-    await page.mouse.click(box!.x + 200, box!.y + 200);
+    // Create a node first using double-click
+    await page.mouse.dblclick(box!.x + 200, box!.y + 200);
     await page.waitForTimeout(500);
     
     const nodesBefore = await page.getByTestId("node").count();
+    
+    // Select the node and copy/paste
+    await page.mouse.click(box!.x + 200, box!.y + 200);
+    await page.waitForTimeout(300);
     
     await page.keyboard.press("ControlOrMeta+c");
     await page.waitForTimeout(300);
@@ -162,10 +176,15 @@ test.describe("DOC contracts @baseline", () => {
     const box = await canvas.boundingBox();
     expect(box).not.toBeNull();
     
+    // Create a node first using double-click
+    await page.mouse.dblclick(box!.x + 200, box!.y + 200);
+    await page.waitForTimeout(500);
+    
     const node = page.getByTestId("node").first();
     const before = await node.boundingBox();
     if (!before) return;
     
+    // Drag the node
     await page.mouse.move(before.x + before.width / 2, before.y + before.height / 2);
     await page.mouse.down();
     await page.mouse.move(before.x + before.width / 2 + 20, before.y + before.height / 2 + 20, { steps: 2 });
@@ -180,9 +199,21 @@ test.describe("DOC contracts @baseline", () => {
     await setupPage(page);
     await page.getByTestId("tool-select").click();
     
+    const canvas = page.getByTestId("canvas-root");
+    const box = await canvas.boundingBox();
+    expect(box).not.toBeNull();
+    
+    // Create nodes first using double-clicks
+    await page.mouse.dblclick(box!.x + 150, box!.y + 200);
+    await page.waitForTimeout(300);
+    await page.mouse.dblclick(box!.x + 250, box!.y + 200);
+    await page.waitForTimeout(300);
+    
+    // Select all nodes
     await page.keyboard.press("ControlOrMeta+a");
     await page.waitForTimeout(300);
     
+    // Nudge with arrow keys - should be grouped into single history entry
     await page.keyboard.press("ArrowRight");
     await page.waitForTimeout(100);
     await page.keyboard.press("ArrowRight");

@@ -2,12 +2,14 @@ import { expect, type Locator, type Page } from "@playwright/test";
 import { test } from "../fixtures/rq-fixtures";
 import {
   edgeCount,
+  freshStart,
   nodeCount,
   nodeFrameByLabel,
   runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
+  waitForUiReady,
   zoomPercent,
 } from "../helpers";
 import { runTrace } from "../redqueen/harness";
@@ -28,12 +30,9 @@ async function bootScene(
   loadScene: (scene: SceneId) => Promise<void>,
   sceneId: SceneId,
 ) {
-  // Force a full page reload to ensure clean state between tests
-  await runEffectsSequential([
-    () => page.reload({ waitUntil: "domcontentloaded" }),
-    () => page.waitForTimeout(2000),
-    () => loadScene(sceneId),
-  ]);
+  await freshStart(page);
+  await waitForUiReady(page);
+  await loadScene(sceneId);
 }
 
 async function requireBox(target: Locator): Promise<BoundingBox> {
