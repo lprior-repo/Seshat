@@ -5,10 +5,12 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
+use crate::cli_persistence::{
+    emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, StageDetails,
+};
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
 use crate::models::document::DiagramDocument;
-use crate::models::schema::validate_schema;
 use crate::mutation::ops::{apply_layout, apply_patch};
 use crate::mutation::pipeline::run_mutation;
 use anyhow::{anyhow, Context, Result};
@@ -140,7 +142,11 @@ fn error_code(err: &anyhow::Error) -> String {
         String::from("schema_violation")
     } else if msg.contains("dag") || msg.contains("cycle") {
         String::from("dag_cycle")
-    } else if msg.contains("parse") || msg.contains("deserialize") {
+    } else if msg.contains("parse")
+        || msg.contains("deserialize")
+        || msg.contains("unknown variant")
+        || msg.contains("failed to parse")
+    {
         String::from("parse_error")
     } else {
         String::from("command_error")
@@ -192,21 +198,35 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             patch,
             output,
         } => {
+            emit_stage_event(
+                "validating",
+                &StageDetails::new().with_path(Path::new(input)),
+            );
             let doc = load_doc(input)?;
             let patch_file = File::open(patch).context("Failed to open patch file")?;
             let patch_data: Patch = serde_json::from_reader(BufReader::new(patch_file))
                 .context("Failed to parse patch JSON")?;
             let patched_doc = run_mutation(&doc, |current| apply_patch(current, &patch_data))
                 .map_err(|err| anyhow!(err.to_string()))?;
-            save_doc(&patched_doc, output)?;
+            save_workspace_atomic(&patched_doc, Path::new(output))
+                .map_err(|e| anyhow!("Failed to save workspace: {e}"))?;
         }
         Commands::Layout { input, output } => {
+            emit_stage_event(
+                "validating",
+                &StageDetails::new().with_path(Path::new(input)),
+            );
             let doc = load_doc(input)?;
             let laid_out_doc = run_mutation(&doc, |current| Ok(apply_layout(current, 200.0)))
                 .map_err(|err| anyhow!(err.to_string()))?;
-            save_doc(&laid_out_doc, output)?;
+            save_workspace_atomic(&laid_out_doc, Path::new(output))
+                .map_err(|e| anyhow!("Failed to save workspace: {e}"))?;
         }
         Commands::Validate { input } => {
+            emit_stage_event(
+                "validating",
+                &StageDetails::new().with_path(Path::new(input)),
+            );
             let _doc = load_doc(input)?;
         }
     }
@@ -214,18 +234,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 }
 
 fn load_doc(path: &str) -> Result<DiagramDocument> {
-    let file = File::open(path).with_context(|| format!("Failed to open input file: {path}"))?;
-    let doc: DiagramDocument = serde_json::from_reader(BufReader::new(file))
-        .with_context(|| format!("Failed to parse document from: {path}"))?;
-    validate_schema(&doc)
-        .with_context(|| format!("Failed schema validation for document: {path}"))?;
-    Ok(doc)
-}
-
-fn save_doc(doc: &DiagramDocument, path: &str) -> Result<()> {
-    let file =
-        File::create(path).with_context(|| format!("Failed to create output file: {path}"))?;
-    serde_json::to_writer_pretty(file, doc)
-        .with_context(|| format!("Failed to write document to: {path}"))?;
-    Ok(())
+    load_workspace_with_lkg(Path::new(path))
+        .map_err(|e| anyhow!("Failed to load document from {path}: {e}"))
 }

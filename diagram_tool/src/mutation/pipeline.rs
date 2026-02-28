@@ -54,10 +54,11 @@ where
 mod tests {
     use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
-        OrderedFloat,
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, EditorState, Node, NodeId, NodeKind,
+        NodeStyle, OrderedFloat,
     };
     use crate::mutation::error::MutationError;
+    use crate::ui::grid::GridSize;
     use im::HashMap;
 
     fn make_node(id: &str) -> (NodeId, Node) {
@@ -187,6 +188,7 @@ mod proptests {
         ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, EditorState, Node,
         NodeId, NodeKind, NodeStyle, OrderedFloat, Point, Revision,
     };
+    use crate::ui::grid::GridSize;
     use im::HashMap;
     use proptest::prelude::*;
 
@@ -1069,7 +1071,7 @@ mod proptests {
                         camera_x: OrderedFloat(camera_x),
                         camera_y: OrderedFloat(camera_y),
                         zoom: OrderedFloat(zoom),
-                        grid_size: OrderedFloat(20.0),
+                        grid_size: GridSize::default(),
                         snap_to_grid: true,
                         selected_items: im::HashSet::new(),
                         editing_edge_id: None,

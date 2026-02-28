@@ -11,6 +11,7 @@ use dioxus::prelude::*;
 mod app;
 mod backend;
 mod cli;
+mod cli_persistence;
 mod export;
 mod history;
 mod hooks;

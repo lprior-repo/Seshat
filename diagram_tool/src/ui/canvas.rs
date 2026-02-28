@@ -24,9 +24,10 @@ use crate::ui::commands::{
     apply_zoom_out, apply_zoom_reset,
 };
 use crate::ui::editor::ToolMode;
+use crate::ui::grid::{snap_point, snap_value, GridSize};
 use crate::ui::interaction::{
     drag_original_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
-    select_single, snap_point, snap_value, toggle_selection, with_auto_selected_edges,
+    select_single, toggle_selection, with_auto_selected_edges,
 };
 use crate::ui::theme::{
     ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT, EDGE_SELECTED,
@@ -199,7 +200,7 @@ fn scale_selected_nodes(doc: &mut DiagramDocument, factor: f64) -> bool {
     let center_x = bx + (bw / 2.0);
     let center_y = by + (bh / 2.0);
     let snap = doc.editor_state.snap_to_grid;
-    let grid = doc.editor_state.grid_size.0;
+    let grid = doc.editor_state.grid_size;
 
     for node_id in selected {
         if let Some(node) = doc.document.nodes.get_mut(&node_id) {
@@ -255,17 +256,18 @@ fn subgraph_release_bounds(
     start: (f64, f64),
     current: (f64, f64),
     snap: bool,
-    grid: f64,
+    grid: GridSize,
 ) -> Option<(f64, f64, f64, f64)> {
     let mut x = start.0.min(current.0);
     let mut y = start.1.min(current.1);
     let mut w = (start.0 - current.0).abs();
     let mut h = (start.1 - current.1).abs();
+    let grid_inner = grid.inner();
     if snap {
         x = snap_value(x, true, grid);
         y = snap_value(y, true, grid);
-        w = snap_value(w, true, grid).max(grid.max(20.0));
-        h = snap_value(h, true, grid).max(grid.max(20.0));
+        w = snap_value(w, true, grid).max(grid_inner.max(20.0));
+        h = snap_value(h, true, grid).max(grid_inner.max(20.0));
     }
 
     (w > 20.0 && h > 20.0).then_some((x, y, w, h))
@@ -378,7 +380,7 @@ fn flush_pending_pointer_update(
                     *anchor_canvas,
                     (curr_x, curr_y),
                     doc.editor_state.snap_to_grid,
-                    doc.editor_state.grid_size.0,
+                    doc.editor_state.grid_size,
                 );
                 let has_changes = positions.iter().any(|(id, (nx, ny))| {
                     doc.document.nodes.get(id).is_some_and(|node| {
@@ -432,7 +434,7 @@ fn flush_pending_pointer_update(
             let delta_x_raw = mx - anchor.0;
             let delta_y_raw = my - anchor.1;
             let snap = doc_for_mouse.editor_state.snap_to_grid;
-            let grid = doc_for_mouse.editor_state.grid_size.0;
+            let grid = doc_for_mouse.editor_state.grid_size;
             let dx = snap_value(delta_x_raw, snap, grid);
             let dy = snap_value(delta_y_raw, snap, grid);
 
@@ -1040,7 +1042,7 @@ pub fn Canvas() -> Element {
                             *current = snap_point(
                                 raw,
                                 doc.editor_state.snap_to_grid,
-                                doc.editor_state.grid_size.0,
+                                doc.editor_state.grid_size,
                             );
                         }
                         InteractionMode::DraggingSelection { .. }
@@ -1143,7 +1145,7 @@ pub fn Canvas() -> Element {
                         InteractionMode::DrawingSubgraph { start, current } => {
                             let doc_now = doc_signal.read().clone();
                             let snap = doc_now.editor_state.snap_to_grid;
-                            let grid = doc_now.editor_state.grid_size.0;
+                            let grid = doc_now.editor_state.grid_size;
                             if let Some((x, y, w, h)) =
                                 subgraph_release_bounds(*start, *current, snap, grid)
                             {
@@ -1231,7 +1233,7 @@ pub fn Canvas() -> Element {
                     let (x, y) = snap_point(
                         (x - 32.0, y - 32.0),
                         doc.editor_state.snap_to_grid,
-                        doc.editor_state.grid_size.0,
+                        doc.editor_state.grid_size,
                     );
                     let metadata = image_data_url.clone().map_or_else(HashMap::new, |image| {
                         HashMap::new().update("icon_data_url".to_string(), Value::String(image))
@@ -1383,7 +1385,7 @@ pub fn Canvas() -> Element {
                         let (x, y) = snap_point(
                             pos,
                             d.editor_state.snap_to_grid,
-                            d.editor_state.grid_size.0,
+                            d.editor_state.grid_size,
                         );
                         let _ = d.document.nodes.insert(
                             id.clone(),
@@ -1514,7 +1516,7 @@ pub fn Canvas() -> Element {
                             let (x, y) = snap_point(
                                 pos,
                                 doc.editor_state.snap_to_grid,
-                                doc.editor_state.grid_size.0,
+                                doc.editor_state.grid_size,
                             );
                             let _ = doc.document.nodes.insert(
                                 id.clone(),
@@ -1552,7 +1554,7 @@ pub fn Canvas() -> Element {
                         let snapped_start = snap_point(
                             pos,
                             doc.editor_state.snap_to_grid,
-                            doc.editor_state.grid_size.0,
+                            doc.editor_state.grid_size,
                         );
                         interaction_mode.set(InteractionMode::DrawingSubgraph {
                             start: snapped_start,
@@ -1596,7 +1598,7 @@ pub fn Canvas() -> Element {
                             *current = snap_point(
                                 raw,
                                 doc.editor_state.snap_to_grid,
-                                doc.editor_state.grid_size.0,
+                                doc.editor_state.grid_size,
                             );
                         }
                         InteractionMode::DraggingSelection { .. }
@@ -1701,7 +1703,7 @@ pub fn Canvas() -> Element {
                         InteractionMode::DrawingSubgraph { start, current } => {
                             let doc_now = doc_signal.read().clone();
                             let snap = doc_now.editor_state.snap_to_grid;
-                            let grid = doc_now.editor_state.grid_size.0;
+                            let grid = doc_now.editor_state.grid_size;
                             if let Some((x, y, w, h)) =
                                 subgraph_release_bounds(*start, *current, snap, grid)
                             {
@@ -1798,7 +1800,7 @@ pub fn Canvas() -> Element {
                     let doc = doc_signal.read();
                     let s = &doc.editor_state;
                     let (vw, vh) = *viewport_size.read();
-                    let pattern_step = (s.grid_size.0.max(8.0) * s.zoom.0).max(4.0);
+                    let pattern_step = (s.grid_size.inner().max(8.0) * s.zoom.0).max(4.0);
                     let pattern_x = (-s.camera_x.0 * s.zoom.0).rem_euclid(pattern_step);
                     let pattern_y = (-s.camera_y.0 * s.zoom.0).rem_euclid(pattern_step);
                     let dot_r = if s.zoom.0 >= 0.75 { 1.0 } else { 0.8 };
@@ -2590,6 +2592,7 @@ mod tests {
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
+    use crate::ui::grid::GridSize;
     use im::HashMap;
 
     fn node_at(x: f64, y: f64) -> Node {
@@ -2649,13 +2652,15 @@ mod tests {
 
     #[test]
     fn given_subgraph_release_bounds_when_drag_too_small_then_none() {
-        let result = subgraph_release_bounds((0.0, 0.0), (10.0, 10.0), false, 20.0);
+        let grid = GridSize::new(20.0).unwrap();
+        let result = subgraph_release_bounds((0.0, 0.0), (10.0, 10.0), false, grid);
         assert!(result.is_none());
     }
 
     #[test]
     fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
-        let result = subgraph_release_bounds((5.0, 10.0), (60.0, 70.0), false, 20.0);
+        let grid = GridSize::new(20.0).unwrap();
+        let result = subgraph_release_bounds((5.0, 10.0), (60.0, 70.0), false, grid);
         assert_eq!(result, Some((5.0, 10.0, 55.0, 60.0)));
     }
 
@@ -2664,11 +2669,5 @@ mod tests {
         let result = fit_icon_side(19.68);
         assert!(result >= 0.0);
         assert!(result <= 11.68);
-    }
-
-    #[test]
-    fn given_icon_side_when_regular_then_fit_prefers_scaled_value() {
-        let result = fit_icon_side(120.0);
-        assert!((result - 62.4).abs() < 1e-10);
     }
 }

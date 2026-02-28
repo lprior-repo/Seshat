@@ -1,0 +1,4 @@
+{"event":"start","command":"validate","ok":true,"code":"start","message":null}
+{"event":"stage","name":"validating","details":{"path":".bead/bd-2cm/qa-fixtures/input.json"}}
+{"event":"stage","name":"loaded","details":{"path":".bead/bd-2cm/qa-fixtures/input.json","fallback_used":false}}
+{"event":"finish","command":"validate","ok":true,"code":"ok","message":null}

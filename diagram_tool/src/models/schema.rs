@@ -199,6 +199,7 @@ mod proptests {
         ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId,
         NodeKind, NodeStyle, OrderedFloat, Revision,
     };
+    use crate::ui::grid::GridSize;
     use im::HashMap;
     use proptest::prelude::*;
 
@@ -297,8 +298,9 @@ mod proptests {
             camera_x in arb_ordered_float_with_specials(),
             camera_y in arb_ordered_float_with_specials(),
             zoom in arb_ordered_float_with_specials(),
-            grid_size in arb_ordered_float_with_specials(),
+            grid_size_f64 in arb_ordered_float_with_specials(),
         ) {
+            let grid_size = GridSize::new(grid_size_f64.0).unwrap_or_default();
             let doc = DiagramDocument {
                 version: 2,
                 revision: Revision::INITIAL,
