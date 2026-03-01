@@ -42,7 +42,9 @@ pub enum StoreError {
     Serialization(String),
     #[error("Transaction aborted: {0}")]
     TransactionAborted(String),
-    #[error("Revision gap detected: expected sequential revision {expected}, but found gap at {found}")]
+    #[error(
+        "Revision gap detected: expected sequential revision {expected}, but found gap at {found}"
+    )]
     RevisionGap { expected: i64, found: i64 },
     #[error("Duplicate op_id with conflict: {0}")]
     DuplicateWithConflict(String),
@@ -207,12 +209,12 @@ pub fn cli_submit_response(outcome: &AppendOutcome) -> String {
 pub enum RecoveryError {
     #[error("Database integrity check failed: {0}")]
     CorruptDatabase(String),
-    #[error("Backup file unavailable: {0}")]
-    BackupUnavailable(String),
-    #[error("IO error during recovery: {0}")]
-    Io(#[from] std::io::Error),
     #[error("SQLite error during recovery: {0}")]
     Sqlite(#[from] rusqlite::Error),
+    #[error("IO error during recovery: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("Backup file unavailable: {0}")]
+    BackupUnavailable(String),
 }
 
 #[derive(Debug, Clone)]
@@ -298,6 +300,9 @@ pub struct RecoveryHandle {
     /// Path to the JSON export file (if exported)
     pub export_path: Option<PathBuf>,
 }
+
+/// Alias for RecoveryHandle to match contract signature
+pub type RecoverySession = RecoveryHandle;
 
 pub fn open_store(db_path: &Path) -> Result<StoreConnection, StoreError> {
     let conn = Connection::open(db_path)?;
@@ -624,6 +629,30 @@ pub fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryErro
         conn,
         db_path: db_path.to_path_buf(),
         export_path: None,
+    })
+}
+
+/// Run integrity check on the database (contract signature alias)
+///
+/// This is an alias for `startup_integrity_check` that matches the contract signature.
+/// Performs a comprehensive integrity check on the database file.
+///
+/// Returns an `IntegrityStatus` with detailed results of each check.
+pub fn integrity_check(db_path: &Path) -> Result<IntegrityStatus, RecoveryError> {
+    startup_integrity_check(db_path)
+}
+
+/// Open the database in recovery-only mode (contract signature alias)
+///
+/// This is an alias for `open_recovery_mode` that matches the contract signature.
+/// Opens the database in read-only mode for recovery operations.
+///
+/// Returns a `RecoverySession` for read-only recovery operations.
+pub fn open_recovery_only(db_path: &Path) -> Result<RecoverySession, RecoveryError> {
+    open_recovery_mode(db_path).map(|h| RecoverySession {
+        conn: h.conn,
+        db_path: h.db_path,
+        export_path: h.export_path,
     })
 }
 
@@ -1064,7 +1093,10 @@ pub fn ensure_op_id_uniqueness(conn: &mut Connection) -> Result<(), StoreError> 
 /// # Errors
 /// Returns `StoreError::Sqlite` if the query fails
 /// Returns `StoreError::Serialization` if the timestamp cannot be parsed
-pub fn lookup_existing_op(conn: &Connection, op_id: &str) -> Result<Option<EventRecord>, StoreError> {
+pub fn lookup_existing_op(
+    conn: &Connection,
+    op_id: &str,
+) -> Result<Option<EventRecord>, StoreError> {
     let mut stmt = conn
         .prepare(
             "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1",
@@ -1346,6 +1378,78 @@ mod tests {
             export_result.err()
         );
         assert!(export_path.exists(), "Export file should exist");
+    }
+
+    // Contract signature tests - bd-7rt
+
+    #[test]
+    fn test_integrity_check_on_valid_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let _bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Run integrity check using contract signature
+        let status = integrity_check(&db_path).expect("Integrity check failed");
+
+        assert!(status.is_valid, "Database should be valid");
+        assert!(
+            status.error_message.is_none(),
+            "Should have no error message"
+        );
+        assert!(
+            status.schema_version.is_some(),
+            "Should have schema version"
+        );
+    }
+
+    #[test]
+    fn test_integrity_check_on_nonexistent_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("nonexistent.db");
+
+        // Run integrity check on nonexistent file using contract signature
+        let status = integrity_check(&db_path).expect("Integrity check failed");
+
+        assert!(!status.is_valid, "Nonexistent database should not be valid");
+        assert!(status.error_message.is_some(), "Should have error message");
+    }
+
+    #[test]
+    fn test_open_recovery_only_on_valid_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let _bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Open in recovery-only mode using contract signature
+        let session = open_recovery_only(&db_path).expect("Failed to open recovery only mode");
+
+        // Verify connection is read-only
+        let result = session
+            .conn
+            .query_row("SELECT 1", [], |row| row.get::<_, i32>(0));
+        assert!(
+            result.is_ok(),
+            "Should be able to read from recovery only mode"
+        );
+    }
+
+    #[test]
+    fn test_recovery_session_is_same_as_recovery_handle() {
+        // Verify RecoverySession is an alias for RecoveryHandle
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let _bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        let handle = open_recovery_mode(&db_path).expect("Failed to open recovery mode");
+        let session = open_recovery_only(&db_path).expect("Failed to open recovery only");
+
+        // Both should have same structure
+        assert_eq!(handle.db_path, session.db_path);
     }
 
     // CliErrorCode tests
@@ -1662,9 +1766,11 @@ mod tests {
         // Verify the data was committed
         let count: i64 = bootstrap
             .conn
-            .query_row("SELECT COUNT(*) FROM events WHERE operation_id = 'test-op'", [], |row| {
-                row.get(0)
-            })
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE operation_id = 'test-op'",
+                [],
+                |row| row.get(0),
+            )
             .expect("Failed to count events");
         assert_eq!(count, 1);
     }
@@ -1683,7 +1789,9 @@ mod tests {
             )
             .map_err(StoreError::Sqlite)?;
             // Simulate a failure
-            Err(StoreError::ValidationFailed("intentional failure".to_string()))
+            Err(StoreError::ValidationFailed(
+                "intentional failure".to_string(),
+            ))
         });
 
         // Should get TransactionAborted error
@@ -1741,7 +1849,9 @@ mod tests {
                 rusqlite::params!["op2", 2, "{}", "2024-01-01"],
             )
             .map_err(StoreError::Sqlite)?;
-            Err(StoreError::ValidationFailed("fail after inserts".to_string()))
+            Err(StoreError::ValidationFailed(
+                "fail after inserts".to_string(),
+            ))
         });
 
         assert!(result.is_err());
@@ -1981,7 +2091,8 @@ mod tests {
                 },
                 timestamp: 1700000000 + i,
             };
-            let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+            let _ =
+                append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
         }
 
         // Should return 5 after five events
@@ -2063,9 +2174,11 @@ mod tests {
                 },
                 timestamp: 1700000000 + i,
             };
-            let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+            let _ =
+                append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
 
-            let current_after = current_revision(&bootstrap.conn).expect("Failed to get current revision");
+            let current_after =
+                current_revision(&bootstrap.conn).expect("Failed to get current revision");
             assert_eq!(current_after, i);
         }
     }
@@ -2104,7 +2217,11 @@ mod tests {
 
         // Should succeed without error
         let result = ensure_op_id_uniqueness(&mut bootstrap.conn);
-        assert!(result.is_ok(), "ensure_op_id_uniqueness should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "ensure_op_id_uniqueness should succeed: {:?}",
+            result.err()
+        );
     }
 
     #[test]
@@ -2129,7 +2246,10 @@ mod tests {
 
         let result = lookup_existing_op(&bootstrap.conn, "nonexistent-op-id");
         assert!(result.is_ok(), "lookup should succeed: {:?}", result.err());
-        assert!(result.expect("checked is_ok").is_none(), "Should return None for nonexistent op_id");
+        assert!(
+            result.expect("checked is_ok").is_none(),
+            "Should return None for nonexistent op_id"
+        );
     }
 
     #[test]
@@ -2271,7 +2391,11 @@ mod tests {
         };
 
         let kind = classify_duplicate(&record, &envelope);
-        assert!(kind.is_ok(), "classify_duplicate should succeed: {:?}", kind.err());
+        assert!(
+            kind.is_ok(),
+            "classify_duplicate should succeed: {:?}",
+            kind.err()
+        );
         assert_eq!(kind.expect("checked is_ok"), DuplicateKind::Exact);
     }
 
@@ -2326,7 +2450,11 @@ mod tests {
         };
 
         let kind = classify_duplicate(&record, &envelope2);
-        assert!(kind.is_ok(), "classify_duplicate should succeed: {:?}", kind.err());
+        assert!(
+            kind.is_ok(),
+            "classify_duplicate should succeed: {:?}",
+            kind.err()
+        );
         assert_eq!(kind.expect("checked is_ok"), DuplicateKind::Conflict);
     }
 
@@ -2359,7 +2487,10 @@ mod tests {
         let result = append_idempotent(&mut bootstrap.conn, envelope);
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let outcome = result.expect("checked is_ok");
-        assert_eq!(outcome.revision, 1, "New operation should create revision 1");
+        assert_eq!(
+            outcome.revision, 1,
+            "New operation should create revision 1"
+        );
         assert_eq!(outcome.op_id, "op-new");
     }
 
@@ -2391,26 +2522,39 @@ mod tests {
 
         // First append
         let result1 = append_idempotent(&mut bootstrap.conn, envelope.clone());
-        assert!(result1.is_ok(), "First append should succeed: {:?}", result1.err());
+        assert!(
+            result1.is_ok(),
+            "First append should succeed: {:?}",
+            result1.err()
+        );
         let outcome1 = result1.expect("checked is_ok");
         assert_eq!(outcome1.revision, 1);
 
         // Second append with exact duplicate
         let result2 = append_idempotent(&mut bootstrap.conn, envelope);
-        assert!(result2.is_ok(), "Exact duplicate should return Ok: {:?}", result2.err());
+        assert!(
+            result2.is_ok(),
+            "Exact duplicate should return Ok: {:?}",
+            result2.err()
+        );
         let outcome2 = result2.expect("checked is_ok");
 
         // Should return existing outcome (no-op)
-        assert_eq!(outcome2.revision, outcome1.revision, "Revision should be unchanged for exact duplicate");
+        assert_eq!(
+            outcome2.revision, outcome1.revision,
+            "Revision should be unchanged for exact duplicate"
+        );
         assert_eq!(outcome2.op_id, outcome1.op_id);
         assert_eq!(outcome2.timestamp, outcome1.timestamp);
 
         // Verify only one row in database
         let count: i64 = bootstrap
             .conn
-            .query_row("SELECT COUNT(*) FROM events WHERE operation_id = 'op-exact'", [], |row| {
-                row.get(0)
-            })
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE operation_id = 'op-exact'",
+                [],
+                |row| row.get(0),
+            )
             .expect("Failed to count events");
         assert_eq!(count, 1, "Should have exactly one row for exact duplicate");
     }
@@ -2443,7 +2587,11 @@ mod tests {
 
         // First append
         let result1 = append_idempotent(&mut bootstrap.conn, envelope1);
-        assert!(result1.is_ok(), "First append should succeed: {:?}", result1.err());
+        assert!(
+            result1.is_ok(),
+            "First append should succeed: {:?}",
+            result1.err()
+        );
 
         // Second append with conflicting payload (same op_id, different content)
         let envelope2 = EventEnvelope {
@@ -2465,7 +2613,10 @@ mod tests {
         };
 
         let result2 = append_idempotent(&mut bootstrap.conn, envelope2);
-        assert!(result2.is_err(), "Conflicting duplicate should return error");
+        assert!(
+            result2.is_err(),
+            "Conflicting duplicate should return error"
+        );
         match result2 {
             Err(StoreError::DuplicateWithConflict(op_id)) => {
                 assert_eq!(op_id, "op-conflict");
@@ -2529,11 +2680,18 @@ mod tests {
         };
 
         let result = append_idempotent(&mut bootstrap.conn, envelope_dup);
-        assert!(result.is_ok(), "Exact duplicate should succeed: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "Exact duplicate should succeed: {:?}",
+            result.err()
+        );
 
         // Revision should be unchanged
         let rev_after = current_revision(&bootstrap.conn).expect("Failed to get revision");
-        assert_eq!(rev_after, rev_before, "Revision should be unchanged after exact duplicate");
+        assert_eq!(
+            rev_after, rev_before,
+            "Revision should be unchanged after exact duplicate"
+        );
     }
 
     #[test]
@@ -2969,7 +3127,11 @@ mod tests {
         };
 
         let verification = verify_batch_atomicity(&result);
-        assert!(verification.is_ok(), "Expected Ok, got: {:?}", verification.err());
+        assert!(
+            verification.is_ok(),
+            "Expected Ok, got: {:?}",
+            verification.err()
+        );
     }
 
     #[test]

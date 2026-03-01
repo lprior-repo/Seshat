@@ -15,6 +15,7 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::DiagramDocument;
 use crate::models::envelope::{parse_event_envelope, Author as EnvelopeAuthor, EventEnvelope};
 use crate::models::projection::{DiagramProjection, EventRecord};
@@ -143,6 +144,89 @@ pub fn export_diagram_json(conn: &Connection) -> Result<DiagramJsonExport, Expor
         events: Some(events_json),
     })
 }
+
+/// Export diagram projection to canonical JSON string
+///
+/// This function takes a DiagramProjection directly (no database dependency)
+/// and returns a canonical JSON string representation.
+///
+/// # Errors
+/// Returns ExportError::Serialization if JSON serialization fails
+/// Returns ExportError::InvalidSchema if schema validation fails
+pub fn export_projection_json(projection: &DiagramProjection) -> Result<String, ExportError> {
+    // Convert projection to document for validation
+    let mut document = crate::models::projection::projection_to_document(projection);
+    // Set the correct schema version for validation
+    document.version = EXPORT_SCHEMA_VERSION;
+
+    // Validate against schema
+    validate_schema(&document).map_err(|e| ExportError::InvalidSchema(e.to_string()))?;
+
+    // Create export structure
+    let export = DiagramProjectionExport {
+        version: EXPORT_SCHEMA_VERSION,
+        revision: projection.revision,
+        nodes: projection.nodes.clone(),
+        edges: projection.edges.clone(),
+    };
+
+    // Serialize to canonical JSON
+    to_canonical_pretty_json(&export)
+        .map_err(|e| ExportError::Serialization(e.to_string()))
+}
+
+/// Validate exported JSON against the expected schema
+///
+/// # Errors
+/// Returns ExportError::Serialization if JSON parsing fails
+/// Returns ExportError::InvalidSchema if schema validation fails
+pub fn validate_export_schema(json: &str) -> Result<(), ExportError> {
+    // Parse the JSON
+    let export: DiagramProjectionExport =
+        serde_json::from_str(json).map_err(|e| ExportError::Serialization(e.to_string()))?;
+
+    // Validate version
+    if export.version > EXPORT_SCHEMA_VERSION {
+        return Err(ExportError::InvalidSchema(format!(
+            "unsupported schema version: {}",
+            export.version
+        )));
+    }
+
+    // Reconstruct a minimal projection for validation
+    let projection = DiagramProjection {
+        revision: export.revision,
+        nodes: export.nodes,
+        edges: export.edges,
+        cycle_policy: Default::default(),
+        version: SUPPORTED_VERSION,
+        author_priority: Default::default(),
+    };
+
+    // Convert to document and validate
+    let mut document = crate::models::projection::projection_to_document(&projection);
+    // Set the correct schema version for validation
+    document.version = EXPORT_SCHEMA_VERSION;
+    validate_schema(&document).map_err(|e| ExportError::InvalidSchema(e.to_string()))?;
+
+    Ok(())
+}
+
+/// Simplified projection export structure
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct DiagramProjectionExport {
+    /// Schema version
+    version: u32,
+    /// Current revision
+    revision: u64,
+    /// Nodes in the diagram
+    nodes: im::HashMap<crate::models::document::NodeId, crate::models::document::Node>,
+    /// Edges in the diagram
+    edges: im::HashMap<crate::models::document::EdgeId, crate::models::document::Edge>,
+}
+
+/// Schema version constant for projection exports
+const SUPPORTED_VERSION: u32 = 1;
 
 /// Fetch all events from the database
 ///
@@ -641,5 +725,167 @@ mod tests {
 
         assert!(!envelope_author.id.starts_with("human-"));
         assert_eq!(envelope_author.id, "ai-assistant");
+    }
+
+    #[test]
+    fn given_empty_projection_when_exporting_then_returns_valid_json() {
+        let projection = DiagramProjection::empty();
+
+        let result = export_projection_json(&projection);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let json = result.unwrap();
+        assert!(json.contains("\"revision\": 0"));
+        assert!(json.contains("\"version\": 2"));
+    }
+
+    #[test]
+    fn given_projection_with_nodes_when_exporting_then_includes_nodes_in_json() {
+        use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat};
+
+        let mut projection = DiagramProjection::empty();
+        projection.nodes.insert(
+            NodeId::new("node-1".to_string()),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "Test Node".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(200.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        let result = export_projection_json(&projection);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let json = result.unwrap();
+        assert!(json.contains("node-1"));
+        assert!(json.contains("Test Node"));
+    }
+
+    #[test]
+    fn given_valid_json_when_validating_schema_then_succeeds() {
+        let projection = DiagramProjection::empty();
+        let json = export_projection_json(&projection).unwrap();
+
+        let result = validate_export_schema(&json);
+
+        assert!(result.is_ok(), "Validation failed: {:?}", result.err());
+    }
+
+    #[test]
+    fn given_invalid_json_when_validating_schema_then_fails() {
+        let invalid_json = "not valid json";
+
+        let result = validate_export_schema(invalid_json);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn given_json_with_wrong_version_when_validating_then_fails() {
+        let json = r#"{
+            "version": 999,
+            "revision": 0,
+            "nodes": {},
+            "edges": {}
+        }"#;
+
+        let result = validate_export_schema(json);
+
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, ExportError::InvalidSchema(_)));
+    }
+
+    #[test]
+    fn given_projection_with_edges_when_exporting_then_includes_edges_in_json() {
+        use crate::models::document::{
+            Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
+        };
+
+        let mut projection = DiagramProjection::empty();
+        projection.nodes.insert(
+            NodeId::new("n1".to_string()),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "Node 1".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        projection.nodes.insert(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        projection.edges.insert(
+            EdgeId::new("e1".to_string()),
+            Edge {
+                source: NodeId::new("n1".to_string()),
+                target: NodeId::new("n2".to_string()),
+                label: "connects".to_string(),
+                style: Default::default(),
+                arrow_type: Default::default(),
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                font_size: None,
+            },
+        );
+
+        let result = export_projection_json(&projection);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let json = result.unwrap();
+        assert!(json.contains("e1"));
+        assert!(json.contains("n1"));
+        assert!(json.contains("n2"));
     }
 }

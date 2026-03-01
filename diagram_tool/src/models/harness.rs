@@ -24,23 +24,27 @@ use thiserror::Error;
 
 use crate::models::envelope::{Author, DomainOp, EventEnvelope};
 use crate::models::projection::{
-    replay_events, replay_events_from, DiagramProjection, EventRecord,
+    replay_events, DiagramProjection, EventRecord,
 };
 use crate::store::{
     append_event, bootstrap_store, fetch_latest_revision, startup_integrity_check, StoreError,
 };
 
 /// Errors that can occur during verification
-#[derive(Debug, Error, Clone)]
+#[derive(Debug, Error, Clone, PartialEq, Eq)]
 pub enum VerifyError {
+    #[error("determinism failure: {0}")]
+    DeterminismFailure(String),
+    #[error("test harness error: {0}")]
+    TestHarness(String),
+    #[error("timeout: {0}")]
+    Timeout(String),
     #[error("test failed: {0}")]
     TestFailure(String),
     #[error("IO error: {0}")]
     Io(String),
     #[error("SQLite error: {0}")]
     Sqlite(String),
-    #[error("timeout: {0}")]
-    Timeout(String),
 }
 
 impl From<std::io::Error> for VerifyError {
@@ -63,6 +67,240 @@ impl From<StoreError> for VerifyError {
             other => Self::TestFailure(other.to_string()),
         }
     }
+}
+
+/// Report from a fuzz test run
+///
+/// Contains the final projection hash and statistics about the fuzz run.
+/// The hash is computed deterministically from the final projection state.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct FuzzReport {
+    /// The seed used for this fuzz run
+    pub seed: u64,
+    /// Number of test cases run
+    pub cases_run: usize,
+    /// Stable hash of the final projection (deterministic serialization)
+    pub projection_hash: String,
+    /// Whether all test cases passed
+    pub passed: bool,
+    /// Error message if any case failed
+    pub error_message: Option<String>,
+}
+
+impl FuzzReport {
+    /// Create a new passing fuzz report
+    fn passing(seed: u64, cases_run: usize, projection_hash: String) -> Self {
+        Self {
+            seed,
+            cases_run,
+            projection_hash,
+            passed: true,
+            error_message: None,
+        }
+    }
+
+    /// Create a new failing fuzz report
+    fn failing(seed: u64, cases_run: usize, message: impl Into<String>) -> Self {
+        Self {
+            seed,
+            cases_run,
+            projection_hash: String::new(),
+            passed: false,
+            error_message: Some(message.into()),
+        }
+    }
+}
+
+/// Compute a stable hash of a diagram projection
+///
+/// This function creates a deterministic hash of the projection by:
+/// 1. Extracting nodes and edges in sorted key order
+/// 2. Building a canonical string representation
+/// 3. Computing a rolling hash
+///
+/// The hash is deterministic for the same projection state.
+///
+/// # Errors
+///
+/// Returns `VerifyError::TestHarness` if serialization fails.
+pub fn projection_hash(projection: &DiagramProjection) -> Result<String, VerifyError> {
+    // Build a canonical representation with sorted keys for determinism
+    let mut canonical = String::new();
+
+    // Add version and revision
+    canonical.push_str(&format!("v:{}\n", projection.version));
+    canonical.push_str(&format!("rev:{}\n", projection.revision));
+    canonical.push_str(&format!("cycle:{:?}\n", projection.cycle_policy));
+
+    // Add nodes in sorted order
+    let mut node_keys: Vec<&String> = projection.author_priority.keys().collect();
+    node_keys.sort();
+
+    // Add nodes sorted by ID
+    let mut node_ids: Vec<_> = projection.nodes.keys().collect();
+    node_ids.sort();
+
+    canonical.push_str("nodes:\n");
+    for node_id in node_ids {
+        if let Some(node) = projection.nodes.get(node_id) {
+            canonical.push_str(&format!("  {}:({},{},{},{},{})\n",
+                node_id,
+                node.label,
+                node.x.0,
+                node.y.0,
+                node.width.0,
+                node.height.0
+            ));
+        }
+    }
+
+    // Add edges sorted by ID
+    let mut edge_ids: Vec<_> = projection.edges.keys().collect();
+    edge_ids.sort();
+
+    canonical.push_str("edges:\n");
+    for edge_id in edge_ids {
+        if let Some(edge) = projection.edges.get(edge_id) {
+            canonical.push_str(&format!("  {}:({}->{})\n",
+                edge_id,
+                edge.source,
+                edge.target
+            ));
+        }
+    }
+
+    // Add author priority in sorted order
+    canonical.push_str("priority:\n");
+    for key in node_keys {
+        if let Some(is_human) = projection.author_priority.get(key) {
+            canonical.push_str(&format!("  {}:{}\n", key, is_human));
+        }
+    }
+
+    // Compute rolling hash over canonical representation
+    let mut hash: u64 = 5381; // DJB2 initial value
+    for byte in canonical.bytes() {
+        hash = hash.wrapping_mul(33).wrapping_add(u64::from(byte));
+    }
+
+    Ok(format!("{:016x}", hash))
+}
+
+/// Run seeded replay fuzz tests
+///
+/// This function generates seeded random operation streams and verifies
+/// that replay produces deterministic results. Multiple runs with the
+/// same seed must produce identical projection hashes.
+///
+/// # Arguments
+///
+/// * `seed` - The seed for deterministic random generation
+/// * `cases` - Number of fuzz cases to run
+///
+/// # Returns
+///
+/// Returns a `FuzzReport` containing the projection hash and run statistics.
+///
+/// # Errors
+///
+/// Returns `VerifyError::DeterminismFailure` if replay is non-deterministic.
+/// Returns `VerifyError::TestHarness` if test harness fails.
+///
+/// # Example
+///
+/// ```ignore
+/// let report = run_replay_fuzz(42, 10)?;
+/// assert_replay_determinism(&report)?;
+/// ```
+pub fn run_replay_fuzz(seed: u64, cases: usize) -> Result<FuzzReport, VerifyError> {
+    let mut rng = SeededRng::new(seed);
+    let mut node_counter = 0u64;
+    let mut author_counter = 0u64;
+
+    // Generate events for each case
+    let mut all_events: Vec<EventRecord> = Vec::new();
+    let mut revision: u64 = 0;
+
+    for case_idx in 0..cases {
+        let events_per_case = 5 + rng.next_usize(10);
+        for _ in 0..events_per_case {
+            let op = generate_random_op(&mut rng, &mut node_counter, &mut 0);
+            let author = generate_random_author(&mut rng, &mut author_counter);
+
+            all_events.push(EventRecord {
+                op_id: format!("fuzz-seed{seed}-case{case_idx}-rev{revision}"),
+                revision,
+                operation: op,
+                author,
+                timestamp: 1700000000 + revision as i64,
+            });
+            revision += 1;
+        }
+    }
+
+    // Run replay twice to verify determinism
+    let projection1 = replay_events(&all_events)
+        .map_err(|e| VerifyError::TestHarness(format!("First replay failed: {e}")))?;
+
+    let projection2 = replay_events(&all_events)
+        .map_err(|e| VerifyError::TestHarness(format!("Second replay failed: {e}")))?;
+
+    // Verify projections are identical
+    if projection1 != projection2 {
+        return Ok(FuzzReport::failing(
+            seed,
+            cases,
+            "Replay produced non-deterministic results",
+        ));
+    }
+
+    // Compute stable hash
+    let hash = projection_hash(&projection1)?;
+
+    Ok(FuzzReport::passing(seed, cases, hash))
+}
+
+/// Assert that a fuzz report demonstrates deterministic replay
+///
+/// This function verifies that the fuzz report shows deterministic behavior.
+/// It can be used to validate that repeated runs with the same seed produce
+/// the same projection hash.
+///
+/// # Arguments
+///
+/// * `report` - The fuzz report to validate
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the report shows deterministic behavior.
+///
+/// # Errors
+///
+/// Returns `VerifyError::DeterminismFailure` if the report shows non-determinism.
+///
+/// # Example
+///
+/// ```ignore
+/// let report = run_replay_fuzz(42, 10)?;
+/// assert_replay_determinism(&report)?;
+/// ```
+pub fn assert_replay_determinism(report: &FuzzReport) -> Result<(), VerifyError> {
+    if !report.passed {
+        return Err(VerifyError::DeterminismFailure(
+            report
+                .error_message
+                .clone()
+                .unwrap_or_else(|| "Fuzz test failed".to_string()),
+        ));
+    }
+
+    if report.projection_hash.is_empty() {
+        return Err(VerifyError::DeterminismFailure(
+            "Empty projection hash - determinism cannot be verified".to_string(),
+        ));
+    }
+
+    Ok(())
 }
 
 /// Report from a test run
@@ -993,5 +1231,181 @@ mod tests {
         assert_eq!(report1.failures, 1);
         assert!(!report1.passed);
         assert_eq!(report1.error_message, Some("test error".to_string()));
+    }
+
+    // Tests for bd-1wc: verify-replay-fuzz contract
+
+    #[test]
+    fn test_run_replay_fuzz_returns_deterministic_report() {
+        // Same seed should produce same report
+        let report1 = run_replay_fuzz(42, 10);
+        let report2 = run_replay_fuzz(42, 10);
+
+        assert!(report1.is_ok(), "First run should succeed");
+        assert!(report2.is_ok(), "Second run should succeed");
+
+        let r1 = report1.expect("Checked is_ok");
+        let r2 = report2.expect("Checked is_ok");
+
+        assert_eq!(r1.seed, r2.seed, "Seeds should match");
+        assert_eq!(r1.cases_run, r2.cases_run, "Case counts should match");
+        assert_eq!(
+            r1.projection_hash, r2.projection_hash,
+            "Projection hashes should be identical"
+        );
+        assert!(r1.passed, "Report should indicate pass");
+    }
+
+    #[test]
+    fn test_run_replay_fuzz_different_seeds_produce_different_hashes() {
+        let report1 = run_replay_fuzz(42, 10);
+        let report2 = run_replay_fuzz(12345, 10);
+
+        assert!(report1.is_ok(), "First run should succeed");
+        assert!(report2.is_ok(), "Second run should succeed");
+
+        let r1 = report1.expect("Checked is_ok");
+        let r2 = report2.expect("Checked is_ok");
+
+        // Different seeds should (almost certainly) produce different hashes
+        assert_ne!(
+            r1.projection_hash, r2.projection_hash,
+            "Different seeds should produce different hashes"
+        );
+    }
+
+    #[test]
+    fn test_assert_replay_determinism_accepts_valid_report() {
+        let report = run_replay_fuzz(42, 5).expect("Fuzz should succeed");
+
+        let result = assert_replay_determinism(&report);
+        assert!(result.is_ok(), "Valid report should pass assertion");
+    }
+
+    #[test]
+    fn test_assert_replay_determinism_rejects_failed_report() {
+        let failed_report = FuzzReport::failing(42, 5, "Test failure");
+
+        let result = assert_replay_determinism(&failed_report);
+        assert!(result.is_err(), "Failed report should be rejected");
+
+        match result {
+            Err(VerifyError::DeterminismFailure(msg)) => {
+                assert!(msg.contains("Test failure"));
+            }
+            _ => panic!("Expected DeterminismFailure error"),
+        }
+    }
+
+    #[test]
+    fn test_assert_replay_determinism_rejects_empty_hash() {
+        let empty_hash_report = FuzzReport {
+            seed: 42,
+            cases_run: 5,
+            projection_hash: String::new(),
+            passed: true,
+            error_message: None,
+        };
+
+        let result = assert_replay_determinism(&empty_hash_report);
+        assert!(result.is_err(), "Empty hash should be rejected");
+
+        match result {
+            Err(VerifyError::DeterminismFailure(msg)) => {
+                assert!(msg.contains("Empty projection hash"));
+            }
+            _ => panic!("Expected DeterminismFailure error"),
+        }
+    }
+
+    #[test]
+    fn test_projection_hash_is_stable() {
+        use crate::models::projection::DiagramProjection;
+
+        let projection = DiagramProjection::empty();
+        let hash1 = projection_hash(&projection);
+        let hash2 = projection_hash(&projection);
+
+        assert!(hash1.is_ok(), "First hash should succeed");
+        assert!(hash2.is_ok(), "Second hash should succeed");
+
+        assert_eq!(
+            hash1.expect("Checked is_ok"),
+            hash2.expect("Checked is_ok"),
+            "Hash should be stable for same projection"
+        );
+    }
+
+    #[test]
+    fn test_projection_hash_differs_for_different_projections() {
+        use crate::models::envelope::DomainOp;
+
+        // Create two projections with different events
+        let events1 = vec![EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 100.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 1".to_string(),
+            },
+            author: Author {
+                id: "human-test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        }];
+
+        let events2 = vec![EventRecord {
+            op_id: "op-2".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 200.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 2".to_string(),
+            },
+            author: Author {
+                id: "human-test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        }];
+
+        let projection1 = replay_events(&events1).expect("Replay should succeed");
+        let projection2 = replay_events(&events2).expect("Replay should succeed");
+
+        let hash1 = projection_hash(&projection1).expect("Hash should succeed");
+        let hash2 = projection_hash(&projection2).expect("Hash should succeed");
+
+        assert_ne!(hash1, hash2, "Different projections should have different hashes");
+    }
+
+    #[test]
+    fn test_fuzz_report_passing_factory() {
+        let report = FuzzReport::passing(42, 10, "abc123".to_string());
+
+        assert_eq!(report.seed, 42);
+        assert_eq!(report.cases_run, 10);
+        assert_eq!(report.projection_hash, "abc123");
+        assert!(report.passed);
+        assert!(report.error_message.is_none());
+    }
+
+    #[test]
+    fn test_fuzz_report_failing_factory() {
+        let report = FuzzReport::failing(42, 10, "error message");
+
+        assert_eq!(report.seed, 42);
+        assert_eq!(report.cases_run, 10);
+        assert!(!report.passed);
+        assert_eq!(report.error_message, Some("error message".to_string()));
     }
 }

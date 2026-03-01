@@ -544,10 +544,10 @@ fn apply_edge_disconnect(
 /// It dispatches to the appropriate handler based on the operation type.
 ///
 /// # Errors
-/// Returns `ReplayError::EdgeNotFound` if the edge does not exist for disconnect operations
-/// Returns `ReplayError::DuplicateEdge` if the edge already exists for connect operations
-/// Returns `ReplayError::PolicyViolation` if the operation violates policy constraints
-/// Returns `ReplayError::InvalidEvent` if the operation is not an edge operation
+/// - Returns `ReplayError::EdgeNotFound` if the edge does not exist for disconnect operations
+/// - Returns `ReplayError::DuplicateEdge` if the edge already exists for connect operations
+/// - Returns `ReplayError::PolicyViolation` if the operation violates policy constraints
+/// - Returns `ReplayError::InvalidEvent` if the operation is not an edge operation
 pub fn apply_edge_op(
     state: DiagramProjection,
     op: &DomainOp,
@@ -655,9 +655,9 @@ fn apply_edge_disconnect_checked(
 /// - All edges have valid geometry (finite coordinates)
 ///
 /// # Errors
-/// Returns `ReplayError::PolicyViolation` if any edge references a non-existent node
-/// Returns `ReplayError::DuplicateEdge` if duplicate edge IDs are detected
-/// Returns `ReplayError::InvariantViolation` if edge geometry is invalid
+/// - Returns `ReplayError::PolicyViolation` if any edge references a non-existent node
+/// - Returns `ReplayError::DuplicateEdge` if duplicate edge IDs are detected
+/// - Returns `ReplayError::InvariantViolation` if edge geometry is invalid
 pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayError> {
     // Track seen edge IDs to detect duplicates
     let mut seen_ids = std::collections::HashSet::new();
@@ -989,10 +989,10 @@ pub fn projection_hash(state: &DiagramProjection) -> Result<String, ReplayError>
 /// cycles, an error is returned.
 ///
 /// # Errors
-/// Returns `ReplayError::CycleViolation` if:
-/// - The cycle policy is `Deny` and the projection contains a cycle
-/// Returns `ReplayError::PolicyMissing` if:
-/// - The cycle policy field is not properly initialized (should not happen with default)
+/// - Returns `ReplayError::CycleViolation` if:
+///   - The cycle policy is `Deny` and the projection contains a cycle
+/// - Returns `ReplayError::PolicyMissing` if:
+///   - The cycle policy field is not properly initialized (should not happen with default)
 ///
 /// # Example
 /// ```ignore
@@ -1018,12 +1018,12 @@ pub fn enforce_cycle_policy(state: &DiagramProjection) -> Result<(), ReplayError
 /// the policy is `Deny`, the operation is rejected.
 ///
 /// # Errors
-/// Returns `ReplayError::CycleViolation` if:
-/// - The operation would create a cycle and policy is `Deny`
-/// Returns `ReplayError::InvariantViolation` if:
-/// - The operation itself violates an invariant (e.g., duplicate node ID)
-/// Returns `ReplayError::InvalidEvent` if:
-/// - The event is malformed
+/// - Returns `ReplayError::CycleViolation` if:
+///   - The operation would create a cycle and policy is `Deny`
+/// - Returns `ReplayError::InvariantViolation` if:
+///   - The operation itself violates an invariant (e.g., duplicate node ID)
+/// - Returns `ReplayError::InvalidEvent` if:
+///   - The event is malformed
 ///
 /// # Example
 /// ```ignore
