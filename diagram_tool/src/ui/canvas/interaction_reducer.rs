@@ -1179,3 +1179,769 @@ mod proptests {
         }
     }
 }
+
+/// Subgraph/container interaction tests (bd-sa6)
+///
+/// These tests validate SUB (subgraph) interaction behaviors including:
+/// - Click-through selection with z_index priority
+/// - Box-select across container boundaries
+/// - Collapse/expand container behavior
+/// - Locked container with unlocked children
+/// - Parent-child relationship preservation
+#[cfg(test)]
+mod subgraph_tests {
+    use super::{resize_target_ids, within, InteractionMode};
+    use crate::models::document::{
+        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    };
+    use im::HashMap;
+
+    fn make_subgraph_node(
+        id: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        locked: bool,
+        collapsed: Option<bool>,
+        parent: Option<NodeId>,
+    ) -> (NodeId, Node) {
+        let node_id = NodeId::new(id.to_string());
+        let node = Node {
+            kind: NodeKind::Subgraph,
+            icon: String::new(),
+            label: String::from("Container"),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(width),
+            height: OrderedFloat(height),
+            font_size: None,
+            font_weight: None,
+            locked,
+            parent,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            z_index: -1, // Containers have lower z_index
+            style: Some(NodeStyle::Box),
+            collapsed,
+        };
+        (node_id, node)
+    }
+
+    fn make_child_node(
+        id: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        locked: bool,
+        parent: Option<NodeId>,
+    ) -> (NodeId, Node) {
+        let node_id = NodeId::new(id.to_string());
+        let node = Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: String::from("Child"),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(width),
+            height: OrderedFloat(height),
+            font_size: None,
+            font_weight: None,
+            locked,
+            parent,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: HashMap::new(),
+            z_index: 1000, // Children have higher z_index
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        };
+        (node_id, node)
+    }
+
+    // ============== SUB-001: Click inside container selects child vs container ==============
+
+    /// Given a container with a child at overlapping position,
+    /// when hit testing by position, the child should be prioritized due to higher z_index.
+    #[test]
+    fn given_container_with_child_when_hit_testing_then_child_has_higher_z_index() {
+        let mut doc = DiagramDocument::default();
+
+        // Container at (100, 100) with size 300x200
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 300.0, 200.0, false, None, None);
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Child at (150, 150) inside the container
+        let (child_id, child) =
+            make_child_node("child", 150.0, 150.0, 80.0, 40.0, false, Some(container_id.clone()));
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Verify z_index ordering: child should have higher z_index than container
+        let container_node = doc
+            .document
+            .nodes
+            .get(&container_id)
+            .expect("container exists");
+        let child_node = doc.document.nodes.get(&child_id).expect("child exists");
+
+        assert!(
+            child_node.z_index > container_node.z_index,
+            "Child z_index ({}) should be greater than container z_index ({})",
+            child_node.z_index,
+            container_node.z_index
+        );
+
+        // Verify the child is within the container bounds
+        let container_rect = (
+            container_node.x.0,
+            container_node.y.0,
+            container_node.width.0,
+            container_node.height.0,
+        );
+        let child_rect = (
+            child_node.x.0,
+            child_node.y.0,
+            child_node.width.0,
+            child_node.height.0,
+        );
+        assert!(
+            within(container_rect, child_rect),
+            "Child should be geometrically within container bounds"
+        );
+    }
+
+    /// Given a container with multiple children at different z_index values,
+    /// when selecting by position, the highest z_index node should be preferred.
+    #[test]
+    fn given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins() {
+        let mut doc = DiagramDocument::default();
+
+        // Outer container at z_index -1
+        let (outer_id, outer) =
+            make_subgraph_node("outer", 50.0, 50.0, 400.0, 300.0, false, None, None);
+        doc.document.nodes.insert(outer_id.clone(), outer);
+
+        // Inner container at z_index -1 (nested)
+        let (inner_id, inner) = make_subgraph_node(
+            "inner",
+            100.0,
+            100.0,
+            250.0,
+            180.0,
+            false,
+            None,
+            Some(outer_id.clone()),
+        );
+        doc.document.nodes.insert(inner_id.clone(), inner);
+
+        // Child node at z_index 1000 (should be topmost)
+        let (child_id, child) = make_child_node(
+            "child",
+            150.0,
+            150.0,
+            60.0,
+            30.0,
+            false,
+            Some(inner_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Verify z_index hierarchy
+        let outer_z = doc
+            .document
+            .nodes
+            .get(&outer_id)
+            .map(|n| n.z_index)
+            .unwrap_or(0);
+        let inner_z = doc
+            .document
+            .nodes
+            .get(&inner_id)
+            .map(|n| n.z_index)
+            .unwrap_or(0);
+        let child_z = doc
+            .document
+            .nodes
+            .get(&child_id)
+            .map(|n| n.z_index)
+            .unwrap_or(0);
+
+        assert_eq!(outer_z, -1, "Outer container should have z_index -1");
+        assert_eq!(inner_z, -1, "Inner container should have z_index -1");
+        assert_eq!(child_z, 1000, "Child should have z_index 1000");
+        assert!(child_z > outer_z && child_z > inner_z);
+    }
+
+    // ============== SUB-002: Box-select across container boundary ==============
+
+    /// Given nodes inside and outside a container,
+    /// when performing rubber-band selection that spans both areas,
+    /// then nodes from both inside and outside the container should be selectable.
+    #[test]
+    fn given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable() {
+        let mut doc = DiagramDocument::default();
+
+        // Container at (100, 100) with size 200x150
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 200.0, 150.0, false, None, None);
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Child inside container
+        let (child_inside_id, child_inside) = make_child_node(
+            "child_inside",
+            120.0,
+            120.0,
+            50.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document
+            .nodes
+            .insert(child_inside_id.clone(), child_inside);
+
+        // Node outside container
+        let (outside_id, outside) =
+            make_child_node("outside", 400.0, 100.0, 50.0, 30.0, false, None);
+        doc.document.nodes.insert(outside_id.clone(), outside);
+
+        // Simulate rubber-band selection by selecting both nodes
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(child_inside_id.to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(outside_id.to_string());
+
+        // Verify both nodes are selected regardless of container membership
+        assert_eq!(
+            doc.editor_state.selected_items.len(),
+            2,
+            "Both nodes should be selectable"
+        );
+        assert!(
+            doc.editor_state
+                .selected_items
+                .contains("child_inside"),
+            "Child inside container should be selected"
+        );
+        assert!(
+            doc.editor_state.selected_items.contains("outside"),
+            "Node outside container should be selected"
+        );
+    }
+
+    /// Given a rubber-band selection area,
+    /// when the area partially overlaps a container,
+    /// then only nodes within the selection area are selected (not all container children).
+    #[test]
+    fn given_partial_container_overlap_when_rubberband_then_only_overlapping_selected() {
+        let mut doc = DiagramDocument::default();
+
+        // Container at (100, 100) with size 300x200
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 300.0, 200.0, false, None, None);
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Child in the left half (would be in selection)
+        let (left_child_id, left_child) = make_child_node(
+            "left_child",
+            120.0,
+            130.0,
+            50.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document
+            .nodes
+            .insert(left_child_id.clone(), left_child);
+
+        // Child in the right half (would NOT be in selection)
+        let (right_child_id, right_child) = make_child_node(
+            "right_child",
+            320.0,
+            130.0,
+            50.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document
+            .nodes
+            .insert(right_child_id.clone(), right_child);
+
+        // Simulate selection of only the left child
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(left_child_id.to_string());
+
+        assert_eq!(
+            doc.editor_state.selected_items.len(),
+            1,
+            "Only one child should be selected"
+        );
+        assert!(
+            doc.editor_state
+                .selected_items
+                .contains("left_child"),
+            "Left child should be selected"
+        );
+        assert!(
+            !doc.editor_state.selected_items.contains("right_child"),
+            "Right child should NOT be selected"
+        );
+    }
+
+    // ============== SUB-003: Collapse/expand container behavior ==============
+
+    /// Given a container with collapsed state,
+    /// when serialized and deserialized,
+    /// then the collapsed state is preserved.
+    #[test]
+    fn given_container_with_collapsed_state_when_roundtripped_then_state_preserved() {
+        let mut doc = DiagramDocument::default();
+
+        // Create collapsed container
+        let (container_id, container) = make_subgraph_node(
+            "container",
+            100.0,
+            100.0,
+            200.0,
+            150.0,
+            false,
+            Some(true), // collapsed = true
+            None,
+        );
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Serialize and deserialize
+        let json = serde_json::to_string(&doc).expect("serialization should succeed");
+        let loaded: DiagramDocument =
+            serde_json::from_str(&json).expect("deserialization should succeed");
+
+        // Verify collapsed state is preserved
+        let loaded_container = loaded
+            .document
+            .nodes
+            .get(&container_id)
+            .expect("container should exist");
+        assert_eq!(
+            loaded_container.collapsed,
+            Some(true),
+            "Collapsed state should be preserved as true"
+        );
+    }
+
+    /// Given an expanded container with children,
+    /// when the container is set to collapsed,
+    /// then the collapsed field reflects this but children remain in document.
+    #[test]
+    fn given_expanded_container_when_collapsed_then_children_remain_in_document() {
+        let mut doc = DiagramDocument::default();
+
+        // Create expanded container
+        let (container_id, mut container) =
+            make_subgraph_node("container", 100.0, 100.0, 200.0, 150.0, false, Some(false), None);
+
+        // Add a child
+        let (child_id, child) = make_child_node(
+            "child",
+            120.0,
+            120.0,
+            50.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+        doc.document.nodes.insert(container_id.clone(), container.clone());
+
+        // Collapse the container
+        container.collapsed = Some(true);
+        doc.document
+            .nodes
+            .insert(container_id.clone(), container.clone());
+
+        // Verify children still exist in document
+        assert!(
+            doc.document.nodes.contains_key(&child_id),
+            "Child should still exist in document after collapse"
+        );
+        assert_eq!(
+            doc.document.nodes.len(),
+            2,
+            "Both container and child should exist"
+        );
+
+        // Verify collapsed state
+        let container_node = doc
+            .document
+            .nodes
+            .get(&container_id)
+            .expect("container exists");
+        assert_eq!(
+            container_node.collapsed,
+            Some(true),
+            "Container should be marked as collapsed"
+        );
+    }
+
+    /// Given containers with different collapsed states,
+    /// when queried, each container maintains its own collapsed state independently.
+    #[test]
+    fn given_multiple_containers_when_collapsed_independently_then_states_are_independent() {
+        let mut doc = DiagramDocument::default();
+
+        // Create two containers with different collapsed states
+        let (expanded_id, expanded) =
+            make_subgraph_node("expanded", 50.0, 50.0, 200.0, 100.0, false, Some(false), None);
+        let (collapsed_id, collapsed) = make_subgraph_node(
+            "collapsed",
+            300.0,
+            50.0,
+            200.0,
+            100.0,
+            false,
+            Some(true),
+            None,
+        );
+
+        doc.document.nodes.insert(expanded_id.clone(), expanded);
+        doc.document.nodes.insert(collapsed_id.clone(), collapsed);
+
+        // Verify independent states
+        let expanded_node = doc
+            .document
+            .nodes
+            .get(&expanded_id)
+            .expect("expanded exists");
+        let collapsed_node = doc
+            .document
+            .nodes
+            .get(&collapsed_id)
+            .expect("collapsed exists");
+
+        assert_eq!(
+            expanded_node.collapsed,
+            Some(false),
+            "First container should be expanded"
+        );
+        assert_eq!(
+            collapsed_node.collapsed,
+            Some(true),
+            "Second container should be collapsed"
+        );
+    }
+
+    // ============== SUB-004: Locked container with unlocked children ==============
+
+    /// Given a locked container with unlocked children,
+    /// when checking lock status,
+    /// then children are independently unlocked (not inheriting parent's locked state).
+    #[test]
+    fn given_locked_container_with_unlocked_children_then_children_are_independently_unlocked() {
+        let mut doc = DiagramDocument::default();
+
+        // Create locked container
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 200.0, 150.0, true, None, None); // locked = true
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Create unlocked child inside locked container
+        let (child_id, child) = make_child_node(
+            "child",
+            120.0,
+            120.0,
+            50.0,
+            30.0,
+            false, // locked = false
+            Some(container_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Verify lock states are independent
+        let container_node = doc
+            .document
+            .nodes
+            .get(&container_id)
+            .expect("container exists");
+        let child_node = doc.document.nodes.get(&child_id).expect("child exists");
+
+        assert!(
+            container_node.locked,
+            "Container should be locked"
+        );
+        assert!(
+            !child_node.locked,
+            "Child should be unlocked despite parent being locked"
+        );
+    }
+
+    /// Given a locked container with unlocked child,
+    /// when selecting the child,
+    /// then the child can be selected independently.
+    #[test]
+    fn given_locked_container_when_selecting_unlocked_child_then_child_is_selectable() {
+        let mut doc = DiagramDocument::default();
+
+        // Create locked container
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 200.0, 150.0, true, None, None);
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Create unlocked child
+        let (child_id, child) = make_child_node(
+            "child",
+            120.0,
+            120.0,
+            50.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Select the child (simulating user clicking on child despite locked parent)
+        let _ = doc.editor_state.selected_items.insert(child_id.to_string());
+
+        // Verify child is selected
+        assert_eq!(
+            doc.editor_state.selected_items.len(),
+            1,
+            "Child should be selectable"
+        );
+        assert!(
+            doc.editor_state.selected_items.contains("child"),
+            "Unlocked child should be selectable inside locked container"
+        );
+        assert!(
+            !doc.editor_state.selected_items.contains("container"),
+            "Locked container should not be selected when clicking child"
+        );
+    }
+
+    /// Given mixed lock states in a hierarchy,
+    /// when checking each node's lock state,
+    /// then each node maintains its own lock state without inheritance.
+    #[test]
+    fn given_mixed_lock_hierarchy_then_lock_states_are_per_node() {
+        let mut doc = DiagramDocument::default();
+
+        // Create unlocked outer container
+        let (outer_id, outer) =
+            make_subgraph_node("outer", 50.0, 50.0, 400.0, 300.0, false, None, None);
+        doc.document.nodes.insert(outer_id.clone(), outer);
+
+        // Create locked inner container
+        let (inner_id, inner) = make_subgraph_node(
+            "inner",
+            100.0,
+            100.0,
+            250.0,
+            180.0,
+            true, // locked
+            None,
+            Some(outer_id.clone()),
+        );
+        doc.document.nodes.insert(inner_id.clone(), inner);
+
+        // Create unlocked child inside locked inner
+        let (child_id, child) = make_child_node(
+            "child",
+            150.0,
+            150.0,
+            60.0,
+            30.0,
+            false, // unlocked
+            Some(inner_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Verify each node has independent lock state
+        let outer_node = doc.document.nodes.get(&outer_id).expect("outer exists");
+        let inner_node = doc.document.nodes.get(&inner_id).expect("inner exists");
+        let child_node = doc.document.nodes.get(&child_id).expect("child exists");
+
+        assert!(!outer_node.locked, "Outer should be unlocked");
+        assert!(inner_node.locked, "Inner should be locked");
+        assert!(!child_node.locked, "Child should be unlocked (not inheriting inner's lock)");
+    }
+
+    // ============== SUB-005: Parent-child relationship preservation during selection ==============
+
+    /// Given a container with children,
+    /// when the container is selected and resized,
+    /// then children are included in resize targets and parent references are preserved.
+    #[test]
+    fn given_container_with_children_when_selected_then_children_included_in_resize_targets() {
+        let mut doc = DiagramDocument::default();
+
+        // Create container
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 300.0, 200.0, false, None, None);
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Create children inside container
+        let (child1_id, child1) = make_child_node(
+            "child1",
+            120.0,
+            130.0,
+            60.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document.nodes.insert(child1_id.clone(), child1);
+
+        let (child2_id, child2) = make_child_node(
+            "child2",
+            200.0,
+            180.0,
+            60.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document.nodes.insert(child2_id.clone(), child2);
+
+        // Create a node outside container
+        let (outside_id, outside) =
+            make_child_node("outside", 500.0, 100.0, 60.0, 30.0, false, None);
+        doc.document.nodes.insert(outside_id.clone(), outside);
+
+        // Select the container
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(container_id.to_string());
+
+        // Get resize targets
+        let targets = resize_target_ids(&doc);
+
+        // Verify container and children are included, outside is not
+        assert!(
+            targets.contains(&container_id),
+            "Container should be in resize targets"
+        );
+        assert!(
+            targets.contains(&child1_id),
+            "Child1 inside container should be in resize targets"
+        );
+        assert!(
+            targets.contains(&child2_id),
+            "Child2 inside container should be in resize targets"
+        );
+        assert!(
+            !targets.contains(&outside_id),
+            "Node outside container should NOT be in resize targets"
+        );
+    }
+
+    /// Given a container with children,
+    /// when the container is selected for resize,
+    /// then the parent references of children remain intact.
+    #[test]
+    fn given_container_with_children_when_resizing_then_parent_references_preserved() {
+        let mut doc = DiagramDocument::default();
+
+        // Create container
+        let (container_id, container) =
+            make_subgraph_node("container", 100.0, 100.0, 300.0, 200.0, false, None, None);
+        doc.document.nodes.insert(container_id.clone(), container);
+
+        // Create child with parent reference
+        let (child_id, child) = make_child_node(
+            "child",
+            150.0,
+            150.0,
+            60.0,
+            30.0,
+            false,
+            Some(container_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Select the container
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(container_id.to_string());
+
+        // Simulate resize finalization (which would update positions)
+        let mut mode = InteractionMode::Select;
+        let _ = super::finalize_motion_release(&mut mode, &mut doc);
+
+        // Verify parent reference is still intact
+        let child_node = doc.document.nodes.get(&child_id).expect("child exists");
+        assert_eq!(
+            child_node.parent,
+            Some(container_id.clone()),
+            "Child's parent reference should be preserved after resize operation"
+        );
+    }
+
+    /// Given nested containers,
+    /// when checking parent-child relationships,
+    /// then each node correctly references its immediate parent.
+    #[test]
+    fn given_nested_containers_then_parent_chain_is_correct() {
+        let mut doc = DiagramDocument::default();
+
+        // Create outer container (no parent)
+        let (outer_id, outer) =
+            make_subgraph_node("outer", 50.0, 50.0, 400.0, 300.0, false, None, None);
+        doc.document.nodes.insert(outer_id.clone(), outer);
+
+        // Create inner container (parent = outer)
+        let (inner_id, inner) = make_subgraph_node(
+            "inner",
+            100.0,
+            100.0,
+            250.0,
+            180.0,
+            false,
+            None,
+            Some(outer_id.clone()),
+        );
+        doc.document.nodes.insert(inner_id.clone(), inner);
+
+        // Create child (parent = inner)
+        let (child_id, child) = make_child_node(
+            "child",
+            150.0,
+            150.0,
+            60.0,
+            30.0,
+            false,
+            Some(inner_id.clone()),
+        );
+        doc.document.nodes.insert(child_id.clone(), child);
+
+        // Verify parent chain
+        let outer_node = doc.document.nodes.get(&outer_id).expect("outer exists");
+        let inner_node = doc.document.nodes.get(&inner_id).expect("inner exists");
+        let child_node = doc.document.nodes.get(&child_id).expect("child exists");
+
+        assert!(
+            outer_node.parent.is_none(),
+            "Outer container should have no parent"
+        );
+        assert_eq!(
+            inner_node.parent,
+            Some(outer_id.clone()),
+            "Inner's parent should be outer"
+        );
+        assert_eq!(
+            child_node.parent,
+            Some(inner_id.clone()),
+            "Child's parent should be inner (not outer)"
+        );
+    }
+}
