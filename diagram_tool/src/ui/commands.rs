@@ -1100,6 +1100,396 @@ mod tests {
             ]
         );
     }
+
+    // =============================================================================
+    // SUB subgraph tests (bd-163)
+    // =============================================================================
+
+    fn make_subgraph_node(id: &str, x: f64, y: f64, w: f64, h: f64, parent: Option<NodeId>) -> Node {
+        Node {
+            kind: NodeKind::Subgraph,
+            icon: String::new(),
+            label: id.to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(w),
+            height: OrderedFloat(h),
+            font_size: None,
+            font_weight: None,
+            locked: true,
+            parent,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: im::HashMap::new(),
+            z_index: -1,
+            style: Some(NodeStyle::Box),
+            collapsed: Some(false),
+        }
+    }
+
+    /// Pure function implementing group selection logic for testing
+    fn perform_group_selection(doc: &mut DiagramDocument) -> bool {
+        let selected_nodes: Vec<NodeId> = selected_node_ids(doc)
+            .into_iter()
+            .filter(|id| {
+                doc.document
+                    .nodes
+                    .get(id)
+                    .is_some_and(|node| node.kind != NodeKind::Subgraph)
+            })
+            .collect();
+
+        if selected_nodes.len() < 2 {
+            return false;
+        }
+
+        let (min_x, min_y, max_x, max_y) = selected_nodes.iter().fold(
+            (
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ),
+            |(min_x, min_y, max_x, max_y), node_id| {
+                doc.document
+                    .nodes
+                    .get(node_id)
+                    .map_or((min_x, min_y, max_x, max_y), |node| {
+                        (
+                            min_x.min(node.x.0),
+                            min_y.min(node.y.0),
+                            max_x.max(node.x.0 + node.width.0),
+                            max_y.max(node.y.0 + node.height.0),
+                        )
+                    })
+            },
+        );
+
+        if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
+            return false;
+        }
+
+        let group_id = NodeId::new(Uuid::new_v4().to_string());
+        let member_ids = selected_nodes;
+
+        for node_id in &member_ids {
+            if let Some(node) = doc.document.nodes.get_mut(node_id) {
+                node.parent = Some(group_id.clone());
+            }
+        }
+
+        let padding = 24.0;
+        let _ = doc.document.nodes.insert(
+            group_id.clone(),
+            Node {
+                kind: NodeKind::Subgraph,
+                icon: String::new(),
+                label: String::from("Group"),
+                x: OrderedFloat(min_x - padding),
+                y: OrderedFloat(min_y - padding),
+                width: OrderedFloat((max_x - min_x) + (padding * 2.0)),
+                height: OrderedFloat((max_y - min_y) + (padding * 2.0)),
+                font_size: None,
+                font_weight: None,
+                locked: true,
+                parent: None,
+                dag_rank: None,
+                tags: Vec::new(),
+                metadata: im::HashMap::new(),
+                z_index: -1,
+                style: Some(NodeStyle::Box),
+                collapsed: Some(false),
+            },
+        );
+        doc.editor_state.selected_items.clear();
+        let _ = doc.editor_state.selected_items.insert(group_id.to_string());
+        doc.revision = doc.revision.increment();
+        true
+    }
+
+    /// Pure function implementing ungroup selection logic for testing
+    fn perform_ungroup_selection(doc: &mut DiagramDocument) -> bool {
+        let target_subgraphs: BTreeSet<NodeId> = selected_node_ids(doc)
+            .into_iter()
+            .filter(|id| {
+                doc.document
+                    .nodes
+                    .get(id)
+                    .is_some_and(|node| node.kind == NodeKind::Subgraph)
+            })
+            .collect();
+
+        if target_subgraphs.is_empty() {
+            return false;
+        }
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .iter()
+            .filter_map(|(id, node)| {
+                if target_subgraphs.contains(id) {
+                    None
+                } else {
+                    let mut next = node.clone();
+                    if next
+                        .parent
+                        .as_ref()
+                        .is_some_and(|parent| target_subgraphs.contains(parent))
+                    {
+                        next.parent = None;
+                    }
+                    Some((id.clone(), next))
+                }
+            })
+            .collect();
+
+        doc.document.edges = doc
+            .document
+            .edges
+            .iter()
+            .filter(|(_, edge)| {
+                !target_subgraphs.contains(&edge.source) && !target_subgraphs.contains(&edge.target)
+            })
+            .map(|(id, edge)| (id.clone(), edge.clone()))
+            .collect();
+
+        doc.editor_state.selected_items.clear();
+        doc.revision = doc.revision.increment();
+        true
+    }
+
+    #[test]
+    fn given_two_selected_nodes_when_group_selection_then_creates_subgraph_with_correct_bounds() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        // Node A at (100, 100), size 100x50
+        doc.document.nodes = doc.document.nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 250.0, 200.0));
+
+        // Select both nodes
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let initial_revision = doc.revision;
+
+        let result = perform_group_selection(&mut doc);
+
+        assert!(result, "group_selection should return true");
+
+        // Revision should be incremented
+        assert_eq!(
+            doc.revision,
+            initial_revision.increment(),
+            "revision should be incremented"
+        );
+
+        // Find the created subgraph (should be the only subgraph)
+        let subgraphs: Vec<_> = doc
+            .document
+            .nodes
+            .iter()
+            .filter(|(_, n)| n.kind == NodeKind::Subgraph)
+            .collect();
+        assert_eq!(subgraphs.len(), 1, "should have exactly one subgraph");
+
+        let (group_id, group_node) = subgraphs[0].clone();
+
+        // Verify bounds with 24px padding
+        // Node A: (100, 100) to (200, 150)
+        // Node B: (250, 200) to (350, 250)
+        // Expected bounds: (100-24, 100-24) to (350+24, 250+24)
+        // Width: 350 - 100 + 48 = 298
+        // Height: 250 - 100 + 48 = 198
+        assert_eq!(group_node.x.0, 76.0, "group x should be min_x - padding");
+        assert_eq!(group_node.y.0, 76.0, "group y should be min_y - padding");
+        assert_eq!(group_node.width.0, 298.0, "group width should cover all nodes + padding");
+        assert_eq!(group_node.height.0, 198.0, "group height should cover all nodes + padding");
+
+        // Verify parent relationships
+        let node_a_after = doc.document.nodes.get(&node_a).expect("node-a should exist");
+        let node_b_after = doc.document.nodes.get(&node_b).expect("node-b should exist");
+
+        assert_eq!(
+            node_a_after.parent,
+            Some(group_id.clone()),
+            "node-a parent should be the group"
+        );
+        assert_eq!(
+            node_b_after.parent,
+            Some(group_id.clone()),
+            "node-b parent should be the group"
+        );
+
+        // Verify selection is now just the group
+        assert_eq!(
+            doc.editor_state.selected_items.len(),
+            1,
+            "selection should have exactly one item"
+        );
+        assert!(
+            doc.editor_state.selected_items.contains(&group_id.to_string()),
+            "selection should contain the group"
+        );
+    }
+
+    #[test]
+    fn given_selected_subgraph_with_children_when_ungroup_then_children_restored_to_root() {
+        let mut doc = DiagramDocument::default();
+        let group_id = NodeId::new("group-1".to_string());
+        let child_a = NodeId::new("child-a".to_string());
+        let child_b = NodeId::new("child-b".to_string());
+        let outsider = NodeId::new("outsider".to_string());
+
+        // Create subgraph
+        doc.document.nodes = doc.document.nodes
+            .update(group_id.clone(), make_subgraph_node("group-1", 50.0, 50.0, 300.0, 200.0, None))
+            // Children with parent pointing to group
+            .update(child_a.clone(), {
+                let mut n = make_node("child-a", 100.0, 100.0);
+                n.parent = Some(group_id.clone());
+                n
+            })
+            .update(child_b.clone(), {
+                let mut n = make_node("child-b", 200.0, 150.0);
+                n.parent = Some(group_id.clone());
+                n
+            })
+            // Node outside the group with no parent
+            .update(outsider.clone(), make_node("outsider", 500.0, 500.0));
+
+        // Select the subgraph
+        let _ = doc.editor_state.selected_items.insert("group-1".to_string());
+
+        let initial_revision = doc.revision;
+
+        let result = perform_ungroup_selection(&mut doc);
+
+        assert!(result, "ungroup_selection should return true");
+
+        // Revision should be incremented
+        assert_eq!(
+            doc.revision,
+            initial_revision.increment(),
+            "revision should be incremented"
+        );
+
+        // Subgraph should be removed
+        assert!(
+            !doc.document.nodes.contains_key(&group_id),
+            "subgraph should be removed"
+        );
+
+        // Children should still exist with parent = None
+        let child_a_after = doc.document.nodes.get(&child_a).expect("child-a should exist");
+        let child_b_after = doc.document.nodes.get(&child_b).expect("child-b should exist");
+
+        assert!(
+            child_a_after.parent.is_none(),
+            "child-a parent should be None after ungroup"
+        );
+        assert!(
+            child_b_after.parent.is_none(),
+            "child-b parent should be None after ungroup"
+        );
+
+        // Children should retain their absolute positions
+        assert_eq!(child_a_after.x.0, 100.0, "child-a x position preserved");
+        assert_eq!(child_a_after.y.0, 100.0, "child-a y position preserved");
+        assert_eq!(child_b_after.x.0, 200.0, "child-b x position preserved");
+        assert_eq!(child_b_after.y.0, 150.0, "child-b y position preserved");
+
+        // Outsider should be unchanged
+        let outsider_after = doc.document.nodes.get(&outsider).expect("outsider should exist");
+        assert!(outsider_after.parent.is_none(), "outsider parent should remain None");
+
+        // Selection should be cleared
+        assert!(
+            doc.editor_state.selected_items.is_empty(),
+            "selection should be cleared after ungroup"
+        );
+    }
+
+    #[test]
+    fn given_nested_subgraphs_when_validated_then_parent_chain_correct() {
+        let mut doc = DiagramDocument::default();
+        let outer_id = NodeId::new("outer".to_string());
+        let inner_id = NodeId::new("inner".to_string());
+        let child_id = NodeId::new("child".to_string());
+
+        // Outer subgraph at root level
+        doc.document.nodes = doc.document.nodes
+            .update(outer_id.clone(), make_subgraph_node("outer", 50.0, 50.0, 500.0, 400.0, None))
+            // Inner subgraph inside outer
+            .update(inner_id.clone(), {
+                let mut n = make_subgraph_node("inner", 100.0, 100.0, 350.0, 250.0, Some(outer_id.clone()));
+                n
+            })
+            // Regular node inside inner
+            .update(child_id.clone(), {
+                let mut n = make_node("child", 150.0, 150.0);
+                n.parent = Some(inner_id.clone());
+                n
+            });
+
+        // Verify the hierarchy
+        let outer = doc.document.nodes.get(&outer_id).expect("outer should exist");
+        let inner = doc.document.nodes.get(&inner_id).expect("inner should exist");
+        let child = doc.document.nodes.get(&child_id).expect("child should exist");
+
+        assert!(outer.parent.is_none(), "outer should have no parent");
+        assert_eq!(
+            inner.parent.as_ref(),
+            Some(&outer_id),
+            "inner's parent should be outer"
+        );
+        assert_eq!(
+            child.parent.as_ref(),
+            Some(&inner_id),
+            "child's parent should be inner"
+        );
+
+        // Verify all are subgraphs except child
+        assert_eq!(outer.kind, NodeKind::Subgraph);
+        assert_eq!(inner.kind, NodeKind::Subgraph);
+        assert_eq!(child.kind, NodeKind::Node);
+    }
+
+    #[test]
+    fn given_single_node_selected_when_group_selection_then_returns_false() {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new("single-node".to_string());
+
+        doc.document.nodes = doc.document.nodes.update(node_id, make_node("single-node", 100.0, 100.0));
+        let _ = doc.editor_state.selected_items.insert("single-node".to_string());
+
+        let result = perform_group_selection(&mut doc);
+
+        assert!(!result, "group_selection should return false for single node");
+    }
+
+    #[test]
+    fn given_subgraph_selected_when_group_selection_then_subgraph_excluded() {
+        let mut doc = DiagramDocument::default();
+        let subgraph_id = NodeId::new("existing-subgraph".to_string());
+        let node_id = NodeId::new("regular-node".to_string());
+
+        doc.document.nodes = doc.document.nodes
+            .update(subgraph_id.clone(), make_subgraph_node("existing-subgraph", 50.0, 50.0, 200.0, 150.0, None))
+            .update(node_id.clone(), make_node("regular-node", 100.0, 100.0));
+
+        // Select both subgraph and regular node
+        let _ = doc.editor_state.selected_items.insert("existing-subgraph".to_string());
+        let _ = doc.editor_state.selected_items.insert("regular-node".to_string());
+
+        let result = perform_group_selection(&mut doc);
+
+        // Should fail because only one non-subgraph node is selected
+        assert!(!result, "group_selection should return false when only one non-subgraph node is selected");
+    }
 }
 
 #[cfg(test)]

@@ -244,6 +244,66 @@ mod tests {
 
         assert!(validate_schema(&doc).is_ok());
     }
+
+    // =============================================================================
+    // SUB subgraph tests (bd-163) - Parent cycle prevention
+    // =============================================================================
+
+    #[test]
+    fn given_circular_parent_chain_when_validated_then_schema_fails() {
+        // Create a cycle: A -> B -> C -> A
+        let a_id = NodeId::new(String::from("subgraph-a"));
+        let b_id = NodeId::new(String::from("subgraph-b"));
+        let c_id = NodeId::new(String::from("subgraph-c"));
+
+        let mut doc = DiagramDocument::default();
+        doc.document.nodes = HashMap::new()
+            // A's parent is C
+            .update(a_id.clone(), node(NodeKind::Subgraph, Some(c_id.clone())))
+            // B's parent is A
+            .update(b_id.clone(), node(NodeKind::Subgraph, Some(a_id.clone())))
+            // C's parent is B
+            .update(c_id, node(NodeKind::Subgraph, Some(b_id)));
+
+        let result = validate_schema(&doc);
+        assert!(result.is_err(), "circular parent chain should fail validation");
+
+        let err_msg = result.unwrap_err().to_string();
+        assert!(
+            err_msg.to_lowercase().contains("circular")
+                || err_msg.to_lowercase().contains("cycle"),
+            "error message should mention circular or cycle: {}",
+            err_msg
+        );
+    }
+
+    #[test]
+    fn given_self_referential_parent_when_validated_then_schema_fails() {
+        // A node that is its own parent
+        let a_id = NodeId::new(String::from("subgraph-a"));
+
+        let mut doc = DiagramDocument::default();
+        doc.document.nodes = HashMap::new()
+            .update(a_id.clone(), node(NodeKind::Subgraph, Some(a_id)));
+
+        let result = validate_schema(&doc);
+        assert!(result.is_err(), "self-referential parent should fail validation");
+    }
+
+    #[test]
+    fn given_two_node_parent_cycle_when_validated_then_schema_fails() {
+        // Create a 2-node cycle: A -> B -> A
+        let a_id = NodeId::new(String::from("subgraph-a"));
+        let b_id = NodeId::new(String::from("subgraph-b"));
+
+        let mut doc = DiagramDocument::default();
+        doc.document.nodes = HashMap::new()
+            .update(a_id.clone(), node(NodeKind::Subgraph, Some(b_id.clone())))
+            .update(b_id, node(NodeKind::Subgraph, Some(a_id)));
+
+        let result = validate_schema(&doc);
+        assert!(result.is_err(), "two-node parent cycle should fail validation");
+    }
 }
 
 #[cfg(test)]

@@ -5,3 +5,5 @@
 {"timestamp":"2026-03-01T22:16:00Z","bead_id":"bd-rn3","phase":"p2","actor":"orchestrator","action":"cargo test selection","command":"/usr/bin/cargo test -p diagram_tool selection_geometry","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
 {"timestamp":"2026-03-01T22:17:00Z","bead_id":"bd-rn3","phase":"p2","actor":"orchestrator","action":"cargo clippy","command":"/usr/bin/cargo clippy -p diagram_tool -- -D warnings","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
 {"timestamp":"2026-03-01T22:17:30Z","bead_id":"bd-rn3","phase":"p3","actor":"qa-enforcer","action":"qa verification","command":"contract acceptance criteria verified","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T22:22:44Z","bead_id":"bd-rn3","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-rn3","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T22:23:00Z","bead_id":"bd-rn3","phase":"p4","actor":"orchestrator","action":"landing replay","command":"jj log -r main@origin","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":true}

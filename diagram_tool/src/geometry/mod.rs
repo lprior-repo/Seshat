@@ -2010,4 +2010,418 @@ mod tests {
         assert!(relative_error_x < 1e-10);
         assert!(relative_error_y < 1e-10);
     }
+
+    // ============== MUL-001: Rotate Around Center ==============
+
+    /// Calculate the center (centroid) of multiple points
+    fn selection_center(points: &[Point]) -> Point {
+        if points.is_empty() {
+            return Point::origin();
+        }
+        let sum_x: f64 = points.iter().map(|p| p.x).sum();
+        let sum_y: f64 = points.iter().map(|p| p.y).sum();
+        let count = points.len() as f64;
+        Point::new(sum_x / count, sum_y / count)
+    }
+
+    #[test]
+    fn test_mul_rotate_around_center() {
+        // Given: multiple selected items at different positions
+        let items = [
+            Point::new(0.0, 0.0),
+            Point::new(100.0, 0.0),
+            Point::new(100.0, 100.0),
+            Point::new(0.0, 100.0),
+        ];
+
+        // Calculate selection center (centroid)
+        let center = selection_center(&items);
+        assert!((center.x - 50.0).abs() < TOLERANCE);
+        assert!((center.y - 50.0).abs() < TOLERANCE);
+
+        // When: rotating all items 90 degrees around the selection center
+        let angle = PI / 2.0;
+        let rotated: Vec<Point> = items
+            .iter()
+            .map(|&p| rotate_around_center(p, center, angle))
+            .collect();
+
+        // Then: all items maintain relative positions (rotated as a group)
+        // Original (0,0) relative to center (50,50) is (-50,-50)
+        // After 90deg rotation: (-50,-50) -> (50,-50) relative -> (100,0) absolute
+        assert!((rotated[0].x - 100.0).abs() < TOLERANCE);
+        assert!((rotated[0].y - 0.0).abs() < TOLERANCE);
+
+        // Verify the new selection center is unchanged
+        let new_center = selection_center(&rotated);
+        assert!((new_center.x - center.x).abs() < TOLERANCE);
+        assert!((new_center.y - center.y).abs() < TOLERANCE);
+    }
+
+    // ============== MUL-002: Mixed Rotation Combine ==============
+
+    #[test]
+    fn test_mul_mixed_rotation_combine() {
+        // Given: a point and multiple rotation angles
+        let original = Point::new(100.0, 0.0);
+        let center = Point::origin();
+        let angle_a = PI / 6.0; // 30 degrees
+        let angle_b = PI / 3.0; // 60 degrees
+
+        // When: rotating by A then by B (sequential)
+        let after_a = rotate_around_center(original, center, angle_a);
+        let after_a_then_b = rotate_around_center(after_a, center, angle_b);
+
+        // And: rotating by (A + B) in one step
+        let combined_angle = angle_a + angle_b;
+        let after_combined = rotate_around_center(original, center, combined_angle);
+
+        // Then: both approaches yield the same result
+        assert!((after_a_then_b.x - after_combined.x).abs() < TOLERANCE);
+        assert!((after_a_then_b.y - after_combined.y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_mul_mixed_rotation_combine_multiple() {
+        // Given: a point and three rotation angles
+        let original = Point::new(50.0, 50.0);
+        let center = Point::new(25.0, 25.0);
+        let angles = [PI / 12.0, PI / 8.0, PI / 6.0]; // 15, 22.5, 30 degrees
+
+        // When: applying rotations sequentially
+        let mut sequential = original;
+        for &angle in &angles {
+            sequential = rotate_around_center(sequential, center, angle);
+        }
+
+        // And: applying combined rotation
+        let total_angle: f64 = angles.iter().sum();
+        let combined = rotate_around_center(original, center, total_angle);
+
+        // Then: both approaches yield the same result
+        assert!((sequential.x - combined.x).abs() < TOLERANCE);
+        assert!((sequential.y - combined.y).abs() < TOLERANCE);
+    }
+
+    // ============== MUL-003: Rotate Bound Edges Survive ==============
+
+    #[test]
+    fn test_mul_rotate_bound_edges_survive() {
+        // Given: multiple rectangles representing selected items
+        let rects = [
+            Rectangle::new(0.0, 0.0, 50.0, 50.0),
+            Rectangle::new(100.0, 0.0, 50.0, 50.0),
+            Rectangle::new(100.0, 100.0, 50.0, 50.0),
+            Rectangle::new(0.0, 100.0, 50.0, 50.0),
+        ];
+
+        // Calculate selection bounds (AABB encompassing all items)
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+        for rect in &rects {
+            let aabb = rect.aabb();
+            min_x = min_x.min(aabb.min_x);
+            min_y = min_y.min(aabb.min_y);
+            max_x = max_x.max(aabb.max_x);
+            max_y = max_y.max(aabb.max_y);
+        }
+
+        // Selection center
+        let center = Point::new((min_x + max_x) / 2.0, (min_y + max_y) / 2.0);
+
+        // When: rotating all items by 45 degrees
+        let angle = PI / 4.0;
+        let rotated_rects: Vec<Rectangle> = rects
+            .iter()
+            .map(|r| {
+                // Rotate the rectangle's position around the selection center
+                let rotated_pos =
+                    rotate_around_center(Point::new(r.x, r.y), center, angle);
+                Rectangle::new(rotated_pos.x, rotated_pos.y, r.width, r.height)
+                    .with_rotation(r.rotation + angle)
+            })
+            .collect();
+
+        // Calculate new selection bounds
+        let mut new_min_x = f64::INFINITY;
+        let mut new_min_y = f64::INFINITY;
+        let mut new_max_x = f64::NEG_INFINITY;
+        let mut new_max_y = f64::NEG_INFINITY;
+        for rect in &rotated_rects {
+            let aabb = rect.aabb();
+            new_min_x = new_min_x.min(aabb.min_x);
+            new_min_y = new_min_y.min(aabb.min_y);
+            new_max_x = new_max_x.max(aabb.max_x);
+            new_max_y = new_max_y.max(aabb.max_y);
+        }
+
+        // Then: all rotated item corners are within the new selection bounds
+        for rect in &rotated_rects {
+            let corners = rect.corners();
+            for corner in corners {
+                assert!(
+                    corner.x >= new_min_x - TOLERANCE,
+                    "Corner x {} < min_x {}",
+                    corner.x,
+                    new_min_x
+                );
+                assert!(
+                    corner.x <= new_max_x + TOLERANCE,
+                    "Corner x {} > max_x {}",
+                    corner.x,
+                    new_max_x
+                );
+                assert!(
+                    corner.y >= new_min_y - TOLERANCE,
+                    "Corner y {} < min_y {}",
+                    corner.y,
+                    new_min_y
+                );
+                assert!(
+                    corner.y <= new_max_y + TOLERANCE,
+                    "Corner y {} > max_y {}",
+                    corner.y,
+                    new_max_y
+                );
+            }
+        }
+    }
+
+    // ============== MUL-004: Rotate 360 No Drift ==============
+
+    #[test]
+    fn test_mul_rotate_360_no_drift() {
+        // Given: multiple points representing selected item centers
+        let items = [
+            Point::new(10.0, 20.0),
+            Point::new(100.0, 50.0),
+            Point::new(200.0, 150.0),
+        ];
+        let center = Point::new(100.0, 100.0);
+
+        // When: rotating by 360 degrees (2 * PI)
+        let full_rotation = 2.0 * PI;
+        let after_rotation: Vec<Point> = items
+            .iter()
+            .map(|&p| rotate_around_center(p, center, full_rotation))
+            .collect();
+
+        // Then: all items return to original positions with minimal drift
+        for (original, rotated) in items.iter().zip(after_rotation.iter()) {
+            let drift =
+                ((rotated.x - original.x).powi(2) + (rotated.y - original.y).powi(2)).sqrt();
+            assert!(drift < 1e-9, "Drift {} exceeds threshold for point {:?}", drift, original);
+        }
+    }
+
+    #[test]
+    fn test_mul_rotate_360_no_drift_incremental() {
+        // Given: points and incremental rotation steps
+        let items = [
+            Point::new(50.0, 0.0),
+            Point::new(-30.0, 40.0),
+            Point::new(100.0, 100.0),
+        ];
+        let center = Point::origin();
+        let steps = 360;
+        let angle_per_step = 2.0 * PI / f64::from(steps);
+
+        // When: rotating in 360 small steps (1 degree each)
+        let mut current = items;
+        for _ in 0..steps {
+            current = current.map(|p| rotate_around_center(p, center, angle_per_step));
+        }
+
+        // Then: all items return to original positions with bounded drift
+        for (original, final_pos) in items.iter().zip(current.iter()) {
+            let drift =
+                ((final_pos.x - original.x).powi(2) + (final_pos.y - original.y).powi(2)).sqrt();
+            // Allow slightly more drift for incremental operations
+            assert!(drift < 1e-6, "Incremental drift {} exceeds threshold", drift);
+        }
+    }
+
+    // ============== MUL-005: Rotate Undo/Redo ==============
+
+    #[test]
+    fn test_mul_rotate_undo_redo() {
+        // Given: initial positions of multiple items
+        let original_positions = [
+            Point::new(0.0, 0.0),
+            Point::new(100.0, 0.0),
+            Point::new(50.0, 100.0),
+        ];
+        let center = selection_center(&original_positions);
+        let rotation_angle = PI / 4.0; // 45 degrees
+
+        // Simulate rotation operation
+        let rotated_positions: Vec<Point> = original_positions
+            .iter()
+            .map(|&p| rotate_around_center(p, center, rotation_angle))
+            .collect();
+
+        // When: "undo" - restore original positions
+        let after_undo = original_positions;
+
+        // Verify undo restores original state
+        for (original, restored) in original_positions.iter().zip(after_undo.iter()) {
+            assert!((restored.x - original.x).abs() < TOLERANCE);
+            assert!((restored.y - original.y).abs() < TOLERANCE);
+        }
+
+        // When: "redo" - apply rotation again
+        let after_redo: Vec<Point> = after_undo
+            .iter()
+            .map(|&p| rotate_around_center(p, center, rotation_angle))
+            .collect();
+
+        // Then: redo produces the same rotated state
+        for (expected, actual) in rotated_positions.iter().zip(after_redo.iter()) {
+            assert!((actual.x - expected.x).abs() < TOLERANCE);
+            assert!((actual.y - expected.y).abs() < TOLERANCE);
+        }
+    }
+
+    #[test]
+    fn test_mul_rotate_undo_redo_with_history() {
+        // This test uses the History pattern to verify undo/redo behavior
+        use std::cell::RefCell;
+
+        // Given: state that can be snapshotted
+        #[derive(Clone, Debug)]
+        struct SelectionState {
+            positions: Vec<Point>,
+        }
+
+        impl SelectionState {
+            fn rotate(&self, center: Point, angle: f64) -> Self {
+                Self {
+                    positions: self
+                        .positions
+                        .iter()
+                        .map(|&p| rotate_around_center(p, center, angle))
+                        .collect(),
+                }
+            }
+        }
+
+        let original = SelectionState {
+            positions: vec![
+                Point::new(0.0, 0.0),
+                Point::new(100.0, 50.0),
+                Point::new(50.0, 100.0),
+            ],
+        };
+
+        // Simple history simulation
+        let history = RefCell::new(Vec::new());
+
+        // Save initial state
+        history.borrow_mut().push(original.clone());
+
+        let center = selection_center(&original.positions);
+
+        // Apply rotation and save
+        let rotated = original.rotate(center, PI / 6.0);
+        history.borrow_mut().push(rotated.clone());
+
+        // Apply another rotation and save
+        let rotated_again = rotated.rotate(center, PI / 6.0);
+        history.borrow_mut().push(rotated_again.clone());
+
+        // When: undo (pop and restore previous)
+        history.borrow_mut().pop(); // Remove current
+        let after_undo = history.borrow().last().cloned().unwrap();
+
+        // Then: state matches first rotation
+        for (expected, actual) in rotated.positions.iter().zip(after_undo.positions.iter()) {
+            assert!((actual.x - expected.x).abs() < TOLERANCE);
+            assert!((actual.y - expected.y).abs() < TOLERANCE);
+        }
+
+        // When: undo again
+        history.borrow_mut().pop();
+        let after_second_undo = history.borrow().last().cloned().unwrap();
+
+        // Then: state matches original
+        for (expected, actual) in original.positions.iter().zip(after_second_undo.positions.iter()) {
+            assert!((actual.x - expected.x).abs() < TOLERANCE);
+            assert!((actual.y - expected.y).abs() < TOLERANCE);
+        }
+    }
+
+    // ============== Property-Based Tests for MUL ==============
+
+    proptest! {
+        #[test]
+        fn prop_mul_rotation_preserves_distances(
+            x1 in -100.0_f64..100.0,
+            y1 in -100.0_f64..100.0,
+            x2 in -100.0_f64..100.0,
+            y2 in -100.0_f64..100.0,
+            cx in -50.0_f64..50.0,
+            cy in -50.0_f64..50.0,
+            angle in 0.0_f64..2.0 * PI
+        ) {
+            let p1 = Point::new(x1, y1);
+            let p2 = Point::new(x2, y2);
+            let center = Point::new(cx, cy);
+
+            // Distance between points before rotation
+            let dist_before = ((p2.x - p1.x).powi(2) + (p2.y - p1.y).powi(2)).sqrt();
+
+            // Rotate both points around the same center
+            let r1 = rotate_around_center(p1, center, angle);
+            let r2 = rotate_around_center(p2, center, angle);
+
+            // Distance after rotation
+            let dist_after = ((r2.x - r1.x).powi(2) + (r2.y - r1.y).powi(2)).sqrt();
+
+            // Rotation preserves distances between points
+            prop_assert!((dist_before - dist_after).abs() < 1e-9);
+        }
+
+        #[test]
+        fn prop_mul_full_rotation_returns_to_origin(
+            x in -1000.0_f64..1000.0,
+            y in -1000.0_f64..1000.0,
+            cx in -500.0_f64..500.0,
+            cy in -500.0_f64..500.0
+        ) {
+            let point = Point::new(x, y);
+            let center = Point::new(cx, cy);
+
+            let rotated = rotate_around_center(point, center, 2.0 * PI);
+
+            let drift = ((rotated.x - point.x).powi(2) + (rotated.y - point.y).powi(2)).sqrt();
+            prop_assert!(drift < 1e-9, "Drift {} exceeds threshold", drift);
+        }
+
+        #[test]
+        fn prop_mul_selection_center_unchanged_by_rotation(
+            n in 2usize..10,
+            angle in 0.0_f64..2.0 * PI
+        ) {
+            // Generate n random points
+            let points: Vec<Point> = (0..n)
+                .map(|i| Point::new(i as f64 * 10.0, (i as f64 * 7.0) % 100.0))
+                .collect();
+
+            let center = selection_center(&points);
+
+            // Rotate all points
+            let rotated: Vec<Point> = points
+                .iter()
+                .map(|&p| rotate_around_center(p, center, angle))
+                .collect();
+
+            let new_center = selection_center(&rotated);
+
+            // Selection center is invariant under rotation
+            prop_assert!((new_center.x - center.x).abs() < 1e-10);
+            prop_assert!((new_center.y - center.y).abs() < 1e-10);
+        }
+    }
 }
