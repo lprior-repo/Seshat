@@ -1,0 +1,7 @@
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:22:00Z", "event": "implementation_started", "details": "Started implementing domain operation enum and payload shapes"}
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:22:36Z", "event": "code_written", "files_changed": ["diagram_tool/src/models/envelope.rs"], "functions_added": ["parse_domain_op", "domain_op_kind", "DomainOp::kind"], "types_added": ["OpKind", "DomainOp"]}
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:22:45Z", "event": "tests_written", "test_count": 24, "coverage": "happy_path + error_path + exhaustive_match"}
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:23:00Z", "event": "tests_passed", "test_result": "35 envelope tests passed", "total_tests": 517}
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:23:15Z", "event": "contract_verified", "preconditions_verified": ["parse_domain_op signature", "ContractError variants"], "postconditions_verified": ["domain_op_kind signature", "all tests pass"]}
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:23:20Z", "event": "documentation_written", "files_created": ["implementation.md", "verification.md", "receipts.jsonl"]}
+{"bead_id": "bd-2hz", "timestamp": "2026-03-01T13:23:25Z", "event": "bead_complete", "status": "ready_for_next_bead"}
