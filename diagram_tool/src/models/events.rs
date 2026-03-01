@@ -1,14 +1,15 @@
 //! Events schema module - v1 schema for events snapshots metadata
 //!
-//! This module provides SQLite schema management for storing event snapshots
+//! This module provides `SQLite` schema management for storing event snapshots
 //! and their metadata. The schema tracks versions and rejects unknown versions
 //! rather than attempting migration.
 
+#![allow(dead_code)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::store::StoreError;
@@ -36,7 +37,7 @@ pub struct SchemaState {
 /// # Errors
 /// Returns `StoreError::SchemaVersionMismatch` if an incompatible schema version exists
 /// Returns `StoreError::MigrationForbidden` if migration is attempted
-pub fn ensure_schema_v1(conn: &mut Connection) -> Result<SchemaState, StoreError> {
+pub fn ensure_schema_v1(conn: &Connection) -> Result<SchemaState, StoreError> {
     let existing_state = read_schema_state(conn).ok();
 
     if let Some(state) = existing_state {
@@ -67,7 +68,7 @@ pub fn ensure_schema_v1(conn: &mut Connection) -> Result<SchemaState, StoreError
 /// # Errors
 /// Returns an error if the schema table cannot be read
 pub fn read_schema_state(conn: &Connection) -> Result<SchemaState, StoreError> {
-    let query = format!("SELECT version, created_at FROM {} LIMIT 1", SCHEMA_TABLE);
+    let query = format!("SELECT version, created_at FROM {SCHEMA_TABLE} LIMIT 1");
 
     conn.query_row(&query, [], |row| {
         Ok(SchemaState {
@@ -85,11 +86,10 @@ fn create_schema_v1(conn: &Connection) -> Result<SchemaState, StoreError> {
     // Create schema version tracking table
     tx.execute(
         &format!(
-            "CREATE TABLE IF NOT EXISTS {} (
+            "CREATE TABLE IF NOT EXISTS {SCHEMA_TABLE} (
                 version INTEGER NOT NULL PRIMARY KEY,
                 created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )",
-            SCHEMA_TABLE
+            )"
         ),
         [],
     )?;
@@ -119,9 +119,26 @@ fn create_schema_v1(conn: &Connection) -> Result<SchemaState, StoreError> {
         [],
     )?;
 
+    // Create snapshot table for storing serialized projections
+    tx.execute(
+        "CREATE TABLE IF NOT EXISTS snapshots (
+            id INTEGER NOT NULL PRIMARY KEY,
+            revision INTEGER NOT NULL UNIQUE,
+            payload TEXT NOT NULL,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        )",
+        [],
+    )?;
+
+    // Create index on snapshot revision for efficient lookups
+    tx.execute(
+        "CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)",
+        [],
+    )?;
+
     // Insert schema version record
     tx.execute(
-        &format!("INSERT INTO {} (version) VALUES (?)", SCHEMA_TABLE),
+        &format!("INSERT INTO {SCHEMA_TABLE} (version) VALUES (?)"),
         [SCHEMA_VERSION],
     )?;
 

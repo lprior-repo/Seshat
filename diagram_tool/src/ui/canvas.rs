@@ -1060,23 +1060,20 @@ pub fn Canvas() -> Element {
                 };
 
                 const onPointerDown = (event) => {
-                    // Prevent default and stop propagation to prevent Dioxus onmousedown from running
-                    // We handle everything in the message handler instead
-                    event.preventDefault();
-                    event.stopPropagation();
-                    
                     // Get fresh origin before anything else
                     const origin = getCanvasOrigin();
                     // Store in global for Rust to read via any means necessary
                     window.__seshat_current_origin = { x: origin.x, y: origin.y };
+                    // Mark that pointerdown was handled so onMouseDownCapture can stop Dioxus handler
+                    window.__seshat_pointerdown_handled = true;
                     // Send pointerdown with ALL the information Rust needs
                     // Rust will handle the actual logic
-                    dioxus.send({ 
-                        type: 'pointerdown', 
-                        x: event.clientX, 
-                        y: event.clientY, 
-                        originX: origin.x, 
-                        originY: origin.y, 
+                    dioxus.send({
+                        type: 'pointerdown',
+                        x: event.clientX,
+                        y: event.clientY,
+                        originX: origin.x,
+                        originY: origin.y,
                         button: event.button.toString(),
                         // Include current tool and modifier state
                         tool: window.__seshat_current_tool || 'select',
@@ -1086,14 +1083,35 @@ pub fn Canvas() -> Element {
                     });
                 };
 
+                // Capture-phase mousedown handler to stop Dioxus onmousedown from running
+                // when pointerdown has already handled the event with fresh coordinates
+                const onMouseDownCapture = (event) => {
+                    if (window.__seshat_pointerdown_handled) {
+                        window.__seshat_pointerdown_handled = false;
+                        event.preventDefault();
+                        event.stopPropagation();
+                        event.stopImmediatePropagation();
+                    }
+                };
+
+                // Reset the flag on pointerup in case pointerdown was canceled
+                const onPointerUpReset = (event) => {
+                    window.__seshat_pointerdown_handled = false;
+                };
+
                 window.addEventListener('pointermove', onPointerMove, { passive: true });
                 window.addEventListener('pointerup', onPointerUp, { passive: true });
-                window.addEventListener('pointerdown', onPointerDown, { passive: false });
+                window.addEventListener('pointerup', onPointerUpReset, { passive: true });
+                window.addEventListener('pointerdown', onPointerDown, { passive: true });
+                // Use capture phase to intercept before Dioxus's handler
+                window.addEventListener('mousedown', onMouseDownCapture, { capture: true, passive: false });
 
                 window.__seshat_canvas_pointer_global_cleanup = () => {
                     window.removeEventListener('pointermove', onPointerMove);
                     window.removeEventListener('pointerup', onPointerUp);
+                    window.removeEventListener('pointerup', onPointerUpReset);
                     window.removeEventListener('pointerdown', onPointerDown);
+                    window.removeEventListener('mousedown', onMouseDownCapture, true);
                 };
             ",
         );
@@ -1192,52 +1210,49 @@ pub fn Canvas() -> Element {
                         }
                     }
 
-                    match tool {
-                        ToolMode::Text => {
-                            let id = NodeId::new(Uuid::new_v4().to_string());
-                            let current = doc_signal.read().clone();
-                            let history = history_signal.read().clone();
-                            *history_signal.write() = history.push(current);
-                            doc_signal.with_mut(|doc| {
-                                let (x, y) = snap_point(
-                                    pos,
-                                    doc.editor_state.snap_to_grid,
-                                    doc.editor_state.grid_size,
-                                );
-                                let _ = doc.document.nodes.insert(
-                                    id.clone(),
-                                    Node {
-                                        kind: NodeKind::Text,
-                                        icon: String::new(),
-                                        label: String::from("Text"),
-                                        x: OrderedFloat(x),
-                                        y: OrderedFloat(y),
-                                        width: OrderedFloat(100.0),
-                                        height: OrderedFloat(24.0),
-                                        font_size: None,
-                                        font_weight: None,
-                                        locked: false,
-                                        parent: None,
-                                        dag_rank: None,
-                                        tags: Vec::new(),
-                                        metadata: HashMap::new(),
-                                        z_index: 0,
-                                        style: Some(NodeStyle::default()),
-                                        collapsed: None,
-                                    },
-                                );
-                                doc.editor_state.selected_items.clear();
-                                let _ = doc.editor_state.selected_items.insert(id.to_string());
-                                doc.revision = doc.revision.increment();
-                            });
-                            editing_edge.set(None);
-                            editing_node.set(None);
-                            edit_value.set(String::new());
-                            tool_signal.set(ToolMode::Select);
-                        }
-                        _ => {
-                            // For other tools, let the Dioxus handler deal with it
-                        }
+                    if tool == ToolMode::Text {
+                        let id = NodeId::new(Uuid::new_v4().to_string());
+                        let current = doc_signal.read().clone();
+                        let history = history_signal.read().clone();
+                        *history_signal.write() = history.push(current);
+                        doc_signal.with_mut(|doc| {
+                            let (x, y) = snap_point(
+                                pos,
+                                doc.editor_state.snap_to_grid,
+                                doc.editor_state.grid_size,
+                            );
+                            let _ = doc.document.nodes.insert(
+                                id.clone(),
+                                Node {
+                                    kind: NodeKind::Text,
+                                    icon: String::new(),
+                                    label: String::from("Text"),
+                                    x: OrderedFloat(x),
+                                    y: OrderedFloat(y),
+                                    width: OrderedFloat(100.0),
+                                    height: OrderedFloat(24.0),
+                                    font_size: None,
+                                    font_weight: None,
+                                    locked: false,
+                                    parent: None,
+                                    dag_rank: None,
+                                    tags: Vec::new(),
+                                    metadata: HashMap::new(),
+                                    z_index: 0,
+                                    style: Some(NodeStyle::default()),
+                                    collapsed: None,
+                                },
+                            );
+                            doc.editor_state.selected_items.clear();
+                            let _ = doc.editor_state.selected_items.insert(id.to_string());
+                            doc.revision = doc.revision.increment();
+                        });
+                        editing_edge.set(None);
+                        editing_node.set(None);
+                        edit_value.set(String::new());
+                        tool_signal.set(ToolMode::Select);
+                    } else {
+                        // For other tools, let the Dioxus handler deal with it
                     }
                     continue;
                 }

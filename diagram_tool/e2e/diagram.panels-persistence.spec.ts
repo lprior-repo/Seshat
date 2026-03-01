@@ -8,23 +8,19 @@ import {
   clearCanvasOverlays,
   createTextNode,
   edgeCount,
+  freshStart,
   nodeCount,
   selectedCount,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
   waitForNoRebuildOverlay,
-  waitForUiReady,
 } from "./helpers";
 
 test.describe("diagram panel persistence and resiliency", () => {
   test("panel toggles preserve canvas interactivity", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => expect(page.getByTestId("canvas-root")).toBeVisible({ timeout: 30_000 }),
-      () => waitForUiReady(page),
-    ]);
+    await freshStart(page);
 
     const icons = page.getByRole("button", { name: "Icons", exact: true });
     const props = page.getByRole("button", { name: "Props", exact: true });
@@ -70,11 +66,8 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("validation panel badge update path stays stable", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     await runEffect(() => page.getByRole("button", { name: "Valid", exact: true }).click());
     await expect(page.getByText("Validation", { exact: true })).toBeVisible();
@@ -123,11 +116,8 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("export buttons survive populated canvas without runtime errors", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffectsSequential([
@@ -149,10 +139,7 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("icon sidebar search and load-more remain sane", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-    ]);
+    await freshStart(page);
 
     await expect(page.getByRole("heading", { name: "Diagram Icons" })).toBeVisible();
     const iconGridItems = page.getByTestId("icon-item");
@@ -188,11 +175,8 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("valid import replaces scene and undo restores pre-import scene @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 960, 420));
@@ -235,11 +219,8 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("failed import does not change selected counter or consume undo history @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 260));
@@ -303,11 +284,8 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("schema-invalid import does not mutate scene or consume undo history @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 600, 250));
@@ -381,11 +359,8 @@ test.describe("diagram panel persistence and resiliency", () => {
 
   test("cancelled import leaves selected counter and node positions untouched @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 610, 255));

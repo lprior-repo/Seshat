@@ -2,6 +2,7 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   nodeCount,
   nodeFrameByLabel,
   runEffectsSequential,
@@ -47,11 +48,8 @@ async function center(box: Box) {
 }
 
 async function setupSubgraphWithNodes(page: Page) {
-  await runEffectsSequential([
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-    () => clearCanvasOverlays(page),
-  ]);
+  await freshStart(page);
+  await clearCanvasOverlays(page);
   const canvas = page.getByTestId("canvas-root");
 
   await runEffectsSequential([
@@ -169,11 +167,8 @@ test.describe("subgraph save-reload stability", () => {
 
   test("nested subgraphs survive page reload", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
     const canvas = page.getByTestId("canvas-root");
 
     // Create first text node
@@ -237,11 +232,8 @@ test.describe("subgraph save-reload stability", () => {
 
   test("nested subgraph resize proportions preserved after reload", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
     const canvas = page.getByTestId("canvas-root");
 
     // Create text nodes

@@ -2,10 +2,10 @@ import { expect, test, type Locator } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 async function nodeX(node: Locator): Promise<number> {
@@ -19,11 +19,8 @@ async function nodeX(node: Locator): Promise<number> {
 test.describe("history nudge gesture atomicity", () => {
   test("repeated arrow keydowns collapse to one undo entry @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 260));
@@ -70,11 +67,8 @@ test.describe("history nudge gesture atomicity", () => {
 
   test("blur between nudges starts a fresh undo gesture @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 640, 280));

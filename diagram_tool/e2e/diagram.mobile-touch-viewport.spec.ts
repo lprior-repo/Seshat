@@ -1,13 +1,13 @@
 import { expect, test } from "@playwright/test";
 import {
   clearCanvasOverlays,
+  freshStart,
   mountScrollableHarness,
   nodeCount,
   runEffectsSequential,
   runEffect,
   scrollHarnessTo,
   trapPageErrors,
-  waitForUiReady,
   zoomPercent,
 } from "./helpers";
 
@@ -20,13 +20,10 @@ test.describe("diagram mobile touch viewport stability", () => {
     requireTouchProject(hasTouch);
     const pageErrors = trapPageErrors(page);
 
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-      () => mountScrollableHarness(page),
-      () => scrollHarnessTo(page, 160, 260),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
+    await mountScrollableHarness(page);
+    await scrollHarnessTo(page, 160, 260);
 
     const canvas = page.getByTestId("canvas-root");
     const cbox = await runEffect(() => canvas.boundingBox());
@@ -57,11 +54,8 @@ test.describe("diagram mobile touch viewport stability", () => {
     requireTouchProject(hasTouch);
     const pageErrors = trapPageErrors(page);
 
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     const cbox = await runEffect(() => canvas.boundingBox());
@@ -124,13 +118,10 @@ test.describe("diagram mobile touch viewport stability", () => {
     requireTouchProject(hasTouch);
     const pageErrors = trapPageErrors(page);
 
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-      () => page.setViewportSize({ width: 412, height: 915 }),
-      () => page.setViewportSize({ width: 915, height: 412 }),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
+    await page.setViewportSize({ width: 412, height: 915 });
+    await page.setViewportSize({ width: 915, height: 412 });
 
     const canvas = page.getByTestId("canvas-root");
     const cbox = await runEffect(() => canvas.boundingBox());
@@ -153,13 +144,10 @@ test.describe("diagram mobile touch viewport stability", () => {
     requireTouchProject(hasTouch);
     const pageErrors = trapPageErrors(page);
 
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-      () => mountScrollableHarness(page),
-      () => scrollHarnessTo(page, 120, 220),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
+    await mountScrollableHarness(page);
+    await scrollHarnessTo(page, 120, 220);
 
     const canvas = page.getByTestId("canvas-root");
     const cbox = await runEffect(() => canvas.boundingBox());

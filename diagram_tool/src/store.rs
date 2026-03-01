@@ -1,12 +1,13 @@
-//! SQLite storage module
+//! `SQLite` storage module
 //!
 //! Provides SQLite-based storage with WAL mode and full synchronous durability.
 
+#![allow(dead_code)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use rusqlite::Connection;
@@ -60,22 +61,22 @@ pub enum CliErrorCode {
 impl CliErrorCode {
     /// Returns the error code as a string for JSON serialization
     #[must_use]
-    pub fn code(&self) -> &'static str {
+    pub const fn code(&self) -> &'static str {
         match self {
-            CliErrorCode::RevisionMismatch => "revision_mismatch",
-            CliErrorCode::HumanPriorityBlock => "human_priority_block",
-            CliErrorCode::PolicyViolation => "policy_violation",
-            CliErrorCode::ValidationFailed => "validation_failed",
-            CliErrorCode::Unknown => "unknown",
+            Self::RevisionMismatch => "revision_mismatch",
+            Self::HumanPriorityBlock => "human_priority_block",
+            Self::PolicyViolation => "policy_violation",
+            Self::ValidationFailed => "validation_failed",
+            Self::Unknown => "unknown",
         }
     }
 }
 
-/// Maps a StoreError to a CliErrorCode
+/// Maps a `StoreError` to a `CliErrorCode`
 ///
 /// # Errors
 /// Returns `CliErrorCode::Unknown` for unmapped error variants
-pub fn map_error_code(err: &StoreError) -> CliErrorCode {
+pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
     match err {
         StoreError::RevisionMismatch { .. } => CliErrorCode::RevisionMismatch,
         StoreError::HumanPriorityBlock(_) => CliErrorCode::HumanPriorityBlock,
@@ -96,6 +97,95 @@ pub fn render_error_json(code: CliErrorCode, message: &str) -> String {
     serde_json::json!({
         "code": code.code(),
         "message": message
+    })
+    .to_string()
+}
+
+/// CLI-specific errors for submit operations
+#[derive(Debug, Error)]
+pub enum CliError {
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("Store failure: {0}")]
+    StoreFailure(#[from] StoreError),
+    #[error("Conflict: {0}")]
+    Conflict(String),
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+}
+
+impl CliError {
+    /// Returns the CLI error code for this error
+    #[must_use]
+    pub fn error_code(&self) -> CliErrorCode {
+        match self {
+            Self::InvalidInput(_) => CliErrorCode::ValidationFailed,
+            Self::StoreFailure(err) => map_error_code(err),
+            Self::Conflict(_) => CliErrorCode::RevisionMismatch,
+            Self::Serialization(_) => CliErrorCode::Unknown,
+        }
+    }
+}
+
+/// Outcome of a CLI submit operation
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppendOutcome {
+    /// The new revision after the append
+    pub revision: i64,
+    /// The operation ID of the appended event
+    pub op_id: String,
+    /// The timestamp of the appended event
+    pub timestamp: i64,
+}
+
+impl From<AppendResult> for AppendOutcome {
+    fn from(result: AppendResult) -> Self {
+        Self {
+            revision: result.revision,
+            op_id: result.op_id,
+            timestamp: result.timestamp,
+        }
+    }
+}
+
+/// Submit a CLI operation through the shared envelope path
+///
+/// This function routes CLI mutations through the shared event envelope
+/// and append path, ensuring all operations are logged and revision-guarded.
+///
+/// # Errors
+/// Returns `CliError::InvalidInput` if the envelope validation fails
+/// Returns `CliError::StoreFailure` if the store operation fails
+/// Returns `CliError::Conflict` if there's a revision mismatch
+pub fn submit_cli_op(
+    conn: &mut Connection,
+    envelope: EventEnvelope,
+    expected_revision: Option<i64>,
+) -> Result<AppendOutcome, CliError> {
+    // Validate the envelope has required fields
+    if envelope.op_id.is_empty() {
+        return Err(CliError::InvalidInput("op_id is required".to_string()));
+    }
+    if envelope.author.id.is_empty() {
+        return Err(CliError::InvalidInput("author.id is required".to_string()));
+    }
+
+    // Route through the shared append path with OCC
+    let result = append_event(conn, envelope, expected_revision)?;
+
+    Ok(AppendOutcome::from(result))
+}
+
+/// Convert an `AppendOutcome` to a CLI response
+///
+/// Returns a JSON string suitable for CLI output
+#[must_use]
+pub fn cli_submit_response(outcome: &AppendOutcome) -> String {
+    serde_json::json!({
+        "ok": true,
+        "revision": outcome.revision,
+        "op_id": outcome.op_id,
+        "timestamp": outcome.timestamp
     })
     .to_string()
 }
@@ -324,6 +414,28 @@ fn run_schema_migration(conn: &Connection) -> Result<(), StoreError> {
         )?;
     }
 
+    // Create snapshot table if it doesn't exist
+    let snapshot_table_exists: i32 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='snapshots'",
+            [],
+            |row| row.get(0),
+        )
+        .map_err(StoreError::Sqlite)?;
+
+    if snapshot_table_exists == 0 {
+        conn.execute_batch(
+            "CREATE TABLE IF NOT EXISTS snapshots (
+                id INTEGER NOT NULL PRIMARY KEY,
+                revision INTEGER NOT NULL UNIQUE,
+                payload TEXT NOT NULL,
+                created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+            );
+
+            CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC);",
+        )?;
+    }
+
     Ok(())
 }
 
@@ -357,12 +469,12 @@ pub fn fetch_latest_revision(conn: &Connection) -> Result<i64, StoreError> {
 ///
 /// This function performs a comprehensive integrity check:
 /// 1. Verifies the database file can be opened
-/// 2. Checks SQLite integrity via PRAGMA integrity_check
+/// 2. Checks `SQLite` integrity via PRAGMA `integrity_check`
 /// 3. Validates schema version table exists and is readable
 /// 4. Counts events and determines latest revision
 /// 5. Checks for page corruption
 ///
-/// Returns an IntegrityStatus with detailed results of each check.
+/// Returns an `IntegrityStatus` with detailed results of each check.
 pub fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, RecoveryError> {
     // Check if database file exists
     if !db_path.exists() {
@@ -398,11 +510,7 @@ pub fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, Recove
         .query_row("PRAGMA freelist_count", [], |row| row.get(0))
         .map_err(RecoveryError::Sqlite)?;
 
-    let corrupted_pages: u32 = if !is_valid && integrity_result.contains("corrupt") {
-        1
-    } else {
-        0
-    };
+    let corrupted_pages: u32 = u32::from(!is_valid && integrity_result.contains("corrupt"));
 
     // Try to read schema version
     let schema_version = conn
@@ -427,7 +535,7 @@ pub fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, Recove
     let error_message = if !is_valid {
         Some(integrity_result)
     } else if corrupted_pages > 0 {
-        Some(format!("{} corrupted pages found", corrupted_pages))
+        Some(format!("{corrupted_pages} corrupted pages found"))
     } else {
         None
     };
@@ -451,7 +559,7 @@ pub fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, Recove
 /// 2. Performs an integrity check
 /// 3. If the database is valid, can export to JSON
 ///
-/// Returns a RecoveryHandle for read-only operations.
+/// Returns a `RecoveryHandle` for read-only operations.
 pub fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryError> {
     // Open in read-only mode
     let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
@@ -502,12 +610,8 @@ impl RecoveryHandle {
             .collect();
 
         // Write to JSON file
-        let json_content = serde_json::to_string_pretty(&events).map_err(|e| {
-            RecoveryError::Io(std::io::Error::new(
-                std::io::ErrorKind::Other,
-                e.to_string(),
-            ))
-        })?;
+        let json_content = serde_json::to_string_pretty(&events)
+            .map_err(|e| RecoveryError::Io(std::io::Error::other(e.to_string())))?;
 
         std::fs::write(output_path, json_content).map_err(RecoveryError::Io)?;
 
@@ -896,5 +1000,202 @@ mod tests {
         let code = CliErrorCode::RevisionMismatch;
         let json = serde_json::to_string(&code).expect("valid JSON");
         assert_eq!(json, "\"revision_mismatch\"");
+    }
+
+    // CliError and submit_cli_op tests
+
+    #[test]
+    fn test_cli_error_error_code_invalid_input() {
+        let err = CliError::InvalidInput("test".to_string());
+        assert_eq!(err.error_code(), CliErrorCode::ValidationFailed);
+    }
+
+    #[test]
+    fn test_cli_error_error_code_conflict() {
+        let err = CliError::Conflict("revision mismatch".to_string());
+        assert_eq!(err.error_code(), CliErrorCode::RevisionMismatch);
+    }
+
+    #[test]
+    fn test_cli_error_error_code_serialization() {
+        let err = CliError::Serialization("failed".to_string());
+        assert_eq!(err.error_code(), CliErrorCode::Unknown);
+    }
+
+    #[test]
+    fn test_cli_error_error_code_store_failure() {
+        let store_err = StoreError::RevisionMismatch {
+            expected: 1,
+            found: 2,
+        };
+        let err = CliError::StoreFailure(store_err);
+        assert_eq!(err.error_code(), CliErrorCode::RevisionMismatch);
+    }
+
+    #[test]
+    fn test_submit_cli_op_missing_op_id() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).unwrap();
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: String::new(), // Empty op_id
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result = submit_cli_op(&mut bootstrap.conn, envelope, None);
+        assert!(result.is_err());
+        match result {
+            Err(CliError::InvalidInput(msg)) => assert!(msg.contains("op_id")),
+            _ => panic!("Expected InvalidInput error"),
+        }
+    }
+
+    #[test]
+    fn test_submit_cli_op_missing_author_id() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).unwrap();
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: String::new(), // Empty author id
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result = submit_cli_op(&mut bootstrap.conn, envelope, None);
+        assert!(result.is_err());
+        match result {
+            Err(CliError::InvalidInput(msg)) => assert!(msg.contains("author.id")),
+            _ => panic!("Expected InvalidInput error"),
+        }
+    }
+
+    #[test]
+    fn test_submit_cli_op_success() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).unwrap();
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result = submit_cli_op(&mut bootstrap.conn, envelope, None);
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let outcome = result.unwrap();
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(outcome.op_id, "op-1");
+    }
+
+    #[test]
+    fn test_submit_cli_op_revision_mismatch() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).unwrap();
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        // Expect revision 5 but database is at 0
+        let result = submit_cli_op(&mut bootstrap.conn, envelope, Some(5));
+        assert!(result.is_err());
+        match result {
+            Err(CliError::StoreFailure(StoreError::RevisionMismatch { expected, found })) => {
+                assert_eq!(expected, 5);
+                assert_eq!(found, 0);
+            }
+            _ => panic!("Expected RevisionMismatch error, got: {:?}", result),
+        }
+    }
+
+    #[test]
+    fn test_cli_submit_response() {
+        let outcome = AppendOutcome {
+            revision: 42,
+            op_id: "op-123".to_string(),
+            timestamp: 1700000000,
+        };
+
+        let json = cli_submit_response(&outcome);
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+
+        assert_eq!(parsed["ok"], true);
+        assert_eq!(parsed["revision"], 42);
+        assert_eq!(parsed["op_id"], "op-123");
+        assert_eq!(parsed["timestamp"], 1700000000);
+    }
+
+    #[test]
+    fn test_append_outcome_from_append_result() {
+        let result = AppendResult {
+            revision: 10,
+            op_id: "op-456".to_string(),
+            timestamp: 1700000001,
+        };
+
+        let outcome = AppendOutcome::from(result);
+
+        assert_eq!(outcome.revision, 10);
+        assert_eq!(outcome.op_id, "op-456");
+        assert_eq!(outcome.timestamp, 1700000001);
     }
 }

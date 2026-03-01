@@ -1,7 +1,7 @@
 //! Backend module - DEPRECATED
 //!
 //! This module was previously used for the redb database backend.
-//! It has been decommissioned in favor of SQLite storage.
+//! It has been decommissioned in favor of `SQLite` storage.
 //!
 //! Any code attempting to use this module will fail at compile time
 //! due to the absence of public APIs.

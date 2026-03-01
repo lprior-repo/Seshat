@@ -2,13 +2,13 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   nodeCount,
   nodeFrameByLabel,
   runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
-  waitForUiReady,
   zoomPercent,
 } from "./helpers";
 
@@ -51,11 +51,8 @@ async function runResizeScenario(
   zoomTarget: number,
   dragPixels: number,
 ): Promise<{ beforeWorld: number; afterWorld: number; deltaWorld: number }> {
-  await runEffectsSequential([
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-    () => clearCanvasOverlays(page),
-  ]);
+  await freshStart(page);
+  await clearCanvasOverlays(page);
 
   const canvas = page.getByTestId("canvas-root");
   await runEffect(() => createTextNode(page, canvas, 680, 300));
@@ -104,11 +101,8 @@ test.describe("zoom/scale consistency", () => {
 
   test("after resize at high zoom node remains selectable by center click", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 700, 320));

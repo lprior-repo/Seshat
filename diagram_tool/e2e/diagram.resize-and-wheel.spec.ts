@@ -2,12 +2,12 @@ import { expect, test, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   nodeCount,
   runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
-  waitForUiReady,
   zoomPercent,
 } from "./helpers";
 
@@ -25,11 +25,8 @@ async function firstNodeBox(page: Page): Promise<BoundingBox> {
 test.describe("diagram resize and wheel behavior", () => {
   test("wheel on canvas zooms editor and does not scroll page @p0-smoke", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     expect(await zoomPercent(page)).toBe(100);
 
@@ -53,11 +50,8 @@ test.describe("diagram resize and wheel behavior", () => {
 
   test("resize interaction updates dimensions progressively and stays finite", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 280));
@@ -97,11 +91,8 @@ test.describe("diagram resize and wheel behavior", () => {
 
   test("small handle drag does not jump from viewport-offset math", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 700, 320));

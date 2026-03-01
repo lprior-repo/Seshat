@@ -244,12 +244,12 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 
             // Read and parse the patch file
             let patch_content = std::fs::read_to_string(patch)
-                .map_err(|e| anyhow!("Failed to read patch file: {}", e))?;
+                .map_err(|e| anyhow!("Failed to read patch file: {e}"))?;
             let patch_ops: Vec<serde_json::Value> = serde_json::from_str(&patch_content)
-                .map_err(|e| anyhow!("Failed to parse patch JSON: {}", e))?;
+                .map_err(|e| anyhow!("Failed to parse patch JSON: {e}"))?;
 
             // Check that first operation is a test for /revision (optimistic locking)
-            let has_revision_test = patch_ops.first().map_or(false, |op| {
+            let has_revision_test = patch_ops.first().is_some_and(|op| {
                 op.get("op").and_then(|v| v.as_str()) == Some("test")
                     && op.get("path").and_then(|v| v.as_str()) == Some("/revision")
             });
@@ -309,17 +309,12 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                                 String::from("patch"),
                                 String::from(err_code),
                                 format!(
-                                    "test failed at {}: expected {:?} but got {:?}",
-                                    path, expected, actual
+                                    "test failed at {path}: expected {expected:?} but got {actual:?}"
                                 ),
                             ));
 
                             return Err(anyhow!(
-                                "{}: test failed at {}: expected {:?} but got {:?}",
-                                err_code,
-                                path,
-                                expected,
-                                actual
+                                "{err_code}: test failed at {path}: expected {expected:?} but got {actual:?}"
                             ));
                         }
                     }
@@ -339,18 +334,18 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                         json_pointer_remove(&mut doc, path)?;
                     }
                     _ => {
-                        return Err(anyhow!("unsupported patch operation: {}", op_type));
+                        return Err(anyhow!("unsupported patch operation: {op_type}"));
                     }
                 }
             }
 
             // Run validation pipeline
             let validated_doc = run_mutation(&doc, |d| Ok(d.clone()))
-                .map_err(|err| anyhow!("Patch validation failed: {}", err))?;
+                .map_err(|err| anyhow!("Patch validation failed: {err}"))?;
 
             // Save the result
             save_workspace_atomic(&validated_doc, Path::new(output))
-                .map_err(|e| anyhow!("Failed to save patched document: {}", e))?;
+                .map_err(|e| anyhow!("Failed to save patched document: {e}"))?;
 
             emit_stage_event(
                 "patched",
@@ -404,10 +399,10 @@ fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Va
                     Err(anyhow!("label must be a string"))
                 }
             } else {
-                Err(anyhow!("node {} not found", node_id))
+                Err(anyhow!("node {node_id} not found"))
             }
         }
-        _ => Err(anyhow!("unsupported path: {}", path)),
+        _ => Err(anyhow!("unsupported path: {path}")),
     }
 }
 

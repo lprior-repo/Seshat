@@ -4,12 +4,12 @@ import {
   createTextNode,
   expectNodeCount,
   expectSelectedCount,
+  freshStart,
   runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
   waitForNoRebuildOverlay,
-  waitForUiReady,
 } from "./helpers";
 
 type Box = {
@@ -84,11 +84,8 @@ async function resizeHandleCenters(canvas: Locator, cursor: string): Promise<Poi
 test.describe("diagram transform invariants", () => {
   test("drag threshold no-op vs real drag", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 560, 240));
@@ -132,11 +129,8 @@ test.describe("diagram transform invariants", () => {
 
   test("resize min clamp behavior", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffect(() => createTextNode(page, canvas, 620, 260));
@@ -171,11 +165,8 @@ test.describe("diagram transform invariants", () => {
 
   test("shift multi-select drag moves cohort", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffectsSequential([
@@ -232,11 +223,8 @@ test.describe("diagram transform invariants", () => {
 
   test("rubber-band selection invariants", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await runEffectsSequential([

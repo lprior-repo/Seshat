@@ -6,9 +6,12 @@ import { resolve } from "node:path";
 import {
   edgeCount,
   nodeCount,
+  resetDocument,
   runEffectsSequential,
   runEffect,
   selectedCount,
+  waitForCleanState,
+  waitForE2eReady,
   waitForNoRebuildOverlay,
   waitForUiReady,
   zoomPercent,
@@ -23,6 +26,7 @@ async function recoverFromRebuildOverlay(page: Page): Promise<void> {
   await runEffectsSequential([
     () => page.reload({ waitUntil: "domcontentloaded", timeout: 5_000 }),
     () => waitForUiReady(page),
+    () => waitForE2eReady(page),
   ]);
 }
 
@@ -205,6 +209,13 @@ async function importScene(page: Page, sceneName: SceneName): Promise<void> {
     await expect.poll(() => nodeCount(page), { timeout: 15_000 }).toBe(contract.nodeCount);
     await expect.poll(() => edgeCount(page), { timeout: 15_000 }).toBe(contract.edgeCount);
   };
+
+  // Reset document to defaults before importing scene for deterministic state.
+  await runEffectsSequential([
+    () => waitForE2eReady(page),
+    () => resetDocument(page),
+    () => waitForCleanState(page),
+  ]);
 
   // Recover from stale overlay before import.
   await recoverFromRebuildOverlay(page);

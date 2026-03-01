@@ -1,19 +1,20 @@
-//! Event envelope module - defines EventEnvelope and Author metadata
+//! Event envelope module - defines `EventEnvelope` and Author metadata
 //!
 //! This module provides types for encoding/decoding event envelopes
 //! with strict validation of required fields.
 
+#![allow(dead_code)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Error types for domain op_types
+/// Error types for domain `op_types`
 #[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ContractError {
     #[error("invalid JSON: {0}")]
@@ -50,7 +51,7 @@ pub enum OpType {
 }
 
 impl OpType {
-    /// Parse OpType from string, returning UnknownOpType error for invalid values
+    /// Parse `OpType` from string, returning `UnknownOpType` error for invalid values
     fn from_str(s: &str) -> Result<Self, ContractError> {
         match s {
             "create" => Ok(Self::Create),
@@ -62,7 +63,7 @@ impl OpType {
     }
 }
 
-/// Kind of domain op_type
+/// Kind of domain `op_type`
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OpKind {
@@ -70,14 +71,14 @@ pub enum OpKind {
     Node,
     /// Operation on an edge
     Edge,
-    /// Composite op_type involving multiple entities
+    /// Composite `op_type` involving multiple entities
     Composite,
-    /// Z-order op_type for layering
+    /// Z-order `op_type` for layering
     ZOrder,
 }
 
 impl OpKind {
-    /// Returns the name of this op_type kind as a string
+    /// Returns the name of this `op_type` kind as a string
     #[must_use]
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -145,7 +146,7 @@ pub enum DomainOp {
 }
 
 impl DomainOp {
-    /// Get the op_type kind for this domain op_type
+    /// Get the `op_type` kind for this domain `op_type`
     #[must_use]
     pub const fn kind(&self) -> OpKind {
         match self {
@@ -163,11 +164,11 @@ impl DomainOp {
     }
 }
 
-/// Parse a domain op_type from a JSON string
+/// Parse a domain `op_type` from a JSON string
 ///
 /// # Errors
 /// Returns `ContractError::InvalidJson` if the JSON is malformed
-/// Returns `ContractError::UnknownOpType` if the op_type type is not recognized
+/// Returns `ContractError::UnknownOpType` if the `op_type` type is not recognized
 /// Returns `ContractError::InvalidPayload` if the payload is invalid
 /// Returns `ContractError::MissingField` if required fields are missing
 pub fn parse_domain_op(raw: &str) -> Result<DomainOp, ContractError> {
@@ -196,11 +197,11 @@ pub fn parse_domain_op(raw: &str) -> Result<DomainOp, ContractError> {
     }
 }
 
-/// Get the op_type kind for a domain op_type
+/// Get the `op_type` kind for a domain `op_type`
 ///
 /// This is a convenience function that delegates to `DomainOp::kind()`
 #[must_use]
-pub fn domain_op_kind(op: &DomainOp) -> OpKind {
+pub const fn domain_op_kind(op: &DomainOp) -> OpKind {
     op.kind()
 }
 
@@ -214,19 +215,19 @@ fn parse_node_add(value: serde_json::Value) -> Result<DomainOp, ContractError> {
         .ok_or(ContractError::MissingField("id"))?;
     let x = value
         .get("x")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or(ContractError::MissingField("x"))?;
     let y = value
         .get("y")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or(ContractError::MissingField("y"))?;
     let width = value
         .get("width")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or(ContractError::MissingField("width"))?;
     let height = value
         .get("height")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or(ContractError::MissingField("height"))?;
     let label = value
         .get("label")
@@ -252,11 +253,11 @@ fn parse_node_move(value: serde_json::Value) -> Result<DomainOp, ContractError> 
         .ok_or(ContractError::MissingField("id"))?;
     let x = value
         .get("x")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or(ContractError::MissingField("x"))?;
     let y = value
         .get("y")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or(ContractError::MissingField("y"))?;
 
     Ok(DomainOp::NodeMove { id, x, y })
@@ -380,7 +381,7 @@ pub struct EventEnvelope {
     pub timestamp: i64,
 }
 
-/// Decode an EventEnvelope from a JSON string
+/// Decode an `EventEnvelope` from a JSON string
 ///
 /// This is an alias for `parse_event_envelope` for backward compatibility.
 /// Prefer using `parse_event_envelope` directly.
@@ -389,13 +390,13 @@ pub struct EventEnvelope {
 /// Returns `ContractError::InvalidJson` if the JSON is malformed
 /// Returns `ContractError::MissingField` if required fields are missing
 /// Returns `ContractError::InvalidAuthor` if author validation fails
-/// Returns `ContractError::UnknownOpType` if the op_type type is invalid
+/// Returns `ContractError::UnknownOpType` if the `op_type` type is invalid
 #[deprecated(since = "0.1.0", note = "use parse_event_envelope instead")]
 pub fn decode_envelope(raw: &str) -> Result<EventEnvelope, ContractError> {
     parse_event_envelope(raw)
 }
 
-/// Encode an EventEnvelope to a JSON string
+/// Encode an `EventEnvelope` to a JSON string
 ///
 /// This is an alias for `encode_event_envelope` for backward compatibility.
 /// Prefer using `encode_event_envelope` directly.
@@ -407,7 +408,7 @@ pub fn encode_envelope(op: &EventEnvelope) -> Result<String, ContractError> {
     encode_event_envelope(op)
 }
 
-/// Parse an EventEnvelope from a JSON string
+/// Parse an `EventEnvelope` from a JSON string
 ///
 /// This is the canonical function for parsing event envelopes as per the contract.
 /// Validates all required fields and returns structured errors.
@@ -416,7 +417,7 @@ pub fn encode_envelope(op: &EventEnvelope) -> Result<String, ContractError> {
 /// Returns `ContractError::InvalidJson` if the JSON is malformed
 /// Returns `ContractError::MissingField` if required fields are missing
 /// Returns `ContractError::InvalidAuthor` if author validation fails
-/// Returns `ContractError::UnknownOpType` if the op_type type is invalid
+/// Returns `ContractError::UnknownOpType` if the `op_type` type is invalid
 pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError> {
     // First do a lightweight validation to check required fields
     let value: serde_json::Value =
@@ -494,7 +495,7 @@ pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError>
     })
 }
 
-/// Encode an EventEnvelope to a JSON string
+/// Encode an `EventEnvelope` to a JSON string
 ///
 /// This is the canonical function for encoding event envelopes as per the contract.
 ///

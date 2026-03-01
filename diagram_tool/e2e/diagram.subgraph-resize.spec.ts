@@ -2,13 +2,13 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   nodeCount,
   nodeFrameByLabel,
   runEffectsSequential,
   runEffect,
   selectedCount,
   trapPageErrors,
-  waitForUiReady,
 } from "./helpers";
 
 type Box = { x: number; y: number; width: number; height: number };
@@ -48,11 +48,8 @@ async function center(box: Box) {
 }
 
 async function setupSubgraphWithNodes(page: Page) {
-  await runEffectsSequential([
-    () => page.goto("/"),
-    () => waitForUiReady(page),
-    () => clearCanvasOverlays(page),
-  ]);
+  await freshStart(page);
+  await clearCanvasOverlays(page);
   const canvas = page.getByTestId("canvas-root");
 
   await runEffectsSequential([

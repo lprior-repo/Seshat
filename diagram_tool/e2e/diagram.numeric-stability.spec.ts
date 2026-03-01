@@ -2,12 +2,12 @@ import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
   clearCanvasOverlays,
   createTextNode,
+  freshStart,
   minimapViewport,
   runEffectsSequential,
   runEffect,
   trapPageErrors,
   waitForNoRebuildOverlay,
-  waitForUiReady,
   zoomPercent,
 } from "./helpers";
 
@@ -112,11 +112,8 @@ test.describe("diagram numeric stability", () => {
 
   test("zoom_clamps_at_extremes_under_mixed_inputs", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
 
@@ -171,11 +168,8 @@ test.describe("diagram numeric stability", () => {
 
   test("resize_handle_cross_over_keeps_dimensions_finite", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
     await createTextNode(page, canvas, 400, 250);
@@ -231,11 +225,8 @@ test.describe("diagram numeric stability", () => {
 
   test("multi_node_resize_near_minimum_never_produces_invalid_boxes", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
 
@@ -310,11 +301,8 @@ test.describe("diagram numeric stability", () => {
 
   test("minimap_drag_at_zoom_extremes_keeps_viewport_rect_valid", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
-    await runEffectsSequential([
-      () => page.goto("/"),
-      () => waitForUiReady(page),
-      () => clearCanvasOverlays(page),
-    ]);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
 
     const canvas = page.getByTestId("canvas-root");
 
