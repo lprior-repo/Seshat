@@ -49,6 +49,7 @@ use std::sync::mpsc::Sender;
 use std::sync::Arc;
 use std::time::Duration;
 
+#[cfg(not(target_arch = "wasm32"))]
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
 
@@ -87,6 +88,7 @@ impl From<io::Error> for SyncError {
 /// Handle to the file watcher
 ///
 /// This handle keeps the watcher alive. When dropped, the watcher is stopped.
+#[cfg(not(target_arch = "wasm32"))]
 pub struct WatcherHandle {
     watcher: RecommendedWatcher,
     /// Flag to track if the watcher is still active
@@ -95,8 +97,25 @@ pub struct WatcherHandle {
     watch_path: PathBuf,
 }
 
+/// Stub handle for WASM (file watching not supported)
+#[cfg(target_arch = "wasm32")]
+pub struct WatcherHandle {
+    /// Flag to track if the watcher is still active
+    active: Arc<AtomicBool>,
+}
+
+#[cfg(not(target_arch = "wasm32"))]
 impl WatcherHandle {
     /// Check if the watcher is still active
+    #[must_use]
+    pub fn is_active(&self) -> bool {
+        self.active.load(Ordering::SeqCst)
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl WatcherHandle {
+    /// Check if the watcher is still active (always false on WASM)
     #[must_use]
     pub fn is_active(&self) -> bool {
         self.active.load(Ordering::SeqCst)
@@ -131,6 +150,7 @@ impl WatcherHandle {
 /// stop_store_watcher(handle)?; // Explicitly stop
 /// // Or just let handle drop to stop automatically
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 pub fn start_store_watcher(path: PathBuf) -> Result<WatcherHandle, SyncError> {
     // Verify the database file exists
     if !path.exists() {
@@ -199,6 +219,15 @@ pub fn start_store_watcher(path: PathBuf) -> Result<WatcherHandle, SyncError> {
     })
 }
 
+/// Stub for WASM - file watching not supported
+#[cfg(target_arch = "wasm32")]
+pub fn start_store_watcher(_path: PathBuf) -> Result<WatcherHandle, SyncError> {
+    // File watching not supported on WASM
+    Ok(WatcherHandle {
+        active: Arc::new(AtomicBool::new(false)),
+    })
+}
+
 /// Stop the store watcher
 ///
 /// This function explicitly stops the file watcher and releases its resources.
@@ -214,12 +243,20 @@ pub fn start_store_watcher(path: PathBuf) -> Result<WatcherHandle, SyncError> {
 /// # Errors
 ///
 /// Returns `SyncError::WatchRuntime` if the watcher fails to stop cleanly.
+#[cfg(not(target_arch = "wasm32"))]
 pub fn stop_store_watcher(mut handle: WatcherHandle) -> Result<(), SyncError> {
     handle.active.store(false, Ordering::SeqCst);
     handle
         .watcher
         .unwatch(&handle.watch_path)
         .map_err(|_| SyncError::WatchRuntime)?;
+    Ok(())
+}
+
+/// Stub for WASM - file watching not supported
+#[cfg(target_arch = "wasm32")]
+pub fn stop_store_watcher(handle: WatcherHandle) -> Result<(), SyncError> {
+    handle.active.store(false, Ordering::SeqCst);
     Ok(())
 }
 
@@ -261,6 +298,7 @@ pub enum SyncMessage {
 /// // Watcher is now active
 /// drop(handle); // Stops watching
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
 pub fn start_event_tail_watcher(
     db_path: PathBuf,
     tx: Sender<SyncMessage>,
@@ -335,6 +373,18 @@ pub fn start_event_tail_watcher(
         watcher,
         active,
         watch_path,
+    })
+}
+
+/// Stub for WASM - file watching not supported
+#[cfg(target_arch = "wasm32")]
+pub fn start_event_tail_watcher(
+    _db_path: PathBuf,
+    _tx: Sender<SyncMessage>,
+) -> Result<WatcherHandle, SyncError> {
+    // File watching not supported on WASM
+    Ok(WatcherHandle {
+        active: Arc::new(AtomicBool::new(false)),
     })
 }
 
@@ -701,6 +751,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_start_event_tail_watcher_fails_for_nonexistent_path() {
         let (tx, _rx) = channel();
         let nonexistent_path = PathBuf::from("/nonexistent/path/test.db");
@@ -716,6 +767,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_start_event_tail_watcher_succeeds_for_existing_db() {
         let (_temp_dir, db_path, _conn) = create_test_db();
         let (tx, rx) = channel();
@@ -734,6 +786,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_watcher_detects_database_modifications() {
         let (_temp_dir, db_path, mut conn) = create_test_db();
         let (tx, rx) = channel();
@@ -887,6 +940,7 @@ mod tests {
     // Tests for contract-compliant start_store_watcher and stop_store_watcher
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_start_store_watcher_fails_for_nonexistent_path() {
         let nonexistent_path = PathBuf::from("/nonexistent/path/test.db");
 
@@ -901,6 +955,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_start_store_watcher_succeeds_for_existing_db() {
         let (_temp_dir, db_path, _conn) = create_test_db();
 
@@ -916,6 +971,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_stop_store_watcher_succeeds() {
         let (_temp_dir, db_path, _conn) = create_test_db();
 
@@ -927,6 +983,7 @@ mod tests {
     }
 
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn test_watcher_handle_is_active_flag() {
         let (_temp_dir, db_path, _conn) = create_test_db();
 
