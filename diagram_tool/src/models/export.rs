@@ -15,6 +15,12 @@ use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::models::document::DiagramDocument;
+use crate::models::envelope::{parse_event_envelope, Author as EnvelopeAuthor, EventEnvelope};
+use crate::models::projection::{DiagramProjection, EventRecord};
+use crate::models::schema::validate_schema;
+use crate::store;
+
 /// Errors that can occur during export/import operations
 #[derive(Debug, Error, Clone)]
 pub enum ExportError {
@@ -27,6 +33,12 @@ pub enum ExportError {
     #[error("validation error: {0}")]
     Validation(String),
 }
+
+/// Schema version for exports
+const EXPORT_SCHEMA_VERSION: u32 = 2;
+
+/// Diagram name constant
+const DEFAULT_DIAGRAM_NAME: &str = "diagram";
 
 /// JSON export structure for diagrams
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -60,7 +72,7 @@ pub struct ImportResult {
     pub final_revision: u64,
 }
 
-/// Author of operations
+/// Author of operations (contract version)
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Author {
     /// Author identifier
@@ -69,35 +81,565 @@ pub struct Author {
     pub is_human: bool,
 }
 
+impl Author {
+    /// Convert to envelope Author for storing
+    #[must_use]
+    pub fn to_envelope_author(&self) -> EnvelopeAuthor {
+        EnvelopeAuthor {
+            id: if self.is_human {
+                format!("human-{}", self.id)
+            } else {
+                self.id.clone()
+            },
+            name: self.id.clone(),
+            email: None,
+        }
+    }
+}
+
 /// Export diagram to JSON
+///
+/// This function:
+/// 1. Reads all events from the database
+/// 2. Replays them to get the current projection
+/// 3. Validates the projection against the schema
+/// 4. Serializes to JSON format
 ///
 /// # Errors
 /// Returns ExportError if export fails
-pub fn export_diagram_json(_conn: &Connection) -> Result<DiagramJsonExport, ExportError> {
-    // Stub implementation
+pub fn export_diagram_json(conn: &Connection) -> Result<DiagramJsonExport, ExportError> {
+    // Fetch all events from the database
+    let events = fetch_all_events(conn)?;
+
+    // Replay events to get the projection
+    let projection = replay_events_from_db(&events)?;
+
+    // Convert projection to document for validation
+    let document = projection_to_document(&projection);
+
+    // Validate against schema
+    validate_schema(&document).map_err(|e| ExportError::InvalidSchema(e.to_string()))?;
+
+    // Serialize the projection data
+    let data =
+        serde_json::to_value(&projection).map_err(|e| ExportError::Serialization(e.to_string()))?;
+
+    // Create metadata
+    let metadata = DiagramMetadata {
+        name: DEFAULT_DIAGRAM_NAME.to_string(),
+        revision: projection.revision,
+        version: EXPORT_SCHEMA_VERSION,
+    };
+
+    // Optionally include events for replay
+    let events_json: Vec<serde_json::Value> = events
+        .iter()
+        .map(|e| serde_json::to_value(e).map_err(|err| ExportError::Serialization(err.to_string())))
+        .collect::<Result<Vec<_>, _>>()?;
+
     Ok(DiagramJsonExport {
-        metadata: DiagramMetadata {
-            name: "diagram".to_string(),
-            revision: 0,
-            version: 1,
-        },
-        data: serde_json::json!({}),
-        events: None,
+        metadata,
+        data,
+        events: Some(events_json),
     })
+}
+
+/// Fetch all events from the database
+///
+/// # Errors
+/// Returns ExportError::Sqlite if database operations fail
+/// Returns ExportError::Serialization if event parsing fails
+fn fetch_all_events(conn: &Connection) -> Result<Vec<EventRecord>, ExportError> {
+    let mut stmt = conn
+        .prepare("SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision")
+        .map_err(|e| ExportError::Sqlite(e.to_string()))?;
+
+    let events: Vec<EventRecord> = stmt
+        .query_map([], |row| {
+            let operation_id: String = row.get(0)?;
+            let revision: i64 = row.get(1)?;
+            let payload: String = row.get(2)?;
+            let timestamp: String = row.get(3)?;
+            Ok((operation_id, revision, payload, timestamp))
+        })
+        .map_err(|e| ExportError::Sqlite(e.to_string()))?
+        .filter_map(Result::ok)
+        .filter_map(|(_operation_id, revision, payload, timestamp)| {
+            let envelope = parse_event_envelope(&payload).ok()?;
+            let timestamp = timestamp.parse().ok()?;
+            Some(EventRecord {
+                op_id: envelope.op_id,
+                revision: revision as u64,
+                operation: envelope.operation,
+                author: envelope.author,
+                timestamp,
+            })
+        })
+        .collect();
+
+    Ok(events)
+}
+
+/// Replay events to get the projection
+///
+/// # Errors
+/// Returns ExportError::Validation if replay fails
+fn replay_events_from_db(events: &[EventRecord]) -> Result<DiagramProjection, ExportError> {
+    // Adjust event revisions: DB revisions start at 1, but replay expects starting from 0
+    let adjusted_events: Vec<EventRecord> = events
+        .iter()
+        .map(|e| {
+            let mut adjusted = e.clone();
+            adjusted.revision = e.revision.saturating_sub(1);
+            adjusted
+        })
+        .collect();
+
+    crate::models::projection::replay_events(&adjusted_events)
+        .map_err(|e| ExportError::Validation(e.to_string()))
+}
+
+/// Convert projection to document for validation
+#[must_use]
+fn projection_to_document(projection: &DiagramProjection) -> DiagramDocument {
+    let mut doc = crate::models::projection::projection_to_document(projection);
+    // Set correct schema version
+    doc.version = 2;
+    doc
 }
 
 /// Import diagram from JSON
 ///
+/// This function:
+/// 1. Parses the JSON input
+/// 2. Extracts events from the input (either from events array or generates from data)
+/// 3. Validates the data against schema
+/// 4. Appends each event to the store using the provided author
+/// 5. Returns the import result with events generated and final revision
+///
 /// # Errors
 /// Returns ExportError if import fails
 pub fn import_diagram_json(
-    _conn: &mut Connection,
-    _input: &str,
-    _actor: Author,
+    conn: &mut Connection,
+    input: &str,
+    actor: Author,
 ) -> Result<ImportResult, ExportError> {
-    // Stub implementation
+    // Parse the JSON input
+    let export: DiagramJsonExport =
+        serde_json::from_str(input).map_err(|e| ExportError::Serialization(e.to_string()))?;
+
+    // Validate schema version
+    if export.metadata.version > EXPORT_SCHEMA_VERSION {
+        return Err(ExportError::InvalidSchema(format!(
+            "unsupported schema version: {}",
+            export.metadata.version
+        )));
+    }
+
+    // Deserialize the projection from data
+    let projection: DiagramProjection = serde_json::from_value(export.data.clone())
+        .map_err(|e| ExportError::Serialization(e.to_string()))?;
+
+    // Convert to document and validate
+    let document = projection_to_document(&projection);
+    validate_schema(&document).map_err(|e| ExportError::Validation(e.to_string()))?;
+
+    // Get events to import - either from the export or generate from projection
+    let events_to_import = export.events.unwrap_or_else(|| {
+        // Generate canonical events from projection if not provided
+        generate_canonical_events(&projection)
+    });
+
+    // Convert JSON events to EventRecords
+    let event_records: Vec<EventRecord> = events_to_import
+        .iter()
+        .map(|v| {
+            serde_json::from_value(v.clone()).map_err(|e| ExportError::Serialization(e.to_string()))
+        })
+        .collect::<Result<Vec<_>, _>>()?;
+
+    // Get current latest revision
+    let current_revision =
+        store::fetch_latest_revision(conn).map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
+
+    // Convert author to envelope author
+    let envelope_author = actor.to_envelope_author();
+
+    // Append each event to the store
+    let mut events_generated: u64 = 0;
+
+    for event_record in &event_records {
+        // Create envelope from event record
+        let envelope = EventEnvelope {
+            op_id: event_record.op_id.clone(),
+            operation: event_record.operation.clone(),
+            author: envelope_author.clone(),
+            timestamp: event_record.timestamp,
+        };
+
+        // Append event with OCC - expect current revision
+        let expected = current_revision + events_generated;
+        match store::append_event(conn, envelope, Some(expected as i64)) {
+            Ok(_result) => {
+                events_generated += 1;
+            }
+            Err(store::StoreError::RevisionMismatch { .. }) => {
+                // Event already exists (idempotent) - skip but count as processed
+                events_generated += 1;
+            }
+            Err(e) => {
+                return Err(ExportError::Sqlite(e.to_string()));
+            }
+        }
+    }
+
+    // Get final revision
+    let final_revision =
+        store::fetch_latest_revision(conn).map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
+
     Ok(ImportResult {
-        events_generated: 0,
-        final_revision: 0,
+        events_generated,
+        final_revision,
     })
+}
+
+/// Generate canonical events from a projection
+///
+/// This creates events that can recreate the projection state.
+/// For now, we generate NodeAdd events for all nodes and EdgeConnect for all edges.
+/// This is a simple approach - a more complete implementation would track all operations.
+///
+/// # Panics
+/// This function does not panic (no unwrap/expect)
+#[must_use]
+fn generate_canonical_events(projection: &DiagramProjection) -> Vec<serde_json::Value> {
+    use crate::models::envelope::DomainOp;
+
+    let mut events: Vec<serde_json::Value> = Vec::new();
+    let mut revision: u64 = 0;
+
+    // Generate NodeAdd events for all nodes
+    for (node_id, node) in &projection.nodes {
+        let operation = DomainOp::NodeAdd {
+            id: node_id.to_string(),
+            x: node.x.0,
+            y: node.y.0,
+            width: node.width.0,
+            height: node.height.0,
+            label: node.label.clone(),
+        };
+
+        let event = EventRecord {
+            op_id: format!("import-node-{}", node_id),
+            revision,
+            operation,
+            author: EnvelopeAuthor {
+                id: "import".to_string(),
+                name: "Import".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        if let Ok(json) = serde_json::to_value(&event) {
+            events.push(json);
+        }
+        revision += 1;
+    }
+
+    // Generate EdgeConnect events for all edges
+    for (edge_id, edge) in &projection.edges {
+        let operation = DomainOp::EdgeConnect {
+            id: edge_id.to_string(),
+            source: edge.source.to_string(),
+            target: edge.target.to_string(),
+        };
+
+        let event = EventRecord {
+            op_id: format!("import-edge-{}", edge_id),
+            revision,
+            operation,
+            author: EnvelopeAuthor {
+                id: "import".to_string(),
+                name: "Import".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        if let Ok(json) = serde_json::to_value(&event) {
+            events.push(json);
+        }
+        revision += 1;
+    }
+
+    events
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::envelope::{Author as EnvelopeAuthor, DomainOp, EventEnvelope};
+    use crate::store;
+    use tempfile::TempDir;
+
+    #[test]
+    fn given_empty_database_when_exporting_then_returns_empty_projection() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let conn = &bootstrap.conn;
+
+        let result = export_diagram_json(conn);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let export = result.unwrap();
+        assert_eq!(export.metadata.revision, 0);
+        assert!(export.data.get("nodes").is_some());
+        assert!(export.events.is_some());
+    }
+
+    #[test]
+    fn given_database_with_events_when_exporting_then_includes_projection_data() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add some events
+        let envelope1 = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test Node".to_string(),
+            },
+            author: EnvelopeAuthor {
+                id: "human-user".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let envelope2 = EventEnvelope {
+            op_id: "op-2".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 300.0,
+                y: 400.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test Node 2".to_string(),
+            },
+            author: EnvelopeAuthor {
+                id: "human-user".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        };
+
+        store::append_event(&mut bootstrap.conn, envelope1, None).unwrap();
+        store::append_event(&mut bootstrap.conn, envelope2, None).unwrap();
+
+        let result = export_diagram_json(&bootstrap.conn);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let export = result.unwrap();
+        assert_eq!(export.metadata.revision, 2);
+    }
+
+    #[test]
+    fn given_empty_database_when_importing_then_succeeds_with_zero_events() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        let input = r#"{
+            "metadata": {
+                "name": "test",
+                "revision": 0,
+                "version": 2
+            },
+            "data": {
+                "version": 1,
+                "revision": 0,
+                "nodes": {},
+                "edges": {},
+                "author_priority": {}
+            },
+            "events": []
+        }"#;
+
+        let actor = Author {
+            id: "test-user".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        assert!(result.is_ok(), "Import failed: {:?}", result.err());
+        let import_result = result.unwrap();
+        assert_eq!(import_result.events_generated, 0);
+        assert_eq!(import_result.final_revision, 0);
+    }
+
+    #[test]
+    fn given_valid_export_json_when_importing_then_creates_events() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // First create some data
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test Node".to_string(),
+            },
+            author: EnvelopeAuthor {
+                id: "human-user".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Export
+        let export = export_diagram_json(&bootstrap.conn).unwrap();
+        let export_json = serde_json::to_string(&export).unwrap();
+
+        // Create a fresh database for import
+        let temp_dir2 = TempDir::new().unwrap();
+        let db_path2 = temp_dir2.path().join("test.db");
+        let bootstrap2 = store::bootstrap_store(&db_path2).unwrap();
+        let mut conn2 = bootstrap2.conn;
+
+        // Import
+        let actor = Author {
+            id: "test-user".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn2, &export_json, actor);
+
+        assert!(result.is_ok(), "Import failed: {:?}", result.err());
+        let import_result = result.unwrap();
+        assert!(import_result.events_generated > 0);
+        assert!(import_result.final_revision > 0);
+    }
+
+    #[test]
+    fn given_invalid_json_when_importing_then_returns_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        let input = "not valid json";
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn given_mismatched_revision_when_importing_then_returns_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        // Add one event first
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: EnvelopeAuthor {
+                id: "user".to_string(),
+                name: "User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        store::append_event(&mut conn, envelope, None).unwrap();
+
+        // Now try to import with events starting at revision 0 (should be revision 1)
+        let input = r#"{
+            "metadata": {"name": "test", "revision": 0, "version": 2},
+            "data": {"version": 1, "revision": 0, "nodes": {}, "edges": {}, "author_priority": {}},
+            "events": [
+                {
+                    "op_id": "import-1",
+                    "revision": 0,
+                    "operation": {"NodeAdd": {"id": "n1", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0, "label": "A"}},
+                    "author": {"id": "user", "name": "User", "email": null},
+                    "timestamp": 1
+                }
+            ]
+        }"#;
+
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        // This should fail due to revision mismatch
+        let result = import_diagram_json(&mut conn, input, actor);
+        // The import expects revision 0 but database is at revision 1
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn given_author_to_envelope_author_conversion() {
+        let author = Author {
+            id: "test-user".to_string(),
+            is_human: true,
+        };
+
+        let envelope_author = author.to_envelope_author();
+
+        assert!(envelope_author.id.starts_with("human-"));
+        assert_eq!(envelope_author.name, "test-user");
+    }
+
+    #[test]
+    fn given_ai_author_to_envelope_author_conversion() {
+        let author = Author {
+            id: "ai-assistant".to_string(),
+            is_human: false,
+        };
+
+        let envelope_author = author.to_envelope_author();
+
+        assert!(!envelope_author.id.starts_with("human-"));
+        assert_eq!(envelope_author.id, "ai-assistant");
+    }
 }

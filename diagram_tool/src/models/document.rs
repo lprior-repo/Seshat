@@ -133,6 +133,14 @@ pub struct OrderedFloat(pub f64);
 
 impl Eq for OrderedFloat {}
 
+impl std::hash::Hash for OrderedFloat {
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Use the bits representation for hashing
+        // This is consistent with Eq implementation
+        self.0.to_bits().hash(state);
+    }
+}
+
 impl fmt::Display for OrderedFloat {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
@@ -174,7 +182,7 @@ impl Div<f64> for OrderedFloat {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, std::hash::Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum NodeKind {
     Node,
@@ -182,7 +190,7 @@ pub enum NodeKind {
     Text,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Default, std::hash::Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum NodeStyle {
     #[default]
@@ -192,7 +200,7 @@ pub enum NodeStyle {
     Dashed,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, std::hash::Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum FontWeight {
     Normal,
@@ -245,7 +253,7 @@ const fn default_directed() -> bool {
     true
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default, std::hash::Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum EdgeStyle {
     #[default]
@@ -254,7 +262,7 @@ pub enum EdgeStyle {
     Dotted,
 }
 
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Default, std::hash::Hash)]
 #[serde(rename_all = "lowercase")]
 pub enum ArrowType {
     #[default]

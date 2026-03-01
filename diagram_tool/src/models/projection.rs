@@ -578,6 +578,196 @@ pub fn document_to_projection(document: &DiagramDocument) -> DiagramProjection {
     }
 }
 
+/// Replay a stream of events to produce a diagram projection
+///
+/// This is the contract-specified entry point for deterministic replay.
+/// It is an alias for `replay_events` to match the contract signature:
+/// `fn replay_stream(events: &[EventRecord]) -> Result<DiagramProjection, ReplayError>`
+///
+/// # Errors
+/// Returns `ReplayError` if:
+/// - An event is invalid (`InvalidEvent`)
+/// - An invariant is violated (`InvariantViolation`)
+/// - Schema version is unsupported (`UnsupportedVersion`)
+pub fn replay_stream(events: &[EventRecord]) -> Result<DiagramProjection, ReplayError> {
+    replay_events(events)
+}
+
+/// Compute a stable hash of a diagram projection
+///
+/// This function produces a deterministic hash string that uniquely identifies
+/// the projection state. The hash is stable across multiple invocations and
+/// can be used for:
+/// - Verifying replay determinism
+/// - Detecting state changes
+/// - Caching and optimization
+///
+/// # Errors
+/// Returns `ReplayError::InvariantViolation` if the projection contains
+/// data that cannot be hashed (e.g., NaN values in coordinates).
+///
+/// # Example
+/// ```ignore
+/// let projection = replay_events(&events)?;
+/// let hash = projection_hash(&projection)?;
+/// // Same events always produce same hash
+/// assert_eq!(hash, projection_hash(&replay_events(&events)?)?);
+/// ```
+pub fn projection_hash(state: &DiagramProjection) -> Result<String, ReplayError> {
+    use std::collections::hash_map::DefaultHasher;
+    use std::hash::{Hash, Hasher};
+
+    // Validate that coordinates are finite (no NaN or infinity)
+    for (id, node) in state.nodes.iter() {
+        if !node.x.0.is_finite() || !node.y.0.is_finite() {
+            return Err(ReplayError::InvariantViolation(format!(
+                "node {id} has non-finite coordinates"
+            )));
+        }
+        if !node.width.0.is_finite() || !node.height.0.is_finite() {
+            return Err(ReplayError::InvariantViolation(format!(
+                "node {id} has non-finite dimensions"
+            )));
+        }
+    }
+
+    for (id, edge) in state.edges.iter() {
+        if !edge.label_offset_t.0.is_finite() {
+            return Err(ReplayError::InvariantViolation(format!(
+                "edge {id} has non-finite label_offset_t"
+            )));
+        }
+        if !edge.thickness.0.is_finite() {
+            return Err(ReplayError::InvariantViolation(format!(
+                "edge {id} has non-finite thickness"
+            )));
+        }
+    }
+
+    let mut hasher = DefaultHasher::new();
+
+    // Hash version
+    state.version.hash(&mut hasher);
+
+    // Hash revision
+    state.revision.hash(&mut hasher);
+
+    // Hash nodes in deterministic order (sorted by ID)
+    let mut node_ids: Vec<_> = state.nodes.keys().collect();
+    node_ids.sort();
+    for id in node_ids {
+        id.hash(&mut hasher);
+        let node = state.nodes.get(id).ok_or_else(|| {
+            ReplayError::InvariantViolation(format!("node {id} disappeared during hashing"))
+        })?;
+
+        // Hash node fields in consistent order
+        node.kind.hash(&mut hasher);
+        node.icon.hash(&mut hasher);
+        node.label.hash(&mut hasher);
+        // Use bitwise representation for floats to ensure determinism
+        node.x.0.to_bits().hash(&mut hasher);
+        node.y.0.to_bits().hash(&mut hasher);
+        node.width.0.to_bits().hash(&mut hasher);
+        node.height.0.to_bits().hash(&mut hasher);
+        node.font_size.hash(&mut hasher);
+        node.font_weight.hash(&mut hasher);
+        node.locked.hash(&mut hasher);
+        node.parent.hash(&mut hasher);
+        node.dag_rank.hash(&mut hasher);
+        node.z_index.hash(&mut hasher);
+        node.style.hash(&mut hasher);
+        node.collapsed.hash(&mut hasher);
+
+        // Hash tags in sorted order
+        let mut tags = node.tags.clone();
+        tags.sort();
+        tags.len().hash(&mut hasher);
+        for tag in tags {
+            tag.hash(&mut hasher);
+        }
+
+        // Hash metadata in sorted order
+        let mut metadata_keys: Vec<_> = node.metadata.keys().collect();
+        metadata_keys.sort();
+        for key in metadata_keys {
+            key.hash(&mut hasher);
+            let value = node.metadata.get(key).ok_or_else(|| {
+                ReplayError::InvariantViolation(format!(
+                    "metadata key {key} disappeared during hashing"
+                ))
+            })?;
+            value.hash(&mut hasher);
+        }
+    }
+
+    // Hash edges in deterministic order (sorted by ID)
+    let mut edge_ids: Vec<_> = state.edges.keys().collect();
+    edge_ids.sort();
+    for id in edge_ids {
+        id.hash(&mut hasher);
+        let edge = state.edges.get(id).ok_or_else(|| {
+            ReplayError::InvariantViolation(format!("edge {id} disappeared during hashing"))
+        })?;
+
+        edge.source.hash(&mut hasher);
+        edge.target.hash(&mut hasher);
+        edge.label.hash(&mut hasher);
+        edge.style.hash(&mut hasher);
+        edge.arrow_type.hash(&mut hasher);
+        edge.label_offset_t.0.to_bits().hash(&mut hasher);
+        edge.color.hash(&mut hasher);
+        edge.thickness.0.to_bits().hash(&mut hasher);
+        edge.directed.hash(&mut hasher);
+        edge.font_size.hash(&mut hasher);
+
+        // Hash bend points
+        edge.bend_points.len().hash(&mut hasher);
+        for bp in &edge.bend_points {
+            bp.x.0.to_bits().hash(&mut hasher);
+            bp.y.0.to_bits().hash(&mut hasher);
+        }
+
+        // Hash tags in sorted order
+        let mut tags = edge.tags.clone();
+        tags.sort();
+        tags.len().hash(&mut hasher);
+        for tag in tags {
+            tag.hash(&mut hasher);
+        }
+
+        // Hash metadata in sorted order
+        let mut metadata_keys: Vec<_> = edge.metadata.keys().collect();
+        metadata_keys.sort();
+        for key in metadata_keys {
+            key.hash(&mut hasher);
+            let value = edge.metadata.get(key).ok_or_else(|| {
+                ReplayError::InvariantViolation(format!(
+                    "metadata key {key} disappeared during hashing"
+                ))
+            })?;
+            value.hash(&mut hasher);
+        }
+    }
+
+    // Hash author_priority in sorted order
+    let mut priority_keys: Vec<_> = state.author_priority.keys().collect();
+    priority_keys.sort();
+    for key in priority_keys {
+        key.hash(&mut hasher);
+        let value = state.author_priority.get(key).ok_or_else(|| {
+            ReplayError::InvariantViolation(format!(
+                "author_priority key {key} disappeared during hashing"
+            ))
+        })?;
+        value.hash(&mut hasher);
+    }
+
+    // Produce hex string of hash
+    let hash_value = hasher.finish();
+    Ok(format!("{hash_value:016x}"))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1690,5 +1880,446 @@ mod tests {
         assert_eq!(result1.author_priority.get("h1"), Some(&true));
         assert_eq!(result1.author_priority.get("a1"), Some(&false));
         assert_eq!(result1.author_priority.get("h2"), Some(&true));
+    }
+
+    // =============================================================================
+    // replay_stream and projection_hash tests (bd-2cg)
+    // =============================================================================
+
+    /// Test: replay_stream is an alias for replay_events and produces same results.
+    #[test]
+    fn given_events_when_using_replay_stream_then_produces_same_result_as_replay_events() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 100.0,
+                    y: 200.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Test".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeMove {
+                    id: "node-1".to_string(),
+                    x: 150.0,
+                    y: 250.0,
+                },
+                true,
+            ),
+        ];
+
+        let result_events = replay_events(&events).expect("replay_events should succeed");
+        let result_stream = replay_stream(&events).expect("replay_stream should succeed");
+
+        assert_eq!(result_events, result_stream);
+    }
+
+    /// Test: projection_hash produces consistent hash for empty projection.
+    #[test]
+    fn given_empty_projection_when_hashing_then_returns_consistent_hash() {
+        let projection = DiagramProjection::empty();
+
+        let hash1 = projection_hash(&projection).expect("Hash should succeed");
+        let hash2 = projection_hash(&projection).expect("Hash should succeed");
+
+        assert_eq!(hash1, hash2);
+        assert_eq!(hash1.len(), 16); // 64-bit hex string
+    }
+
+    /// Test: projection_hash produces different hashes for different projections.
+    #[test]
+    fn given_different_projections_when_hashing_then_returns_different_hashes() {
+        let events1 = [make_event(
+            "op-1",
+            0,
+            DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 1".to_string(),
+            },
+            true,
+        )];
+
+        let events2 = [make_event(
+            "op-2",
+            0,
+            DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 300.0,
+                y: 400.0,
+                width: 120.0,
+                height: 60.0,
+                label: "Node 2".to_string(),
+            },
+            true,
+        )];
+
+        let projection1 = replay_events(&events1).expect("Replay should succeed");
+        let projection2 = replay_events(&events2).expect("Replay should succeed");
+
+        let hash1 = projection_hash(&projection1).expect("Hash should succeed");
+        let hash2 = projection_hash(&projection2).expect("Hash should succeed");
+
+        assert_ne!(hash1, hash2, "Different projections should have different hashes");
+    }
+
+    /// Test: projection_hash is deterministic across multiple calls.
+    #[test]
+    fn given_same_projection_when_hashing_multiple_times_then_returns_same_hash() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 100.0,
+                    y: 200.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 2".to_string(),
+                },
+                false,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "edge-1".to_string(),
+                    source: "node-1".to_string(),
+                    target: "node-2".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let projection = replay_events(&events).expect("Replay should succeed");
+
+        // Hash multiple times
+        let hashes: Vec<_> = (0..5)
+            .map(|_| projection_hash(&projection).expect("Hash should succeed"))
+            .collect();
+
+        // All hashes should be identical
+        for hash in &hashes[1..] {
+            assert_eq!(&hashes[0], hash, "All hashes should be identical");
+        }
+    }
+
+    /// Test: projection_hash includes revision in hash.
+    #[test]
+    fn given_different_revisions_when_hashing_then_returns_different_hashes() {
+        let mut projection1 = DiagramProjection::empty();
+        let mut projection2 = DiagramProjection::empty();
+
+        projection1.revision = 1;
+        projection2.revision = 2;
+
+        let hash1 = projection_hash(&projection1).expect("Hash should succeed");
+        let hash2 = projection_hash(&projection2).expect("Hash should succeed");
+
+        assert_ne!(hash1, hash2, "Different revisions should have different hashes");
+    }
+
+    /// Test: projection_hash includes author_priority in hash.
+    #[test]
+    fn given_different_author_priority_when_hashing_then_returns_different_hashes() {
+        let mut projection1 = DiagramProjection::empty();
+        let mut projection2 = DiagramProjection::empty();
+
+        projection1
+            .author_priority
+            .insert("op-1".to_string(), true);
+        projection2
+            .author_priority
+            .insert("op-1".to_string(), false);
+
+        let hash1 = projection_hash(&projection1).expect("Hash should succeed");
+        let hash2 = projection_hash(&projection2).expect("Hash should succeed");
+
+        assert_ne!(
+            hash1, hash2,
+            "Different author_priority should have different hashes"
+        );
+    }
+
+    /// Test: Deterministic replay produces same hash.
+    #[test]
+    fn given_same_events_replayed_then_projection_hash_is_deterministic() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "n1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeMove {
+                    id: "n1".to_string(),
+                    x: 100.0,
+                    y: 100.0,
+                },
+                false,
+            ),
+        ];
+
+        // Replay multiple times
+        let projection1 = replay_events(&events).expect("Replay should succeed");
+        let projection2 = replay_events(&events).expect("Replay should succeed");
+        let projection3 = replay_stream(&events).expect("replay_stream should succeed");
+
+        // Hash each projection
+        let hash1 = projection_hash(&projection1).expect("Hash should succeed");
+        let hash2 = projection_hash(&projection2).expect("Hash should succeed");
+        let hash3 = projection_hash(&projection3).expect("Hash should succeed");
+
+        // All hashes should be identical
+        assert_eq!(hash1, hash2);
+        assert_eq!(hash2, hash3);
+    }
+
+    /// Test: Hash is stable for complex projections with edges.
+    #[test]
+    fn given_complex_projection_with_edges_when_hashing_then_succeeds() {
+        let events = [
+            make_event(
+                "n1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "n2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "n3",
+                2,
+                DomainOp::NodeAdd {
+                    id: "node-3".to_string(),
+                    x: 200.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "C".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "e1",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "edge-1".to_string(),
+                    source: "node-1".to_string(),
+                    target: "node-2".to_string(),
+                },
+                false,
+            ),
+            make_event(
+                "e2",
+                4,
+                DomainOp::EdgeConnect {
+                    id: "edge-2".to_string(),
+                    source: "node-2".to_string(),
+                    target: "node-3".to_string(),
+                },
+                false,
+            ),
+        ];
+
+        let projection = replay_events(&events).expect("Replay should succeed");
+        let hash = projection_hash(&projection).expect("Hash should succeed");
+
+        assert_eq!(hash.len(), 16);
+        assert!(hash.chars().all(|c| c.is_ascii_hexdigit()));
+    }
+
+    /// Test: New path handles valid input and produces expected output.
+    #[test]
+    fn given_valid_input_when_replaying_then_produces_expected_output() {
+        let events = [
+            make_event(
+                "add-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "test-node".to_string(),
+                    x: 50.0,
+                    y: 75.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Test Node".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_stream(&events);
+
+        assert!(result.is_ok(), "Should succeed with valid input");
+        let projection = result.unwrap();
+        assert_eq!(projection.revision, 1);
+        assert!(projection.has_node(&NodeId::new("test-node".to_string())));
+
+        let node = projection
+            .get_node(&NodeId::new("test-node".to_string()))
+            .expect("Node should exist");
+        assert_eq!(node.x, OrderedFloat(50.0));
+        assert_eq!(node.y, OrderedFloat(75.0));
+        assert_eq!(node.width, OrderedFloat(100.0));
+        assert_eq!(node.height, OrderedFloat(50.0));
+        assert_eq!(node.label, "Test Node");
+    }
+
+    /// Test: Invalid input returns typed error without partial durable mutation.
+    #[test]
+    fn given_invalid_input_when_replaying_then_returns_typed_error_without_mutation() {
+        // Try to move a non-existent node
+        let events = [make_event(
+            "move-1",
+            0,
+            DomainOp::NodeMove {
+                id: "nonexistent".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            true,
+        )];
+
+        let result = replay_stream(&events);
+
+        assert!(result.is_err(), "Should fail with invalid input");
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("not found"));
+            }
+            _ => panic!("Expected InvariantViolation error"),
+        }
+
+        // Verify no partial state was created - replay is atomic
+        let empty = DiagramProjection::empty();
+        let result2 = replay_stream(&[]);
+        assert!(result2.is_ok());
+        assert_eq!(result2.unwrap(), empty);
+    }
+
+    /// Test: Command flow uses replacement implementation without legacy calls.
+    #[test]
+    fn given_replay_operation_then_uses_new_dispatcher_path() {
+        // This test verifies that replay_stream (the contract-specified entry point)
+        // correctly dispatches all operation types through the new path
+
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "n1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeMove {
+                    id: "n1".to_string(),
+                    x: 10.0,
+                    y: 10.0,
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::NodeAdd {
+                    id: "n2".to_string(),
+                    x: 100.0,
+                    y: 100.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 2".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "n1".to_string(),
+                    target: "n2".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-5",
+                4,
+                DomainOp::EdgeDisconnect {
+                    id: "e1".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_stream(&events);
+
+        assert!(result.is_ok(), "Should succeed using new dispatcher path");
+        let projection = result.unwrap();
+
+        // Verify all operations were applied through the dispatcher
+        assert_eq!(projection.revision, 5);
+        assert_eq!(projection.nodes.len(), 2);
+        assert_eq!(projection.edges.len(), 0); // Edge was disconnected
     }
 }

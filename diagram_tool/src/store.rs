@@ -10,7 +10,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use rusqlite::Connection;
+use rusqlite::{Connection, Transaction};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -40,6 +40,10 @@ pub enum StoreError {
     ValidationFailed(String),
     #[error("Serialization error: {0}")]
     Serialization(String),
+    #[error("Transaction aborted: {0}")]
+    TransactionAborted(String),
+    #[error("Revision gap detected: expected sequential revision {expected}, but found gap at {found}")]
+    RevisionGap { expected: i64, found: i64 },
 }
 
 /// Structured error codes for CLI output
@@ -79,6 +83,7 @@ impl CliErrorCode {
 pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
     match err {
         StoreError::RevisionMismatch { .. } => CliErrorCode::RevisionMismatch,
+        StoreError::RevisionGap { .. } => CliErrorCode::RevisionMismatch,
         StoreError::HumanPriorityBlock(_) => CliErrorCode::HumanPriorityBlock,
         StoreError::ValidationFailed(_) => CliErrorCode::ValidationFailed,
         StoreError::Sqlite(_) => CliErrorCode::Unknown,
@@ -87,6 +92,7 @@ pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
         StoreError::SchemaVersionMismatch { .. } => CliErrorCode::Unknown,
         StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
         StoreError::Serialization(_) => CliErrorCode::Unknown,
+        StoreError::TransactionAborted(_) => CliErrorCode::Unknown,
     }
 }
 
@@ -465,6 +471,29 @@ pub fn fetch_latest_revision(conn: &Connection) -> Result<i64, StoreError> {
     .map_err(StoreError::Sqlite)
 }
 
+/// Get the current revision from the events table
+///
+/// This is the primary monotonic revision reader for the event store.
+/// Returns the current maximum revision, or 0 if no events exist.
+///
+/// # Errors
+/// Returns `StoreError::Sqlite` if the query fails
+pub fn current_revision(conn: &Connection) -> Result<i64, StoreError> {
+    fetch_latest_revision(conn)
+}
+
+/// Get the next revision number for appending a new event
+///
+/// Returns `current_revision + 1`, which is the revision that would be assigned
+/// to the next appended event. Returns 1 if no events exist yet.
+///
+/// # Errors
+/// Returns `StoreError::Sqlite` if the query fails
+pub fn next_revision(conn: &Connection) -> Result<i64, StoreError> {
+    let current = current_revision(conn)?;
+    Ok(current + 1)
+}
+
 /// Run integrity check on the database at startup
 ///
 /// This function performs a comprehensive integrity check:
@@ -689,6 +718,93 @@ pub fn append_event(
         op_id: envelope.op_id,
         timestamp: envelope.timestamp,
     })
+}
+
+/// Append an event with Optimistic Concurrency Control (OCC)
+///
+/// This is an alias for `append_event` that matches the contract signature.
+///
+/// # Errors
+/// Returns `StoreError::RevisionMismatch` if the expected revision doesn't match
+/// Returns `StoreError::Serialization` if encoding the envelope fails
+/// Returns `StoreError::ValidationFailed` if validation fails
+pub fn append_with_occ(
+    conn: &mut Connection,
+    op: EventEnvelope,
+    expected_revision: Option<i64>,
+) -> Result<AppendResult, StoreError> {
+    append_event(conn, op, expected_revision)
+}
+
+/// Verify that an OCC append result is valid
+///
+/// This function validates that an append result contains valid data:
+/// - Revision must be positive (at least 1)
+/// - Operation ID must not be empty
+/// - Timestamp must be positive
+///
+/// # Errors
+/// Returns `StoreError::ValidationFailed` if the result is invalid
+pub fn verify_occ_append(result: &AppendResult) -> Result<(), StoreError> {
+    if result.revision < 1 {
+        return Err(StoreError::ValidationFailed(
+            "revision must be at least 1".to_string(),
+        ));
+    }
+
+    if result.op_id.is_empty() {
+        return Err(StoreError::ValidationFailed(
+            "op_id must not be empty".to_string(),
+        ));
+    }
+
+    if result.timestamp <= 0 {
+        return Err(StoreError::ValidationFailed(
+            "timestamp must be positive".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Execute a write operation within a transaction with automatic rollback on failure
+///
+/// This helper function provides a safe wrapper for atomic write operations:
+/// 1. Begins a write transaction
+/// 2. Executes the provided closure with the transaction
+/// 3. On success, commits the transaction
+/// 4. On failure, rolls back automatically (the transaction is dropped)
+///
+/// # Errors
+/// Returns `StoreError::Sqlite` if transaction begin/commit fails
+/// Returns `StoreError::TransactionAborted` if the closure returns an error
+///
+/// # Example
+/// ```ignore
+/// let result = with_write_tx(&mut conn, |tx| {
+///     tx.execute("INSERT INTO events (id) VALUES (?1)", [1])?;
+///     Ok(42)
+/// })?;
+/// assert_eq!(result, 42);
+/// ```
+pub fn with_write_tx<T, F>(conn: &mut Connection, f: F) -> Result<T, StoreError>
+where
+    F: FnOnce(&Transaction) -> Result<T, StoreError>,
+{
+    let tx = conn.transaction().map_err(StoreError::Sqlite)?;
+
+    let result = f(&tx);
+
+    match result {
+        Ok(value) => {
+            tx.commit().map_err(StoreError::Sqlite)?;
+            Ok(value)
+        }
+        Err(err) => {
+            // Transaction will roll back automatically when dropped
+            Err(StoreError::TransactionAborted(err.to_string()))
+        }
+    }
 }
 
 #[cfg(test)]
@@ -1197,5 +1313,461 @@ mod tests {
         assert_eq!(outcome.revision, 10);
         assert_eq!(outcome.op_id, "op-456");
         assert_eq!(outcome.timestamp, 1700000001);
+    }
+
+    // Transaction helper tests
+
+    #[test]
+    fn test_with_write_tx_commits_on_success() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Execute a successful write transaction
+        let result: Result<i64, StoreError> = with_write_tx(&mut bootstrap.conn, |tx| {
+            tx.execute(
+                "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params!["test-op", 1, "{}", "2024-01-01"],
+            )
+            .map_err(StoreError::Sqlite)?;
+            Ok(42)
+        });
+
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        assert_eq!(result.unwrap(), 42);
+
+        // Verify the data was committed
+        let count: i64 = bootstrap
+            .conn
+            .query_row("SELECT COUNT(*) FROM events WHERE operation_id = 'test-op'", [], |row| {
+                row.get(0)
+            })
+            .expect("Failed to count events");
+        assert_eq!(count, 1);
+    }
+
+    #[test]
+    fn test_with_write_tx_rolls_back_on_error() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Execute a transaction that fails after a write
+        let result: Result<i64, StoreError> = with_write_tx(&mut bootstrap.conn, |tx| {
+            tx.execute(
+                "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params!["test-op-rollback", 1, "{}", "2024-01-01"],
+            )
+            .map_err(StoreError::Sqlite)?;
+            // Simulate a failure
+            Err(StoreError::ValidationFailed("intentional failure".to_string()))
+        });
+
+        // Should get TransactionAborted error
+        assert!(result.is_err());
+        match result {
+            Err(StoreError::TransactionAborted(msg)) => {
+                assert!(msg.contains("intentional failure"));
+            }
+            Err(e) => panic!("Expected TransactionAborted, got: {:?}", e),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+
+        // Verify the data was rolled back
+        let count: i64 = bootstrap
+            .conn
+            .query_row(
+                "SELECT COUNT(*) FROM events WHERE operation_id = 'test-op-rollback'",
+                [],
+                |row| row.get(0),
+            )
+            .expect("Failed to count events");
+        assert_eq!(count, 0, "Data should have been rolled back");
+    }
+
+    #[test]
+    fn test_transaction_aborted_error_display() {
+        let err = StoreError::TransactionAborted("test error".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Transaction aborted"));
+        assert!(msg.contains("test error"));
+    }
+
+    #[test]
+    fn test_map_error_code_transaction_aborted() {
+        let err = StoreError::TransactionAborted("test".to_string());
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::Unknown);
+    }
+
+    #[test]
+    fn test_with_write_tx_multiple_operations_atomic() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Execute multiple operations in a transaction, then fail
+        let result: Result<(), StoreError> = with_write_tx(&mut bootstrap.conn, |tx| {
+            tx.execute(
+                "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params!["op1", 1, "{}", "2024-01-01"],
+            )
+            .map_err(StoreError::Sqlite)?;
+            tx.execute(
+                "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+                rusqlite::params!["op2", 2, "{}", "2024-01-01"],
+            )
+            .map_err(StoreError::Sqlite)?;
+            Err(StoreError::ValidationFailed("fail after inserts".to_string()))
+        });
+
+        assert!(result.is_err());
+
+        // Verify both inserts were rolled back
+        let count: i64 = bootstrap
+            .conn
+            .query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))
+            .expect("Failed to count events");
+        assert_eq!(count, 0, "All operations should have been rolled back");
+    }
+
+    // append_with_occ and verify_occ_append tests
+
+    #[test]
+    fn test_append_with_occ_success() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: "op-occ-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test Node".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result = append_with_occ(&mut bootstrap.conn, envelope, None);
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let outcome = result.expect("Checked is_ok");
+        assert_eq!(outcome.revision, 1);
+        assert_eq!(outcome.op_id, "op-occ-1");
+    }
+
+    #[test]
+    fn test_append_with_occ_revision_mismatch() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: "op-occ-2".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test Node".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        // Expect revision 5 but database is at 0
+        let result = append_with_occ(&mut bootstrap.conn, envelope, Some(5));
+        assert!(result.is_err());
+        match result {
+            Err(StoreError::RevisionMismatch { expected, found }) => {
+                assert_eq!(expected, 5);
+                assert_eq!(found, 0);
+            }
+            _ => panic!("Expected RevisionMismatch error"),
+        }
+    }
+
+    #[test]
+    fn test_verify_occ_append_valid_result() {
+        let result = AppendResult {
+            revision: 1,
+            op_id: "op-valid".to_string(),
+            timestamp: 1700000000,
+        };
+
+        assert!(verify_occ_append(&result).is_ok());
+    }
+
+    #[test]
+    fn test_verify_occ_append_zero_revision() {
+        let result = AppendResult {
+            revision: 0,
+            op_id: "op-invalid".to_string(),
+            timestamp: 1700000000,
+        };
+
+        let err = verify_occ_append(&result);
+        assert!(err.is_err());
+        match err {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("revision"));
+            }
+            _ => panic!("Expected ValidationFailed error"),
+        }
+    }
+
+    #[test]
+    fn test_verify_occ_append_empty_op_id() {
+        let result = AppendResult {
+            revision: 1,
+            op_id: String::new(),
+            timestamp: 1700000000,
+        };
+
+        let err = verify_occ_append(&result);
+        assert!(err.is_err());
+        match err {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("op_id"));
+            }
+            _ => panic!("Expected ValidationFailed error"),
+        }
+    }
+
+    #[test]
+    fn test_verify_occ_append_zero_timestamp() {
+        let result = AppendResult {
+            revision: 1,
+            op_id: "op-valid".to_string(),
+            timestamp: 0,
+        };
+
+        let err = verify_occ_append(&result);
+        assert!(err.is_err());
+        match err {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("timestamp"));
+            }
+            _ => panic!("Expected ValidationFailed error"),
+        }
+    }
+
+    #[test]
+    fn test_verify_occ_append_negative_timestamp() {
+        let result = AppendResult {
+            revision: 1,
+            op_id: "op-valid".to_string(),
+            timestamp: -1,
+        };
+
+        let err = verify_occ_append(&result);
+        assert!(err.is_err());
+        match err {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("timestamp"));
+            }
+            _ => panic!("Expected ValidationFailed error"),
+        }
+    }
+
+    // current_revision and next_revision tests
+
+    #[test]
+    fn test_current_revision_empty_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Empty database should return 0
+        let revision = current_revision(&bootstrap.conn).expect("Failed to get current revision");
+        assert_eq!(revision, 0, "Empty database should have revision 0");
+    }
+
+    #[test]
+    fn test_current_revision_with_events() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add an event
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+
+        // Should return 1 after one event
+        let revision = current_revision(&bootstrap.conn).expect("Failed to get current revision");
+        assert_eq!(revision, 1);
+    }
+
+    #[test]
+    fn test_current_revision_multiple_events() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add multiple events
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000000 + i,
+            };
+            let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+        }
+
+        // Should return 5 after five events
+        let revision = current_revision(&bootstrap.conn).expect("Failed to get current revision");
+        assert_eq!(revision, 5);
+    }
+
+    #[test]
+    fn test_next_revision_empty_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Empty database: current=0, next=1
+        let revision = next_revision(&bootstrap.conn).expect("Failed to get next revision");
+        assert_eq!(revision, 1, "Next revision should be 1 for empty database");
+    }
+
+    #[test]
+    fn test_next_revision_with_events() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add an event
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+
+        // After one event: current=1, next=2
+        let revision = next_revision(&bootstrap.conn).expect("Failed to get next revision");
+        assert_eq!(revision, 2);
+    }
+
+    #[test]
+    fn test_next_revision_monotonic_increase() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Verify monotonic increase across multiple appends
+        for i in 1..=3 {
+            let next_before = next_revision(&bootstrap.conn).expect("Failed to get next revision");
+            assert_eq!(next_before, i);
+
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000000 + i,
+            };
+            let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+
+            let current_after = current_revision(&bootstrap.conn).expect("Failed to get current revision");
+            assert_eq!(current_after, i);
+        }
+    }
+
+    // RevisionGap error tests
+
+    #[test]
+    fn test_revision_gap_error_display() {
+        let err = StoreError::RevisionGap {
+            expected: 5,
+            found: 7,
+        };
+        let msg = err.to_string();
+        assert!(msg.contains("Revision gap detected"));
+        assert!(msg.contains("expected sequential revision 5"));
+        assert!(msg.contains("gap at 7"));
+    }
+
+    #[test]
+    fn test_map_error_code_revision_gap() {
+        let err = StoreError::RevisionGap {
+            expected: 5,
+            found: 7,
+        };
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::RevisionMismatch);
     }
 }
