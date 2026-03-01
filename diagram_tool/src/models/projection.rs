@@ -183,7 +183,7 @@ pub fn replay_events_from(
     // Fold over events to produce final projection
     events
         .iter()
-        .try_fold(initial_state, |acc, event| apply_event(acc, event))
+        .try_fold(initial_state, apply_event)
 }
 
 /// Apply a single event to the projection, returning a new projection

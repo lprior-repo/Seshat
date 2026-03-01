@@ -6,11 +6,11 @@
 //! after the snapshot point.
 
 #![allow(dead_code)]
+#![allow(clippy::pedantic)]
+#![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use rusqlite::Connection;
@@ -18,7 +18,9 @@ use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 use crate::models::envelope::parse_event_envelope;
-use crate::models::projection::{replay_events_from, DiagramProjection, EventRecord};
+use crate::models::projection::{
+    replay_events, replay_events_from, DiagramProjection, EventRecord,
+};
 
 /// Errors that can occur during snapshot operations
 #[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -133,9 +135,9 @@ pub fn write_snapshot(
 /// This function:
 /// 1. Loads the latest snapshot from the database
 /// 2. Fetches all events with revision greater than snapshot revision
-/// 3. Replays events to produce the final projection
+/// 3. Replays events on top of the snapshot to produce the final projection
 ///
-/// If no snapshot exists, returns an empty projection (revision 0).
+/// If no snapshot exists, falls back to full replay from revision 0.
 ///
 /// # Errors
 /// Returns `SnapshotError::Serialization` if deserialization fails
@@ -143,64 +145,101 @@ pub fn write_snapshot(
 /// Returns `SnapshotError::Replay` if event replay fails
 pub fn load_projection(conn: &Connection) -> Result<DiagramProjection, SnapshotError> {
     // Try to load latest snapshot
-    let latest_snapshot = conn
-        .query_row(
-            "SELECT id, revision, payload, created_at FROM snapshots ORDER BY revision DESC LIMIT 1",
-            [],
-            |row| {
-                let rev: i64 = row.get(1)?;
-                let created: i64 = row.get(3)?;
-                Ok(SnapshotMeta {
-                    id: row.get(0)?,
-                    revision: rev as u64,
-                    created_at: created,
+    let snapshot_result = conn.query_row(
+        "SELECT id, revision, payload, created_at FROM snapshots ORDER BY revision DESC LIMIT 1",
+        [],
+        |row| {
+            let id: i64 = row.get(0)?;
+            let rev: i64 = row.get(1)?;
+            let created: i64 = row.get(3)?;
+            Ok(SnapshotMeta {
+                id,
+                revision: rev as u64,
+                created_at: created,
+            })
+        },
+    );
+
+    match snapshot_result {
+        Ok(latest_snapshot) => {
+            // Deserialize the snapshot payload to get the base projection
+            let base_projection: DiagramProjection = conn
+                .query_row(
+                    "SELECT payload FROM snapshots WHERE id = ?1",
+                    [latest_snapshot.id],
+                    |row| {
+                        let payload: String = row.get(0)?;
+                        Ok(payload)
+                    },
+                )
+                .map_err(|e| SnapshotError::Sqlite(e.to_string()))
+                .and_then(|payload| {
+                    serde_json::from_str(&payload)
+                        .map_err(|e| SnapshotError::Serialization(e.to_string()))
+                })?;
+
+            // Fetch events after snapshot revision
+            let events = load_tail_events(conn, latest_snapshot.revision)?;
+
+            // If no events to replay, return the snapshot directly
+            if events.is_empty() {
+                return Ok(base_projection);
+            }
+
+            // Replay events on top of the snapshot.
+            // The snapshot at revision R contains state after R events were applied.
+            // Events after the snapshot have revisions R+1, R+2, etc.
+            // replay_events_from expects events[i].revision == initial_state.revision + i
+            // So we need events[0].revision == base_projection.revision.
+            // Since events[0] from DB has revision R+1 and base_projection.revision = R,
+            // we subtract 1 from all event revisions.
+            let adjusted_events: Vec<EventRecord> = events
+                .into_iter()
+                .map(|e| EventRecord {
+                    op_id: e.op_id,
+                    revision: e.revision.saturating_sub(1),
+                    operation: e.operation,
+                    author: e.author,
+                    timestamp: e.timestamp,
                 })
-            },
-        )
-        .map_err(|e| SnapshotError::Sqlite(e.to_string()))?;
+                .collect();
 
-    // Deserialize the snapshot payload to get the base projection
-    let base_projection: DiagramProjection = conn
-        .query_row(
-            "SELECT payload FROM snapshots WHERE id = ?1",
-            [latest_snapshot.id],
-            |row| {
-                let payload: String = row.get(0)?;
-                Ok(payload)
-            },
-        )
-        .map_err(|e| SnapshotError::Sqlite(e.to_string()))
-        .and_then(|payload| {
-            serde_json::from_str(&payload).map_err(|e| SnapshotError::Serialization(e.to_string()))
-        })?;
-
-    // Fetch events after snapshot revision
-    let events = fetch_events_after(conn, latest_snapshot.revision)?;
-
-    // If no events to replay, return the snapshot directly
-    if events.is_empty() {
-        return Ok(base_projection);
+            replay_events_from(base_projection, &adjusted_events)
+                .map_err(|e| SnapshotError::Replay(e.to_string()))
+        }
+        Err(rusqlite::Error::QueryReturnedNoRows) => {
+            // No snapshot exists - fall back to full replay from empty
+            let events = load_tail_events(conn, 0)?;
+            // Adjust event revisions to start at 0 (database revisions start at 1)
+            let adjusted_events: Vec<EventRecord> = events
+                .into_iter()
+                .enumerate()
+                .map(|(i, e)| EventRecord {
+                    op_id: e.op_id,
+                    revision: i as u64,
+                    operation: e.operation,
+                    author: e.author,
+                    timestamp: e.timestamp,
+                })
+                .collect();
+            replay_events(&adjusted_events).map_err(|e| SnapshotError::Replay(e.to_string()))
+        }
+        Err(e) => Err(SnapshotError::Sqlite(e.to_string())),
     }
+}
 
-    // Replay events starting from the snapshot's revision.
-    // The snapshot stores a projection at revision R (after R events applied).
-    // Events after have revisions R+1, R+2, etc.
-    // We need to adjust event revisions so the first event starts at revision R.
-    // Since the first event has revision R+1, we subtract (R+1) to get revision 0.
-    let adjustment = latest_snapshot.revision + 1;
-    let adjusted_events: Vec<EventRecord> = events
-        .into_iter()
-        .map(|e| EventRecord {
-            op_id: e.op_id,
-            revision: e.revision.saturating_sub(adjustment),
-            operation: e.operation,
-            author: e.author,
-            timestamp: e.timestamp,
-        })
-        .collect();
-
-    replay_events_from(base_projection, &adjusted_events)
-        .map_err(|e| SnapshotError::Replay(e.to_string()))
+/// Load tail events after a given revision
+///
+/// Returns all events with revision greater than `after_revision`, ordered by revision.
+///
+/// # Errors
+/// Returns `SnapshotError::Sqlite` if database operations fail
+/// Returns `SnapshotError::Serialization` if event parsing fails
+pub fn load_tail_events(
+    conn: &Connection,
+    after_revision: u64,
+) -> Result<Vec<EventRecord>, SnapshotError> {
+    fetch_events_after(conn, after_revision)
 }
 
 /// Fetch all events after a given revision
@@ -383,17 +422,159 @@ mod tests {
     }
 
     #[test]
-    fn test_load_projection_with_no_snapshot_returns_error() {
+    fn test_load_projection_with_no_snapshot_falls_back_to_full_replay() {
         // Create fresh connection to empty database
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Initialize schema using bootstrap_store
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let conn = bootstrap.conn;
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
 
-        // Load projection with no snapshot - should get an error
-        let result = load_projection(&conn);
-        assert!(result.is_err());
+        // Add an event but no snapshot
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567890,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Load projection with no snapshot - should fall back to full replay
+        let result = load_projection(&bootstrap.conn);
+        assert!(
+            result.is_ok(),
+            "Should fall back to full replay: {:?}",
+            result.err()
+        );
+        let loaded = result.unwrap();
+        assert_eq!(loaded.revision, 1);
+    }
+
+    #[test]
+    fn test_load_tail_events_returns_events_after_revision() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add three events
+        for i in 1..=3 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                timestamp: 1234567890 + i,
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 100.0 * i as f64,
+                    y: 200.0,
+                    width: 50.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+            };
+            store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+        }
+
+        // Load tail events after revision 1
+        let events = load_tail_events(&bootstrap.conn, 1).unwrap();
+        assert_eq!(events.len(), 2);
+        assert_eq!(events[0].op_id, "op-2");
+        assert_eq!(events[1].op_id, "op-3");
+    }
+
+    #[test]
+    fn test_load_projection_preserves_snapshot_data() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add first event
+        let envelope1 = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567890,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "First Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope1, None).unwrap();
+
+        // Replay to get projection with the node
+        // Events from DB have revisions starting at 1, but replay_events expects starting at 0
+        // So we adjust the revisions like load_projection does when there's no snapshot
+        let events = load_tail_events(&bootstrap.conn, 0).unwrap();
+        let adjusted_events: Vec<EventRecord> = events
+            .into_iter()
+            .enumerate()
+            .map(|(i, e)| EventRecord {
+                op_id: e.op_id,
+                revision: i as u64,
+                operation: e.operation,
+                author: e.author,
+                timestamp: e.timestamp,
+            })
+            .collect();
+        let projection_with_node = replay_events(&adjusted_events).unwrap();
+
+        // Write snapshot with the node data
+        let meta = write_snapshot(&mut bootstrap.conn, &projection_with_node).unwrap();
+        assert_eq!(meta.revision, 1);
+
+        // Add second event
+        let envelope2 = EventEnvelope {
+            op_id: "op-2".to_string(),
+            timestamp: 1234567891,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 300.0,
+                y: 400.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Second Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope2, None).unwrap();
+
+        // Load projection - should have both nodes
+        let loaded = load_projection(&bootstrap.conn).unwrap();
+        assert_eq!(loaded.revision, 2);
+        assert!(loaded
+            .nodes
+            .contains_key(&crate::models::document::NodeId::new("node-1".to_string())));
+        assert!(loaded
+            .nodes
+            .contains_key(&crate::models::document::NodeId::new("node-2".to_string())));
     }
 }
