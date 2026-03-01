@@ -5,3 +5,5 @@
 {"timestamp":"2026-03-01T22:50:00Z","bead_id":"bd-2p8","phase":"p2","actor":"orchestrator","action":"cargo check","command":"cargo check","exit_code":0,"stdout_file":null,"stderr_file":null,"is_replay":false}
 {"timestamp":"2026-03-01T22:50:30Z","bead_id":"bd-2p8","phase":"p2","actor":"orchestrator","action":"cargo clippy","command":"cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic","exit_code":0,"stdout_file":null,"stderr_file":null,"is_replay":false}
 {"timestamp":"2026-03-01T22:51:00Z","bead_id":"bd-2p8","phase":"p2","actor":"orchestrator","action":"cargo test","command":"cargo test","exit_code":0,"stdout_file":null,"stderr_file":null,"is_replay":false}
+{"timestamp":"2026-03-01T22:51:22Z","bead_id":"bd-2p8","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-2p8","exit_code":0,"stdout_file":null,"stderr_file":null,"is_replay":false}
+{"timestamp":"2026-03-01T22:51:28Z","bead_id":"bd-2p8","phase":"p4","actor":"orchestrator","action":"workspace cleanup","command":"jj workspace forget bd-2p8 && rm -rf ../bd-2p8","exit_code":0,"stdout_file":null,"stderr_file":null,"is_replay":false}
