@@ -141,13 +141,9 @@ pub fn projection_hash(projection: &DiagramProjection) -> Result<String, VerifyE
     canonical.push_str("nodes:\n");
     for node_id in node_ids {
         if let Some(node) = projection.nodes.get(node_id) {
-            canonical.push_str(&format!("  {}:({},{},{},{},{})\n",
-                node_id,
-                node.label,
-                node.x.0,
-                node.y.0,
-                node.width.0,
-                node.height.0
+            canonical.push_str(&format!(
+                "  {}:({},{},{},{},{})\n",
+                node_id, node.label, node.x.0, node.y.0, node.width.0, node.height.0
             ));
         }
     }
@@ -159,10 +155,9 @@ pub fn projection_hash(projection: &DiagramProjection) -> Result<String, VerifyE
     canonical.push_str("edges:\n");
     for edge_id in edge_ids {
         if let Some(edge) = projection.edges.get(edge_id) {
-            canonical.push_str(&format!("  {}:({}->{})\n",
-                edge_id,
-                edge.source,
-                edge.target
+            canonical.push_str(&format!(
+                "  {}:({}->{})\n",
+                edge_id, edge.source, edge.target
             ));
         }
     }
@@ -1384,7 +1379,10 @@ mod tests {
         let hash1 = projection_hash(&projection1).expect("Hash should succeed");
         let hash2 = projection_hash(&projection2).expect("Hash should succeed");
 
-        assert_ne!(hash1, hash2, "Different projections should have different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different projections should have different hashes"
+        );
     }
 
     #[test]

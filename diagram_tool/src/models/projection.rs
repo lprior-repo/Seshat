@@ -223,9 +223,7 @@ pub fn replay_events_from(
     }
 
     // Fold over events to produce final projection
-    events
-        .iter()
-        .try_fold(initial_state, apply_event)
+    events.iter().try_fold(initial_state, apply_event)
 }
 
 /// Apply a single event to the projection, returning a new projection
@@ -2263,7 +2261,10 @@ mod tests {
         let hash1 = projection_hash(&projection1).expect("Hash should succeed");
         let hash2 = projection_hash(&projection2).expect("Hash should succeed");
 
-        assert_ne!(hash1, hash2, "Different projections should have different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different projections should have different hashes"
+        );
     }
 
     /// Test: projection_hash is deterministic across multiple calls.
@@ -2333,7 +2334,10 @@ mod tests {
         let hash1 = projection_hash(&projection1).expect("Hash should succeed");
         let hash2 = projection_hash(&projection2).expect("Hash should succeed");
 
-        assert_ne!(hash1, hash2, "Different revisions should have different hashes");
+        assert_ne!(
+            hash1, hash2,
+            "Different revisions should have different hashes"
+        );
     }
 
     /// Test: projection_hash includes author_priority in hash.
@@ -2342,9 +2346,7 @@ mod tests {
         let mut projection1 = DiagramProjection::empty();
         let mut projection2 = DiagramProjection::empty();
 
-        projection1
-            .author_priority
-            .insert("op-1".to_string(), true);
+        projection1.author_priority.insert("op-1".to_string(), true);
         projection2
             .author_priority
             .insert("op-1".to_string(), false);
@@ -2477,21 +2479,19 @@ mod tests {
     /// Test: New path handles valid input and produces expected output.
     #[test]
     fn given_valid_input_when_replaying_then_produces_expected_output() {
-        let events = [
-            make_event(
-                "add-1",
-                0,
-                DomainOp::NodeAdd {
-                    id: "test-node".to_string(),
-                    x: 50.0,
-                    y: 75.0,
-                    width: 100.0,
-                    height: 50.0,
-                    label: "Test Node".to_string(),
-                },
-                true,
-            ),
-        ];
+        let events = [make_event(
+            "add-1",
+            0,
+            DomainOp::NodeAdd {
+                id: "test-node".to_string(),
+                x: 50.0,
+                y: 75.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            true,
+        )];
 
         let result = replay_stream(&events);
 
@@ -2898,7 +2898,10 @@ mod tests {
         };
 
         let result = apply_policy_op(projection, &cyclic_op);
-        assert!(result.is_err(), "Creating a cycle should fail under Deny policy");
+        assert!(
+            result.is_err(),
+            "Creating a cycle should fail under Deny policy"
+        );
         match result {
             Err(ReplayError::CycleViolation(msg)) => {
                 assert!(msg.contains("Cycle detected"));
@@ -2961,7 +2964,10 @@ mod tests {
         };
 
         let result = apply_policy_op(projection, &cyclic_op);
-        assert!(result.is_ok(), "Creating a cycle should succeed under Allow policy");
+        assert!(
+            result.is_ok(),
+            "Creating a cycle should succeed under Allow policy"
+        );
     }
 
     /// Test: Empty projection always passes cycle enforcement

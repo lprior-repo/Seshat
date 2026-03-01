@@ -611,7 +611,10 @@ mod tests {
 
         // No snapshots written yet
         let result = latest_snapshot(&bootstrap.conn).unwrap();
-        assert!(result.is_none(), "Should return None when no snapshots exist");
+        assert!(
+            result.is_none(),
+            "Should return None when no snapshots exist"
+        );
     }
 
     #[test]
@@ -651,7 +654,10 @@ mod tests {
 
         // Get latest snapshot
         let result = latest_snapshot(&bootstrap.conn).unwrap();
-        assert!(result.is_some(), "Should return Some after snapshot written");
+        assert!(
+            result.is_some(),
+            "Should return Some after snapshot written"
+        );
 
         let meta = result.unwrap();
         assert_eq!(meta.id, written_meta.id);
@@ -790,7 +796,10 @@ mod tests {
 
         // Verify no partial mutation - no snapshot should exist for revision 0
         let latest = latest_snapshot(&bootstrap.conn).unwrap();
-        assert!(latest.is_none(), "No snapshot should exist after failed write");
+        assert!(
+            latest.is_none(),
+            "No snapshot should exist after failed write"
+        );
     }
 
     #[test]

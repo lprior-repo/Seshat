@@ -138,8 +138,7 @@ impl ProjectionState {
 
     /// Clean up expired edit windows
     pub fn cleanup_expired(&mut self) {
-        self.human_edit_windows
-            .retain(|_, w| w.is_active());
+        self.human_edit_windows.retain(|_, w| w.is_active());
     }
 
     /// Mark an operation as processed (for idempotency)
@@ -184,9 +183,7 @@ fn extract_affected_entities(op: &DomainOp) -> Vec<String> {
         | DomainOp::SendBackward { ids }
         | DomainOp::BringToFront { ids }
         | DomainOp::SendToBack { ids }
-        | DomainOp::Group { ids } => {
-            ids.iter().map(|id| format!("node:{}", id)).collect()
-        }
+        | DomainOp::Group { ids } => ids.iter().map(|id| format!("node:{}", id)).collect(),
         DomainOp::Ungroup { id } => {
             vec![format!("group:{}", id)]
         }
@@ -340,9 +337,7 @@ pub fn record_conflict_rejection(
     // Log the rejection (in production, this would go to a proper logging system)
     eprintln!(
         "[CONFLICT_REJECTION] op_id={} author={} reason={}",
-        op.op_id,
-        op.author.id,
-        reason
+        op.op_id, op.author.id, reason
     );
 
     Ok(())
@@ -682,8 +677,7 @@ mod tests {
         };
 
         let json = serde_json::to_string(&decision).expect("Should serialize");
-        let parsed: ConflictDecision =
-            serde_json::from_str(&json).expect("Should deserialize");
+        let parsed: ConflictDecision = serde_json::from_str(&json).expect("Should deserialize");
 
         assert_eq!(decision, parsed);
     }

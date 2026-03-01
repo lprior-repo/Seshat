@@ -1,10 +1,9 @@
-# Contract: bd-q2i - test-ci: run full ci-hardening and fix remaining failures
+bead_id: bd-q2i
+bead_title: test-ci: run full ci-hardening and fix remaining failures
+phase: p0
+updated_at: 2026-03-01T20:58:00Z
 
-## Bead Metadata
-- bead_id: bd-q2i
-- bead_title: test-ci: run full ci-hardening and fix remaining failures
-- phase: p0
-- updated_at: 2026-03-01T20:58:00Z
+# Contract: bd-q2i - test-ci: run full ci-hardening and fix remaining failures
 
 ## EARS Requirements
 

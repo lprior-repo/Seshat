@@ -44,9 +44,9 @@
 
 use std::io;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::mpsc::Sender;
 use std::sync::Arc;
-use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -192,7 +192,11 @@ pub fn start_store_watcher(path: PathBuf) -> Result<WatcherHandle, SyncError> {
         .watch(&watch_path, RecursiveMode::NonRecursive)
         .map_err(|_| SyncError::WatchInit)?;
 
-    Ok(WatcherHandle { watcher, active, watch_path })
+    Ok(WatcherHandle {
+        watcher,
+        active,
+        watch_path,
+    })
 }
 
 /// Stop the store watcher
@@ -327,7 +331,11 @@ pub fn start_event_tail_watcher(
         .watch(&watch_path, RecursiveMode::NonRecursive)
         .map_err(|_| SyncError::WatchInit)?;
 
-    Ok(WatcherHandle { watcher, active, watch_path })
+    Ok(WatcherHandle {
+        watcher,
+        active,
+        watch_path,
+    })
 }
 
 /// Fetch new events after a given revision
@@ -1030,9 +1038,15 @@ mod tests {
         let summary = apply_tail_batch(&mut projection, events).unwrap();
 
         // Should have node:node-1, node:node-2, edge:edge-1
-        assert!(summary.affected_entities.contains(&"node:node-1".to_string()));
-        assert!(summary.affected_entities.contains(&"node:node-2".to_string()));
-        assert!(summary.affected_entities.contains(&"edge:edge-1".to_string()));
+        assert!(summary
+            .affected_entities
+            .contains(&"node:node-1".to_string()));
+        assert!(summary
+            .affected_entities
+            .contains(&"node:node-2".to_string()));
+        assert!(summary
+            .affected_entities
+            .contains(&"edge:edge-1".to_string()));
     }
 
     #[test]
