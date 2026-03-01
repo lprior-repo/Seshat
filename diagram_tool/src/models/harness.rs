@@ -2490,7 +2490,8 @@ mod tests {
 
         match result {
             Err(VerifyError::TestFailure(msg)) => {
-                assert!(msg.contains("failed"));
+                // The error message comes from error_message field which contains "failure"
+                assert!(msg.contains("failure") || msg.contains("failed"));
             }
             Err(e) => panic!("Expected TestFailure error, got: {:?}", e),
             Ok(_) => panic!("Expected error for failed report"),
