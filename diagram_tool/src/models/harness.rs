@@ -43,6 +43,8 @@ pub enum VerifyError {
     Io(String),
     #[error("SQLite error: {0}")]
     Sqlite(String),
+    #[error("conflict policy failure: {0}")]
+    ConflictPolicyFailure(String),
 }
 
 impl From<std::io::Error> for VerifyError {
@@ -863,6 +865,559 @@ fn test_append_only_invariant(_db_path: &Path) -> Result<TestReport, VerifyError
     }
 }
 
+/// Run end-to-end human-AI conflict scenario tests
+///
+/// This function tests the human priority conflict resolution system:
+/// 1. Human drag operations take priority over concurrent AI operations
+/// 2. AI operations on entities with active human edits are rejected
+/// 3. Rejection provides clear error codes and observability
+///
+/// # Returns
+///
+/// Returns a `TestReport` containing the results of all conflict scenario tests.
+///
+/// # Errors
+///
+/// Returns `VerifyError::ConflictPolicyFailure` if human priority is not enforced.
+/// Returns `VerifyError::TestHarness` if the test harness fails.
+/// Returns `VerifyError::Timeout` if a test times out.
+pub fn run_human_ai_conflict_e2e() -> Result<TestReport, VerifyError> {
+    let mut report = TestReport::passing(0);
+
+    // Scenario 1: Human drag concurrent with AI move on same node
+    {
+        let case_report = test_human_drag_beats_ai_move_same_node()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 2: AI operation rejected when human has active edit on entity
+    {
+        let case_report = test_ai_rejected_on_active_human_edit()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 3: Human operation allowed during AI edit
+    {
+        let case_report = test_human_allowed_during_ai_edit()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 4: AI operation on different entity allowed during human edit
+    {
+        let case_report = test_ai_allowed_on_different_entity()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 5: Edge operation conflicts with human edit on source node
+    {
+        let case_report = test_edge_conflict_with_human_node_edit()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 6: Multiple entities conflict detection
+    {
+        let case_report = test_multi_entity_conflict_detection()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 7: Rejection observability - error codes and messages
+    {
+        let case_report = test_rejection_observability()?;
+        report.merge(&case_report);
+    }
+
+    // Scenario 8: Human priority preserved across replay
+    {
+        let case_report = test_human_priority_preserved_across_replay()?;
+        report.merge(&case_report);
+    }
+
+    Ok(report)
+}
+
+/// Assert that the test report demonstrates correct human priority enforcement
+///
+/// This function validates that all human priority tests passed and that
+/// the conflict resolution system is working correctly.
+///
+/// # Arguments
+///
+/// * `report` - The test report to validate
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the report shows correct human priority enforcement.
+///
+/// # Errors
+///
+/// Returns `VerifyError::ConflictPolicyFailure` if any human priority test failed.
+pub fn assert_human_priority(report: &TestReport) -> Result<(), VerifyError> {
+    if !report.passed {
+        return Err(VerifyError::TestFailure(format!(
+            "Human priority enforcement failed: {} failures out of {} cases{}",
+            report.failures,
+            report.cases_run,
+            report
+                .error_message
+                .as_ref()
+                .map(|m| format!(" - {m}"))
+                .unwrap_or_default()
+        )));
+    }
+
+    if report.cases_run == 0 {
+        return Err(VerifyError::TestFailure(
+            "No test cases were run - human priority not verified".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+// Helper functions for human-AI conflict tests
+
+/// Test that human drag operations take priority over AI move on the same node
+fn test_human_drag_beats_ai_move_same_node() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, ConflictDecision, ProjectionState,
+    };
+
+    let mut state = ProjectionState::new();
+
+    // Register an active human edit on node-1
+    state.register_human_edit("node:node-1", "human-alice");
+
+    // AI tries to move the same node
+    let ai_envelope = EventEnvelope {
+        op_id: "ai-move-1".to_string(),
+        operation: DomainOp::NodeMove {
+            id: "node-1".to_string(),
+            x: 500.0,
+            y: 500.0,
+        },
+        author: Author {
+            id: "ai-assistant".to_string(),
+            name: "AI Assistant".to_string(),
+            email: None,
+        },
+        timestamp: 1700000000,
+    };
+
+    let decision = evaluate_human_priority(&ai_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Reject { .. } => Ok(TestReport::passing(1)),
+        ConflictDecision::Allow => Ok(TestReport::failing(
+            1,
+            1,
+            "AI move should be rejected when human has active edit on same node",
+        )),
+    }
+}
+
+/// Test that AI operations are rejected when human has active edit
+fn test_ai_rejected_on_active_human_edit() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, ConflictDecision, ProjectionState,
+    };
+
+    let mut state = ProjectionState::new();
+
+    // Human starts editing node-1
+    state.register_human_edit("node:node-1", "human-bob");
+
+    // AI tries to delete the node
+    let ai_envelope = EventEnvelope {
+        op_id: "ai-delete-1".to_string(),
+        operation: DomainOp::NodeDelete {
+            id: "node-1".to_string(),
+        },
+        author: Author {
+            id: "ai-system".to_string(),
+            name: "AI System".to_string(),
+            email: None,
+        },
+        timestamp: 1700000001,
+    };
+
+    let decision = evaluate_human_priority(&ai_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Reject { reason, .. } => {
+            // Verify the rejection reason mentions human priority
+            let reason_str = format!("{reason}");
+            if reason_str.contains("human") || reason_str.contains("priority") {
+                Ok(TestReport::passing(1))
+            } else {
+                Ok(TestReport::failing(
+                    1,
+                    1,
+                    format!("Rejection reason should mention human priority: {reason}"),
+                ))
+            }
+        }
+        ConflictDecision::Allow => Ok(TestReport::failing(
+            1,
+            1,
+            "AI delete should be rejected when human has active edit",
+        )),
+    }
+}
+
+/// Test that human operations are allowed even during AI edits
+fn test_human_allowed_during_ai_edit() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, ConflictDecision, ProjectionState,
+    };
+
+    let state = ProjectionState::new();
+
+    // Human operation should always be allowed (no need to register AI edit for this test)
+    let human_envelope = EventEnvelope {
+        op_id: "human-move-1".to_string(),
+        operation: DomainOp::NodeMove {
+            id: "node-1".to_string(),
+            x: 200.0,
+            y: 200.0,
+        },
+        author: Author {
+            id: "human-charlie".to_string(),
+            name: "Charlie".to_string(),
+            email: None,
+        },
+        timestamp: 1700000002,
+    };
+
+    let decision = evaluate_human_priority(&human_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Allow => Ok(TestReport::passing(1)),
+        ConflictDecision::Reject { .. } => Ok(TestReport::failing(
+            1,
+            1,
+            "Human operations should always be allowed",
+        )),
+    }
+}
+
+/// Test that AI operations on different entities are allowed during human edit
+fn test_ai_allowed_on_different_entity() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, ConflictDecision, ProjectionState,
+    };
+
+    let mut state = ProjectionState::new();
+
+    // Human is editing node-1
+    state.register_human_edit("node:node-1", "human-diana");
+
+    // AI operates on node-2 (different entity)
+    let ai_envelope = EventEnvelope {
+        op_id: "ai-move-2".to_string(),
+        operation: DomainOp::NodeMove {
+            id: "node-2".to_string(),
+            x: 300.0,
+            y: 300.0,
+        },
+        author: Author {
+            id: "ai-agent".to_string(),
+            name: "AI Agent".to_string(),
+            email: None,
+        },
+        timestamp: 1700000003,
+    };
+
+    let decision = evaluate_human_priority(&ai_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Allow => Ok(TestReport::passing(1)),
+        ConflictDecision::Reject { .. } => Ok(TestReport::failing(
+            1,
+            1,
+            "AI operation on different entity should be allowed",
+        )),
+    }
+}
+
+/// Test that edge operations conflict with human edit on source/target nodes
+fn test_edge_conflict_with_human_node_edit() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, ConflictDecision, ProjectionState,
+    };
+
+    let mut state = ProjectionState::new();
+
+    // Human is editing the source node
+    state.register_human_edit("node:source-node", "human-eve");
+
+    // AI tries to connect an edge involving that node
+    let ai_envelope = EventEnvelope {
+        op_id: "ai-edge-1".to_string(),
+        operation: DomainOp::EdgeConnect {
+            id: "edge-1".to_string(),
+            source: "source-node".to_string(),
+            target: "target-node".to_string(),
+        },
+        author: Author {
+            id: "ai-connector".to_string(),
+            name: "AI Connector".to_string(),
+            email: None,
+        },
+        timestamp: 1700000004,
+    };
+
+    let decision = evaluate_human_priority(&ai_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Reject {
+            conflicting_entities,
+            ..
+        } => {
+            // Verify the conflict includes the source node
+            if conflicting_entities.iter().any(|e| e.contains("source-node")) {
+                Ok(TestReport::passing(1))
+            } else {
+                Ok(TestReport::failing(
+                    1,
+                    1,
+                    format!(
+                        "Conflict should include source node: {:?}",
+                        conflicting_entities
+                    ),
+                ))
+            }
+        }
+        ConflictDecision::Allow => Ok(TestReport::failing(
+            1,
+            1,
+            "AI edge connect should be rejected when human edits source node",
+        )),
+    }
+}
+
+/// Test conflict detection across multiple entities
+fn test_multi_entity_conflict_detection() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, ConflictDecision, ProjectionState,
+    };
+
+    let mut state = ProjectionState::new();
+
+    // Human is editing multiple nodes
+    state.register_human_edit("node:node-a", "human-frank");
+    state.register_human_edit("node:node-b", "human-frank");
+
+    // AI tries a z-order operation affecting those nodes
+    let ai_envelope = EventEnvelope {
+        op_id: "ai-zorder-1".to_string(),
+        operation: DomainOp::BringForward {
+            ids: vec!["node-a".to_string(), "node-c".to_string()],
+        },
+        author: Author {
+            id: "ai-organizer".to_string(),
+            name: "AI Organizer".to_string(),
+            email: None,
+        },
+        timestamp: 1700000005,
+    };
+
+    let decision = evaluate_human_priority(&ai_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Reject {
+            conflicting_entities,
+            ..
+        } => {
+            // Should detect conflict with node-a but not node-c
+            let has_node_a = conflicting_entities.iter().any(|e| e.contains("node-a"));
+            let has_node_c = conflicting_entities.iter().any(|e| e.contains("node-c"));
+
+            if has_node_a && !has_node_c {
+                Ok(TestReport::passing(1))
+            } else {
+                Ok(TestReport::failing(
+                    1,
+                    1,
+                    format!(
+                        "Expected conflict with node-a only, got: {:?}",
+                        conflicting_entities
+                    ),
+                ))
+            }
+        }
+        ConflictDecision::Allow => Ok(TestReport::failing(
+            1,
+            1,
+            "AI z-order should be rejected when human edits affected nodes",
+        )),
+    }
+}
+
+/// Test that rejections provide clear error codes and observability
+fn test_rejection_observability() -> Result<TestReport, VerifyError> {
+    use crate::models::conflict::{
+        evaluate_human_priority, record_conflict_rejection, ConflictDecision, ProjectionState,
+    };
+
+    let mut state = ProjectionState::new();
+    state.register_human_edit("node:obs-node", "human-observer");
+
+    let ai_envelope = EventEnvelope {
+        op_id: "ai-obs-test".to_string(),
+        operation: DomainOp::NodeMove {
+            id: "obs-node".to_string(),
+            x: 999.0,
+            y: 999.0,
+        },
+        author: Author {
+            id: "ai-observer".to_string(),
+            name: "AI Observer".to_string(),
+            email: None,
+        },
+        timestamp: 1700000006,
+    };
+
+    let decision = evaluate_human_priority(&ai_envelope, &state)
+        .map_err(|e| VerifyError::TestFailure(format!("Conflict evaluation failed: {e}")))?;
+
+    match decision {
+        ConflictDecision::Reject { reason, .. } => {
+            // Verify we can record the rejection for audit/observability
+            let record_result = record_conflict_rejection(&ai_envelope, reason.clone());
+            match record_result {
+                Ok(()) => {
+                    // Verify the error is serializable for observability
+                    let json_result = serde_json::to_string(&reason);
+                    match json_result {
+                        Ok(json) => {
+                            if json.contains("human") || json.contains("priority") {
+                                Ok(TestReport::passing(1))
+                            } else {
+                                Ok(TestReport::failing(
+                                    1,
+                                    1,
+                                    format!("Error JSON should contain relevant info: {json}"),
+                                ))
+                            }
+                        }
+                        Err(e) => Ok(TestReport::failing(
+                            1,
+                            1,
+                            format!("Error should be serializable: {e}"),
+                        )),
+                    }
+                }
+                Err(e) => Ok(TestReport::failing(
+                    1,
+                    1,
+                    format!("Recording rejection should succeed: {e}"),
+                )),
+            }
+        }
+        ConflictDecision::Allow => Ok(TestReport::failing(
+            1,
+            1,
+            "Expected rejection for observability test",
+        )),
+    }
+}
+
+/// Test that human priority is preserved across event replay
+fn test_human_priority_preserved_across_replay() -> Result<TestReport, VerifyError> {
+    // Create events with known human vs AI authors
+    let events: Vec<EventRecord> = vec![
+        EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 100.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 1".to_string(),
+            },
+            author: Author {
+                id: "human-alice".to_string(),
+                name: "Alice".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        },
+        EventRecord {
+            op_id: "op-2".to_string(),
+            revision: 1,
+            operation: DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 200.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 2".to_string(),
+            },
+            author: Author {
+                id: "ai-bot".to_string(),
+                name: "AI Bot".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        },
+        EventRecord {
+            op_id: "op-3".to_string(),
+            revision: 2,
+            operation: DomainOp::NodeMove {
+                id: "node-1".to_string(),
+                x: 150.0,
+                y: 150.0,
+            },
+            author: Author {
+                id: "human-alice".to_string(),
+                name: "Alice".to_string(),
+                email: None,
+            },
+            timestamp: 1700000002,
+        },
+    ];
+
+    // Replay events
+    let projection = replay_events(&events)
+        .map_err(|e| VerifyError::TestFailure(format!("Replay failed: {e}")))?;
+
+    // Verify human operations are marked with priority
+    let human_ops: Vec<(&String, &bool)> = projection
+        .author_priority
+        .iter()
+        .filter(|(_, &is_human)| is_human)
+        .collect();
+
+    let ai_ops: Vec<(&String, &bool)> = projection
+        .author_priority
+        .iter()
+        .filter(|(_, &is_human)| !is_human)
+        .collect();
+
+    // We expect 2 human operations (op-1 and op-3) and 1 AI operation (op-2)
+    if human_ops.len() == 2 && ai_ops.len() == 1 {
+        Ok(TestReport::passing(1))
+    } else {
+        Ok(TestReport::failing(
+            1,
+            1,
+            format!(
+                "Expected 2 human ops and 1 AI op, got {} human and {} AI",
+                human_ops.len(),
+                ai_ops.len()
+            ),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -1404,5 +1959,118 @@ mod tests {
         assert_eq!(report.cases_run, 10);
         assert!(!report.passed);
         assert_eq!(report.error_message, Some("error message".to_string()));
+    }
+
+    // Tests for bd-19t: verify-human-ai-conflicts
+
+    #[test]
+    fn test_run_human_ai_conflict_e2e_returns_passing_report() {
+        let result = run_human_ai_conflict_e2e();
+        assert!(result.is_ok(), "e2e suite should not error: {:?}", result.err());
+
+        let report = result.expect("Checked is_ok");
+        assert!(report.cases_run > 0, "Should run at least one test case");
+        assert!(report.passed, "All conflict tests should pass");
+    }
+
+    #[test]
+    fn test_assert_human_priority_accepts_passing_report() {
+        let report = run_human_ai_conflict_e2e().expect("e2e should succeed");
+        let result = assert_human_priority(&report);
+        assert!(result.is_ok(), "Valid report should pass assertion");
+    }
+
+    #[test]
+    fn test_assert_human_priority_rejects_failed_report() {
+        let failed_report = TestReport::failing(5, 1, "test failure");
+        let result = assert_human_priority(&failed_report);
+        assert!(result.is_err(), "Failed report should be rejected");
+
+        match result {
+            Err(VerifyError::TestFailure(msg)) => {
+                assert!(msg.contains("failed"));
+            }
+            Err(e) => panic!("Expected TestFailure error, got: {:?}", e),
+            Ok(_) => panic!("Expected error for failed report"),
+        }
+    }
+
+    #[test]
+    fn test_assert_human_priority_rejects_empty_report() {
+        let empty_report = TestReport::passing(0);
+        let result = assert_human_priority(&empty_report);
+        assert!(result.is_err(), "Empty report should be rejected");
+
+        match result {
+            Err(VerifyError::TestFailure(msg)) => {
+                assert!(msg.contains("No test cases"));
+            }
+            Err(e) => panic!("Expected TestFailure error, got: {:?}", e),
+            Ok(_) => panic!("Expected error for empty report"),
+        }
+    }
+
+    #[test]
+    fn test_human_drag_beats_ai_move_same_node() {
+        let result = super::test_human_drag_beats_ai_move_same_node();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "Human should beat AI on same node");
+    }
+
+    #[test]
+    fn test_ai_rejected_on_active_human_edit() {
+        let result = super::test_ai_rejected_on_active_human_edit();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "AI should be rejected on active human edit");
+    }
+
+    #[test]
+    fn test_human_allowed_during_ai_edit() {
+        let result = super::test_human_allowed_during_ai_edit();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "Human should always be allowed");
+    }
+
+    #[test]
+    fn test_ai_allowed_on_different_entity() {
+        let result = super::test_ai_allowed_on_different_entity();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "AI should be allowed on different entity");
+    }
+
+    #[test]
+    fn test_edge_conflict_with_human_node_edit() {
+        let result = super::test_edge_conflict_with_human_node_edit();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "Edge conflict should be detected");
+    }
+
+    #[test]
+    fn test_multi_entity_conflict_detection() {
+        let result = super::test_multi_entity_conflict_detection();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "Multi-entity conflict should be detected");
+    }
+
+    #[test]
+    fn test_rejection_observability() {
+        let result = super::test_rejection_observability();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "Rejection should be observable");
+    }
+
+    #[test]
+    fn test_human_priority_preserved_across_replay() {
+        let result = super::test_human_priority_preserved_across_replay();
+        assert!(result.is_ok(), "Test should not error");
+        let report = result.expect("Checked is_ok");
+        assert!(report.passed, "Human priority should be preserved in replay");
     }
 }

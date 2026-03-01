@@ -6,3 +6,5 @@
 {"actor": "orchestrator", "action": "moon test", "command": "cargo test", "exit_code": 0, "timestamp": "2026-03-01T20:57:00Z"}
 {"actor": "orchestrator", "action": "moon clippy", "command": "cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic", "exit_code": 0, "timestamp": "2026-03-01T21:00:00Z"}
 {"actor": "qa-enforcer", "action": "qa verification", "command": "contract verification + test suite", "exit_code": 0, "timestamp": "2026-03-01T21:00:30Z"}
+{"actor": "orchestrator", "action": "bead closed", "command": "br close bd-7rt", "exit_code": 0, "timestamp": "2026-03-01T21:07:50Z"}
+{"actor": "orchestrator", "action": "workspace cleanup", "command": "jj workspace forget bd-7rt", "exit_code": 0, "timestamp": "2026-03-01T21:08:00Z"}
