@@ -171,8 +171,31 @@ pub fn export_projection_json(projection: &DiagramProjection) -> Result<String, 
     };
 
     // Serialize to canonical JSON
-    to_canonical_pretty_json(&export)
-        .map_err(|e| ExportError::Serialization(e.to_string()))
+    to_canonical_pretty_json(&export).map_err(|e| ExportError::Serialization(e.to_string()))
+}
+
+/// Export diagram to JSON while in recovery-only mode
+///
+/// This function enables JSON export when the system is in recovery-only mode
+/// with read-only access. It works with a read-only connection (e.g., from
+/// `open_recovery_mode`).
+///
+/// This function:
+/// 1. Fetches all events from the read-only database connection
+/// 2. Replays them to get the current projection
+/// 3. Serializes to canonical JSON format
+///
+/// # Errors
+/// Returns ExportError if any step fails
+pub fn export_while_recovering(conn: &rusqlite::Connection) -> Result<String, ExportError> {
+    // Fetch all events from the read-only connection
+    let events = fetch_all_events(conn)?;
+
+    // Replay events to get the projection
+    let projection = replay_events_from_db(&events)?;
+
+    // Export projection to JSON string
+    export_projection_json(&projection)
 }
 
 /// Validate exported JSON against the expected schema
@@ -812,9 +835,7 @@ mod tests {
 
     #[test]
     fn given_projection_with_edges_when_exporting_then_includes_edges_in_json() {
-        use crate::models::document::{
-            Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
-        };
+        use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
 
         let mut projection = DiagramProjection::empty();
         projection.nodes.insert(
@@ -887,5 +908,99 @@ mod tests {
         assert!(json.contains("e1"));
         assert!(json.contains("n1"));
         assert!(json.contains("n2"));
+    }
+
+    // Tests for export_while_recovering - bd-mtu
+
+    #[test]
+    fn given_empty_database_in_recovery_mode_when_exporting_then_returns_valid_json() {
+        use crate::store::open_recovery_mode;
+
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let _bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Open in recovery mode (read-only)
+        let handle = open_recovery_mode(&db_path).unwrap();
+
+        // Export while in recovery mode
+        let result = export_while_recovering(&handle.conn);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let json = result.unwrap();
+        assert!(json.contains("\"revision\": 0"));
+    }
+
+    #[test]
+    fn given_database_with_events_in_recovery_mode_when_exporting_then_returns_projection_json() {
+        use crate::store::open_recovery_mode;
+
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a database with events
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Recovery Test Node".to_string(),
+            },
+            author: EnvelopeAuthor {
+                id: "human-user".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Open in recovery mode (read-only)
+        let handle = open_recovery_mode(&db_path).unwrap();
+
+        // Export while in recovery mode
+        let result = export_while_recovering(&handle.conn);
+
+        assert!(result.is_ok(), "Export failed: {:?}", result.err());
+        let json = result.unwrap();
+        assert!(json.contains("node-1"));
+        assert!(json.contains("Recovery Test Node"));
+        assert!(json.contains("\"revision\": 1"));
+    }
+
+    #[test]
+    fn given_recovery_connection_is_read_only_when_exporting_then_succeeds() {
+        use crate::store::open_recovery_mode;
+
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let _bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Open in recovery mode
+        let handle = open_recovery_mode(&db_path).unwrap();
+
+        // Verify connection is read-only by attempting a write (should fail)
+        let write_result = handle.conn.execute("INSERT INTO events (operation_id, revision, payload, timestamp) VALUES ('test', 1, '{}', '0')", []);
+        assert!(
+            write_result.is_err(),
+            "Read-only connection should reject writes"
+        );
+
+        // But export should still work
+        let result = export_while_recovering(&handle.conn);
+        assert!(
+            result.is_ok(),
+            "Export should work with read-only connection"
+        );
     }
 }

@@ -23,9 +23,7 @@ use std::path::Path;
 use thiserror::Error;
 
 use crate::models::envelope::{Author, DomainOp, EventEnvelope};
-use crate::models::projection::{
-    replay_events, DiagramProjection, EventRecord,
-};
+use crate::models::projection::{replay_events, DiagramProjection, EventRecord};
 use crate::store::{
     append_event, bootstrap_store, fetch_latest_revision, startup_integrity_check, StoreError,
 };
@@ -728,7 +726,7 @@ pub fn run_crash_recovery_scenario(db_path: &Path) -> Result<TestReport, VerifyE
 }
 
 /// Test integrity check on database
-fn test_integrity_check(db_path: &Path) -> Result<TestReport, VerifyError> {
+fn test_integrity_check(_db_path: &Path) -> Result<TestReport, VerifyError> {
     // Create a temporary test database
     let temp_dir = tempfile::TempDir::new()
         .map_err(|e| VerifyError::Io(format!("Failed to create temp dir: {e}")))?;
@@ -756,7 +754,7 @@ fn test_integrity_check(db_path: &Path) -> Result<TestReport, VerifyError> {
 }
 
 /// Test recovery from fresh database
-fn test_fresh_database_recovery(db_path: &Path) -> Result<TestReport, VerifyError> {
+fn test_fresh_database_recovery(_db_path: &Path) -> Result<TestReport, VerifyError> {
     // Create a temporary test database
     let temp_dir = tempfile::TempDir::new()
         .map_err(|e| VerifyError::Io(format!("Failed to create temp dir: {e}")))?;
@@ -802,7 +800,7 @@ fn test_fresh_database_recovery(db_path: &Path) -> Result<TestReport, VerifyErro
 }
 
 /// Test that event log remains append-only
-fn test_append_only_invariant(db_path: &Path) -> Result<TestReport, VerifyError> {
+fn test_append_only_invariant(_db_path: &Path) -> Result<TestReport, VerifyError> {
     // Create a temporary test database
     let temp_dir = tempfile::TempDir::new()
         .map_err(|e| VerifyError::Io(format!("Failed to create temp dir: {e}")))?;
@@ -873,6 +871,7 @@ fn test_append_only_invariant(db_path: &Path) -> Result<TestReport, VerifyError>
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::projection::replay_events_from;
     use tempfile::TempDir;
 
     #[test]
