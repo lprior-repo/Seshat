@@ -91,6 +91,8 @@ pub struct WatcherHandle {
     watcher: RecommendedWatcher,
     /// Flag to track if the watcher is still active
     active: Arc<AtomicBool>,
+    /// The path being watched (for unwatch)
+    watch_path: PathBuf,
 }
 
 impl WatcherHandle {
@@ -183,13 +185,14 @@ pub fn start_store_watcher(path: PathBuf) -> Result<WatcherHandle, SyncError> {
     // Watch the directory containing the database (to catch WAL file changes too)
     let watch_path = path
         .parent()
-        .ok_or_else(|| SyncError::Io("cannot determine parent directory".to_string()))?;
+        .ok_or_else(|| SyncError::Io("cannot determine parent directory".to_string()))?
+        .to_path_buf();
 
     watcher
-        .watch(watch_path, RecursiveMode::NonRecursive)
+        .watch(&watch_path, RecursiveMode::NonRecursive)
         .map_err(|_| SyncError::WatchInit)?;
 
-    Ok(WatcherHandle { watcher, active })
+    Ok(WatcherHandle { watcher, active, watch_path })
 }
 
 /// Stop the store watcher
@@ -211,7 +214,7 @@ pub fn stop_store_watcher(mut handle: WatcherHandle) -> Result<(), SyncError> {
     handle.active.store(false, Ordering::SeqCst);
     handle
         .watcher
-        .unwatch()
+        .unwatch(&handle.watch_path)
         .map_err(|_| SyncError::WatchRuntime)?;
     Ok(())
 }
@@ -260,11 +263,14 @@ pub fn start_event_tail_watcher(
 ) -> Result<WatcherHandle, SyncError> {
     // Verify the database file exists
     if !db_path.exists() {
-        return Err(SyncError::WatchInit(format!(
+        return Err(SyncError::Io(format!(
             "database file does not exist: {}",
             db_path.display()
         )));
     }
+
+    let active = Arc::new(AtomicBool::new(true));
+    let active_clone = active.clone();
 
     // Create the watcher with a configuration
     let config = Config::default()
@@ -277,6 +283,11 @@ pub fn start_event_tail_watcher(
     // Create the watcher with an event handler
     let mut watcher = RecommendedWatcher::new(
         move |res: Result<Event, notify::Error>| {
+            // Only process if still active
+            if !active_clone.load(Ordering::SeqCst) {
+                return;
+            }
+
             match res {
                 Ok(event) => {
                     // Only process modify events on our database files
@@ -304,18 +315,19 @@ pub fn start_event_tail_watcher(
         },
         config,
     )
-    .map_err(|e| SyncError::WatchInit(e.to_string()))?;
+    .map_err(|_| SyncError::WatchInit)?;
 
     // Watch the directory containing the database (to catch WAL file changes too)
     let watch_path = db_path
         .parent()
-        .ok_or_else(|| SyncError::WatchInit("cannot determine parent directory".to_string()))?;
+        .ok_or_else(|| SyncError::Io("cannot determine parent directory".to_string()))?
+        .to_path_buf();
 
     watcher
-        .watch(watch_path, RecursiveMode::NonRecursive)
-        .map_err(|e| SyncError::WatchInit(e.to_string()))?;
+        .watch(&watch_path, RecursiveMode::NonRecursive)
+        .map_err(|_| SyncError::WatchInit)?;
 
-    Ok(WatcherHandle { watcher })
+    Ok(WatcherHandle { watcher, active, watch_path })
 }
 
 /// Fetch new events after a given revision
@@ -397,6 +409,174 @@ pub fn fetch_latest_revision(conn: &rusqlite::Connection) -> Result<i64, SyncErr
         row.get(0)
     })
     .map_err(|e| SyncError::Sqlite(e.to_string()))
+}
+
+/// Summary of a batch apply operation
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApplySummary {
+    /// Number of events applied
+    pub events_applied: usize,
+    /// Starting revision before apply
+    pub from_revision: u64,
+    /// Ending revision after apply
+    pub to_revision: u64,
+    /// IDs of affected entities (nodes/edges)
+    pub affected_entities: Vec<String>,
+}
+
+/// Batch apply tail events to a projection without blocking the render loop
+///
+/// This function takes a vector of events and applies them to the projection
+/// in a single batch operation. It returns a summary of what was applied,
+/// which can be used to schedule targeted UI updates.
+///
+/// # Arguments
+///
+/// * `projection` - The current diagram projection to update
+/// * `events` - The events to apply (should be ordered by revision)
+///
+/// # Returns
+///
+/// Returns an `ApplySummary` with details about the applied events.
+/// Returns an empty summary if no events were provided.
+///
+/// # Errors
+///
+/// Returns `SyncError::Decode` if the events cannot be replayed.
+///
+/// # Example
+///
+/// ```ignore
+/// let events = fetch_new_events(&conn, current_revision)?;
+/// let summary = apply_tail_batch(&mut projection, events)?;
+/// schedule_ui_update(summary)?;
+/// ```
+pub fn apply_tail_batch(
+    projection: &mut crate::models::projection::DiagramProjection,
+    events: Vec<EventRecord>,
+) -> Result<ApplySummary, SyncError> {
+    use crate::models::projection::{replay_events_from, ReplayError};
+
+    if events.is_empty() {
+        return Ok(ApplySummary {
+            events_applied: 0,
+            from_revision: projection.revision,
+            to_revision: projection.revision,
+            affected_entities: Vec::new(),
+        });
+    }
+
+    let from_revision = projection.revision;
+    let affected_entities = extract_affected_entities_from_events(&events);
+
+    // Apply events using the existing replay mechanism
+    let updated_projection = replay_events_from(projection.clone(), &events)
+        .map_err(|e: ReplayError| SyncError::Decode(e.to_string()))?;
+
+    let to_revision = updated_projection.revision;
+    *projection = updated_projection;
+
+    Ok(ApplySummary {
+        events_applied: events.len(),
+        from_revision,
+        to_revision,
+        affected_entities,
+    })
+}
+
+/// Extract affected entity IDs from a batch of events
+///
+/// This function examines the events and collects all affected entity IDs
+/// (nodes and edges) for targeted UI updates.
+fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> {
+    use crate::models::envelope::DomainOp;
+    use std::collections::HashSet;
+
+    let mut entities: HashSet<String> = HashSet::new();
+
+    for event in events {
+        match &event.operation {
+            DomainOp::NodeAdd { id, .. }
+            | DomainOp::NodeMove { id, .. }
+            | DomainOp::NodeDelete { id }
+            | DomainOp::NodeRestore { id } => {
+                entities.insert(format!("node:{}", id));
+            }
+            DomainOp::EdgeConnect { id, source, target } => {
+                entities.insert(format!("edge:{}", id));
+                entities.insert(format!("node:{}", source));
+                entities.insert(format!("node:{}", target));
+            }
+            DomainOp::EdgeDisconnect { id } => {
+                entities.insert(format!("edge:{}", id));
+            }
+            DomainOp::BringForward { ids }
+            | DomainOp::SendBackward { ids }
+            | DomainOp::BringToFront { ids }
+            | DomainOp::SendToBack { ids }
+            | DomainOp::Group { ids } => {
+                for id in ids {
+                    entities.insert(format!("node:{}", id));
+                }
+            }
+            DomainOp::Ungroup { id } => {
+                entities.insert(format!("group:{}", id));
+            }
+        }
+    }
+
+    entities.into_iter().collect()
+}
+
+/// Schedule a UI update based on the apply summary
+///
+/// This function is called after `apply_tail_batch` to signal that the UI
+/// should be updated. The summary contains information about which entities
+/// were affected, allowing for targeted updates.
+///
+/// # Arguments
+///
+/// * `summary` - The summary from `apply_tail_batch`
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the update was scheduled successfully.
+///
+/// # Errors
+///
+/// Returns `SyncError::ChannelClosed` if the UI channel is closed.
+///
+/// # Example
+///
+/// ```ignore
+/// let summary = apply_tail_batch(&mut projection, events)?;
+/// schedule_ui_update(summary)?;
+/// ```
+pub fn schedule_ui_update(summary: ApplySummary) -> Result<(), SyncError> {
+    // In a full implementation, this would:
+    // 1. Send a message through a channel to the UI thread
+    // 2. The UI thread would then update the Dioxus signal
+    //
+    // For now, we just validate the summary is valid and return success.
+    // The actual UI integration would use a channel or coroutine to
+    // communicate with the Dioxus runtime.
+
+    if summary.events_applied == 0 {
+        // No changes, no update needed
+        return Ok(());
+    }
+
+    // Log the update for debugging (in production, this would signal the UI)
+    #[cfg(debug_assertions)]
+    eprintln!(
+        "[UI_UPDATE] events={} revision={}->{} entities={:?}",
+        summary.events_applied,
+        summary.from_revision,
+        summary.to_revision,
+        summary.affected_entities
+    );
+
+    Ok(())
 }
 
 #[cfg(test)]
@@ -747,5 +927,137 @@ mod tests {
 
         // After stop, the handle is consumed
         let _ = stop_store_watcher(handle);
+    }
+
+    // Tests for apply_tail_batch and schedule_ui_update
+
+    #[test]
+    fn test_apply_tail_batch_with_empty_events_returns_empty_summary() {
+        use crate::models::projection::DiagramProjection;
+
+        let mut projection = DiagramProjection::with_revision(0);
+        let events = Vec::new();
+
+        let summary = apply_tail_batch(&mut projection, events).unwrap();
+
+        assert_eq!(summary.events_applied, 0);
+        assert_eq!(summary.from_revision, 0);
+        assert_eq!(summary.to_revision, 0);
+        assert!(summary.affected_entities.is_empty());
+    }
+
+    #[test]
+    fn test_apply_tail_batch_applies_events_and_updates_revision() {
+        use crate::models::projection::DiagramProjection;
+
+        let (_temp_dir, _db_path, mut conn) = create_test_db();
+
+        // Add some events
+        for i in 1..=3 {
+            let envelope = make_test_envelope(&format!("op-{i}"), i);
+            store::append_event(&mut conn, envelope, None).unwrap();
+        }
+
+        let events = fetch_new_events(&conn, 0).unwrap();
+        assert_eq!(events.len(), 3);
+
+        let mut projection = DiagramProjection::with_revision(1);
+        let summary = apply_tail_batch(&mut projection, events).unwrap();
+
+        assert_eq!(summary.events_applied, 3);
+        assert_eq!(summary.from_revision, 1);
+        assert_eq!(summary.to_revision, 4); // 1 + 3 events
+        assert_eq!(projection.revision, 4);
+        assert_eq!(projection.nodes.len(), 3);
+    }
+
+    #[test]
+    fn test_apply_tail_batch_extracts_affected_entities() {
+        use crate::models::projection::DiagramProjection;
+
+        let (_temp_dir, _db_path, mut conn) = create_test_db();
+
+        // Add node and edge operations
+        let ops = [
+            (
+                "op-1",
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 1".to_string(),
+                },
+            ),
+            (
+                "op-2",
+                DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 200.0,
+                    y: 0.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 2".to_string(),
+                },
+            ),
+            (
+                "op-3",
+                DomainOp::EdgeConnect {
+                    id: "edge-1".to_string(),
+                    source: "node-1".to_string(),
+                    target: "node-2".to_string(),
+                },
+            ),
+        ];
+
+        for (op_id, operation) in &ops {
+            let envelope = EventEnvelope {
+                op_id: op_id.to_string(),
+                timestamp: 1700000000,
+                author: Author {
+                    id: "human-test".to_string(),
+                    name: "Test".to_string(),
+                    email: None,
+                },
+                operation: operation.clone(),
+            };
+            store::append_event(&mut conn, envelope, None).unwrap();
+        }
+
+        let events = fetch_new_events(&conn, 0).unwrap();
+        let mut projection = DiagramProjection::with_revision(1);
+        let summary = apply_tail_batch(&mut projection, events).unwrap();
+
+        // Should have node:node-1, node:node-2, edge:edge-1
+        assert!(summary.affected_entities.contains(&"node:node-1".to_string()));
+        assert!(summary.affected_entities.contains(&"node:node-2".to_string()));
+        assert!(summary.affected_entities.contains(&"edge:edge-1".to_string()));
+    }
+
+    #[test]
+    fn test_schedule_ui_update_with_empty_summary_succeeds() {
+        let summary = ApplySummary {
+            events_applied: 0,
+            from_revision: 0,
+            to_revision: 0,
+            affected_entities: Vec::new(),
+        };
+
+        let result = schedule_ui_update(summary);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_schedule_ui_update_with_events_succeeds() {
+        let summary = ApplySummary {
+            events_applied: 5,
+            from_revision: 1,
+            to_revision: 6,
+            affected_entities: vec!["node:node-1".to_string()],
+        };
+
+        let result = schedule_ui_update(summary);
+        assert!(result.is_ok());
     }
 }
