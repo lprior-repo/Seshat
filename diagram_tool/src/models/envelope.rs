@@ -373,7 +373,8 @@ pub struct EventEnvelope {
     #[serde(rename = "op_id")]
     pub op_id: String,
     /// The diagram operation being performed
-    pub operation: DomainOp,
+    #[serde(rename = "operation")]
+    pub domain_op: DomainOp,
     /// Author who created this event
     pub author: Author,
     /// Timestamp of when this event was created (Unix timestamp)
@@ -452,27 +453,38 @@ pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError>
     // Now try to deserialize the full envelope - serde will handle the DomainOp parsing
     serde_json::from_str(input).map_err(|e| {
         // Convert deserialization errors to our ContractError types
-        if e.to_string().contains("unknown variant") {
+        let err_msg = e.to_string();
+        if err_msg.contains("unknown variant") {
             // Extract the unknown variant name
-            let unknown = e
-                .to_string()
+            let unknown = err_msg
                 .split("unknown variant ")
                 .nth(1)
                 .unwrap_or("unknown")
                 .trim()
-                .trim_matches('\"');
-            ContractError::UnknownOpType(unknown.to_string())
-        } else if e.to_string().contains("missing field") {
-            let field = e
-                .to_string()
+                .trim_matches('\"')
+                .to_string();
+            ContractError::UnknownOpType(unknown)
+        } else if err_msg.contains("missing field") {
+            let field = err_msg
                 .split("missing field ")
                 .nth(1)
                 .unwrap_or("unknown")
                 .trim()
                 .trim_matches('\"');
-            ContractError::MissingField(field)
+            // Use static str for known fields, otherwise use "unknown"
+            if field == "author" {
+                ContractError::MissingField("author")
+            } else if field == "timestamp" {
+                ContractError::MissingField("timestamp")
+            } else if field == "domain_op" {
+                ContractError::MissingField("domain_op")
+            } else if field == "op_id" {
+                ContractError::MissingField("op_id")
+            } else {
+                ContractError::MissingField("unknown")
+            }
         } else {
-            ContractError::InvalidJson(e.to_string())
+            ContractError::InvalidJson(err_msg)
         }
     })
 }
@@ -490,6 +502,22 @@ pub fn encode_event_envelope(op: &EventEnvelope) -> Result<String, ContractError
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn test_domain_op_directly() {
+        let json = r#"{
+            "operation": "node_add",
+            "id": "n1",
+            "x": 100.0,
+            "y": 200.0,
+            "width": 80.0,
+            "height": 40.0,
+            "label": "Test"
+        }"#;
+        let result: Result<DomainOp, _> = serde_json::from_str(json);
+        println!("Result: {:?}", result);
+        assert!(result.is_ok(), "Failed: {:?}", result.err());
+    }
 
     #[test]
     fn given_valid_json_when_parsing_event_envelope_then_returns_envelope() {
@@ -514,7 +542,7 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let envelope = result.unwrap();
         assert_eq!(envelope.op_id, "evt-123");
-        assert!(matches!(envelope.operation, DomainOp::NodeAdd { .. }));
+        assert!(matches!(envelope.domain_op, DomainOp::NodeAdd { .. }));
         assert_eq!(envelope.author.id, "user-1");
         assert_eq!(envelope.author.name, "Alice");
         assert_eq!(envelope.timestamp, 1699999999);
@@ -718,7 +746,7 @@ mod tests {
     fn given_event_envelope_when_encoding_then_roundtrip_works() {
         let original = EventEnvelope {
             op_id: "evt-roundtrip".to_string(),
-            operation: DomainOp::NodeMove {
+            domain_op: DomainOp::NodeMove {
                 id: "node-1".to_string(),
                 x: 100.0,
                 y: 200.0,
@@ -744,7 +772,7 @@ mod tests {
     fn given_event_envelope_with_complex_operation_when_encoding_then_roundtrip_works() {
         let original = EventEnvelope {
             op_id: "evt-complex".to_string(),
-            operation: DomainOp::Group {
+            domain_op: DomainOp::Group {
                 ids: vec![
                     "node-1".to_string(),
                     "node-2".to_string(),

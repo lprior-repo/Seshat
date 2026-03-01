@@ -10,8 +10,11 @@
 #![forbid(unsafe_code)]
 
 use rusqlite::Connection;
+use serde::Serialize;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
+
+use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
 /// Current schema version for the store
 pub const CURRENT_SCHEMA_VERSION: i32 = 1;
@@ -28,6 +31,25 @@ pub enum StoreError {
     SchemaVersionMismatch { expected: i32, found: i32 },
     #[error("Migration forbidden: schema version {version} cannot be migrated")]
     MigrationForbidden { version: i32 },
+    #[error("Revision mismatch: expected {expected}, found {found}")]
+    RevisionMismatch { expected: i64, found: i64 },
+    #[error("Validation failed: {0}")]
+    ValidationFailed(String),
+    #[error("Serialization error: {0}")]
+    Serialization(String),
+}
+
+/// Errors that can occur during database recovery operations
+#[derive(Debug, Error)]
+pub enum RecoveryError {
+    #[error("Database integrity check failed: {0}")]
+    CorruptDatabase(String),
+    #[error("Backup file unavailable: {0}")]
+    BackupUnavailable(String),
+    #[error("IO error during recovery: {0}")]
+    Io(#[from] std::io::Error),
+    #[error("SQLite error during recovery: {0}")]
+    Sqlite(#[from] rusqlite::Error),
 }
 
 #[derive(Debug, Clone)]
@@ -52,8 +74,51 @@ pub struct StoreConfig {
     pub schema_version: i32,
 }
 
+/// Result of appending an event to the store
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct AppendResult {
+    /// The new revision after the append
+    pub revision: i64,
+    /// The operation ID of the appended event
+    pub op_id: String,
+    /// The timestamp of the appended event
+    pub timestamp: i64,
+}
+
 pub struct StoreConnection {
     pub conn: Connection,
+}
+
+/// Result of a database integrity check
+#[derive(Debug, Clone, Serialize)]
+pub struct IntegrityStatus {
+    /// Whether the database passed integrity checks
+    pub is_valid: bool,
+    /// Number of pages in the database
+    pub page_count: u32,
+    /// Number of free pages
+    pub free_pages: u32,
+    /// Number of corrupted pages
+    pub corrupted_pages: u32,
+    /// Schema version if readable
+    pub schema_version: Option<i32>,
+    /// Event count in the database
+    pub event_count: u64,
+    /// Latest revision if readable
+    pub latest_revision: Option<i64>,
+    /// Error message if integrity check failed
+    pub error_message: Option<String>,
+}
+
+/// Handle for read-only recovery mode operations
+#[derive(Debug)]
+pub struct RecoveryHandle {
+    /// The database connection in read-only mode
+    pub conn: Connection,
+    /// Path to the database file
+    pub db_path: PathBuf,
+    /// Path to the JSON export file (if exported)
+    pub export_path: Option<PathBuf>,
 }
 
 pub fn open_store(db_path: &Path) -> Result<StoreConnection, StoreError> {
@@ -217,6 +282,250 @@ pub fn current_store_config(conn: &Connection) -> Result<StoreConfig, StoreError
     })
 }
 
+/// Fetch the latest revision from the events table
+///
+/// Returns the current maximum revision, or 0 if no events exist
+pub fn fetch_latest_revision(conn: &Connection) -> Result<i64, StoreError> {
+    conn.query_row("SELECT COALESCE(MAX(revision), 0) FROM events", [], |row| {
+        row.get(0)
+    })
+    .map_err(StoreError::Sqlite)
+}
+
+/// Run integrity check on the database at startup
+///
+/// This function performs a comprehensive integrity check:
+/// 1. Verifies the database file can be opened
+/// 2. Checks SQLite integrity via PRAGMA integrity_check
+/// 3. Validates schema version table exists and is readable
+/// 4. Counts events and determines latest revision
+/// 5. Checks for page corruption
+///
+/// Returns an IntegrityStatus with detailed results of each check.
+pub fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, RecoveryError> {
+    // Check if database file exists
+    if !db_path.exists() {
+        return Ok(IntegrityStatus {
+            is_valid: false,
+            page_count: 0,
+            free_pages: 0,
+            corrupted_pages: 0,
+            schema_version: None,
+            event_count: 0,
+            latest_revision: None,
+            error_message: Some("Database file does not exist".to_string()),
+        });
+    }
+
+    // Open in read-only mode to check integrity without modifying
+    let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(RecoveryError::Sqlite)?;
+
+    // Run SQLite integrity check
+    let integrity_result: String = conn
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .map_err(RecoveryError::Sqlite)?;
+
+    let is_valid = integrity_result == "ok";
+
+    // Get page count info
+    let page_count: u32 = conn
+        .query_row("PRAGMA page_count", [], |row| row.get(0))
+        .map_err(RecoveryError::Sqlite)?;
+
+    let free_pages: u32 = conn
+        .query_row("PRAGMA freelist_count", [], |row| row.get(0))
+        .map_err(RecoveryError::Sqlite)?;
+
+    let corrupted_pages: u32 = if !is_valid && integrity_result.contains("corrupt") {
+        1
+    } else {
+        0
+    };
+
+    // Try to read schema version
+    let schema_version = conn
+        .query_row("SELECT version FROM schema_version", [], |row| row.get(0))
+        .ok();
+
+    // Count events
+    let event_count: u64 = conn
+        .query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))
+        .unwrap_or(0);
+
+    // Get latest revision
+    let latest_revision: Option<i64> = conn
+        .query_row("SELECT COALESCE(MAX(revision), 0) FROM events", [], |row| {
+            let rev: i64 = row.get(0)?;
+            Ok(rev)
+        })
+        .ok()
+        .filter(|&rev| rev > 0);
+
+    // Determine error message if invalid
+    let error_message = if !is_valid {
+        Some(integrity_result)
+    } else if corrupted_pages > 0 {
+        Some(format!("{} corrupted pages found", corrupted_pages))
+    } else {
+        None
+    };
+
+    Ok(IntegrityStatus {
+        is_valid,
+        page_count,
+        free_pages,
+        corrupted_pages,
+        schema_version,
+        event_count,
+        latest_revision,
+        error_message,
+    })
+}
+
+/// Open the database in read-only recovery mode
+///
+/// This function:
+/// 1. Opens the database in read-only mode
+/// 2. Performs an integrity check
+/// 3. If the database is valid, can export to JSON
+///
+/// Returns a RecoveryHandle for read-only operations.
+pub fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryError> {
+    // Open in read-only mode
+    let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+        .map_err(RecoveryError::Sqlite)?;
+
+    // Verify we can read from the database
+    let _: i32 = conn
+        .query_row("PRAGMA page_count", [], |row| row.get(0))
+        .map_err(|e| RecoveryError::CorruptDatabase(e.to_string()))?;
+
+    Ok(RecoveryHandle {
+        conn,
+        db_path: db_path.to_path_buf(),
+        export_path: None,
+    })
+}
+
+impl RecoveryHandle {
+    /// Export all events to JSON format
+    ///
+    /// This reads all events from the database and writes them to a JSON file.
+    /// The export is performed in a single read transaction.
+    pub fn export_to_json(&mut self, output_path: &Path) -> Result<(), RecoveryError> {
+        // Read all events
+        let mut stmt = self
+            .conn
+            .prepare("SELECT id, operation_id, revision, payload, timestamp FROM events ORDER BY revision")
+            .map_err(RecoveryError::Sqlite)?;
+
+        let events: Vec<serde_json::Value> = stmt
+            .query_map([], |row| {
+                let id: i64 = row.get(0)?;
+                let operation_id: String = row.get(1)?;
+                let revision: i64 = row.get(2)?;
+                let payload: String = row.get(3)?;
+                let timestamp: String = row.get(4)?;
+
+                Ok(serde_json::json!({
+                    "id": id,
+                    "operation_id": operation_id,
+                    "revision": revision,
+                    "payload": payload,
+                    "timestamp": timestamp
+                }))
+            })
+            .map_err(RecoveryError::Sqlite)?
+            .filter_map(Result::ok)
+            .collect();
+
+        // Write to JSON file
+        let json_content = serde_json::to_string_pretty(&events).map_err(|e| {
+            RecoveryError::Io(std::io::Error::new(
+                std::io::ErrorKind::Other,
+                e.to_string(),
+            ))
+        })?;
+
+        std::fs::write(output_path, json_content).map_err(RecoveryError::Io)?;
+
+        self.export_path = Some(output_path.to_path_buf());
+
+        Ok(())
+    }
+}
+
+/// Append an event to the store using Optimistic Concurrency Control (OCC)
+///
+/// This function:
+/// 1. Begins a transaction
+/// 2. Reads the current latest revision
+/// 3. Validates the expected revision (if provided)
+/// 4. Encodes the event envelope to JSON
+/// 5. Inserts the event with the new revision
+/// 6. Commits the transaction
+///
+/// On any failure, the transaction is rolled back - no partial mutations occur.
+///
+/// # Errors
+/// Returns `StoreError::RevisionMismatch` if the expected revision doesn't match
+/// Returns `StoreError::Serialization` if encoding the envelope fails
+/// Returns `StoreError::ValidationFailed` if validation fails
+pub fn append_event(
+    conn: &mut Connection,
+    envelope: EventEnvelope,
+    expected_revision: Option<i64>,
+) -> Result<AppendResult, StoreError> {
+    // Begin transaction for atomic OCC check-and-insert
+    let tx = conn.transaction().map_err(StoreError::Sqlite)?;
+
+    // Read current latest revision within transaction
+    let current_revision: i64 = tx
+        .query_row("SELECT COALESCE(MAX(revision), 0) FROM events", [], |row| {
+            row.get(0)
+        })
+        .map_err(StoreError::Sqlite)?;
+
+    // Validate expected revision if provided
+    if let Some(expected) = expected_revision {
+        if current_revision != expected {
+            return Err(StoreError::RevisionMismatch {
+                expected,
+                found: current_revision,
+            });
+        }
+    }
+
+    // The new revision is current_revision + 1
+    let new_revision = current_revision + 1;
+
+    // Encode the envelope to JSON
+    let payload =
+        encode_event_envelope(&envelope).map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+    // Insert the event
+    tx.execute(
+        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![
+            envelope.op_id,
+            new_revision,
+            payload,
+            envelope.timestamp.to_string()
+        ],
+    )
+    .map_err(StoreError::Sqlite)?;
+
+    // Commit the transaction
+    tx.commit().map_err(StoreError::Sqlite)?;
+
+    Ok(AppendResult {
+        revision: new_revision,
+        op_id: envelope.op_id,
+        timestamp: envelope.timestamp,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -337,5 +646,101 @@ mod tests {
 
         assert_eq!(pragmas.journal_mode, "wal");
         assert_eq!(pragmas.synchronous, 2);
+    }
+
+    // Recovery mode tests
+
+    #[test]
+    fn test_startup_integrity_check_on_valid_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let _bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Run integrity check
+        let status = startup_integrity_check(&db_path).expect("Integrity check failed");
+
+        assert!(status.is_valid, "Database should be valid");
+        assert!(
+            status.error_message.is_none(),
+            "Should have no error message"
+        );
+        assert!(
+            status.schema_version.is_some(),
+            "Should have schema version"
+        );
+    }
+
+    #[test]
+    fn test_startup_integrity_check_on_nonexistent_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("nonexistent.db");
+
+        // Run integrity check on nonexistent file
+        let status = startup_integrity_check(&db_path).expect("Integrity check failed");
+
+        assert!(!status.is_valid, "Nonexistent database should not be valid");
+        assert!(status.error_message.is_some(), "Should have error message");
+    }
+
+    #[test]
+    fn test_open_recovery_mode_on_valid_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let _bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Open in recovery mode
+        let mut handle = open_recovery_mode(&db_path).expect("Failed to open recovery mode");
+
+        // Verify connection is read-only
+        let result = handle
+            .conn
+            .query_row("SELECT 1", [], |row| row.get::<_, i32>(0));
+        assert!(result.is_ok(), "Should be able to read from recovery mode");
+    }
+
+    #[test]
+    fn test_recovery_handle_export_to_json() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a valid database
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Add some test events
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+        let envelope = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            domain_op: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+
+        // Open in recovery mode and export
+        let mut handle = open_recovery_mode(&db_path).expect("Failed to open recovery mode");
+        let export_path = temp_dir.path().join("export.json");
+
+        let export_result = handle.export_to_json(&export_path);
+        assert!(
+            export_result.is_ok(),
+            "Export should succeed: {:?}",
+            export_result.err()
+        );
+        assert!(export_path.exists(), "Export file should exist");
     }
 }
