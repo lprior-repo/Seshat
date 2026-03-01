@@ -21,6 +21,10 @@ pub enum StoreError {
     Sqlite(#[from] rusqlite::Error),
     #[error("Invalid pragma configuration: {0}")]
     InvalidPragma(String),
+    #[error("Schema version mismatch: expected {expected}, found {found}")]
+    SchemaVersionMismatch { expected: i32, found: i32 },
+    #[error("Migration forbidden: schema version {version} cannot be migrated")]
+    MigrationForbidden { version: i32 },
 }
 
 #[derive(Debug, Clone)]

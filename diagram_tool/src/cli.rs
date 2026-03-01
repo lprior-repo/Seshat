@@ -15,7 +15,7 @@ use crate::mutation::ops::apply_layout;
 use crate::mutation::pipeline::run_mutation;
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
-use serde::Serialize;
+use serde::{Deserialize, Serialize};
 use std::fs::File;
 use std::io::Write;
 use std::path::Path;
@@ -77,8 +77,8 @@ pub fn run_cli(cli: &Cli) {
     }
 }
 
-#[derive(Serialize)]
-struct CliEvent {
+#[derive(Serialize, Deserialize)]
+pub struct CliEvent {
     event: String,
     command: String,
     ok: bool,
@@ -87,7 +87,7 @@ struct CliEvent {
 }
 
 impl CliEvent {
-    fn start(command: String) -> Self {
+    pub fn start(command: String) -> Self {
         Self {
             event: String::from("start"),
             command,
@@ -97,7 +97,7 @@ impl CliEvent {
         }
     }
 
-    fn error(command: String, code: String, message: String) -> Self {
+    pub fn error(command: String, code: String, message: String) -> Self {
         Self {
             event: String::from("error"),
             command,
@@ -107,7 +107,7 @@ impl CliEvent {
         }
     }
 
-    fn finish(command: String, ok: bool, code: String) -> Self {
+    pub fn finish(command: String, ok: bool, code: String) -> Self {
         Self {
             event: String::from("finish"),
             command,
@@ -126,12 +126,16 @@ fn command_name(cmd: &Commands) -> String {
     }
 }
 
-fn error_code(err: &anyhow::Error) -> String {
+pub fn error_code(err: &anyhow::Error) -> String {
     let msg = err.to_string().to_lowercase();
     if msg.contains("schema") {
         String::from("schema_violation")
     } else if msg.contains("dag") || msg.contains("cycle") {
-        String::from("dag_cycle")
+        String::from("dag_violation")
+    } else if msg.contains("semantic") || msg.contains("semantic validation error") {
+        String::from("semantic_error")
+    } else if msg.contains("dangling") || msg.contains("edge-dangling") {
+        String::from("dangling_reference")
     } else if msg.contains("parse")
         || msg.contains("deserialize")
         || msg.contains("unknown variant")
@@ -143,7 +147,7 @@ fn error_code(err: &anyhow::Error) -> String {
     }
 }
 
-fn exit_code(err: &anyhow::Error) -> i32 {
+pub fn exit_code(err: &anyhow::Error) -> i32 {
     let code = error_code(err);
     match code.as_str() {
         "parse_error" | "command_error" => 2,
@@ -199,7 +203,19 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 "validating",
                 &StageDetails::new().with_path(Path::new(input)),
             );
-            let _doc = load_doc(input)?;
+            let doc = load_doc(input)?;
+            // Run full validation pipeline
+            let issues = crate::models::validation::validate_document(&doc);
+            if !issues.is_empty() {
+                return Err(anyhow!(
+                    "validation failed: {}",
+                    issues
+                        .iter()
+                        .map(|i| format!("{}: {}", i.code, i.message))
+                        .collect::<Vec<_>>()
+                        .join("; ")
+                ));
+            }
         }
     }
     Ok(())

@@ -73,8 +73,18 @@ impl Revision {
     pub const INITIAL: Self = Self(0);
 
     #[must_use]
+    pub const fn new(value: u64) -> Self {
+        Self(value)
+    }
+
+    #[must_use]
     pub const fn increment(self) -> Self {
         Self(self.0 + 1)
+    }
+
+    #[must_use]
+    pub const fn value(self) -> u64 {
+        self.0
     }
 }
 

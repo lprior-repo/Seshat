@@ -168,6 +168,9 @@ pub fn save_workspace_atomic(
     doc: &DiagramDocument,
     path: &Path,
 ) -> Result<(), CliPersistenceError> {
+    // Validate before persistence - run the full validation pipeline
+    validate_schema(doc).map_err(|e| CliPersistenceError::ValidationError(e.to_string()))?;
+
     // Get parent directory, defaulting to current directory for relative paths
     let parent = path.parent().filter(|p| !p.as_os_str().is_empty());
     let parent = parent.unwrap_or_else(|| Path::new("."));
