@@ -32,6 +32,12 @@ playwright-report/
 # Generated bead scratch files
 .beads/last-touched
 .beads/schemas/*.cue
+.beads/beads.db
+.beads/beads.db-wal
 
 # Local scratch workspaces
 dont-fuck-up/
+
+# Codanna
+.codanna/
+.codannaignore

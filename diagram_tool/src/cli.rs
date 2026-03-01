@@ -10,7 +10,7 @@ use crate::cli_persistence::{
 };
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
-use crate::models::document::DiagramDocument;
+use crate::models::document::{DiagramDocument, NodeId, Revision};
 use crate::mutation::ops::apply_layout;
 use crate::mutation::pipeline::run_mutation;
 use anyhow::{anyhow, Context, Result};
@@ -46,6 +46,14 @@ pub enum Commands {
     Validate {
         #[arg(long)]
         input: String,
+    },
+    Patch {
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        patch: String,
+        #[arg(long)]
+        output: String,
     },
 }
 
@@ -123,19 +131,21 @@ fn command_name(cmd: &Commands) -> String {
         Commands::Render { .. } => String::from("render"),
         Commands::Layout { .. } => String::from("layout"),
         Commands::Validate { .. } => String::from("validate"),
+        Commands::Patch { .. } => String::from("patch"),
     }
 }
 
 pub fn error_code(err: &anyhow::Error) -> String {
     let msg = err.to_string().to_lowercase();
-    if msg.contains("schema") {
-        String::from("schema_violation")
-    } else if msg.contains("dag") || msg.contains("cycle") {
+    // Check more specific patterns before general ones
+    if msg.contains("dag") || msg.contains("cycle") {
         String::from("dag_violation")
-    } else if msg.contains("semantic") || msg.contains("semantic validation error") {
-        String::from("semantic_error")
     } else if msg.contains("dangling") || msg.contains("edge-dangling") {
         String::from("dangling_reference")
+    } else if msg.contains("schema") {
+        String::from("schema_violation")
+    } else if msg.contains("semantic") || msg.contains("semantic validation error") {
+        String::from("semantic_error")
     } else if msg.contains("parse")
         || msg.contains("deserialize")
         || msg.contains("unknown variant")
@@ -217,6 +227,138 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 ));
             }
         }
+        Commands::Patch {
+            input,
+            patch,
+            output,
+        } => {
+            emit_stage_event(
+                "patching",
+                &StageDetails::new()
+                    .with_path(Path::new(input))
+                    .with_code("started"),
+            );
+
+            // Load the document
+            let current_doc = load_doc(input)?;
+
+            // Read and parse the patch file
+            let patch_content = std::fs::read_to_string(patch)
+                .map_err(|e| anyhow!("Failed to read patch file: {}", e))?;
+            let patch_ops: Vec<serde_json::Value> = serde_json::from_str(&patch_content)
+                .map_err(|e| anyhow!("Failed to parse patch JSON: {}", e))?;
+
+            // Check that first operation is a test for /revision (optimistic locking)
+            let has_revision_test = patch_ops.first().map_or(false, |op| {
+                op.get("op").and_then(|v| v.as_str()) == Some("test")
+                    && op.get("path").and_then(|v| v.as_str()) == Some("/revision")
+            });
+            if !has_revision_test {
+                return Err(anyhow!(
+                    "patch must start with test operation for /revision"
+                ));
+            }
+
+            // Apply patch operations
+            let mut doc = current_doc.clone();
+            for op in &patch_ops {
+                let op_type = op.get("op").and_then(|v| v.as_str()).unwrap_or("");
+                let path = op.get("path").and_then(|v| v.as_str()).unwrap_or("/");
+
+                match op_type {
+                    "test" => {
+                        // Test operation - verify value matches before proceeding
+                        let expected = op.get("value");
+                        let actual = json_pointer_get(&doc, path);
+                        let test_passed = expected
+                            .and_then(|e| actual.as_ref().map(|a| e == a))
+                            .unwrap_or(false);
+                        if !test_passed {
+                            // Determine error code based on path
+                            let err_code = if path == "/revision" {
+                                "stale_revision"
+                            } else {
+                                "command_error"
+                            };
+
+                            // Create LKG before failing - save to .lkg subdirectory
+                            let input_path = Path::new(input);
+                            let lkg_dir =
+                                input_path.parent().unwrap_or(Path::new(".")).join(".lkg");
+                            std::fs::create_dir_all(&lkg_dir).ok();
+                            let lkg_filename = format!(
+                                "{}.lkg",
+                                input_path
+                                    .file_name()
+                                    .map(|n| n.to_string_lossy())
+                                    .unwrap_or_default()
+                            );
+                            let lkg_path = lkg_dir.join(lkg_filename);
+
+                            if let Err(e) = save_workspace_atomic(&current_doc, &lkg_path) {
+                                emit_stage_event(
+                                    "lkg_saved",
+                                    &StageDetails::new()
+                                        .with_path(&lkg_path)
+                                        .with_code("lkg_save_failed")
+                                        .with_message(&e.to_string()),
+                                );
+                            }
+
+                            emit_event(&CliEvent::error(
+                                String::from("patch"),
+                                String::from(err_code),
+                                format!(
+                                    "test failed at {}: expected {:?} but got {:?}",
+                                    path, expected, actual
+                                ),
+                            ));
+
+                            return Err(anyhow!(
+                                "{}: test failed at {}: expected {:?} but got {:?}",
+                                err_code,
+                                path,
+                                expected,
+                                actual
+                            ));
+                        }
+                    }
+                    "replace" => {
+                        let value = op
+                            .get("value")
+                            .ok_or_else(|| anyhow!("replace operation missing value"))?;
+                        json_pointer_set(&mut doc, path, value.clone())?;
+                    }
+                    "add" => {
+                        let value = op
+                            .get("value")
+                            .ok_or_else(|| anyhow!("add operation missing value"))?;
+                        json_pointer_set(&mut doc, path, value.clone())?;
+                    }
+                    "remove" => {
+                        json_pointer_remove(&mut doc, path)?;
+                    }
+                    _ => {
+                        return Err(anyhow!("unsupported patch operation: {}", op_type));
+                    }
+                }
+            }
+
+            // Run validation pipeline
+            let validated_doc = run_mutation(&doc, |d| Ok(d.clone()))
+                .map_err(|err| anyhow!("Patch validation failed: {}", err))?;
+
+            // Save the result
+            save_workspace_atomic(&validated_doc, Path::new(output))
+                .map_err(|e| anyhow!("Failed to save patched document: {}", e))?;
+
+            emit_stage_event(
+                "patched",
+                &StageDetails::new()
+                    .with_path(Path::new(output))
+                    .with_code("success"),
+            );
+        }
     }
     Ok(())
 }
@@ -224,4 +366,52 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 fn load_doc(path: &str) -> Result<DiagramDocument> {
     load_workspace_with_lkg(Path::new(path))
         .map_err(|e| anyhow!("Failed to load document from {path}: {e}"))
+}
+
+/// Get a value from the document using a simple JSON Pointer path
+fn json_pointer_get(doc: &DiagramDocument, path: &str) -> Option<serde_json::Value> {
+    let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
+    match parts.as_slice() {
+        ["revision"] => Some(serde_json::json!(doc.revision.value())),
+        ["document", "nodes", node_id, "label"] => doc
+            .document
+            .nodes
+            .get(&NodeId::new(node_id.to_string()))
+            .map(|n| serde_json::json!(n.label)),
+        _ => None,
+    }
+}
+
+/// Set a value in the document using a simple JSON Pointer path
+fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Value) -> Result<()> {
+    let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
+    match parts.as_slice() {
+        ["revision"] => {
+            if let Some(v) = value.as_u64() {
+                doc.revision = Revision::new(v);
+                Ok(())
+            } else {
+                Err(anyhow!("revision must be a number"))
+            }
+        }
+        ["document", "nodes", node_id, "label"] => {
+            let node_id = NodeId::new(node_id.to_string());
+            if let Some(node) = doc.document.nodes.get_mut(&node_id) {
+                if let Some(label) = value.as_str() {
+                    node.label = label.to_string();
+                    Ok(())
+                } else {
+                    Err(anyhow!("label must be a string"))
+                }
+            } else {
+                Err(anyhow!("node {} not found", node_id))
+            }
+        }
+        _ => Err(anyhow!("unsupported path: {}", path)),
+    }
+}
+
+/// Remove a value from the document using a simple JSON Pointer path
+fn json_pointer_remove(_doc: &mut DiagramDocument, _path: &str) -> Result<()> {
+    Err(anyhow!("remove operation not implemented"))
 }
