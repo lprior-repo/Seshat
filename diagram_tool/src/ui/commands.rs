@@ -10,7 +10,6 @@ use crate::models::document::{
     DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
 use dioxus::prelude::*;
-use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 
