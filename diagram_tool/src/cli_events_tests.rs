@@ -104,6 +104,44 @@ mod cli_event_tests {
         );
     }
 
+    /// Test: Given stale revision error, when error_code called, then returns stale_revision
+    #[test]
+    fn given_stale_revision_error_when_error_code_called_then_returns_stale_revision() {
+        let err = anyhow!(
+            "stale_revision: test failed at /revision: expected Some(999) but got Some(1)"
+        );
+        let code = error_code(&err);
+
+        assert_eq!(
+            code, "stale_revision",
+            "Stale revision errors should map to stale_revision"
+        );
+    }
+
+    /// Test: Given stale revision error, when exit_code called, then returns 1
+    #[test]
+    fn given_stale_revision_error_when_exit_code_called_then_returns_1() {
+        let err = anyhow!("stale_revision: test failed at /revision");
+        let code = exit_code(&err);
+
+        assert_eq!(
+            code, 1,
+            "Stale revision errors should return exit code 1 (business logic error)"
+        );
+    }
+
+    /// Test: Given dangling reference error, when error_code called, then returns dangling_reference
+    #[test]
+    fn given_dangling_reference_error_when_error_code_called_then_returns_dangling_reference() {
+        let err = anyhow!("edge-dangling: Edge e1 target 'nonexistent' does not exist");
+        let code = error_code(&err);
+
+        assert_eq!(
+            code, "dangling_reference",
+            "Dangling reference errors should map to dangling_reference"
+        );
+    }
+
     /// Test: Given generic error, when error_code called, then returns command_error
     #[test]
     fn given_generic_error_when_error_code_called_then_returns_command_error() {

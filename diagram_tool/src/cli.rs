@@ -142,6 +142,8 @@ pub fn error_code(err: &anyhow::Error) -> String {
         String::from("dag_violation")
     } else if msg.contains("dangling") || msg.contains("edge-dangling") {
         String::from("dangling_reference")
+    } else if msg.contains("stale_revision") {
+        String::from("stale_revision")
     } else if msg.contains("schema") {
         String::from("schema_violation")
     } else if msg.contains("semantic") || msg.contains("semantic validation error") {

@@ -1,0 +1,16 @@
+[
+  {
+    "id": "bd-1wz",
+    "title": "cli: fix dangling_reference and stale_revision codes",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "bug",
+    "assignee": "self",
+    "created_at": "2026-03-01T00:46:38.855090020Z",
+    "created_by": "lewis",
+    "updated_at": "2026-03-01T22:55:22.047152541Z",
+    "source_repo": ".",
+    "compaction_level": 0,
+    "original_size": 0
+  }
+]
