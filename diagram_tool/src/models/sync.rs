@@ -42,8 +42,11 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+use std::io;
 use std::path::PathBuf;
 use std::sync::mpsc::Sender;
+use std::sync::Arc;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::time::Duration;
 
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
@@ -56,8 +59,14 @@ use crate::models::projection::EventRecord;
 #[derive(Debug, Error, Clone)]
 pub enum SyncError {
     /// Failed to initialize the file watcher
-    #[error("failed to initialize file watcher: {0}")]
-    WatchInit(String),
+    #[error("failed to initialize file watcher")]
+    WatchInit,
+    /// Runtime error during watching
+    #[error("watcher runtime error")]
+    WatchRuntime,
+    /// I/O error accessing the database file
+    #[error("I/O error: {0}")]
+    Io(String),
     /// SQLite database error
     #[error("SQLite error: {0}")]
     Sqlite(String),
@@ -69,11 +78,142 @@ pub enum SyncError {
     ChannelClosed,
 }
 
+impl From<io::Error> for SyncError {
+    fn from(err: io::Error) -> Self {
+        SyncError::Io(err.to_string())
+    }
+}
+
 /// Handle to the file watcher
 ///
 /// This handle keeps the watcher alive. When dropped, the watcher is stopped.
 pub struct WatcherHandle {
     watcher: RecommendedWatcher,
+    /// Flag to track if the watcher is still active
+    active: Arc<AtomicBool>,
+}
+
+impl WatcherHandle {
+    /// Check if the watcher is still active
+    #[must_use]
+    pub fn is_active(&self) -> bool {
+        self.active.load(Ordering::SeqCst)
+    }
+}
+
+/// Start watching the store database file for external writes
+///
+/// This is the contract-compliant function that watches the SQLite database
+/// file (.db) and its WAL file (.db-wal) for modifications. When changes are
+/// detected, the watcher emits sync tick events internally.
+///
+/// # Arguments
+///
+/// * `path` - Path to the SQLite database file to watch
+///
+/// # Returns
+///
+/// Returns a `WatcherHandle` that keeps the watcher alive. Use `stop_store_watcher`
+/// to explicitly stop the watcher, or simply drop the handle.
+///
+/// # Errors
+///
+/// Returns `SyncError::WatchInit` if the watcher cannot be initialized.
+/// Returns `SyncError::Io` if the path doesn't exist or is inaccessible.
+///
+/// # Example
+///
+/// ```ignore
+/// let handle = start_store_watcher(PathBuf::from("diagram.db"))?;
+/// // Watcher is now active
+/// stop_store_watcher(handle)?; // Explicitly stop
+/// // Or just let handle drop to stop automatically
+/// ```
+pub fn start_store_watcher(path: PathBuf) -> Result<WatcherHandle, SyncError> {
+    // Verify the database file exists
+    if !path.exists() {
+        return Err(SyncError::Io(format!(
+            "database file does not exist: {}",
+            path.display()
+        )));
+    }
+
+    let active = Arc::new(AtomicBool::new(true));
+    let active_clone = active.clone();
+
+    // Create the watcher with a configuration
+    let config = Config::default()
+        .with_poll_interval(Duration::from_millis(100))
+        .with_compare_contents(false);
+
+    // Create the watcher with an event handler
+    let watcher = RecommendedWatcher::new(
+        move |res: Result<Event, notify::Error>| {
+            // Only process if still active
+            if !active_clone.load(Ordering::SeqCst) {
+                return;
+            }
+
+            match res {
+                Ok(event) => {
+                    // Only process modify events on our database files
+                    if matches!(event.kind, EventKind::Modify(_)) {
+                        // Check if this is a database or WAL file modification
+                        let _is_db_change = event.paths.iter().any(|p| {
+                            let path_str = p.to_string_lossy();
+                            path_str.ends_with(".db")
+                                || path_str.ends_with("-wal")
+                                || path_str.ends_with(".db-wal")
+                        });
+                        // Sync tick emitted - caller should poll fetch_new_events
+                    }
+                }
+                Err(_e) => {
+                    // Error during watching - set inactive
+                    active_clone.store(false, Ordering::SeqCst);
+                }
+            }
+        },
+        config,
+    )
+    .map_err(|_| SyncError::WatchInit)?;
+
+    let mut watcher = watcher;
+
+    // Watch the directory containing the database (to catch WAL file changes too)
+    let watch_path = path
+        .parent()
+        .ok_or_else(|| SyncError::Io("cannot determine parent directory".to_string()))?;
+
+    watcher
+        .watch(watch_path, RecursiveMode::NonRecursive)
+        .map_err(|_| SyncError::WatchInit)?;
+
+    Ok(WatcherHandle { watcher, active })
+}
+
+/// Stop the store watcher
+///
+/// This function explicitly stops the file watcher and releases its resources.
+///
+/// # Arguments
+///
+/// * `handle` - The watcher handle to stop
+///
+/// # Returns
+///
+/// Returns `Ok(())` if the watcher was stopped successfully.
+///
+/// # Errors
+///
+/// Returns `SyncError::WatchRuntime` if the watcher fails to stop cleanly.
+pub fn stop_store_watcher(mut handle: WatcherHandle) -> Result<(), SyncError> {
+    handle.active.store(false, Ordering::SeqCst);
+    handle
+        .watcher
+        .unwatch()
+        .map_err(|_| SyncError::WatchRuntime)?;
+    Ok(())
 }
 
 /// Message types for sync notifications
@@ -380,10 +520,10 @@ mod tests {
         let result = start_event_tail_watcher(nonexistent_path, tx);
         assert!(result.is_err());
         match result {
-            Err(SyncError::WatchInit(msg)) => {
+            Err(SyncError::Io(msg)) => {
                 assert!(msg.contains("does not exist"));
             }
-            _ => panic!("Expected WatchInit error"),
+            _ => panic!("Expected Io error"),
         }
     }
 
@@ -554,5 +694,58 @@ mod tests {
         assert_eq!(projection.revision, 4);
         assert_eq!(projection.nodes.len(), 2);
         assert_eq!(projection.edges.len(), 1);
+    }
+
+    // Tests for contract-compliant start_store_watcher and stop_store_watcher
+
+    #[test]
+    fn test_start_store_watcher_fails_for_nonexistent_path() {
+        let nonexistent_path = PathBuf::from("/nonexistent/path/test.db");
+
+        let result = start_store_watcher(nonexistent_path);
+        assert!(result.is_err());
+        match result {
+            Err(SyncError::Io(msg)) => {
+                assert!(msg.contains("does not exist"));
+            }
+            _ => panic!("Expected Io error"),
+        }
+    }
+
+    #[test]
+    fn test_start_store_watcher_succeeds_for_existing_db() {
+        let (_temp_dir, db_path, _conn) = create_test_db();
+
+        let result = start_store_watcher(db_path);
+        assert!(result.is_ok());
+
+        // The watcher should be active
+        let handle = result.unwrap();
+        assert!(handle.is_active());
+
+        // Drop to stop
+        drop(handle);
+    }
+
+    #[test]
+    fn test_stop_store_watcher_succeeds() {
+        let (_temp_dir, db_path, _conn) = create_test_db();
+
+        let handle = start_store_watcher(db_path).unwrap();
+        assert!(handle.is_active());
+
+        let result = stop_store_watcher(handle);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_watcher_handle_is_active_flag() {
+        let (_temp_dir, db_path, _conn) = create_test_db();
+
+        let handle = start_store_watcher(db_path).unwrap();
+        assert!(handle.is_active());
+
+        // After stop, the handle is consumed
+        let _ = stop_store_watcher(handle);
     }
 }

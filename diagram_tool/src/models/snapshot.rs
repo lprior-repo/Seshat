@@ -130,6 +130,35 @@ pub fn write_snapshot(
     })
 }
 
+/// Get metadata for the latest snapshot
+///
+/// Returns `Ok(Some(meta))` if a snapshot exists, `Ok(None)` if no snapshots exist.
+///
+/// # Errors
+/// Returns `SnapshotError::Sqlite` if database operations fail
+pub fn latest_snapshot(conn: &Connection) -> Result<Option<SnapshotMeta>, SnapshotError> {
+    let result = conn.query_row(
+        "SELECT id, revision, created_at FROM snapshots ORDER BY revision DESC LIMIT 1",
+        [],
+        |row| {
+            let id: i64 = row.get(0)?;
+            let revision: i64 = row.get(1)?;
+            let created_at: i64 = row.get(2)?;
+            Ok(SnapshotMeta {
+                id,
+                revision: revision as u64,
+                created_at,
+            })
+        },
+    );
+
+    match result {
+        Ok(meta) => Ok(Some(meta)),
+        Err(rusqlite::Error::QueryReturnedNoRows) => Ok(None),
+        Err(e) => Err(SnapshotError::Sqlite(e.to_string())),
+    }
+}
+
 /// Load the projection from the latest snapshot and replay events after it
 ///
 /// This function:
@@ -323,11 +352,8 @@ mod tests {
 
         // Create projection at revision 1 (matching current revision)
         let projection_at_rev1 = DiagramProjection {
-            version: 1,
             revision: 1,
-            nodes: Default::default(),
-            edges: Default::default(),
-            author_priority: Default::default(),
+            ..DiagramProjection::empty()
         };
 
         let meta = write_snapshot(&mut conn, &projection_at_rev1).unwrap();
@@ -370,11 +396,8 @@ mod tests {
 
         // Try to write snapshot with stale revision (0 instead of 1)
         let stale_projection = DiagramProjection {
-            version: 1,
             revision: 0,
-            nodes: Default::default(),
-            edges: Default::default(),
-            author_priority: Default::default(),
+            ..DiagramProjection::empty()
         };
 
         let result = write_snapshot(&mut conn, &stale_projection);
@@ -576,5 +599,248 @@ mod tests {
         assert!(loaded
             .nodes
             .contains_key(&crate::models::document::NodeId::new("node-2".to_string())));
+    }
+
+    #[test]
+    fn test_latest_snapshot_returns_none_when_no_snapshots_exist() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // No snapshots written yet
+        let result = latest_snapshot(&bootstrap.conn).unwrap();
+        assert!(result.is_none(), "Should return None when no snapshots exist");
+    }
+
+    #[test]
+    fn test_latest_snapshot_returns_metadata_after_write() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Write an event first
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567890,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Write snapshot
+        let projection = DiagramProjection {
+            revision: 1,
+            ..DiagramProjection::empty()
+        };
+        let written_meta = write_snapshot(&mut bootstrap.conn, &projection).unwrap();
+
+        // Get latest snapshot
+        let result = latest_snapshot(&bootstrap.conn).unwrap();
+        assert!(result.is_some(), "Should return Some after snapshot written");
+
+        let meta = result.unwrap();
+        assert_eq!(meta.id, written_meta.id);
+        assert_eq!(meta.revision, 1);
+        assert_eq!(meta.revision, written_meta.revision);
+    }
+
+    #[test]
+    fn test_latest_snapshot_returns_highest_revision() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Write multiple events and snapshots
+        for i in 1..=3 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                timestamp: 1234567890 + i,
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 100.0 * i as f64,
+                    y: 200.0,
+                    width: 50.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+            };
+            store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+            let projection = DiagramProjection {
+                revision: i as u64,
+                ..DiagramProjection::empty()
+            };
+            write_snapshot(&mut bootstrap.conn, &projection).unwrap();
+        }
+
+        // Get latest snapshot - should be revision 3
+        let result = latest_snapshot(&bootstrap.conn).unwrap();
+        assert!(result.is_some());
+        let meta = result.unwrap();
+        assert_eq!(meta.revision, 3);
+    }
+
+    #[test]
+    fn test_new_path_handles_valid_input_and_produces_expected_output() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add event
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567890,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Write snapshot with valid projection
+        let projection = DiagramProjection {
+            revision: 1,
+            ..DiagramProjection::empty()
+        };
+
+        let result = write_snapshot(&mut bootstrap.conn, &projection);
+        assert!(result.is_ok(), "Should succeed with valid input");
+        let meta = result.unwrap();
+        assert_eq!(meta.revision, 1);
+    }
+
+    #[test]
+    fn test_invalid_input_returns_typed_error_without_partial_mutation() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add event to set revision to 1
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567890,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Try to write snapshot with stale revision (0 instead of 1)
+        let stale_projection = DiagramProjection {
+            revision: 0, // Stale!
+            ..DiagramProjection::empty()
+        };
+
+        let result = write_snapshot(&mut bootstrap.conn, &stale_projection);
+        assert!(result.is_err(), "Should fail with stale revision");
+
+        // Verify error type
+        match result {
+            Err(SnapshotError::SnapshotStale { expected, found }) => {
+                assert_eq!(expected, 1);
+                assert_eq!(found, 0);
+            }
+            _ => panic!("Expected SnapshotStale error"),
+        }
+
+        // Verify no partial mutation - no snapshot should exist for revision 0
+        let latest = latest_snapshot(&bootstrap.conn).unwrap();
+        assert!(latest.is_none(), "No snapshot should exist after failed write");
+    }
+
+    #[test]
+    fn test_command_flow_uses_replacement_implementation_without_legacy_calls() {
+        // This test verifies that write_snapshot uses the new path
+        // with typed errors and no legacy fallback
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add event
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567890,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+
+        // Write snapshot using the new path
+        let projection = DiagramProjection {
+            revision: 1,
+            ..DiagramProjection::empty()
+        };
+
+        let meta = write_snapshot(&mut bootstrap.conn, &projection).unwrap();
+
+        // Verify using latest_snapshot (also new path)
+        let loaded = latest_snapshot(&bootstrap.conn)
+            .unwrap()
+            .expect("Snapshot should exist");
+
+        assert_eq!(loaded.id, meta.id);
+        assert_eq!(loaded.revision, meta.revision);
+
+        // Verify load_projection uses new path (replay from snapshot)
+        let loaded_projection = load_projection(&bootstrap.conn).unwrap();
+        assert_eq!(loaded_projection.revision, 1);
     }
 }

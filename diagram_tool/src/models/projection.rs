@@ -23,6 +23,20 @@ use crate::models::envelope::{Author, DomainOp};
 /// Current supported schema version
 const SUPPORTED_VERSION: u32 = 1;
 
+/// Cycle policy for a diagram
+///
+/// This enum defines whether a diagram allows or denies cycles in its edge graph.
+/// When set to `Deny`, any operation that would create a cycle is rejected.
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum CyclePolicy {
+    /// Cycles are allowed in the diagram (default)
+    #[default]
+    Allow,
+    /// Cycles are denied - operations creating cycles are rejected
+    Deny,
+}
+
 /// Errors that can occur during replay
 #[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ReplayError {
@@ -32,6 +46,16 @@ pub enum ReplayError {
     InvariantViolation(String),
     #[error("unsupported schema version: {0}")]
     UnsupportedVersion(u32),
+    #[error("cycle violation: {0}")]
+    CycleViolation(String),
+    #[error("policy missing: {0}")]
+    PolicyMissing(String),
+    #[error("edge not found: {0}")]
+    EdgeNotFound(String),
+    #[error("duplicate edge: {0}")]
+    DuplicateEdge(String),
+    #[error("policy violation: {0}")]
+    PolicyViolation(String),
 }
 
 /// Event record for replay - contains all information needed to reconstruct state
@@ -69,6 +93,9 @@ pub struct DiagramProjection {
     /// Human-authored operations take priority over AI in conflicts
     #[serde(default)]
     pub author_priority: HashMap<String, bool>,
+    /// Cycle policy for the diagram - whether cycles are allowed or denied
+    #[serde(default)]
+    pub cycle_policy: CyclePolicy,
 }
 
 impl Default for DiagramProjection {
@@ -87,6 +114,7 @@ impl DiagramProjection {
             nodes: HashMap::new(),
             edges: HashMap::new(),
             author_priority: HashMap::new(),
+            cycle_policy: CyclePolicy::default(),
         }
     }
 
@@ -99,6 +127,20 @@ impl DiagramProjection {
             nodes: HashMap::new(),
             edges: HashMap::new(),
             author_priority: HashMap::new(),
+            cycle_policy: CyclePolicy::default(),
+        }
+    }
+
+    /// Create a new projection with a specific cycle policy
+    #[must_use]
+    pub fn with_cycle_policy(cycle_policy: CyclePolicy) -> Self {
+        Self {
+            version: SUPPORTED_VERSION,
+            revision: 0,
+            nodes: HashMap::new(),
+            edges: HashMap::new(),
+            author_priority: HashMap::new(),
+            cycle_policy,
         }
     }
 
@@ -233,6 +275,7 @@ pub fn apply_event(
         nodes: new_state.nodes,
         edges: new_state.edges,
         author_priority: new_priority_map,
+        cycle_policy: new_state.cycle_policy,
     })
 }
 
@@ -317,6 +360,7 @@ fn apply_node_add(
         nodes: new_nodes,
         edges: state.edges,
         author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
     })
 }
 
@@ -351,6 +395,7 @@ fn apply_node_move(
         nodes: new_nodes,
         edges: state.edges,
         author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
     })
 }
 
@@ -386,6 +431,7 @@ fn apply_node_delete(state: DiagramProjection, id: &str) -> Result<DiagramProjec
         nodes: new_nodes,
         edges: new_edges,
         author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
     })
 }
 
@@ -462,6 +508,7 @@ fn apply_edge_connect(
         nodes: state.nodes,
         edges: new_edges,
         author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
     })
 }
 
@@ -487,7 +534,173 @@ fn apply_edge_disconnect(
         nodes: state.nodes,
         edges: new_edges,
         author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
     })
+}
+
+/// Apply an edge operation to the projection
+///
+/// This is the contract-specified entry point for applying edge operations.
+/// It dispatches to the appropriate handler based on the operation type.
+///
+/// # Errors
+/// Returns `ReplayError::EdgeNotFound` if the edge does not exist for disconnect operations
+/// Returns `ReplayError::DuplicateEdge` if the edge already exists for connect operations
+/// Returns `ReplayError::PolicyViolation` if the operation violates policy constraints
+/// Returns `ReplayError::InvalidEvent` if the operation is not an edge operation
+pub fn apply_edge_op(
+    state: DiagramProjection,
+    op: &DomainOp,
+) -> Result<DiagramProjection, ReplayError> {
+    match op {
+        DomainOp::EdgeConnect { id, source, target } => {
+            apply_edge_connect_checked(state, id, source, target)
+        }
+        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect_checked(state, id),
+        _ => Err(ReplayError::InvalidEvent(format!(
+            "not an edge operation: {:?}",
+            op.kind()
+        ))),
+    }
+}
+
+/// Apply `EdgeConnect` operation with contract-specified error types
+fn apply_edge_connect_checked(
+    state: DiagramProjection,
+    id: &str,
+    source: &str,
+    target: &str,
+) -> Result<DiagramProjection, ReplayError> {
+    let edge_id = EdgeId::new(id.to_string());
+    let source_id = NodeId::new(source.to_string());
+    let target_id = NodeId::new(target.to_string());
+
+    // Check for duplicate edge ID
+    if state.has_edge(&edge_id) {
+        return Err(ReplayError::DuplicateEdge(id.to_string()));
+    }
+
+    // Validate source node exists
+    if !state.has_node(&source_id) {
+        return Err(ReplayError::PolicyViolation(format!(
+            "source node not found: {source}"
+        )));
+    }
+
+    // Validate target node exists
+    if !state.has_node(&target_id) {
+        return Err(ReplayError::PolicyViolation(format!(
+            "target node not found: {target}"
+        )));
+    }
+
+    let edge = Edge {
+        source: source_id,
+        target: target_id,
+        label: String::new(),
+        style: crate::models::document::EdgeStyle::Solid,
+        arrow_type: crate::models::document::ArrowType::Default,
+        label_offset_t: OrderedFloat(0.5),
+        color: None,
+        thickness: OrderedFloat(1.5),
+        directed: true,
+        bend_points: vec![],
+        tags: vec![],
+        metadata: HashMap::new(),
+        font_size: None,
+    };
+
+    let new_edges = state.edges.update(edge_id, edge);
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: state.nodes,
+        edges: new_edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
+/// Apply `EdgeDisconnect` operation with contract-specified error types
+fn apply_edge_disconnect_checked(
+    state: DiagramProjection,
+    id: &str,
+) -> Result<DiagramProjection, ReplayError> {
+    let edge_id = EdgeId::new(id.to_string());
+
+    // Check edge exists
+    if !state.has_edge(&edge_id) {
+        return Err(ReplayError::EdgeNotFound(id.to_string()));
+    }
+
+    let new_edges = state.edges.without(&edge_id);
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: state.nodes,
+        edges: new_edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
+/// Verify edge tolerance constraints in the projection
+///
+/// This function validates that all edges in the projection satisfy
+/// the defined tolerance boundaries:
+/// - All edges reference existing source and target nodes
+/// - No duplicate edge IDs exist
+/// - All edges have valid geometry (finite coordinates)
+///
+/// # Errors
+/// Returns `ReplayError::PolicyViolation` if any edge references a non-existent node
+/// Returns `ReplayError::DuplicateEdge` if duplicate edge IDs are detected
+/// Returns `ReplayError::InvariantViolation` if edge geometry is invalid
+pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayError> {
+    // Track seen edge IDs to detect duplicates
+    let mut seen_ids = std::collections::HashSet::new();
+
+    for (edge_id, edge) in state.edges.iter() {
+        // Check for duplicate IDs (should not happen with HashMap, but verify)
+        let id_str = edge_id.to_string();
+        if !seen_ids.insert(id_str.clone()) {
+            return Err(ReplayError::DuplicateEdge(id_str));
+        }
+
+        // Verify source node exists
+        if !state.has_node(&edge.source) {
+            return Err(ReplayError::PolicyViolation(format!(
+                "edge {} references non-existent source node: {}",
+                edge_id, edge.source
+            )));
+        }
+
+        // Verify target node exists
+        if !state.has_node(&edge.target) {
+            return Err(ReplayError::PolicyViolation(format!(
+                "edge {} references non-existent target node: {}",
+                edge_id, edge.target
+            )));
+        }
+
+        // Verify edge geometry is valid
+        if !edge.label_offset_t.0.is_finite() {
+            return Err(ReplayError::InvariantViolation(format!(
+                "edge {} has invalid label_offset_t",
+                edge_id
+            )));
+        }
+        if !edge.thickness.0.is_finite() {
+            return Err(ReplayError::InvariantViolation(format!(
+                "edge {} has invalid thickness",
+                edge_id
+            )));
+        }
+    }
+
+    Ok(())
 }
 
 /// Apply `BringForward` operation (z-order)
@@ -575,6 +788,7 @@ pub fn document_to_projection(document: &DiagramDocument) -> DiagramProjection {
         nodes: document.document.nodes.clone(),
         edges: document.document.edges.clone(),
         author_priority: HashMap::new(),
+        cycle_policy: CyclePolicy::default(),
     }
 }
 
@@ -766,6 +980,85 @@ pub fn projection_hash(state: &DiagramProjection) -> Result<String, ReplayError>
     // Produce hex string of hash
     let hash_value = hasher.finish();
     Ok(format!("{hash_value:016x}"))
+}
+
+/// Enforce cycle policy on a diagram projection
+///
+/// This function checks whether the current projection violates its configured
+/// cycle policy. If the policy is `CyclePolicy::Deny` and the graph contains
+/// cycles, an error is returned.
+///
+/// # Errors
+/// Returns `ReplayError::CycleViolation` if:
+/// - The cycle policy is `Deny` and the projection contains a cycle
+/// Returns `ReplayError::PolicyMissing` if:
+/// - The cycle policy field is not properly initialized (should not happen with default)
+///
+/// # Example
+/// ```ignore
+/// let projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+/// // Add nodes and edges...
+/// enforce_cycle_policy(&projection)?; // Returns error if cycle detected
+/// ```
+pub fn enforce_cycle_policy(state: &DiagramProjection) -> Result<(), ReplayError> {
+    match state.cycle_policy {
+        CyclePolicy::Allow => Ok(()),
+        CyclePolicy::Deny => {
+            // Use the DAG validation from the dag module
+            crate::models::dag::validate_dag(&state.nodes, &state.edges)
+                .map_err(|e| ReplayError::CycleViolation(e.to_string()))
+        }
+    }
+}
+
+/// Apply a domain operation with cycle policy enforcement
+///
+/// This function applies an operation to the projection while respecting
+/// the configured cycle policy. If the operation would create a cycle and
+/// the policy is `Deny`, the operation is rejected.
+///
+/// # Errors
+/// Returns `ReplayError::CycleViolation` if:
+/// - The operation would create a cycle and policy is `Deny`
+/// Returns `ReplayError::InvariantViolation` if:
+/// - The operation itself violates an invariant (e.g., duplicate node ID)
+/// Returns `ReplayError::InvalidEvent` if:
+/// - The event is malformed
+///
+/// # Example
+/// ```ignore
+/// let projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+/// let op = DomainOp::EdgeConnect {
+///     id: "e1".to_string(),
+///     source: "a".to_string(),
+///     target: "b".to_string(),
+/// };
+/// let new_projection = apply_policy_op(projection, &op)?;
+/// ```
+pub fn apply_policy_op(
+    state: DiagramProjection,
+    op: &DomainOp,
+) -> Result<DiagramProjection, ReplayError> {
+    // First, apply the operation to get a tentative new state
+    let event = EventRecord {
+        op_id: format!("policy-op-{}", state.revision),
+        revision: state.revision,
+        operation: op.clone(),
+        author: crate::models::envelope::Author {
+            id: "system".to_string(),
+            name: "Policy Enforcer".to_string(),
+            email: None,
+        },
+        timestamp: 0,
+    };
+
+    let new_state = apply_event(state, &event)?;
+
+    // Then, enforce the cycle policy on the new state
+    enforce_cycle_policy(&new_state)?;
+
+    // If we get here, the operation is valid
+    Ok(new_state)
 }
 
 #[cfg(test)]
@@ -2321,5 +2614,1038 @@ mod tests {
         assert_eq!(projection.revision, 5);
         assert_eq!(projection.nodes.len(), 2);
         assert_eq!(projection.edges.len(), 0); // Edge was disconnected
+    }
+
+    // =============================================================================
+    // Cycle Policy Tests (bd-1lj)
+    // =============================================================================
+
+    /// Test: CyclePolicy default is Allow
+    #[test]
+    fn given_no_cycle_policy_specified_then_default_is_allow() {
+        let projection = DiagramProjection::empty();
+        assert_eq!(projection.cycle_policy, CyclePolicy::Allow);
+    }
+
+    /// Test: CyclePolicy::Allow permits cycles
+    #[test]
+    fn given_cycle_policy_allow_when_cycle_exists_then_enforce_succeeds() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Allow);
+
+        // Add two nodes
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "e2".to_string(),
+                    source: "b".to_string(),
+                    target: "a".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Cycle exists but policy is Allow, so enforcement should succeed
+        let result = enforce_cycle_policy(&projection);
+        assert!(result.is_ok(), "Allow policy should permit cycles");
+    }
+
+    /// Test: CyclePolicy::Deny rejects cycles
+    #[test]
+    fn given_cycle_policy_deny_when_cycle_exists_then_enforce_fails() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Add two nodes with a cycle
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "e2".to_string(),
+                    source: "b".to_string(),
+                    target: "a".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Cycle exists and policy is Deny, so enforcement should fail
+        let result = enforce_cycle_policy(&projection);
+        assert!(result.is_err(), "Deny policy should reject cycles");
+        match result {
+            Err(ReplayError::CycleViolation(msg)) => {
+                assert!(msg.contains("Cycle detected"));
+            }
+            _ => panic!("Expected CycleViolation error"),
+        }
+    }
+
+    /// Test: CyclePolicy::Deny allows acyclic graphs
+    #[test]
+    fn given_cycle_policy_deny_when_no_cycle_exists_then_enforce_succeeds() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Add nodes without a cycle (linear chain)
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // No cycle, so enforcement should succeed
+        let result = enforce_cycle_policy(&projection);
+        assert!(result.is_ok(), "Deny policy should allow acyclic graphs");
+    }
+
+    /// Test: apply_policy_op allows acyclic operations under Deny policy
+    #[test]
+    fn given_cycle_policy_deny_when_applying_acyclic_op_then_succeeds() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Add initial node
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::NodeAdd {
+                id: "a".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "A".to_string(),
+            },
+            true,
+        )];
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Apply another node add via apply_policy_op
+        let op = DomainOp::NodeAdd {
+            id: "b".to_string(),
+            x: 100.0,
+            y: 0.0,
+            width: 80.0,
+            height: 40.0,
+            label: "B".to_string(),
+        };
+
+        let result = apply_policy_op(projection, &op);
+        assert!(result.is_ok(), "Adding a node should not create a cycle");
+    }
+
+    /// Test: apply_policy_op rejects cycle-creating operations under Deny policy
+    #[test]
+    fn given_cycle_policy_deny_when_applying_cyclic_op_then_fails() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Set up: a -> b
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+        ];
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Try to add b -> a which would create a cycle
+        let cyclic_op = DomainOp::EdgeConnect {
+            id: "e2".to_string(),
+            source: "b".to_string(),
+            target: "a".to_string(),
+        };
+
+        let result = apply_policy_op(projection, &cyclic_op);
+        assert!(result.is_err(), "Creating a cycle should fail under Deny policy");
+        match result {
+            Err(ReplayError::CycleViolation(msg)) => {
+                assert!(msg.contains("Cycle detected"));
+            }
+            _ => panic!("Expected CycleViolation error"),
+        }
+    }
+
+    /// Test: apply_policy_op allows cycle-creating operations under Allow policy
+    #[test]
+    fn given_cycle_policy_allow_when_applying_cyclic_op_then_succeeds() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Allow);
+
+        // Set up: a -> b
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+        ];
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Add b -> a which creates a cycle - should succeed under Allow policy
+        let cyclic_op = DomainOp::EdgeConnect {
+            id: "e2".to_string(),
+            source: "b".to_string(),
+            target: "a".to_string(),
+        };
+
+        let result = apply_policy_op(projection, &cyclic_op);
+        assert!(result.is_ok(), "Creating a cycle should succeed under Allow policy");
+    }
+
+    /// Test: Empty projection always passes cycle enforcement
+    #[test]
+    fn given_empty_projection_when_enforcing_cycle_policy_then_succeeds() {
+        let projection_allow = DiagramProjection::with_cycle_policy(CyclePolicy::Allow);
+        let projection_deny = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        assert!(enforce_cycle_policy(&projection_allow).is_ok());
+        assert!(enforce_cycle_policy(&projection_deny).is_ok());
+    }
+
+    /// Test: CyclePolicy serialization roundtrips correctly
+    #[test]
+    fn given_cycle_policy_when_serializing_then_roundtrips_correctly() {
+        let policies = [CyclePolicy::Allow, CyclePolicy::Deny];
+
+        for policy in &policies {
+            let json = serde_json::to_string(policy).unwrap();
+            let decoded: CyclePolicy = serde_json::from_str(&json).unwrap();
+            assert_eq!(*policy, decoded);
+        }
+    }
+
+    /// Test: DiagramProjection with cycle_policy serializes correctly
+    #[test]
+    fn given_projection_with_cycle_policy_when_serializing_then_roundtrips_correctly() {
+        let projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        let json = serde_json::to_string(&projection).unwrap();
+        let decoded: DiagramProjection = serde_json::from_str(&json).unwrap();
+
+        assert_eq!(projection.cycle_policy, decoded.cycle_policy);
+        assert_eq!(decoded.cycle_policy, CyclePolicy::Deny);
+    }
+
+    /// Test: Complex cycle detection in larger graph
+    #[test]
+    fn given_large_graph_with_cycle_when_policy_deny_then_cycle_detected() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Create a larger graph: a -> b -> c -> d -> b (cycle)
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::NodeAdd {
+                    id: "c".to_string(),
+                    x: 200.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "C".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::NodeAdd {
+                    id: "d".to_string(),
+                    x: 300.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "D".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-5",
+                4,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-6",
+                5,
+                DomainOp::EdgeConnect {
+                    id: "e2".to_string(),
+                    source: "b".to_string(),
+                    target: "c".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-7",
+                6,
+                DomainOp::EdgeConnect {
+                    id: "e3".to_string(),
+                    source: "c".to_string(),
+                    target: "d".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-8",
+                7,
+                DomainOp::EdgeConnect {
+                    id: "e4".to_string(),
+                    source: "d".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        let result = enforce_cycle_policy(&projection);
+        assert!(result.is_err(), "Should detect cycle in larger graph");
+    }
+
+    /// Test: Removing an edge that breaks a cycle makes enforcement pass
+    #[test]
+    fn given_graph_with_cycle_when_edge_removed_then_enforcement_passes() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Create a cycle: a -> b -> a
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "e2".to_string(),
+                    source: "b".to_string(),
+                    target: "a".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Verify cycle is detected
+        assert!(enforce_cycle_policy(&projection).is_err());
+
+        // Remove one edge to break the cycle
+        let disconnect_op = DomainOp::EdgeDisconnect {
+            id: "e2".to_string(),
+        };
+        let new_projection = apply_policy_op(projection, &disconnect_op).unwrap();
+
+        // Now enforcement should pass
+        assert!(
+            enforce_cycle_policy(&new_projection).is_ok(),
+            "After removing cycle edge, enforcement should pass"
+        );
+    }
+
+    // =============================================================================
+    // apply_edge_op and verify_edge_tolerance tests (bd-1kc)
+    // =============================================================================
+
+    /// Test: apply_edge_op handles EdgeConnect correctly
+    #[test]
+    fn given_edge_connect_op_when_apply_edge_op_then_edge_is_added() {
+        let mut state = DiagramProjection::empty();
+
+        // Add nodes first
+        state.nodes = state.nodes.update(
+            NodeId::new("n1".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 1".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        state.nodes = state.nodes.update(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        let op = DomainOp::EdgeConnect {
+            id: "edge-1".to_string(),
+            source: "n1".to_string(),
+            target: "n2".to_string(),
+        };
+
+        let result = apply_edge_op(state, &op);
+
+        assert!(result.is_ok(), "Should succeed: {:?}", result.err());
+        let new_state = result.unwrap();
+        assert!(new_state.has_edge(&EdgeId::new("edge-1".to_string())));
+    }
+
+    /// Test: apply_edge_op returns DuplicateEdge for duplicate edge ID
+    #[test]
+    fn given_duplicate_edge_when_apply_edge_op_then_returns_duplicate_edge_error() {
+        let mut state = DiagramProjection::empty();
+
+        // Add nodes
+        state.nodes = state.nodes.update(
+            NodeId::new("n1".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 1".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        state.nodes = state.nodes.update(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        // Add first edge
+        state.edges = state.edges.update(
+            EdgeId::new("edge-1".to_string()),
+            Edge {
+                source: NodeId::new("n1".to_string()),
+                target: NodeId::new("n2".to_string()),
+                label: String::new(),
+                style: crate::models::document::EdgeStyle::Solid,
+                arrow_type: crate::models::document::ArrowType::Default,
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: HashMap::new(),
+                font_size: None,
+            },
+        );
+
+        let op = DomainOp::EdgeConnect {
+            id: "edge-1".to_string(), // Duplicate ID
+            source: "n1".to_string(),
+            target: "n2".to_string(),
+        };
+
+        let result = apply_edge_op(state, &op);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::DuplicateEdge(id)) => assert_eq!(id, "edge-1"),
+            _ => panic!("Expected DuplicateEdge error"),
+        }
+    }
+
+    /// Test: apply_edge_op returns PolicyViolation for missing source node
+    #[test]
+    fn given_missing_source_node_when_apply_edge_op_then_returns_policy_violation() {
+        let mut state = DiagramProjection::empty();
+
+        // Add only target node
+        state.nodes = state.nodes.update(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        let op = DomainOp::EdgeConnect {
+            id: "edge-1".to_string(),
+            source: "nonexistent".to_string(),
+            target: "n2".to_string(),
+        };
+
+        let result = apply_edge_op(state, &op);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::PolicyViolation(msg)) => {
+                assert!(msg.contains("source node not found"));
+            }
+            _ => panic!("Expected PolicyViolation error"),
+        }
+    }
+
+    /// Test: apply_edge_op handles EdgeDisconnect correctly
+    #[test]
+    fn given_edge_disconnect_op_when_apply_edge_op_then_edge_is_removed() {
+        let mut state = DiagramProjection::empty();
+
+        // Add nodes
+        state.nodes = state.nodes.update(
+            NodeId::new("n1".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 1".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        state.nodes = state.nodes.update(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        // Add edge
+        state.edges = state.edges.update(
+            EdgeId::new("edge-1".to_string()),
+            Edge {
+                source: NodeId::new("n1".to_string()),
+                target: NodeId::new("n2".to_string()),
+                label: String::new(),
+                style: crate::models::document::EdgeStyle::Solid,
+                arrow_type: crate::models::document::ArrowType::Default,
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: HashMap::new(),
+                font_size: None,
+            },
+        );
+
+        let op = DomainOp::EdgeDisconnect {
+            id: "edge-1".to_string(),
+        };
+
+        let result = apply_edge_op(state, &op);
+
+        assert!(result.is_ok(), "Should succeed: {:?}", result.err());
+        let new_state = result.unwrap();
+        assert!(!new_state.has_edge(&EdgeId::new("edge-1".to_string())));
+    }
+
+    /// Test: apply_edge_op returns EdgeNotFound for missing edge on disconnect
+    #[test]
+    fn given_missing_edge_when_disconnect_then_returns_edge_not_found() {
+        let state = DiagramProjection::empty();
+
+        let op = DomainOp::EdgeDisconnect {
+            id: "nonexistent".to_string(),
+        };
+
+        let result = apply_edge_op(state, &op);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::EdgeNotFound(id)) => assert_eq!(id, "nonexistent"),
+            _ => panic!("Expected EdgeNotFound error"),
+        }
+    }
+
+    /// Test: apply_edge_op returns InvalidEvent for non-edge operations
+    #[test]
+    fn given_non_edge_op_when_apply_edge_op_then_returns_invalid_event() {
+        let state = DiagramProjection::empty();
+
+        let op = DomainOp::NodeAdd {
+            id: "node-1".to_string(),
+            x: 0.0,
+            y: 0.0,
+            width: 80.0,
+            height: 40.0,
+            label: "Test".to_string(),
+        };
+
+        let result = apply_edge_op(state, &op);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvalidEvent(msg)) => {
+                assert!(msg.contains("not an edge operation"));
+            }
+            _ => panic!("Expected InvalidEvent error"),
+        }
+    }
+
+    /// Test: verify_edge_tolerance passes for valid projection
+    #[test]
+    fn given_valid_projection_when_verify_edge_tolerance_then_returns_ok() {
+        let mut state = DiagramProjection::empty();
+
+        // Add nodes
+        state.nodes = state.nodes.update(
+            NodeId::new("n1".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 1".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        state.nodes = state.nodes.update(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        // Add valid edge
+        state.edges = state.edges.update(
+            EdgeId::new("edge-1".to_string()),
+            Edge {
+                source: NodeId::new("n1".to_string()),
+                target: NodeId::new("n2".to_string()),
+                label: String::new(),
+                style: crate::models::document::EdgeStyle::Solid,
+                arrow_type: crate::models::document::ArrowType::Default,
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: HashMap::new(),
+                font_size: None,
+            },
+        );
+
+        let result = verify_edge_tolerance(&state);
+
+        assert!(result.is_ok(), "Should pass: {:?}", result.err());
+    }
+
+    /// Test: verify_edge_tolerance fails for edge with missing source node
+    #[test]
+    fn given_edge_with_missing_source_when_verify_edge_tolerance_then_returns_policy_violation() {
+        let mut state = DiagramProjection::empty();
+
+        // Add only target node
+        state.nodes = state.nodes.update(
+            NodeId::new("n2".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Node 2".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        // Add edge with missing source
+        state.edges = state.edges.update(
+            EdgeId::new("edge-1".to_string()),
+            Edge {
+                source: NodeId::new("nonexistent".to_string()),
+                target: NodeId::new("n2".to_string()),
+                label: String::new(),
+                style: crate::models::document::EdgeStyle::Solid,
+                arrow_type: crate::models::document::ArrowType::Default,
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: HashMap::new(),
+                font_size: None,
+            },
+        );
+
+        let result = verify_edge_tolerance(&state);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::PolicyViolation(msg)) => {
+                assert!(msg.contains("non-existent source node"));
+            }
+            _ => panic!("Expected PolicyViolation error"),
+        }
+    }
+
+    /// Test: verify_edge_tolerance passes for empty projection
+    #[test]
+    fn given_empty_projection_when_verify_edge_tolerance_then_returns_ok() {
+        let state = DiagramProjection::empty();
+
+        let result = verify_edge_tolerance(&state);
+
+        assert!(result.is_ok());
     }
 }

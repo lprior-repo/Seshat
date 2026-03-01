@@ -1,4 +1,5 @@
 pub mod canonical_json;
+pub mod conflict;
 pub mod dag;
 pub mod document;
 pub mod envelope;

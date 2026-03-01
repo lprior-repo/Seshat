@@ -10,7 +10,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use rusqlite::{Connection, Transaction};
+use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
@@ -44,6 +44,10 @@ pub enum StoreError {
     TransactionAborted(String),
     #[error("Revision gap detected: expected sequential revision {expected}, but found gap at {found}")]
     RevisionGap { expected: i64, found: i64 },
+    #[error("Duplicate op_id with conflict: {0}")]
+    DuplicateWithConflict(String),
+    #[error("Empty batch: cannot append zero events")]
+    EmptyBatch,
 }
 
 /// Structured error codes for CLI output
@@ -93,6 +97,8 @@ pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
         StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
         StoreError::Serialization(_) => CliErrorCode::Unknown,
         StoreError::TransactionAborted(_) => CliErrorCode::Unknown,
+        StoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
+        StoreError::EmptyBatch => CliErrorCode::ValidationFailed,
     }
 }
 
@@ -240,6 +246,21 @@ pub struct AppendResult {
     pub op_id: String,
     /// The timestamp of the appended event
     pub timestamp: i64,
+}
+
+/// Result of appending a batch of events to the store
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct BatchAppendResult {
+    /// The starting revision of the batch
+    pub start_revision: i64,
+    /// The ending revision of the batch (inclusive)
+    pub end_revision: i64,
+    /// Number of events successfully appended
+    pub count: usize,
+    /// Operation IDs of the appended events
+    pub op_ids: Vec<String>,
+    /// Timestamp of the last event in the batch
+    pub last_timestamp: i64,
 }
 
 pub struct StoreConnection {
@@ -765,6 +786,308 @@ pub fn verify_occ_append(result: &AppendResult) -> Result<(), StoreError> {
     }
 
     Ok(())
+}
+
+/// Append a batch of events atomically with Optimistic Concurrency Control (OCC)
+///
+/// This function appends multiple events in a single atomic transaction:
+/// 1. Validates that the batch is not empty
+/// 2. Begins a transaction
+/// 3. Reads the current latest revision
+/// 4. Validates the expected revision (if provided)
+/// 5. Encodes and inserts all events with sequential revisions
+/// 6. Commits the transaction (or rolls back on any failure)
+///
+/// On any failure, the transaction is rolled back - no partial mutations occur.
+///
+/// # Errors
+/// Returns `StoreError::EmptyBatch` if the ops vector is empty
+/// Returns `StoreError::RevisionMismatch` if the expected revision doesn't match
+/// Returns `StoreError::Serialization` if encoding any envelope fails
+/// Returns `StoreError::ValidationFailed` if validation fails
+/// Returns `StoreError::Sqlite` if database operations fail
+pub fn append_batch(
+    conn: &mut Connection,
+    ops: Vec<EventEnvelope>,
+    expected_revision: Option<i64>,
+) -> Result<BatchAppendResult, StoreError> {
+    // Validate batch is not empty
+    if ops.is_empty() {
+        return Err(StoreError::EmptyBatch);
+    }
+
+    // Begin transaction for atomic batch insert
+    let tx = conn.transaction().map_err(StoreError::Sqlite)?;
+
+    // Read current latest revision within transaction
+    let current_revision: i64 = tx
+        .query_row("SELECT COALESCE(MAX(revision), 0) FROM events", [], |row| {
+            row.get(0)
+        })
+        .map_err(StoreError::Sqlite)?;
+
+    // Validate expected revision if provided
+    if let Some(expected) = expected_revision {
+        if current_revision != expected {
+            return Err(StoreError::RevisionMismatch {
+                expected,
+                found: current_revision,
+            });
+        }
+    }
+
+    // Track batch metadata
+    let batch_size = ops.len();
+    let start_revision = current_revision + 1;
+    let end_revision = current_revision + batch_size as i64;
+    let mut op_ids = Vec::with_capacity(batch_size);
+    let mut last_timestamp = 0i64;
+
+    // Insert all events within the transaction
+    for (idx, envelope) in ops.into_iter().enumerate() {
+        let new_revision = current_revision + 1 + idx as i64;
+
+        // Encode the envelope to JSON
+        let payload = encode_event_envelope(&envelope)
+            .map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+        // Insert the event
+        tx.execute(
+            "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+            rusqlite::params![
+                envelope.op_id,
+                new_revision,
+                payload,
+                envelope.timestamp.to_string()
+            ],
+        )
+        .map_err(StoreError::Sqlite)?;
+
+        op_ids.push(envelope.op_id);
+        last_timestamp = envelope.timestamp;
+    }
+
+    // Commit the transaction
+    tx.commit().map_err(StoreError::Sqlite)?;
+
+    Ok(BatchAppendResult {
+        start_revision,
+        end_revision,
+        count: batch_size,
+        op_ids,
+        last_timestamp,
+    })
+}
+
+/// Verify that a batch append result is valid
+///
+/// This function validates that a batch append result contains valid data:
+/// - Start revision must be positive (at least 1)
+/// - End revision must be >= start revision
+/// - Count must match the revision range
+/// - All operation IDs must be non-empty
+/// - Timestamp must be positive
+///
+/// # Errors
+/// Returns `StoreError::ValidationFailed` if the result is invalid
+pub fn verify_batch_atomicity(result: &BatchAppendResult) -> Result<(), StoreError> {
+    if result.start_revision < 1 {
+        return Err(StoreError::ValidationFailed(
+            "start_revision must be at least 1".to_string(),
+        ));
+    }
+
+    if result.end_revision < result.start_revision {
+        return Err(StoreError::ValidationFailed(
+            "end_revision must be >= start_revision".to_string(),
+        ));
+    }
+
+    let expected_count = (result.end_revision - result.start_revision + 1) as usize;
+    if result.count != expected_count {
+        return Err(StoreError::ValidationFailed(format!(
+            "count {} does not match revision range (expected {})",
+            result.count, expected_count
+        )));
+    }
+
+    if result.op_ids.len() != result.count {
+        return Err(StoreError::ValidationFailed(
+            "op_ids length must match count".to_string(),
+        ));
+    }
+
+    for (idx, op_id) in result.op_ids.iter().enumerate() {
+        if op_id.is_empty() {
+            return Err(StoreError::ValidationFailed(format!(
+                "op_id at index {} must not be empty",
+                idx
+            )));
+        }
+    }
+
+    if result.last_timestamp <= 0 {
+        return Err(StoreError::ValidationFailed(
+            "last_timestamp must be positive".to_string(),
+        ));
+    }
+
+    Ok(())
+}
+
+/// Record for an event in the durable log
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct EventRecord {
+    /// The operation ID (unique identifier for the operation)
+    pub op_id: String,
+    /// The revision number of this event
+    pub revision: i64,
+    /// The timestamp of the event
+    pub timestamp: i64,
+    /// The JSON payload of the event
+    pub payload: String,
+}
+
+/// Kind of duplicate detected during idempotent append
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DuplicateKind {
+    /// Same op_id with identical payload - return existing outcome (no-op)
+    Exact,
+    /// Same op_id with different payload - return error
+    Conflict,
+}
+
+/// Classify whether a duplicate operation is an exact match or a conflict
+///
+/// Compares the payload of an existing event record with an incoming envelope
+/// to determine if the duplicate should be treated as a no-op (exact match)
+/// or rejected as a conflict.
+///
+/// # Errors
+/// Returns `StoreError::Serialization` if the incoming envelope cannot be encoded
+///
+/// # Example
+/// ```ignore
+/// let kind = classify_duplicate(&existing_record, &incoming_envelope)?;
+/// match kind {
+///     DuplicateKind::Exact => // return existing outcome
+///     DuplicateKind::Conflict => // return DuplicateWithConflict error
+/// }
+/// ```
+pub fn classify_duplicate(
+    existing: &EventRecord,
+    incoming: &EventEnvelope,
+) -> Result<DuplicateKind, StoreError> {
+    let incoming_payload =
+        encode_event_envelope(incoming).map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+    if existing.payload == incoming_payload {
+        Ok(DuplicateKind::Exact)
+    } else {
+        Ok(DuplicateKind::Conflict)
+    }
+}
+
+/// Append an event with idempotent behavior for exact duplicates
+///
+/// This function implements idempotent append semantics:
+/// - If the op_id is new, appends the event and returns the new outcome
+/// - If the op_id exists with an identical payload, returns the existing outcome (no-op)
+/// - If the op_id exists with a different payload, returns `DuplicateWithConflict` error
+///
+/// # Errors
+/// Returns `StoreError::DuplicateWithConflict` if the op_id exists with a different payload
+/// Returns `StoreError::Serialization` if encoding the envelope fails
+/// Returns `StoreError::Sqlite` if database operations fail
+///
+/// # Example
+/// ```ignore
+/// let outcome = append_idempotent(&mut conn, envelope)?;
+/// // outcome contains either the new revision or the existing one for exact duplicates
+/// ```
+pub fn append_idempotent(
+    conn: &mut Connection,
+    op: EventEnvelope,
+) -> Result<AppendOutcome, StoreError> {
+    // Check if operation already exists
+    let existing = lookup_existing_op(conn, &op.op_id)?;
+
+    match existing {
+        None => {
+            // New operation - delegate to standard append
+            let result = append_event(conn, op, None)?;
+            Ok(AppendOutcome::from(result))
+        }
+        Some(record) => {
+            // Duplicate op_id - classify and handle
+            let kind = classify_duplicate(&record, &op)?;
+
+            match kind {
+                DuplicateKind::Exact => {
+                    // Exact duplicate - return existing outcome (no-op success)
+                    Ok(AppendOutcome {
+                        revision: record.revision,
+                        op_id: record.op_id,
+                        timestamp: record.timestamp,
+                    })
+                }
+                DuplicateKind::Conflict => {
+                    // Conflicting duplicate - return error
+                    Err(StoreError::DuplicateWithConflict(op.op_id))
+                }
+            }
+        }
+    }
+}
+
+/// Ensure op_id uniqueness by creating/verifying the unique index
+///
+/// This function ensures that the unique index on operation_id exists,
+/// enforcing idempotency at the storage layer.
+///
+/// # Errors
+/// Returns `StoreError::Sqlite` if the index creation fails
+pub fn ensure_op_id_uniqueness(conn: &mut Connection) -> Result<(), StoreError> {
+    conn.execute(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_events_operation_id_unique ON events(operation_id)",
+        [],
+    )
+    .map_err(StoreError::Sqlite)?;
+    Ok(())
+}
+
+/// Lookup an existing operation by op_id
+///
+/// This function checks if an operation with the given op_id already exists
+/// in the durable log, supporting idempotent operation handling.
+///
+/// # Errors
+/// Returns `StoreError::Sqlite` if the query fails
+/// Returns `StoreError::Serialization` if the timestamp cannot be parsed
+pub fn lookup_existing_op(conn: &Connection, op_id: &str) -> Result<Option<EventRecord>, StoreError> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1",
+        )
+        .map_err(StoreError::Sqlite)?;
+
+    let result = stmt
+        .query_row([op_id], |row| {
+            let timestamp_str: String = row.get(2)?;
+            let timestamp: i64 = timestamp_str
+                .parse()
+                .map_err(|_| rusqlite::Error::InvalidQuery)?;
+            Ok(EventRecord {
+                op_id: row.get(0)?,
+                revision: row.get(1)?,
+                timestamp,
+                payload: row.get(3)?,
+            })
+        })
+        .optional()
+        .map_err(StoreError::Sqlite)?;
+
+    Ok(result)
 }
 
 /// Execute a write operation within a transaction with automatic rollback on failure
@@ -1769,5 +2092,1029 @@ mod tests {
         };
         let code = map_error_code(&err);
         assert_eq!(code, CliErrorCode::RevisionMismatch);
+    }
+
+    // ensure_op_id_uniqueness and lookup_existing_op tests (bd-1ua)
+
+    #[test]
+    fn test_ensure_op_id_uniqueness_creates_index() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Should succeed without error
+        let result = ensure_op_id_uniqueness(&mut bootstrap.conn);
+        assert!(result.is_ok(), "ensure_op_id_uniqueness should succeed: {:?}", result.err());
+    }
+
+    #[test]
+    fn test_ensure_op_id_uniqueness_is_idempotent() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Call twice - should be idempotent
+        let result1 = ensure_op_id_uniqueness(&mut bootstrap.conn);
+        assert!(result1.is_ok());
+
+        let result2 = ensure_op_id_uniqueness(&mut bootstrap.conn);
+        assert!(result2.is_ok(), "Second call should also succeed");
+    }
+
+    #[test]
+    fn test_lookup_existing_op_returns_none_for_nonexistent() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        let result = lookup_existing_op(&bootstrap.conn, "nonexistent-op-id");
+        assert!(result.is_ok(), "lookup should succeed: {:?}", result.err());
+        assert!(result.expect("checked is_ok").is_none(), "Should return None for nonexistent op_id");
+    }
+
+    #[test]
+    fn test_lookup_existing_op_returns_record_for_existing() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add an event
+        let envelope = EventEnvelope {
+            op_id: "op-lookup-test".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let _ = append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append event");
+
+        // Lookup should find it
+        let result = lookup_existing_op(&bootstrap.conn, "op-lookup-test");
+        assert!(result.is_ok(), "lookup should succeed: {:?}", result.err());
+        let record = result.expect("checked is_ok").expect("should find record");
+        assert_eq!(record.op_id, "op-lookup-test");
+        assert_eq!(record.revision, 1);
+        assert_eq!(record.timestamp, 1700000000);
+    }
+
+    #[test]
+    fn test_duplicate_op_id_rejected_by_unique_constraint() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let op_id = "op-duplicate-constraint";
+
+        // Add first event
+        let envelope1 = EventEnvelope {
+            op_id: op_id.to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "First".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let result1 = append_event(&mut bootstrap.conn, envelope1, None);
+        assert!(result1.is_ok(), "First append should succeed");
+
+        // Try duplicate op_id - should fail
+        let envelope2 = EventEnvelope {
+            op_id: op_id.to_string(), // Same op_id
+            operation: DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 20.0,
+                y: 30.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Second".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        };
+        let result2 = append_event(&mut bootstrap.conn, envelope2, None);
+        assert!(result2.is_err(), "Duplicate op_id should be rejected");
+    }
+
+    #[test]
+    fn test_duplicate_with_conflict_error_display() {
+        let err = StoreError::DuplicateWithConflict("op-123".to_string());
+        let msg = err.to_string();
+        assert!(msg.contains("Duplicate op_id"));
+        assert!(msg.contains("op-123"));
+    }
+
+    #[test]
+    fn test_map_error_code_duplicate_with_conflict() {
+        let err = StoreError::DuplicateWithConflict("op-123".to_string());
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::RevisionMismatch);
+    }
+
+    // Idempotent append tests (bd-2qg)
+
+    #[test]
+    fn test_classify_duplicate_exact_match() {
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let payload = encode_event_envelope(&envelope).expect("Failed to encode envelope");
+
+        let record = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 1,
+            timestamp: 1700000000,
+            payload,
+        };
+
+        let kind = classify_duplicate(&record, &envelope);
+        assert!(kind.is_ok(), "classify_duplicate should succeed: {:?}", kind.err());
+        assert_eq!(kind.expect("checked is_ok"), DuplicateKind::Exact);
+    }
+
+    #[test]
+    fn test_classify_duplicate_conflict() {
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let envelope1 = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let payload1 = encode_event_envelope(&envelope1).expect("Failed to encode envelope");
+
+        let record = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 1,
+            timestamp: 1700000000,
+            payload: payload1,
+        };
+
+        // Different envelope with same op_id but different payload
+        let envelope2 = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 999.0, // Different x coordinate
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let kind = classify_duplicate(&record, &envelope2);
+        assert!(kind.is_ok(), "classify_duplicate should succeed: {:?}", kind.err());
+        assert_eq!(kind.expect("checked is_ok"), DuplicateKind::Conflict);
+    }
+
+    #[test]
+    fn test_append_idempotent_new_operation() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let envelope = EventEnvelope {
+            op_id: "op-new".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result = append_idempotent(&mut bootstrap.conn, envelope);
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let outcome = result.expect("checked is_ok");
+        assert_eq!(outcome.revision, 1, "New operation should create revision 1");
+        assert_eq!(outcome.op_id, "op-new");
+    }
+
+    #[test]
+    fn test_append_idempotent_exact_duplicate_returns_existing() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let envelope = EventEnvelope {
+            op_id: "op-exact".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        // First append
+        let result1 = append_idempotent(&mut bootstrap.conn, envelope.clone());
+        assert!(result1.is_ok(), "First append should succeed: {:?}", result1.err());
+        let outcome1 = result1.expect("checked is_ok");
+        assert_eq!(outcome1.revision, 1);
+
+        // Second append with exact duplicate
+        let result2 = append_idempotent(&mut bootstrap.conn, envelope);
+        assert!(result2.is_ok(), "Exact duplicate should return Ok: {:?}", result2.err());
+        let outcome2 = result2.expect("checked is_ok");
+
+        // Should return existing outcome (no-op)
+        assert_eq!(outcome2.revision, outcome1.revision, "Revision should be unchanged for exact duplicate");
+        assert_eq!(outcome2.op_id, outcome1.op_id);
+        assert_eq!(outcome2.timestamp, outcome1.timestamp);
+
+        // Verify only one row in database
+        let count: i64 = bootstrap
+            .conn
+            .query_row("SELECT COUNT(*) FROM events WHERE operation_id = 'op-exact'", [], |row| {
+                row.get(0)
+            })
+            .expect("Failed to count events");
+        assert_eq!(count, 1, "Should have exactly one row for exact duplicate");
+    }
+
+    #[test]
+    fn test_append_idempotent_conflicting_duplicate_returns_error() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let envelope1 = EventEnvelope {
+            op_id: "op-conflict".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Original".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        // First append
+        let result1 = append_idempotent(&mut bootstrap.conn, envelope1);
+        assert!(result1.is_ok(), "First append should succeed: {:?}", result1.err());
+
+        // Second append with conflicting payload (same op_id, different content)
+        let envelope2 = EventEnvelope {
+            op_id: "op-conflict".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 999.0, // Different x coordinate
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Modified".to_string(), // Different label
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result2 = append_idempotent(&mut bootstrap.conn, envelope2);
+        assert!(result2.is_err(), "Conflicting duplicate should return error");
+        match result2 {
+            Err(StoreError::DuplicateWithConflict(op_id)) => {
+                assert_eq!(op_id, "op-conflict");
+            }
+            Err(e) => panic!("Expected DuplicateWithConflict error, got: {:?}", e),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_append_idempotent_preserves_revision_on_duplicate() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add several operations first
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000000 + i,
+            };
+            let _ = append_idempotent(&mut bootstrap.conn, envelope).expect("Failed to append");
+        }
+
+        // Verify we're at revision 5
+        let rev_before = current_revision(&bootstrap.conn).expect("Failed to get revision");
+        assert_eq!(rev_before, 5);
+
+        // Now try to append exact duplicate of op-3
+        let envelope_dup = EventEnvelope {
+            op_id: "op-3".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-3".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 3".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000003,
+        };
+
+        let result = append_idempotent(&mut bootstrap.conn, envelope_dup);
+        assert!(result.is_ok(), "Exact duplicate should succeed: {:?}", result.err());
+
+        // Revision should be unchanged
+        let rev_after = current_revision(&bootstrap.conn).expect("Failed to get revision");
+        assert_eq!(rev_after, rev_before, "Revision should be unchanged after exact duplicate");
+    }
+
+    #[test]
+    fn test_append_idempotent_multiple_different_ops() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add op-1
+        let envelope1 = EventEnvelope {
+            op_id: "op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 1".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        };
+        let result1 = append_idempotent(&mut bootstrap.conn, envelope1);
+        assert!(result1.is_ok());
+        assert_eq!(result1.expect("checked is_ok").revision, 1);
+
+        // Add op-2
+        let envelope2 = EventEnvelope {
+            op_id: "op-2".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 20.0,
+                y: 30.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 2".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000002,
+        };
+        let result2 = append_idempotent(&mut bootstrap.conn, envelope2);
+        assert!(result2.is_ok());
+        assert_eq!(result2.expect("checked is_ok").revision, 2);
+
+        // Add op-3 (new)
+        let envelope3 = EventEnvelope {
+            op_id: "op-3".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-3".to_string(),
+                x: 30.0,
+                y: 40.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 3".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000003,
+        };
+        let result3 = append_idempotent(&mut bootstrap.conn, envelope3);
+        assert!(result3.is_ok());
+        assert_eq!(result3.expect("checked is_ok").revision, 3);
+    }
+
+    #[test]
+    fn test_duplicate_kind_equality() {
+        assert_eq!(DuplicateKind::Exact, DuplicateKind::Exact);
+        assert_eq!(DuplicateKind::Conflict, DuplicateKind::Conflict);
+        assert_ne!(DuplicateKind::Exact, DuplicateKind::Conflict);
+    }
+
+    #[test]
+    fn test_append_idempotent_with_different_operation_types() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // Add a NodeAdd operation
+        let envelope_add = EventEnvelope {
+            op_id: "op-add".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let result_add = append_idempotent(&mut bootstrap.conn, envelope_add.clone());
+        assert!(result_add.is_ok());
+
+        // Exact duplicate of NodeAdd
+        let result_dup = append_idempotent(&mut bootstrap.conn, envelope_add);
+        assert!(result_dup.is_ok());
+
+        // Add a NodeMove operation
+        let envelope_move = EventEnvelope {
+            op_id: "op-move".to_string(),
+            operation: DomainOp::NodeMove {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        };
+        let result_move = append_idempotent(&mut bootstrap.conn, envelope_move.clone());
+        assert!(result_move.is_ok());
+
+        // Exact duplicate of NodeMove
+        let result_move_dup = append_idempotent(&mut bootstrap.conn, envelope_move);
+        assert!(result_move_dup.is_ok());
+    }
+
+    // append_batch tests
+
+    #[test]
+    fn test_append_batch_with_valid_events() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let events = vec![
+            EventEnvelope {
+                op_id: "batch-op-1".to_string(),
+                operation: DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 1".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000001,
+            },
+            EventEnvelope {
+                op_id: "batch-op-2".to_string(),
+                operation: DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 30.0,
+                    y: 40.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 2".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000002,
+            },
+            EventEnvelope {
+                op_id: "batch-op-3".to_string(),
+                operation: DomainOp::EdgeConnect {
+                    id: "edge-1".to_string(),
+                    source: "node-1".to_string(),
+                    target: "node-2".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000003,
+            },
+        ];
+
+        let result = append_batch(&mut bootstrap.conn, events, None);
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+
+        let batch_result = result.unwrap();
+        assert_eq!(batch_result.start_revision, 1);
+        assert_eq!(batch_result.end_revision, 3);
+        assert_eq!(batch_result.count, 3);
+        assert_eq!(batch_result.op_ids.len(), 3);
+        assert_eq!(batch_result.last_timestamp, 1700000003);
+    }
+
+    #[test]
+    fn test_append_batch_empty_returns_error() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        let result = append_batch(&mut bootstrap.conn, vec![], None);
+        assert!(result.is_err());
+
+        match result {
+            Err(StoreError::EmptyBatch) => {}
+            Err(other) => panic!("Expected EmptyBatch error, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_append_batch_with_revision_mismatch() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let events = vec![EventEnvelope {
+            op_id: "batch-op-1".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 1".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        }];
+
+        // Expect revision 5, but actual is 0
+        let result = append_batch(&mut bootstrap.conn, events, Some(5));
+        assert!(result.is_err());
+
+        match result {
+            Err(StoreError::RevisionMismatch { expected, found }) => {
+                assert_eq!(expected, 5);
+                assert_eq!(found, 0);
+            }
+            Err(other) => panic!("Expected RevisionMismatch error, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_append_batch_with_valid_expected_revision() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // First, add a single event to get to revision 1
+        let first_event = EventEnvelope {
+            op_id: "first-op".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-0".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 0".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let first_result = append_event(&mut bootstrap.conn, first_event, None);
+        assert!(first_result.is_ok());
+        assert_eq!(first_result.unwrap().revision, 1);
+
+        // Now add a batch with expected revision 1
+        let events = vec![
+            EventEnvelope {
+                op_id: "batch-op-1".to_string(),
+                operation: DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 1".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000001,
+            },
+            EventEnvelope {
+                op_id: "batch-op-2".to_string(),
+                operation: DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 30.0,
+                    y: 40.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 2".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000002,
+            },
+        ];
+
+        let result = append_batch(&mut bootstrap.conn, events, Some(1));
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+
+        let batch_result = result.unwrap();
+        assert_eq!(batch_result.start_revision, 2);
+        assert_eq!(batch_result.end_revision, 3);
+        assert_eq!(batch_result.count, 2);
+    }
+
+    #[test]
+    fn test_append_batch_atomicity_on_failure() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        // First, add an event that will cause a duplicate conflict later
+        let first_event = EventEnvelope {
+            op_id: "duplicate-op".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-0".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 0".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+        let first_result = append_event(&mut bootstrap.conn, first_event, None);
+        assert!(first_result.is_ok());
+
+        // Now try to add a batch with a duplicate op_id (will fail due to unique constraint)
+        let events = vec![
+            EventEnvelope {
+                op_id: "batch-op-1".to_string(),
+                operation: DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 10.0,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 1".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000001,
+            },
+            EventEnvelope {
+                op_id: "duplicate-op".to_string(), // This will cause a failure
+                operation: DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 30.0,
+                    y: 40.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: "Node 2".to_string(),
+                },
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000002,
+            },
+        ];
+
+        let result = append_batch(&mut bootstrap.conn, events, Some(1));
+        // The batch should fail due to the duplicate
+        assert!(result.is_err(), "Expected error for duplicate op_id");
+
+        // Verify that no events were added (atomicity)
+        let count: i64 = bootstrap
+            .conn
+            .query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))
+            .expect("Failed to count events");
+        assert_eq!(count, 1, "Only the first event should exist (atomicity)");
+    }
+
+    #[test]
+    fn test_verify_batch_atomicity_valid() {
+        let result = BatchAppendResult {
+            start_revision: 1,
+            end_revision: 3,
+            count: 3,
+            op_ids: vec!["op-1".to_string(), "op-2".to_string(), "op-3".to_string()],
+            last_timestamp: 1700000003,
+        };
+
+        let verification = verify_batch_atomicity(&result);
+        assert!(verification.is_ok(), "Expected Ok, got: {:?}", verification.err());
+    }
+
+    #[test]
+    fn test_verify_batch_atomicity_invalid_start_revision() {
+        let result = BatchAppendResult {
+            start_revision: 0,
+            end_revision: 2,
+            count: 3,
+            op_ids: vec!["op-1".to_string(), "op-2".to_string(), "op-3".to_string()],
+            last_timestamp: 1700000003,
+        };
+
+        let verification = verify_batch_atomicity(&result);
+        assert!(verification.is_err());
+
+        match verification {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("start_revision"));
+            }
+            Err(other) => panic!("Expected ValidationFailed, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_verify_batch_atomicity_invalid_revision_range() {
+        let result = BatchAppendResult {
+            start_revision: 5,
+            end_revision: 3, // end < start
+            count: 0,
+            op_ids: vec![],
+            last_timestamp: 1700000003,
+        };
+
+        let verification = verify_batch_atomicity(&result);
+        assert!(verification.is_err());
+
+        match verification {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("end_revision"));
+            }
+            Err(other) => panic!("Expected ValidationFailed, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_verify_batch_atomicity_count_mismatch() {
+        let result = BatchAppendResult {
+            start_revision: 1,
+            end_revision: 3,
+            count: 5, // Should be 3
+            op_ids: vec!["op-1".to_string(), "op-2".to_string(), "op-3".to_string()],
+            last_timestamp: 1700000003,
+        };
+
+        let verification = verify_batch_atomicity(&result);
+        assert!(verification.is_err());
+
+        match verification {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("count"));
+            }
+            Err(other) => panic!("Expected ValidationFailed, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_verify_batch_atomicity_empty_op_id() {
+        let result = BatchAppendResult {
+            start_revision: 1,
+            end_revision: 2,
+            count: 2,
+            op_ids: vec!["op-1".to_string(), "".to_string()], // Empty op_id
+            last_timestamp: 1700000002,
+        };
+
+        let verification = verify_batch_atomicity(&result);
+        assert!(verification.is_err());
+
+        match verification {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("op_id"));
+            }
+            Err(other) => panic!("Expected ValidationFailed, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_verify_batch_atomicity_invalid_timestamp() {
+        let result = BatchAppendResult {
+            start_revision: 1,
+            end_revision: 1,
+            count: 1,
+            op_ids: vec!["op-1".to_string()],
+            last_timestamp: 0, // Invalid timestamp
+        };
+
+        let verification = verify_batch_atomicity(&result);
+        assert!(verification.is_err());
+
+        match verification {
+            Err(StoreError::ValidationFailed(msg)) => {
+                assert!(msg.contains("last_timestamp"));
+            }
+            Err(other) => panic!("Expected ValidationFailed, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+    }
+
+    #[test]
+    fn test_append_batch_single_event() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let events = vec![EventEnvelope {
+            op_id: "single-op".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Single Node".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        }];
+
+        let result = append_batch(&mut bootstrap.conn, events, None);
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+
+        let batch_result = result.unwrap();
+        assert_eq!(batch_result.start_revision, 1);
+        assert_eq!(batch_result.end_revision, 1);
+        assert_eq!(batch_result.count, 1);
+        assert_eq!(batch_result.op_ids, vec!["single-op"]);
     }
 }
