@@ -1,6 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 
-import { runEffect, runEffectsSequential } from "./helpers";
+import { freshStart, runEffect, runEffectsSequential } from "./helpers";
 import {
   attachPerfMetric,
   createPageErrorGuard,
@@ -14,42 +14,35 @@ const JANK_CUTOFF_MS = 50;
 const JANK_RATIO_MAX = 0.08;
 const FRAME_P95_MAX_MS = 34;
 const FRAME_MAX_MS = 220;
-const APP_URL = process.env.PLAYWRIGHT_TEST_BASE_URL ?? "http://127.0.0.1:8081/";
 
 async function bootPerformancePage(page: Page): Promise<void> {
-  await runEffectsSequential([
-    () =>
-      page.addInitScript(() => {
-        const originalFetch = window.fetch.bind(window);
-        window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
-          const url =
-            typeof input === "string"
-              ? input
-              : input instanceof URL
-                ? input.toString()
-                : input.url;
-
-          if (url.includes("/_dioxus")) {
-            return Promise.resolve(
-              new Response("{}", {
-                status: 200,
-                headers: { "content-type": "application/json" },
-              }),
-            );
-          }
-
-          return originalFetch(input, init);
-        };
-      }),
-    () => page.goto(APP_URL, { waitUntil: "domcontentloaded" }),
-  ]);
-  await expect(page.getByTestId("canvas-root")).toBeVisible({ timeout: 10_000 });
+  // Install fetch mock before navigation to intercept Dioxus dev server calls
   await runEffect(() =>
-    page.getByTestId("toolbar-validate").waitFor({
-      state: "visible",
-      timeout: 10_000,
+    page.addInitScript(() => {
+      const originalFetch = window.fetch.bind(window);
+      window.fetch = (input: RequestInfo | URL, init?: RequestInit) => {
+        const url =
+          typeof input === "string"
+            ? input
+            : input instanceof URL
+              ? input.toString()
+              : input.url;
+
+        if (url.includes("/_dioxus")) {
+          return Promise.resolve(
+            new Response("{}", {
+              status: 200,
+              headers: { "content-type": "application/json" },
+            }),
+          );
+        }
+
+        return originalFetch(input, init);
+      };
     }),
   );
+  // Use freshStart for consistent test isolation (clears storage, navigates, resets state)
+  await freshStart(page);
 }
 
 async function sampleButtonLatency(

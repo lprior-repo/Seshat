@@ -5,3 +5,9 @@
 {"actor": "orchestrator", "action": "moon check", "command": "moon run :check", "exit_code": 0, "timestamp": "2026-03-01T19:21:00Z"}
 {"actor": "orchestrator", "action": "moon test", "command": "moon run :test", "exit_code": 0, "timestamp": "2026-03-01T19:21:30Z"}
 {"actor": "orchestrator", "action": "moon ci", "command": "moon run :ci", "exit_code": 0, "timestamp": "2026-03-01T19:22:00Z"}
+{"actor": "orchestrator", "action": "moon replay", "command": "cargo test sync 2>&1", "exit_code": 0, "timestamp": "2026-03-01T21:40:00Z"}
+{"actor": "qa-enforcer", "action": "qa verification", "command": "contract compliance + test verification", "exit_code": 0, "timestamp": "2026-03-01T21:41:00Z"}
+{"actor": "orchestrator", "action": "qa replay", "command": "verification.md created", "exit_code": 0, "timestamp": "2026-03-01T21:41:30Z"}
+{"actor": "orchestrator", "action": "bead closed", "command": "br close bd-3sm", "exit_code": 0, "timestamp": "2026-03-01T21:42:00Z"}
+{"actor": "orchestrator", "action": "workspace cleanup", "command": "jj workspace forget bd-3sm", "exit_code": 0, "timestamp": "2026-03-01T21:42:10Z"}
+{"actor": "orchestrator", "action": "landing replay", "command": "jj log -r d49b3761", "exit_code": 0, "timestamp": "2026-03-01T21:42:20Z"}

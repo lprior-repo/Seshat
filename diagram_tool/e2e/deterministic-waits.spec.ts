@@ -1,12 +1,13 @@
 import { expect, test } from "@playwright/test";
+import { freshStart } from "./helpers";
 
 /**
  * E2E Deterministic Waits Test Suite
- * 
+ *
  * This test enforces that baseline E2E specs use deterministic waits
  * instead of fixed timeouts. This prevents flaky tests and ensures
  * reliable CI runs.
- * 
+ *
  * @invariant No waitForTimeout in baseline suite
  * @invariant No XPath selectors in baseline suite
  */
@@ -14,30 +15,19 @@ test.describe("deterministic waits @baseline", () => {
   test("baseline specs must not use waitForTimeout", async ({ page }) => {
     // This test validates that we can wait for UI readiness using
     // deterministic conditions rather than fixed timeouts.
-    
-    // Navigate to the app
-    await page.goto("/", { waitUntil: "load" });
-    
-    // Use deterministic wait - the canvas should have data-testid
-    const canvas = page.getByTestId("canvas-root");
-    await canvas.waitFor({ state: "visible", timeout: 30_000 });
-    
-    // Verify node counter is visible (another deterministic check)
+    await freshStart(page);
+
+    // Verify node counter is visible (deterministic check via freshStart)
     const nodeCounter = page.getByTestId("counter-nodes");
-    await nodeCounter.waitFor({ state: "visible", timeout: 30_000 });
-    
-    // The test passes if we can reach this point using deterministic waits
-    // without any waitForTimeout calls in the test itself
     expect(await nodeCounter.isVisible()).toBe(true);
   });
 
   test("baseline specs must not use XPath selectors", async ({ page }) => {
     // This test validates that we can select elements using
     // stable data-testid selectors instead of XPath.
+    await freshStart(page);
     
-    await page.goto("/", { waitUntil: "load" });
-    
-    // All interactive elements should have data-testid
+    // All interactive elements should have data-testid (already loaded via freshStart)
     const testIds = [
       "canvas-root",
       "toolbar-root",

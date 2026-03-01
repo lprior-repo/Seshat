@@ -15,6 +15,7 @@ mod cli;
 mod cli_events_tests;
 mod cli_persistence;
 mod export;
+mod geometry;
 mod history;
 mod hooks;
 mod icons;
