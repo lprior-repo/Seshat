@@ -1,0 +1,4 @@
+{"timestamp":"2026-03-01T22:04:00Z","bead_id":"bd-2jv","phase":"p0","actor":"orchestrator","action":"bead claimed","command":"br update bd-2jv --status in_progress --assignee self","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T22:04:00Z","bead_id":"bd-2jv","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-2jv","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T22:05:30Z","bead_id":"bd-2jv","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract file exists or derived from BR bead","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T22:05:30Z","bead_id":"bd-2jv","phase":"p0","actor":"orchestrator","action":"claim replay","command":"br show bd-2jv","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":true}

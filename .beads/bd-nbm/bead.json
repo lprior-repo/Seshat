@@ -1,0 +1,17 @@
+[
+  {
+    "id": "bd-nbm",
+    "title": "tests: Implement SEL selection tests 3/5",
+    "description": "Add 5 selection tests: right-click context menu preserves selection, Alt-click selects parent, locked element not selectable, hidden element not hit-testable.",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "self",
+    "created_at": "2026-03-01T00:38:15.986318617Z",
+    "created_by": "lewis",
+    "updated_at": "2026-03-01T22:03:55.605575153Z",
+    "source_repo": ".",
+    "compaction_level": 0,
+    "original_size": 0
+  }
+]

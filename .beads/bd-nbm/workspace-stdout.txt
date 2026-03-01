@@ -1,0 +1,5 @@
+Created workspace in "../bd-nbm"
+ignoring git submodule at "third_party/diagrams"
+Working copy  (@) now at: kvonkzvz 7bc3eb8b (empty) (no description set)
+Parent commit (@-)      : qtywklxu 3fd7c209 main | verify: bd-3qj io-json-export complete
+Added 2843 files, modified 0 files, removed 0 files
