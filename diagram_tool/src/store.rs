@@ -33,10 +33,71 @@ pub enum StoreError {
     MigrationForbidden { version: i32 },
     #[error("Revision mismatch: expected {expected}, found {found}")]
     RevisionMismatch { expected: i64, found: i64 },
+    #[error("Human priority block: {0}")]
+    HumanPriorityBlock(String),
     #[error("Validation failed: {0}")]
     ValidationFailed(String),
     #[error("Serialization error: {0}")]
     Serialization(String),
+}
+
+/// Structured error codes for CLI output
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum CliErrorCode {
+    /// Revision mismatch between expected and actual
+    RevisionMismatch,
+    /// Operation blocked due to human priority
+    HumanPriorityBlock,
+    /// Policy violation detected
+    PolicyViolation,
+    /// Validation failed
+    ValidationFailed,
+    /// Unknown error
+    Unknown,
+}
+
+impl CliErrorCode {
+    /// Returns the error code as a string for JSON serialization
+    #[must_use]
+    pub fn code(&self) -> &'static str {
+        match self {
+            CliErrorCode::RevisionMismatch => "revision_mismatch",
+            CliErrorCode::HumanPriorityBlock => "human_priority_block",
+            CliErrorCode::PolicyViolation => "policy_violation",
+            CliErrorCode::ValidationFailed => "validation_failed",
+            CliErrorCode::Unknown => "unknown",
+        }
+    }
+}
+
+/// Maps a StoreError to a CliErrorCode
+///
+/// # Errors
+/// Returns `CliErrorCode::Unknown` for unmapped error variants
+pub fn map_error_code(err: &StoreError) -> CliErrorCode {
+    match err {
+        StoreError::RevisionMismatch { .. } => CliErrorCode::RevisionMismatch,
+        StoreError::HumanPriorityBlock(_) => CliErrorCode::HumanPriorityBlock,
+        StoreError::ValidationFailed(_) => CliErrorCode::ValidationFailed,
+        StoreError::Sqlite(_) => CliErrorCode::Unknown,
+        StoreError::Io(_) => CliErrorCode::Unknown,
+        StoreError::InvalidPragma(_) => CliErrorCode::Unknown,
+        StoreError::SchemaVersionMismatch { .. } => CliErrorCode::Unknown,
+        StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
+        StoreError::Serialization(_) => CliErrorCode::Unknown,
+    }
+}
+
+/// Renders an error as a JSON string
+///
+/// Returns a JSON object with `code` and `message` fields
+pub fn render_error_json(code: CliErrorCode, message: &str) -> String {
+    serde_json::json!({
+        "code": code.code(),
+        "message": message
+    })
+    .to_string()
 }
 
 /// Errors that can occur during database recovery operations
@@ -714,7 +775,7 @@ mod tests {
         use crate::models::envelope::{Author, DomainOp, EventEnvelope};
         let envelope = EventEnvelope {
             op_id: "test-op-1".to_string(),
-            domain_op: DomainOp::NodeAdd {
+            operation: DomainOp::NodeAdd {
                 id: "node-1".to_string(),
                 x: 10.0,
                 y: 20.0,
@@ -742,5 +803,98 @@ mod tests {
             export_result.err()
         );
         assert!(export_path.exists(), "Export file should exist");
+    }
+
+    // CliErrorCode tests
+
+    #[test]
+    fn test_map_error_code_revision_mismatch() {
+        let err = StoreError::RevisionMismatch {
+            expected: 5,
+            found: 3,
+        };
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::RevisionMismatch);
+    }
+
+    #[test]
+    fn test_map_error_code_human_priority_block() {
+        let err = StoreError::HumanPriorityBlock("user is editing".to_string());
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::HumanPriorityBlock);
+    }
+
+    #[test]
+    fn test_map_error_code_validation_failed() {
+        let err = StoreError::ValidationFailed("invalid node position".to_string());
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::ValidationFailed);
+    }
+
+    #[test]
+    fn test_map_error_code_sqlite() {
+        let err = StoreError::Sqlite(rusqlite::Error::InvalidQuery);
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::Unknown);
+    }
+
+    #[test]
+    fn test_map_error_code_io() {
+        let err = StoreError::Io(std::io::Error::new(
+            std::io::ErrorKind::NotFound,
+            "file not found",
+        ));
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::Unknown);
+    }
+
+    #[test]
+    fn test_render_error_json_revision_mismatch() {
+        let json = render_error_json(
+            CliErrorCode::RevisionMismatch,
+            "expected revision 5 but found 3",
+        );
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(parsed["code"], "revision_mismatch");
+        assert_eq!(parsed["message"], "expected revision 5 but found 3");
+    }
+
+    #[test]
+    fn test_render_error_json_human_priority_block() {
+        let json = render_error_json(CliErrorCode::HumanPriorityBlock, "user is editing");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(parsed["code"], "human_priority_block");
+        assert_eq!(parsed["message"], "user is editing");
+    }
+
+    #[test]
+    fn test_render_error_json_validation_failed() {
+        let json = render_error_json(CliErrorCode::ValidationFailed, "invalid node position");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(parsed["code"], "validation_failed");
+        assert_eq!(parsed["message"], "invalid node position");
+    }
+
+    #[test]
+    fn test_render_error_json_policy_violation() {
+        let json = render_error_json(CliErrorCode::PolicyViolation, "operation not allowed");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(parsed["code"], "policy_violation");
+        assert_eq!(parsed["message"], "operation not allowed");
+    }
+
+    #[test]
+    fn test_render_error_json_unknown() {
+        let json = render_error_json(CliErrorCode::Unknown, "internal error");
+        let parsed: serde_json::Value = serde_json::from_str(&json).expect("valid JSON");
+        assert_eq!(parsed["code"], "unknown");
+        assert_eq!(parsed["message"], "internal error");
+    }
+
+    #[test]
+    fn test_cli_error_code_serialization() {
+        let code = CliErrorCode::RevisionMismatch;
+        let json = serde_json::to_string(&code).expect("valid JSON");
+        assert_eq!(json, "\"revision_mismatch\"");
     }
 }

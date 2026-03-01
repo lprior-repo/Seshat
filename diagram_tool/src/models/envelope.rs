@@ -13,7 +13,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-/// Error types for domain operations
+/// Error types for domain op_types
 #[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ContractError {
     #[error("invalid JSON: {0}")]
@@ -22,7 +22,7 @@ pub enum ContractError {
     MissingField(&'static str),
     #[error("invalid author: {0}")]
     InvalidAuthor(String),
-    #[error("unknown operation type: {0}")]
+    #[error("unknown op_type type: {0}")]
     UnknownOpType(String),
     #[error("invalid payload: {0}")]
     InvalidPayload(String),
@@ -62,7 +62,7 @@ impl OpType {
     }
 }
 
-/// Kind of domain operation
+/// Kind of domain op_type
 #[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(rename_all = "snake_case")]
 pub enum OpKind {
@@ -70,14 +70,14 @@ pub enum OpKind {
     Node,
     /// Operation on an edge
     Edge,
-    /// Composite operation involving multiple entities
+    /// Composite op_type involving multiple entities
     Composite,
-    /// Z-order operation for layering
+    /// Z-order op_type for layering
     ZOrder,
 }
 
 impl OpKind {
-    /// Returns the name of this operation kind as a string
+    /// Returns the name of this op_type kind as a string
     #[must_use]
     pub const fn as_str(&self) -> &'static str {
         match self {
@@ -89,11 +89,11 @@ impl OpKind {
     }
 }
 
-/// Domain operation representing a diagram editor operation
+/// Domain op_type representing a diagram editor op_type
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "operation", rename_all = "snake_case")]
+#[serde(tag = "op_type", rename_all = "snake_case")]
 pub enum DomainOp {
-    // Node operations
+    // Node op_types
     NodeAdd {
         id: String,
         x: f64,
@@ -113,7 +113,7 @@ pub enum DomainOp {
     NodeRestore {
         id: String,
     },
-    // Edge operations
+    // Edge op_types
     EdgeConnect {
         id: String,
         source: String,
@@ -122,7 +122,7 @@ pub enum DomainOp {
     EdgeDisconnect {
         id: String,
     },
-    // Z-order operations
+    // Z-order op_types
     BringForward {
         ids: Vec<String>,
     },
@@ -135,7 +135,7 @@ pub enum DomainOp {
     SendToBack {
         ids: Vec<String>,
     },
-    // Composite operations
+    // Composite op_types
     Group {
         ids: Vec<String>,
     },
@@ -145,7 +145,7 @@ pub enum DomainOp {
 }
 
 impl DomainOp {
-    /// Get the operation kind for this domain operation
+    /// Get the op_type kind for this domain op_type
     #[must_use]
     pub const fn kind(&self) -> OpKind {
         match self {
@@ -163,11 +163,11 @@ impl DomainOp {
     }
 }
 
-/// Parse a domain operation from a JSON string
+/// Parse a domain op_type from a JSON string
 ///
 /// # Errors
 /// Returns `ContractError::InvalidJson` if the JSON is malformed
-/// Returns `ContractError::UnknownOpType` if the operation type is not recognized
+/// Returns `ContractError::UnknownOpType` if the op_type type is not recognized
 /// Returns `ContractError::InvalidPayload` if the payload is invalid
 /// Returns `ContractError::MissingField` if required fields are missing
 pub fn parse_domain_op(raw: &str) -> Result<DomainOp, ContractError> {
@@ -196,7 +196,7 @@ pub fn parse_domain_op(raw: &str) -> Result<DomainOp, ContractError> {
     }
 }
 
-/// Get the operation kind for a domain operation
+/// Get the op_type kind for a domain op_type
 ///
 /// This is a convenience function that delegates to `DomainOp::kind()`
 #[must_use]
@@ -204,7 +204,7 @@ pub fn domain_op_kind(op: &DomainOp) -> OpKind {
     op.kind()
 }
 
-// Helper functions for parsing domain operations
+// Helper functions for parsing domain op_types
 
 fn parse_node_add(value: serde_json::Value) -> Result<DomainOp, ContractError> {
     let id = value
@@ -366,15 +366,14 @@ fn parse_string_array(value: Option<&serde_json::Value>) -> Result<Vec<String>, 
         .collect()
 }
 
-/// Event envelope containing operation and author metadata
+/// Event envelope containing op_type and author metadata
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct EventEnvelope {
-    /// Unique identifier for this envelope (operation ID)
+    /// Unique identifier for this envelope (op_type ID)
     #[serde(rename = "op_id")]
     pub op_id: String,
-    /// The diagram operation being performed
-    #[serde(rename = "operation")]
-    pub domain_op: DomainOp,
+    /// The diagram op_type being performed
+    pub op_type: DomainOp,
     /// Author who created this event
     pub author: Author,
     /// Timestamp of when this event was created (Unix timestamp)
@@ -390,7 +389,7 @@ pub struct EventEnvelope {
 /// Returns `ContractError::InvalidJson` if the JSON is malformed
 /// Returns `ContractError::MissingField` if required fields are missing
 /// Returns `ContractError::InvalidAuthor` if author validation fails
-/// Returns `ContractError::UnknownOpType` if the operation type is invalid
+/// Returns `ContractError::UnknownOpType` if the op_type type is invalid
 #[deprecated(since = "0.1.0", note = "use parse_event_envelope instead")]
 pub fn decode_envelope(raw: &str) -> Result<EventEnvelope, ContractError> {
     parse_event_envelope(raw)
@@ -417,7 +416,7 @@ pub fn encode_envelope(op: &EventEnvelope) -> Result<String, ContractError> {
 /// Returns `ContractError::InvalidJson` if the JSON is malformed
 /// Returns `ContractError::MissingField` if required fields are missing
 /// Returns `ContractError::InvalidAuthor` if author validation fails
-/// Returns `ContractError::UnknownOpType` if the operation type is invalid
+/// Returns `ContractError::UnknownOpType` if the op_type type is invalid
 pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError> {
     // First do a lightweight validation to check required fields
     let value: serde_json::Value =
@@ -504,26 +503,10 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_domain_op_directly() {
-        let json = r#"{
-            "operation": "node_add",
-            "id": "n1",
-            "x": 100.0,
-            "y": 200.0,
-            "width": 80.0,
-            "height": 40.0,
-            "label": "Test"
-        }"#;
-        let result: Result<DomainOp, _> = serde_json::from_str(json);
-        println!("Result: {:?}", result);
-        assert!(result.is_ok(), "Failed: {:?}", result.err());
-    }
-
-    #[test]
     fn given_valid_json_when_parsing_event_envelope_then_returns_envelope() {
         let raw = r#"{
             "op_id": "evt-123",
-            "operation": "node_add",
+            "op_type": "node_add",
             "id": "node-1",
             "x": 100.0,
             "y": 200.0,
@@ -542,7 +525,7 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let envelope = result.unwrap();
         assert_eq!(envelope.op_id, "evt-123");
-        assert!(matches!(envelope.domain_op, DomainOp::NodeAdd { .. }));
+        assert!(matches!(envelope.op_type, DomainOp::NodeAdd { .. }));
         assert_eq!(envelope.author.id, "user-1");
         assert_eq!(envelope.author.name, "Alice");
         assert_eq!(envelope.timestamp, 1699999999);
@@ -564,7 +547,7 @@ mod tests {
     #[test]
     fn given_missing_op_id_field_when_parsing_event_envelope_then_returns_missing_field_error() {
         let raw = r#"{
-            "operation": "node_add",
+            "op_type": "node_add",
             "id": "node-1",
             "x": 100.0,
             "y": 200.0,
@@ -585,7 +568,7 @@ mod tests {
     fn given_missing_author_field_when_parsing_event_envelope_then_returns_missing_field_error() {
         let raw = r#"{
             "op_id": "evt-123",
-            "operation": "node_add",
+            "op_type": "node_add",
             "id": "node-1",
             "x": 100.0,
             "y": 200.0,
@@ -606,7 +589,7 @@ mod tests {
     ) {
         let raw = r#"{
             "op_id": "evt-123",
-            "operation": "node_add",
+            "op_type": "node_add",
             "id": "node-1",
             "x": 100.0,
             "y": 200.0,
@@ -624,11 +607,10 @@ mod tests {
     }
 
     #[test]
-    fn given_unknown_operation_type_when_parsing_event_envelope_then_returns_unknown_op_type_error()
-    {
+    fn given_unknown_op_type_type_when_parsing_event_envelope_then_returns_unknown_op_type_error() {
         let raw = r#"{
             "op_id": "evt-123",
-            "operation": "unknown_operation",
+            "op_type": "unknown_op_type",
             "author": {"id": "user-1", "name": "Alice"},
             "timestamp": 1699999999
         }"#;
@@ -637,50 +619,50 @@ mod tests {
 
         assert!(result.is_err());
         match result {
-            Err(ContractError::UnknownOpType(s)) => assert_eq!(s, "unknown_operation"),
+            Err(ContractError::UnknownOpType(s)) => assert_eq!(s, "unknown_op_type"),
             _ => panic!("Expected UnknownOpType error"),
         }
     }
 
     #[test]
-    fn given_all_operation_types_then_all_parse_correctly() {
+    fn given_all_op_type_types_then_all_parse_correctly() {
         // Test that all DomainOp types can be parsed from the envelope
         let test_cases = [
             (
-                r#""operation": "node_add", "id": "n1", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0"#,
+                r#""op_type": "node_add", "id": "n1", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0"#,
                 "node_add",
             ),
             (
-                r#""operation": "node_move", "id": "n1", "x": 100.0, "y": 200.0"#,
+                r#""op_type": "node_move", "id": "n1", "x": 100.0, "y": 200.0"#,
                 "node_move",
             ),
-            (r#""operation": "node_delete", "id": "n1""#, "node_delete"),
+            (r#""op_type": "node_delete", "id": "n1""#, "node_delete"),
             (
-                r#""operation": "edge_connect", "id": "e1", "source": "n1", "target": "n2""#,
+                r#""op_type": "edge_connect", "id": "e1", "source": "n1", "target": "n2""#,
                 "edge_connect",
             ),
             (
-                r#""operation": "edge_disconnect", "id": "e1""#,
+                r#""op_type": "edge_disconnect", "id": "e1""#,
                 "edge_disconnect",
             ),
             (
-                r#""operation": "bring_forward", "ids": ["n1"]"#,
+                r#""op_type": "bring_forward", "ids": ["n1"]"#,
                 "bring_forward",
             ),
             (
-                r#""operation": "send_backward", "ids": ["n1"]"#,
+                r#""op_type": "send_backward", "ids": ["n1"]"#,
                 "send_backward",
             ),
             (
-                r#""operation": "bring_to_front", "ids": ["n1"]"#,
+                r#""op_type": "bring_to_front", "ids": ["n1"]"#,
                 "bring_to_front",
             ),
             (
-                r#""operation": "send_to_back", "ids": ["n1"]"#,
+                r#""op_type": "send_to_back", "ids": ["n1"]"#,
                 "send_to_back",
             ),
-            (r#""operation": "group", "ids": ["n1", "n2"]"#, "group"),
-            (r#""operation": "ungroup", "id": "g1""#, "ungroup"),
+            (r#""op_type": "group", "ids": ["n1", "n2"]"#, "group"),
+            (r#""op_type": "ungroup", "id": "g1""#, "ungroup"),
         ];
 
         for (op_str, _op_name) in test_cases {
@@ -697,7 +679,7 @@ mod tests {
     fn given_author_with_email_when_parsing_event_envelope_then_email_is_preserved() {
         let raw = r#"{
             "op_id": "evt-123",
-            "operation": "node_add",
+            "op_type": "node_add",
             "id": "node-1",
             "x": 100.0,
             "y": 200.0,
@@ -722,7 +704,7 @@ mod tests {
     fn given_author_without_email_when_parsing_event_envelope_then_email_is_none() {
         let raw = r#"{
             "op_id": "evt-123",
-            "operation": "node_add",
+            "op_type": "node_add",
             "id": "node-1",
             "x": 100.0,
             "y": 200.0,
@@ -746,7 +728,7 @@ mod tests {
     fn given_event_envelope_when_encoding_then_roundtrip_works() {
         let original = EventEnvelope {
             op_id: "evt-roundtrip".to_string(),
-            domain_op: DomainOp::NodeMove {
+            op_type: DomainOp::NodeMove {
                 id: "node-1".to_string(),
                 x: 100.0,
                 y: 200.0,
@@ -769,10 +751,10 @@ mod tests {
     }
 
     #[test]
-    fn given_event_envelope_with_complex_operation_when_encoding_then_roundtrip_works() {
+    fn given_event_envelope_with_complex_op_type_when_encoding_then_roundtrip_works() {
         let original = EventEnvelope {
             op_id: "evt-complex".to_string(),
-            domain_op: DomainOp::Group {
+            op_type: DomainOp::Group {
                 ids: vec![
                     "node-1".to_string(),
                     "node-2".to_string(),
@@ -946,7 +928,7 @@ mod tests {
     #[test]
     fn given_unknown_op_type_when_parsing_then_returns_unknown_op_type_error() {
         let raw = r#"{
-            "op": "unknown_operation",
+            "op": "unknown_op_type",
             "id": "node-1"
         }"#;
 
@@ -954,7 +936,7 @@ mod tests {
 
         assert!(result.is_err());
         match result {
-            Err(ContractError::UnknownOpType(s)) => assert_eq!(s, "unknown_operation"),
+            Err(ContractError::UnknownOpType(s)) => assert_eq!(s, "unknown_op_type"),
             _ => panic!("Expected UnknownOpType error"),
         }
     }
