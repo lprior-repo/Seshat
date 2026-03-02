@@ -2718,3 +2718,514 @@ mod proptests {
         }
     }
 }
+
+// =============================================================================
+// Distribution tests (bd-51b)
+// =============================================================================
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod distribution_tests {
+    use super::*;
+
+    fn make_node_for_dist(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: label.to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(width),
+            height: OrderedFloat(height),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: Vec::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    fn make_doc_with_three_nodes_for_dist() -> DiagramDocument {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a, make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b, make_node_for_dist("node-b", 200.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c, make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        doc
+    }
+
+    /// Pure function for testing distribution logic
+    fn perform_distribute(
+        doc: &mut DiagramDocument,
+        axis: DistributionAxis,
+    ) -> bool {
+        let selected_nodes: Vec<NodeId> = selected_node_ids(doc)
+            .into_iter()
+            .filter(|id| {
+                doc.document.nodes.get(id).is_some_and(|node| {
+                    let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
+                    let movable = !node.locked || node.kind == NodeKind::Subgraph;
+                    coords_finite && movable
+                })
+            })
+            .collect();
+
+        if selected_nodes.len() < 3 {
+            return false;
+        }
+
+        let mut node_data: Vec<(NodeId, f64, f64)> = selected_nodes
+            .iter()
+            .filter_map(|id| {
+                doc.document.nodes.get(id).map(|node| {
+                    let (pos, size) = match axis {
+                        DistributionAxis::Horizontal => (node.x.0, node.width.0),
+                        DistributionAxis::Vertical => (node.y.0, node.height.0),
+                    };
+                    (id.clone(), pos, size)
+                })
+            })
+            .collect();
+
+        if node_data.iter().any(|(_, pos, size)| !pos.is_finite() || !size.is_finite()) {
+            return false;
+        }
+
+        node_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+        let first_pos = node_data.first().map(|(_, p, _)| *p);
+        let last_node_end = node_data.last().map(|(_, p, s)| p + s);
+
+        let Some(first_pos) = first_pos else {
+            return false;
+        };
+        let Some(last_node_end) = last_node_end else {
+            return false;
+        };
+
+        if !first_pos.is_finite() || !last_node_end.is_finite() {
+            return false;
+        }
+
+        let total_node_size: f64 = node_data.iter().map(|(_, _, s)| *s).sum();
+        let total_extent = last_node_end - first_pos;
+
+        if total_extent <= f64::EPSILON {
+            return false;
+        }
+
+        let node_count = node_data.len();
+        let gap_count = node_count.saturating_sub(1);
+        let available_space = total_extent - total_node_size;
+        let spacing = if gap_count > 0 {
+            available_space / f64::from(u32::try_from(gap_count).unwrap_or(1))
+        } else {
+            0.0
+        };
+
+        if !spacing.is_finite() {
+            return false;
+        }
+
+        let mut current_pos = first_pos;
+        for (node_id, _, node_size) in &node_data {
+            if let Some(node) = doc.document.nodes.get_mut(node_id) {
+                if node.locked && node.kind != NodeKind::Subgraph {
+                    continue;
+                }
+
+                match axis {
+                    DistributionAxis::Horizontal => {
+                        node.x = OrderedFloat(current_pos);
+                    }
+                    DistributionAxis::Vertical => {
+                        node.y = OrderedFloat(current_pos);
+                    }
+                }
+                current_pos += node_size + spacing;
+            }
+        }
+        doc.revision = doc.revision.increment();
+        true
+    }
+
+    #[test]
+    fn test_distribute_horizontal_three_nodes() {
+        let mut doc = make_doc_with_three_nodes_for_dist();
+        let initial_revision = doc.revision;
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+
+        assert!(result, "distribute should return true for 3 nodes");
+        assert_eq!(
+            doc.revision,
+            initial_revision.increment(),
+            "revision should be incremented"
+        );
+
+        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
+        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
+        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+
+        assert_eq!(node_a.x.0, 0.0, "node-a x should be 0");
+        assert_eq!(node_c.x.0, 400.0, "node-c x should be 400");
+        assert_eq!(node_b.x.0, 200.0, "node-b x should be 200 for equal spacing");
+    }
+
+    #[test]
+    fn test_distribute_vertical_three_nodes() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a, make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b, make_node_for_dist("node-b", 0.0, 200.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c, make_node_for_dist("node-c", 0.0, 400.0, 100.0, 50.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Vertical);
+
+        assert!(result, "distribute vertical should return true");
+
+        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
+        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
+        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+
+        assert_eq!(node_a.y.0, 0.0, "node-a y should be 0");
+        assert_eq!(node_c.y.0, 400.0, "node-c y should be 400");
+        assert_eq!(node_b.y.0, 200.0, "node-b y should be 200 for equal spacing");
+    }
+
+    #[test]
+    fn test_distribute_horizontal_preserves_y() {
+        let mut doc = make_doc_with_three_nodes_for_dist();
+
+        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-a".to_string())) {
+            node.y = OrderedFloat(100.0);
+        }
+        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-b".to_string())) {
+            node.y = OrderedFloat(200.0);
+        }
+        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-c".to_string())) {
+            node.y = OrderedFloat(300.0);
+        }
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(result);
+
+        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
+        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
+        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+
+        assert_eq!(node_a.y.0, 100.0, "node-a y should be unchanged");
+        assert_eq!(node_b.y.0, 200.0, "node-b y should be unchanged");
+        assert_eq!(node_c.y.0, 300.0, "node-c y should be unchanged");
+    }
+
+    #[test]
+    fn test_distribute_vertical_preserves_x() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node_for_dist("node-a", 50.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node_for_dist("node-b", 150.0, 200.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node_for_dist("node-c", 250.0, 400.0, 100.0, 50.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Vertical);
+        assert!(result);
+
+        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
+        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
+        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+
+        assert_eq!(node_a.x.0, 50.0, "node-a x should be unchanged");
+        assert_eq!(node_b.x.0, 150.0, "node-b x should be unchanged");
+        assert_eq!(node_c.x.0, 250.0, "node-c x should be unchanged");
+    }
+
+    #[test]
+    fn test_distribute_less_than_three_nodes_returns_false() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a, make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b, make_node_for_dist("node-b", 200.0, 0.0, 100.0, 50.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(!result, "distribute should return false for 2 nodes");
+
+        doc.editor_state.selected_items.clear();
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(!result, "distribute should return false for 1 node");
+
+        doc.editor_state.selected_items.clear();
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(!result, "distribute should return false for 0 nodes");
+    }
+
+    #[test]
+    fn test_distribute_outermost_nodes_at_bounds() {
+        let mut doc = make_doc_with_three_nodes_for_dist();
+
+        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-b".to_string())) {
+            node.x = OrderedFloat(350.0);
+        }
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(result);
+
+        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
+        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+
+        assert_eq!(node_a.x.0, 0.0, "leftmost node should stay at min bound");
+        assert_eq!(node_c.x.0, 400.0, "rightmost node should stay at max bound");
+    }
+
+    #[test]
+    fn test_distribute_equal_spacing() {
+        let mut doc = DiagramDocument::default();
+
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+        let node_d = NodeId::new("node-d".to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node_for_dist("node-b", 50.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_d.clone(), make_node_for_dist("node-d", 600.0, 0.0, 100.0, 50.0));
+
+        for id in ["node-a", "node-b", "node-c", "node-d"] {
+            let _ = doc.editor_state.selected_items.insert(id.to_string());
+        }
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(result);
+
+        let nodes: Vec<_> = ["node-a", "node-b", "node-c", "node-d"]
+            .iter()
+            .map(|id| {
+                doc.document
+                    .nodes
+                    .get(&NodeId::new(id.to_string()))
+                    .cloned()
+            })
+            .collect();
+
+        let node0 = nodes[0].as_ref().expect("node-a should exist");
+        let node1 = nodes[1].as_ref().expect("node-b should exist");
+        let node2 = nodes[2].as_ref().expect("node-c should exist");
+        let node3 = nodes[3].as_ref().expect("node-d should exist");
+
+        let gap_ab = node1.x.0 - (node0.x.0 + node0.width.0);
+        let gap_bc = node2.x.0 - (node1.x.0 + node1.width.0);
+        let gap_cd = node3.x.0 - (node2.x.0 + node2.width.0);
+
+        assert!(
+            (gap_ab - gap_bc).abs() < f64::EPSILON,
+            "gaps ab and bc should be equal: {} vs {}",
+            gap_ab,
+            gap_bc
+        );
+        assert!(
+            (gap_bc - gap_cd).abs() < f64::EPSILON,
+            "gaps bc and cd should be equal: {} vs {}",
+            gap_bc,
+            gap_cd
+        );
+    }
+
+    #[test]
+    fn test_distribute_preserves_node_size() {
+        let mut doc = make_doc_with_three_nodes_for_dist();
+
+        let widths_before: Vec<_> = ["node-a", "node-b", "node-c"]
+            .iter()
+            .map(|id| {
+                doc.document
+                    .nodes
+                    .get(&NodeId::new(id.to_string()))
+                    .map(|n| n.width.0)
+            })
+            .collect();
+
+        let heights_before: Vec<_> = ["node-a", "node-b", "node-c"]
+            .iter()
+            .map(|id| {
+                doc.document
+                    .nodes
+                    .get(&NodeId::new(id.to_string()))
+                    .map(|n| n.height.0)
+            })
+            .collect();
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(result);
+
+        let widths_after: Vec<_> = ["node-a", "node-b", "node-c"]
+            .iter()
+            .map(|id| {
+                doc.document
+                    .nodes
+                    .get(&NodeId::new(id.to_string()))
+                    .map(|n| n.width.0)
+            })
+            .collect();
+
+        let heights_after: Vec<_> = ["node-a", "node-b", "node-c"]
+            .iter()
+            .map(|id| {
+                doc.document
+                    .nodes
+                    .get(&NodeId::new(id.to_string()))
+                    .map(|n| n.height.0)
+            })
+            .collect();
+
+        for (before, after) in widths_before.iter().zip(widths_after.iter()) {
+            assert_eq!(before, after, "width should be preserved");
+        }
+        for (before, after) in heights_before.iter().zip(heights_after.iter()) {
+            assert_eq!(before, after, "height should be preserved");
+        }
+    }
+
+    #[test]
+    fn test_distribute_locked_nodes_skipped() {
+        let mut doc = DiagramDocument::default();
+
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+        let node_d = NodeId::new("node-d".to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node_for_dist("node-b", 50.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_d.clone(), make_node_for_dist("node-d", 600.0, 0.0, 100.0, 50.0));
+
+        if let Some(node) = doc.document.nodes.get_mut(&node_b) {
+            node.locked = true;
+        }
+
+        for id in ["node-a", "node-b", "node-c", "node-d"] {
+            let _ = doc.editor_state.selected_items.insert(id.to_string());
+        }
+
+        let original_b_x = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-b".to_string()))
+            .map(|n| n.x.0);
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(result, "distribute should return true with 3+ movable nodes");
+
+        let new_b_x = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-b".to_string()))
+            .map(|n| n.x.0);
+        assert_eq!(original_b_x, new_b_x, "locked node should not move");
+    }
+
+    #[test]
+    fn test_distribute_updates_revision() {
+        let mut doc = make_doc_with_three_nodes_for_dist();
+        let revision_before = doc.revision;
+
+        let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
+        assert!(result);
+
+        assert_eq!(
+            doc.revision,
+            revision_before.increment(),
+            "revision should be incremented"
+        );
+    }
+}
