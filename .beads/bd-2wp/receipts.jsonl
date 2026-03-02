@@ -5,3 +5,6 @@
 {"timestamp":"2026-03-02T04:53:00Z","bead_id":"bd-2wp","phase":"p2","actor":"orchestrator","action":"moon check","command":"moon run :check","exit_code":0,"evidence":true}
 {"timestamp":"2026-03-02T04:55:00Z","bead_id":"bd-2wp","phase":"p2","actor":"orchestrator","action":"moon test-rust","command":"moon run :test-rust","exit_code":0,"evidence":true}
 {"timestamp":"2026-03-02T04:57:00Z","bead_id":"bd-2wp","phase":"p2","actor":"orchestrator","action":"moon clippy","command":"moon run :clippy","exit_code":0,"evidence":true}
+{"timestamp":"2026-03-02T05:08:00Z","bead_id":"bd-2wp","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-2wp","exit_code":0,"evidence":true}
+{"timestamp":"2026-03-02T05:08:00Z","bead_id":"bd-2wp","phase":"p4","actor":"orchestrator","action":"workspace cleanup","command":"jj workspace forget bd-2wp","exit_code":0,"evidence":true}
+{"timestamp":"2026-03-02T05:08:00Z","bead_id":"bd-2wp","phase":"p4","actor":"orchestrator","action":"landing replay","command":"jj log -r main","exit_code":0,"evidence":true}
