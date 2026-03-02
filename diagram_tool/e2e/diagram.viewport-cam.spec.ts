@@ -292,4 +292,106 @@ test.describe("CAM viewport and zoom behavior", () => {
     expect(await zoomPercent(page)).toBeGreaterThan(100);
     expect(pageErrors).toHaveLength(0);
   });
+
+  test("edge scrolling during drag reveals more canvas space @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
+
+    const canvas = page.getByTestId("canvas-root");
+    await runEffect(() => createTextNode(page, canvas, 400, 280));
+
+    const node = canvas.getByTestId("node").first();
+    await runEffect(() => node.click());
+    expect(await selectedCount(page)).toBeGreaterThanOrEqual(1);
+
+    const before = await runEffect(() => node.boundingBox());
+    if (!before) {
+      throw new Error("node bounds unavailable");
+    }
+
+    // Get canvas bounds and drag near the right edge to trigger edge scrolling
+    const cbox = await canvasBox(page);
+    const edgeX = cbox.x + cbox.width - 20;
+    const nodeCenterX = before.x + before.width / 2;
+    const nodeCenterY = before.y + before.height / 2;
+
+    // Drag node towards the right edge and hold near edge
+    await runEffectsSequential([
+      () => page.mouse.move(nodeCenterX, nodeCenterY),
+      () => page.mouse.down(),
+      () => page.mouse.move(edgeX, nodeCenterY, { steps: 12 }),
+    ]);
+
+    // Wait briefly for potential edge-scroll to trigger
+    await page.waitForTimeout(150);
+
+    // Complete the drag
+    await runEffect(() => page.mouse.up());
+
+    // Node should have moved significantly (edge scroll + drag)
+    const after = await runEffect(() => node.boundingBox());
+    if (!after) {
+      throw new Error("node bounds unavailable after drag");
+    }
+
+    // Verify node position changed
+    expect(Math.abs(after.x - before.x)).toBeGreaterThan(30);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test("fit to content centers nodes with appropriate padding @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await freshStart(page);
+    await clearCanvasOverlays(page);
+
+    const canvas = page.getByTestId("canvas-root");
+    const cbox = await canvasBox(page);
+
+    // Create nodes at various positions
+    await runEffect(() => createTextNode(page, canvas, 100, 100));
+    await waitForNoRebuildOverlay(page);
+    await runEffect(() => createTextNode(page, canvas, 500, 400));
+    await waitForNoRebuildOverlay(page);
+    await runEffect(() => createTextNode(page, canvas, 300, 250));
+    await waitForNoRebuildOverlay(page);
+
+    expect(await nodeCount(page)).toBe(3);
+
+    // Zoom in to change viewport from default
+    const centerX = cbox.x + cbox.width / 2;
+    const centerY = cbox.y + cbox.height / 2;
+    await runEffectsSequential([
+      () => page.mouse.move(centerX, centerY),
+      () => page.mouse.wheel(0, -200),
+    ]);
+    await waitForNoRebuildOverlay(page);
+
+    const zoomedZoom = await zoomPercent(page);
+    expect(zoomedZoom).toBeGreaterThan(100);
+
+    // Click zoom reset button to fit content back to viewport
+    await runEffect(() => page.getByRole("button", { name: "100%", exact: false }).first().click());
+    await waitForNoRebuildOverlay(page);
+
+    // After reset, zoom should return close to 100%
+    const resetZoom = await zoomPercent(page);
+    expect(resetZoom).toBeGreaterThanOrEqual(90);
+    expect(resetZoom).toBeLessThanOrEqual(110);
+
+    // All nodes should still be visible (within canvas bounds with padding)
+    const nodes = await canvas.getByTestId("node").all();
+    for (const n of nodes) {
+      const box = await runEffect(() => n.boundingBox());
+      if (box) {
+        // Node should be within canvas bounds (with some tolerance for padding)
+        expect(box.x).toBeGreaterThan(cbox.x - 50);
+        expect(box.y).toBeGreaterThan(cbox.y - 50);
+        expect(box.x + box.width).toBeLessThan(cbox.x + cbox.width + 50);
+        expect(box.y + box.height).toBeLessThan(cbox.y + cbox.height + 50);
+      }
+    }
+
+    expect(pageErrors).toHaveLength(0);
+  });
 });

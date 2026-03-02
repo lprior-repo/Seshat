@@ -301,6 +301,7 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 match op_type {
                     "test" => {
                         // Test operation - verify value matches before proceeding
+                        // Note: LKG was already saved before any patch operations
                         let expected = op.get("value");
                         let actual = json_pointer_get(&doc, path);
                         let test_passed = expected
@@ -313,30 +314,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                             } else {
                                 "command_error"
                             };
-
-                            // Create LKG before failing - save to .lkg subdirectory
-                            let input_path = Path::new(input);
-                            let lkg_dir =
-                                input_path.parent().unwrap_or(Path::new(".")).join(".lkg");
-                            std::fs::create_dir_all(&lkg_dir).ok();
-                            let lkg_filename = format!(
-                                "{}.lkg",
-                                input_path
-                                    .file_name()
-                                    .map(|n| n.to_string_lossy())
-                                    .unwrap_or_default()
-                            );
-                            let lkg_path = lkg_dir.join(lkg_filename);
-
-                            if let Err(e) = save_workspace_atomic(&current_doc, &lkg_path) {
-                                emit_stage_event(
-                                    "lkg_saved",
-                                    &StageDetails::new()
-                                        .with_path(&lkg_path)
-                                        .with_code("lkg_save_failed")
-                                        .with_message(&e.to_string()),
-                                );
-                            }
 
                             emit_event(&CliEvent::error(
                                 String::from("patch"),

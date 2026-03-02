@@ -787,4 +787,282 @@ test.describe("diagram edges and routing", () => {
     expect(selectedEdgeIds[1]).toBe(selectedEdgeIds[2]);
     expect(pageErrors).toHaveLength(0);
   });
+
+  // EDG-016: Self-loop edge rejection (edge where source === target)
+  test("rejects self-loop edge in dag mode @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    await runEffect(() => createTextNode(page, canvasEl, 560, 280));
+    await expectNodeCount(page, 1);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 1) {
+      throw new Error("expected one node for self-loop test");
+    }
+
+    // Try to create a self-loop by clicking the same node twice
+    await edgeClick(page, centers[0].x, centers[0].y);
+    await edgeClick(page, centers[0].x, centers[0].y);
+
+    // Self-loop should be rejected (edge count remains 0)
+    await expectEdgeCount(page, 0);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-017: Curved edge hit-testing along bezier path
+  test("curved edge is hittable along quadratic bezier path @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvasEl, 420, 280),
+      () => createTextNode(page, canvasEl, 820, 280),
+    ]);
+    await expectNodeCount(page, 2);
+
+    // Set arrow type to Curved before creating the edge
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+    // Open properties panel to access arrow type selector
+    await runEffect(() =>
+      page.locator('[data-testid="panel-props-toggle"]').first().click(),
+    );
+    // Select curved arrow type
+    await runEffect(() =>
+      page.locator('select[data-property="arrow-type"]').selectOption("curved"),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 2) {
+      throw new Error("expected two nodes for curved edge test");
+    }
+    const { left, right } = extrema(centers);
+
+    await edgeClick(page, left.x, left.y);
+    await edgeClick(page, right.x, right.y);
+    await expectEdgeCount(page, 1);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    // For a curved edge between horizontally aligned nodes, the curve bulges upward
+    // The control point is perpendicular to the midpoint
+    const midX = (left.x + right.x) / 2;
+    const midY = (left.y + right.y) / 2;
+
+    // Click at the midpoint of the curve (on the bezier path)
+    // The curve control point is calculated as: perpendicular offset from midpoint
+    // For a horizontal edge, control is at (midX, midY - dx/4) where dx = right.x - left.x
+    const dx = right.x - left.x;
+    const curvePeakY = midY - dx * 0.25; // Approximate peak of quadratic bezier
+
+    // Click slightly below the theoretical peak (to account for screen coordinates)
+    await edgeClick(page, midX, curvePeakY + 10);
+    expect(await selectedCount(page)).toBe(1);
+
+    // Click at the theoretical peak
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, midX, curvePeakY);
+    expect(await selectedCount(page)).toBe(1);
+
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-018: Thin horizontal edge hit-testing at various zoom levels
+  test("thin horizontal edge remains selectable across zoom levels @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvasEl, 360, 340),
+      () => createTextNode(page, canvasEl, 920, 340),
+    ]);
+    await expectNodeCount(page, 2);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 2) {
+      throw new Error("expected two nodes for horizontal edge zoom test");
+    }
+    const byX = [...centers].sort((a, b) => a.x - b.x);
+    await edgeClick(page, byX[0].x, byX[0].y);
+    await edgeClick(page, byX[1].x, byX[1].y);
+    await expectEdgeCount(page, 1);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    const probeX = (byX[0].x + byX[1].x) / 2;
+    const probeY = byX[0].y + 3;
+
+    await resetZoom(page);
+    await edgeClick(page, probeX, probeY);
+    expect(await selectedCount(page)).toBe(1);
+
+    await resetZoom(page);
+    await runEffect(() => page.getByTestId("zoom-out").click());
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, probeX, probeY);
+    expect(await selectedCount(page)).toBe(1);
+
+    await resetZoom(page);
+    await zoomInToAtLeast(page, 200);
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, probeX, probeY);
+    expect(await selectedCount(page)).toBe(1);
+
+    await resetZoom(page);
+    await zoomInToAtLeast(page, 300);
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, probeX, probeY);
+    expect(await selectedCount(page)).toBe(1);
+
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-019: Step-routed edge hit-testing
+  test("step-routed edge is hittable at midpoint segments @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvasEl, 420, 280),
+      () => createTextNode(page, canvasEl, 820, 280),
+    ]);
+    await expectNodeCount(page, 2);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+    // Open properties panel to access arrow type selector
+    await runEffect(() =>
+      page.locator('[data-testid="panel-props-toggle"]').first().click(),
+    );
+    // Select step arrow type
+    await runEffect(() =>
+      page.locator('select[data-property="arrow-type"]').selectOption("step"),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 2) {
+      throw new Error("expected two nodes for step edge test");
+    }
+    const { left, right } = extrema(centers);
+
+    await edgeClick(page, left.x, left.y);
+    await edgeClick(page, right.x, right.y);
+    await expectEdgeCount(page, 1);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    // Step routing creates: (sx, sy) -> (midX, sy) -> (midX, ty) -> (tx, ty)
+    // For horizontally aligned nodes, this creates a C shape
+    const midX = (left.x + right.x) / 2;
+
+    // Click on the vertical segment of the step path
+    await edgeClick(page, midX, left.y);
+    expect(await selectedCount(page)).toBe(1);
+
+    // Click near the corner
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, midX + 5, left.y + 5);
+    expect(await selectedCount(page)).toBe(1);
+
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-020: Sharp edge hit-testing (diagonal)
+  test("sharp diagonal edge is hittable along line @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    await runEffectsSequential([
+      () => createTextNode(page, canvasEl, 420, 180),
+      () => createTextNode(page, canvasEl, 820, 480),
+    ]);
+    await expectNodeCount(page, 2);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+    // Open properties panel to access arrow type selector
+    await runEffect(() =>
+      page.locator('[data-testid="panel-props-toggle"]').first().click(),
+    );
+    // Select sharp arrow type
+    await runEffect(() =>
+      page.locator('select[data-property="arrow-type"]').selectOption("sharp"),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 2) {
+      throw new Error("expected two nodes for sharp edge test");
+    }
+    const { left, right } = extrema(centers);
+
+    await edgeClick(page, left.x, left.y);
+    await edgeClick(page, right.x, right.y);
+    await expectEdgeCount(page, 1);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    // Sharp routing creates a straight diagonal line
+    // Click at various points along the diagonal
+    const midX = (left.x + right.x) / 2;
+    const midY = (left.y + right.y) / 2;
+
+    await edgeClick(page, midX, midY);
+    expect(await selectedCount(page)).toBe(1);
+
+    // Click at 1/4 point
+    const quarterX = left.x + (right.x - left.x) * 0.25;
+    const quarterY = left.y + (right.y - left.y) * 0.25;
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, quarterX, quarterY);
+    expect(await selectedCount(page)).toBe(1);
+
+    // Click at 3/4 point
+    const threeQuarterX = left.x + (right.x - left.x) * 0.75;
+    const threeQuarterY = left.y + (right.y - left.y) * 0.75;
+    await clickCanvasWhitespace(page, canvasEl);
+    await edgeClick(page, threeQuarterX, threeQuarterY);
+    expect(await selectedCount(page)).toBe(1);
+
+    expect(pageErrors).toHaveLength(0);
+  });
 });
