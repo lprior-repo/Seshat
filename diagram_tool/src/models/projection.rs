@@ -3654,4 +3654,1179 @@ mod tests {
 
         assert!(result.is_ok());
     }
+
+    // =============================================================================
+    // BDD Tests for Projection Replay Edge Cases (bd-2b3)
+    // =============================================================================
+
+    // -------------------------------------------------------------------------
+    // Empty Event Stream Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given empty event stream, when replaying, then returns empty projection.
+    /// Scenario: Empty event log at initialization
+    #[test]
+    fn bdd_given_empty_event_stream_when_replaying_then_returns_empty_projection() {
+        let events: &[EventRecord] = &[];
+
+        let result = replay_events(events);
+
+        assert!(result.is_ok(), "Empty stream should produce empty projection");
+        let projection = result.unwrap();
+        assert_eq!(projection.revision, 0, "Revision should be 0");
+        assert!(projection.nodes.is_empty(), "Nodes should be empty");
+        assert!(projection.edges.is_empty(), "Edges should be empty");
+        assert!(
+            projection.author_priority.is_empty(),
+            "Author priority should be empty"
+        );
+    }
+
+    /// BDD: Given empty event stream, when replaying from non-empty initial state, then returns
+    /// initial state unchanged.
+    #[test]
+    fn bdd_given_empty_stream_when_replaying_from_nonempty_state_then_state_unchanged() {
+        let mut initial = DiagramProjection::empty();
+        initial.revision = 5;
+        initial.nodes = initial.nodes.update(
+            NodeId::new("existing-node".to_string()),
+            Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Existing".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        let result = replay_events_from(initial.clone(), &[]);
+
+        assert!(result.is_ok());
+        let final_projection = result.unwrap();
+        assert_eq!(
+            final_projection.revision,
+            5,
+            "Revision should remain unchanged"
+        );
+        assert_eq!(
+            final_projection.nodes.len(),
+            1,
+            "Nodes should remain unchanged"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // Non-Sequential Revision Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given events with revision gap, when replaying, then returns InvariantViolation.
+    /// Scenario: Event log corruption or missing events
+    #[test]
+    fn bdd_given_revision_gap_when_replaying_then_returns_invariant_violation() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 1".to_string(),
+                },
+                true,
+            ),
+            // Revision 1 is missing - gap!
+            make_event(
+                "op-2",
+                2, // Should be 1
+                DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 2".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err(), "Revision gap should cause error");
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(
+                    msg.contains("revision gap"),
+                    "Error should mention revision gap: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected InvariantViolation for revision gap"),
+        }
+    }
+
+    /// BDD: Given events with non-monotonic revision, when replaying, then returns
+    /// InvariantViolation.
+    #[test]
+    fn bdd_given_non_monotonic_revision_when_replaying_then_returns_invariant_violation() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 1".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 2".to_string(),
+                },
+                true,
+            ),
+            // Revision goes backwards!
+            make_event(
+                "op-3",
+                0, // Should be 2
+                DomainOp::NodeMove {
+                    id: "node-1".to_string(),
+                    x: 50.0,
+                    y: 50.0,
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err(), "Non-monotonic revision should cause error");
+        assert!(
+            matches!(result, Err(ReplayError::InvariantViolation(_))),
+            "Expected InvariantViolation"
+        );
+    }
+
+    /// BDD: Given events starting at wrong revision, when replaying from initial state, then
+    /// returns InvariantViolation.
+    #[test]
+    fn bdd_given_wrong_start_revision_when_replaying_then_returns_invariant_violation() {
+        let initial = DiagramProjection::with_revision(10);
+
+        // Events start at revision 0, but initial state is at revision 10
+        let events = [make_event(
+            "op-1",
+            0, // Should be 10
+            DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 1".to_string(),
+            },
+            true,
+        )];
+
+        let result = replay_events_from(initial, &events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(
+                    msg.contains("revision gap"),
+                    "Error should mention revision gap: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected InvariantViolation"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Duplicate Operation ID Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given duplicate operation ID, when replaying, then returns InvariantViolation.
+    /// Scenario: Idempotency check - same op_id should not produce duplicate mutations
+    #[test]
+    fn bdd_given_duplicate_op_id_when_replaying_then_returns_invariant_violation() {
+        let events = [
+            make_event(
+                "duplicate-op-id", // Same op_id
+                0,
+                DomainOp::NodeAdd {
+                    id: "node-1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 1".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "duplicate-op-id", // Same op_id!
+                1,
+                DomainOp::NodeAdd {
+                    id: "node-2".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 2".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_events(&events);
+
+        assert!(
+            result.is_err(),
+            "Duplicate op_id should cause InvariantViolation"
+        );
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(
+                    msg.contains("duplicate op_id"),
+                    "Error should mention duplicate op_id: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected InvariantViolation for duplicate op_id"),
+        }
+    }
+
+    /// BDD: Given same op_id in pre-populated author_priority, when applying event, then returns
+    /// InvariantViolation.
+    #[test]
+    fn bdd_given_preexisting_op_id_when_applying_event_then_returns_invariant_violation() {
+        let mut state = DiagramProjection::empty();
+        // Pre-populate author_priority to simulate replay of already-seen op_id
+        state
+            .author_priority
+            .insert("existing-op-id".to_string(), true);
+
+        let event = make_event(
+            "existing-op-id", // Already in author_priority
+            0,
+            DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Node 1".to_string(),
+            },
+            true,
+        );
+
+        let result = apply_event(state, &event);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("duplicate op_id"));
+            }
+            _ => panic!("Expected InvariantViolation"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // CycleViolation Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given cycle-creating edge with Deny policy, when applying operation, then returns
+    /// CycleViolation.
+    #[test]
+    fn bdd_given_cycle_creating_edge_with_deny_policy_when_applying_then_returns_cycle_violation() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Set up: a -> b
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+        ];
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Try to create cycle: b -> a
+        let cyclic_op = DomainOp::EdgeConnect {
+            id: "e2".to_string(),
+            source: "b".to_string(),
+            target: "a".to_string(),
+        };
+
+        let result = apply_policy_op(projection, &cyclic_op);
+
+        assert!(result.is_err(), "Cycle creation should fail with Deny policy");
+        match result {
+            Err(ReplayError::CycleViolation(msg)) => {
+                assert!(
+                    msg.contains("Cycle detected"),
+                    "Error should mention cycle: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected CycleViolation"),
+        }
+    }
+
+    /// BDD: Given self-loop edge with Deny policy, when applying operation, then returns
+    /// CycleViolation.
+    #[test]
+    fn bdd_given_self_loop_with_deny_policy_when_applying_then_returns_cycle_violation() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Set up single node
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::NodeAdd {
+                id: "a".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "A".to_string(),
+            },
+            true,
+        )];
+        projection = replay_events_from(projection, &events).unwrap();
+
+        // Try to create self-loop
+        let self_loop_op = DomainOp::EdgeConnect {
+            id: "e1".to_string(),
+            source: "a".to_string(),
+            target: "a".to_string(), // Self-loop
+        };
+
+        let result = apply_policy_op(projection, &self_loop_op);
+
+        assert!(result.is_err(), "Self-loop should be detected as cycle");
+        match result {
+            Err(ReplayError::CycleViolation(msg)) => {
+                assert!(msg.contains("Cycle detected"));
+            }
+            _ => panic!("Expected CycleViolation for self-loop"),
+        }
+    }
+
+    /// BDD: Given complex cycle in larger graph, when enforcing policy, then returns
+    /// CycleViolation.
+    #[test]
+    fn bdd_given_complex_cycle_in_larger_graph_when_enforcing_then_returns_cycle_violation() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
+
+        // Create graph: a -> b -> c -> d -> b (creates cycle back to b)
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::NodeAdd {
+                    id: "c".to_string(),
+                    x: 200.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "C".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::NodeAdd {
+                    id: "d".to_string(),
+                    x: 300.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "D".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-5",
+                4,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-6",
+                5,
+                DomainOp::EdgeConnect {
+                    id: "e2".to_string(),
+                    source: "b".to_string(),
+                    target: "c".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-7",
+                6,
+                DomainOp::EdgeConnect {
+                    id: "e3".to_string(),
+                    source: "c".to_string(),
+                    target: "d".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-8",
+                7,
+                DomainOp::EdgeConnect {
+                    id: "e4".to_string(),
+                    source: "d".to_string(),
+                    target: "b".to_string(), // Creates cycle
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        let result = enforce_cycle_policy(&projection);
+
+        assert!(result.is_err(), "Complex cycle should be detected");
+        match result {
+            Err(ReplayError::CycleViolation(msg)) => {
+                assert!(msg.contains("Cycle detected"));
+            }
+            _ => panic!("Expected CycleViolation"),
+        }
+    }
+
+    /// BDD: Given cycle with Allow policy, when enforcing policy, then succeeds.
+    #[test]
+    fn bdd_given_cycle_with_allow_policy_when_enforcing_then_succeeds() {
+        let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Allow);
+
+        // Create cycle: a -> b -> a
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "e2".to_string(),
+                    source: "b".to_string(),
+                    target: "a".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        projection = replay_events_from(projection, &events).unwrap();
+
+        let result = enforce_cycle_policy(&projection);
+
+        assert!(
+            result.is_ok(),
+            "Allow policy should permit cycles: {:?}",
+            result.err()
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // InvariantViolation Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given duplicate node ID, when replaying, then returns InvariantViolation.
+    #[test]
+    fn bdd_given_duplicate_node_id_when_replaying_then_returns_invariant_violation() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "same-id".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "First".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "same-id".to_string(), // Duplicate!
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Second".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(
+                    msg.contains("duplicate node ID"),
+                    "Error should mention duplicate: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected InvariantViolation for duplicate node ID"),
+        }
+    }
+
+    /// BDD: Given edge to nonexistent source, when replaying, then returns InvariantViolation.
+    #[test]
+    fn bdd_given_edge_to_nonexistent_source_when_replaying_then_returns_invariant_violation() {
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::EdgeConnect {
+                id: "edge-1".to_string(),
+                source: "nonexistent".to_string(),
+                target: "also-nonexistent".to_string(),
+            },
+            true,
+        )];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("not found"));
+            }
+            _ => panic!("Expected InvariantViolation"),
+        }
+    }
+
+    /// BDD: Given node move on nonexistent node, when replaying, then returns InvariantViolation.
+    #[test]
+    fn bdd_given_node_move_on_nonexistent_node_when_replaying_then_returns_invariant_violation() {
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::NodeMove {
+                id: "nonexistent".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            true,
+        )];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("not found"));
+            }
+            _ => panic!("Expected InvariantViolation"),
+        }
+    }
+
+    /// BDD: Given edge disconnect on nonexistent edge, when replaying, then returns
+    /// InvariantViolation.
+    #[test]
+    fn bdd_given_edge_disconnect_nonexistent_when_replaying_then_returns_invariant_violation() {
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::EdgeDisconnect {
+                id: "nonexistent-edge".to_string(),
+            },
+            true,
+        )];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("not found"));
+            }
+            _ => panic!("Expected InvariantViolation"),
+        }
+    }
+
+    /// BDD: Given node delete on nonexistent node, when replaying, then returns InvariantViolation.
+    #[test]
+    fn bdd_given_node_delete_nonexistent_when_replaying_then_returns_invariant_violation() {
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::NodeDelete {
+                id: "nonexistent".to_string(),
+            },
+            true,
+        )];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("not found"));
+            }
+            _ => panic!("Expected InvariantViolation"),
+        }
+    }
+
+    /// BDD: Given duplicate edge ID, when replaying, then returns InvariantViolation.
+    #[test]
+    fn bdd_given_duplicate_edge_id_when_replaying_then_returns_invariant_violation() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "a".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "A".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "b".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "B".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "edge-1".to_string(),
+                    source: "a".to_string(),
+                    target: "b".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-4",
+                3,
+                DomainOp::EdgeConnect {
+                    id: "edge-1".to_string(), // Duplicate!
+                    source: "b".to_string(),
+                    target: "a".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(msg.contains("duplicate edge ID"));
+            }
+            _ => panic!("Expected InvariantViolation for duplicate edge ID"),
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Revision Increment Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given successful operation, when applying, then revision increments by exactly one.
+    #[test]
+    fn bdd_given_successful_operation_when_applying_then_revision_increments_by_one() {
+        let initial = DiagramProjection::empty();
+
+        let event = make_event(
+            "op-1",
+            0,
+            DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            true,
+        );
+
+        let result = apply_event(initial, &event);
+
+        assert!(result.is_ok());
+        let projection = result.unwrap();
+        assert_eq!(
+            projection.revision, 1,
+            "Revision should increment by exactly 1"
+        );
+    }
+
+    /// BDD: Given multiple operations, when replaying, then revision increments sequentially.
+    #[test]
+    fn bdd_given_multiple_operations_when_replaying_then_revision_increments_sequentially() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "n1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "N1".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "n2".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "N2".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::EdgeConnect {
+                    id: "e1".to_string(),
+                    source: "n1".to_string(),
+                    target: "n2".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result = replay_events(&events);
+
+        assert!(result.is_ok());
+        let projection = result.unwrap();
+        assert_eq!(projection.revision, 3, "Revision should be 3 after 3 events");
+    }
+
+    /// BDD: Given failed operation, when applying, then state is unchanged (atomicity).
+    #[test]
+    fn bdd_given_failed_operation_when_applying_then_state_unchanged() {
+        let initial = DiagramProjection::empty();
+
+        // Try to move a non-existent node
+        let event = make_event(
+            "op-1",
+            0,
+            DomainOp::NodeMove {
+                id: "nonexistent".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            true,
+        );
+
+        let result = apply_event(initial.clone(), &event);
+
+        assert!(result.is_err(), "Operation should fail");
+
+        // Verify the initial state is unchanged (no partial mutation)
+        assert_eq!(initial.revision, 0);
+        assert!(initial.nodes.is_empty());
+    }
+
+    // -------------------------------------------------------------------------
+    // Determinism Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given same events multiple times, when replaying, then produces identical projections.
+    #[test]
+    fn bdd_given_same_events_multiple_times_when_replaying_then_produces_identical_projections() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "n1".to_string(),
+                    x: 10.5,
+                    y: 20.3,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Node 1".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeMove {
+                    id: "n1".to_string(),
+                    x: 100.0,
+                    y: 200.0,
+                },
+                false,
+            ),
+            make_event(
+                "op-3",
+                2,
+                DomainOp::NodeAdd {
+                    id: "n2".to_string(),
+                    x: 50.0,
+                    y: 50.0,
+                    width: 100.0,
+                    height: 60.0,
+                    label: "Node 2".to_string(),
+                },
+                true,
+            ),
+        ];
+
+        let result1 = replay_events(&events).unwrap();
+        let result2 = replay_events(&events).unwrap();
+        let result3 = replay_events(&events).unwrap();
+
+        assert_eq!(result1, result2, "First and second replay should be equal");
+        assert_eq!(result2, result3, "Second and third replay should be equal");
+    }
+
+    /// BDD: Given same events, when hashing multiple times, then produces identical hashes.
+    #[test]
+    fn bdd_given_same_events_when_hashing_multiple_times_then_produces_identical_hashes() {
+        let events = [
+            make_event(
+                "op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "n1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "N1".to_string(),
+                },
+                true,
+            ),
+            make_event(
+                "op-2",
+                1,
+                DomainOp::NodeAdd {
+                    id: "n2".to_string(),
+                    x: 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "N2".to_string(),
+                },
+                false,
+            ),
+        ];
+
+        let projection = replay_events(&events).unwrap();
+
+        let hash1 = projection_hash(&projection).unwrap();
+        let hash2 = projection_hash(&projection).unwrap();
+        let hash3 = projection_hash(&projection).unwrap();
+
+        assert_eq!(hash1, hash2, "Hashes should be deterministic");
+        assert_eq!(hash2, hash3, "Hashes should be deterministic");
+    }
+
+    // -------------------------------------------------------------------------
+    // Author Priority Edge Cases
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given human and AI operations, when replaying, then author_priority correctly tracks
+    /// both.
+    #[test]
+    fn bdd_given_human_and_ai_operations_when_replaying_then_priority_correctly_tracks() {
+        let events = [
+            make_event(
+                "human-op-1",
+                0,
+                DomainOp::NodeAdd {
+                    id: "n1".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: "Human Node".to_string(),
+                },
+                true, // Human
+            ),
+            make_event(
+                "ai-op-1",
+                1,
+                DomainOp::NodeMove {
+                    id: "n1".to_string(),
+                    x: 100.0,
+                    y: 100.0,
+                },
+                false, // AI
+            ),
+            make_event(
+                "human-op-2",
+                2,
+                DomainOp::NodeMove {
+                    id: "n1".to_string(),
+                    x: 200.0,
+                    y: 200.0,
+                },
+                true, // Human
+            ),
+        ];
+
+        let projection = replay_events(&events).unwrap();
+
+        assert_eq!(
+            projection.author_priority.get("human-op-1"),
+            Some(&true),
+            "Human op should be tracked as human"
+        );
+        assert_eq!(
+            projection.author_priority.get("ai-op-1"),
+            Some(&false),
+            "AI op should be tracked as non-human"
+        );
+        assert_eq!(
+            projection.author_priority.get("human-op-2"),
+            Some(&true),
+            "Second human op should be tracked as human"
+        );
+    }
+
+    /// BDD: Given large event stream, when replaying, then all author priorities are tracked.
+    #[test]
+    fn bdd_given_large_event_stream_when_replaying_then_all_priorities_tracked() {
+        let mut events = Vec::new();
+        for i in 0..100 {
+            events.push(make_event(
+                &format!("op-{}", i),
+                i as u64,
+                DomainOp::NodeAdd {
+                    id: format!("node-{}", i),
+                    x: (i * 10) as f64,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: format!("Node {}", i),
+                },
+                i % 2 == 0, // Alternating human/AI
+            ));
+        }
+
+        let projection = replay_events(&events).unwrap();
+
+        assert_eq!(
+            projection.author_priority.len(),
+            100,
+            "All 100 operations should have priority entries"
+        );
+
+        // Verify alternating pattern
+        for i in 0..100 {
+            let expected_human = i % 2 == 0;
+            let actual = projection.author_priority.get(&format!("op-{}", i));
+            assert_eq!(
+                actual,
+                Some(&expected_human),
+                "op-{} should have is_human={}",
+                i,
+                expected_human
+            );
+        }
+    }
+
+    // -------------------------------------------------------------------------
+    // Error Message Quality Tests
+    // -------------------------------------------------------------------------
+
+    /// BDD: Given error condition, when returning error, then error message is descriptive.
+    #[test]
+    fn bdd_given_error_condition_when_returning_error_then_message_is_descriptive() {
+        // Test various error conditions have meaningful messages
+
+        // Revision gap
+        let events = [make_event(
+            "op-1",
+            99, // Wrong revision
+            DomainOp::NodeAdd {
+                id: "n1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "N1".to_string(),
+            },
+            true,
+        )];
+        match replay_events(&events) {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(
+                    msg.contains("revision") || msg.contains("gap"),
+                    "Error should be descriptive about revision: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected error"),
+        }
+
+        // Node not found
+        let events = [make_event(
+            "op-1",
+            0,
+            DomainOp::NodeMove {
+                id: "missing".to_string(),
+                x: 0.0,
+                y: 0.0,
+            },
+            true,
+        )];
+        match replay_events(&events) {
+            Err(ReplayError::InvariantViolation(msg)) => {
+                assert!(
+                    msg.contains("not found") || msg.contains("missing"),
+                    "Error should be descriptive about missing node: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected error"),
+        }
+    }
 }

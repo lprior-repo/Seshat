@@ -486,6 +486,9 @@ fn generate_canonical_events(projection: &DiagramProjection) -> Vec<serde_json::
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::document::{
+        ArrowType, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
+    };
     use crate::models::envelope::{Author as EnvelopeAuthor, DomainOp, EventEnvelope};
     use crate::store;
     use tempfile::TempDir;
@@ -1001,6 +1004,860 @@ mod tests {
         assert!(
             result.is_ok(),
             "Export should work with read-only connection"
+        );
+    }
+
+    // =============================================================================
+    // BDD Tests for Import/Export Edge Cases (bd-2ca)
+    // =============================================================================
+
+    // -------------------------------------------------------------------------
+    // 1. Serialization Errors
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn given_truncated_json_when_importing_then_returns_serialization_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        // Truncated JSON (cut off mid-string)
+        let input = r#"{"metadata": {"name": "test", "revision"#;
+
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        assert!(
+            result.is_err(),
+            "Truncated JSON should return serialization error"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ExportError::Serialization(_)),
+            "Expected Serialization error, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn given_null_in_required_field_when_importing_then_returns_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        // JSON with null where a required field should be
+        let input = r#"{
+            "metadata": {"name": null, "revision": 0, "version": 2},
+            "data": {"version": 1, "revision": 0, "nodes": {}, "edges": {}, "author_priority": {}},
+            "events": []
+        }"#;
+
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        // Should fail - null in required field
+        assert!(result.is_err(), "Null in required field should return error");
+    }
+
+    #[test]
+    fn given_malformed_json_structure_when_importing_then_returns_serialization_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        // Valid JSON but wrong structure (array instead of object)
+        let input = r#"["not", "an", "object"]"#;
+
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        assert!(
+            result.is_err(),
+            "Malformed JSON structure should return error"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // 2. Large Diagrams
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn given_1000_nodes_when_exporting_then_succeeds_within_time_limit() {
+        use std::time::Instant;
+
+        let mut projection = DiagramProjection::empty();
+
+        // Create 1000 nodes
+        for i in 0..1000 {
+            let node_id = NodeId::new(format!("node-{}", i));
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: format!("Node {}", i),
+                x: OrderedFloat((i % 100) as f64 * 100.0),
+                y: OrderedFloat((i / 100) as f64 * 100.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            projection.nodes.insert(node_id, node);
+        }
+
+        let start = Instant::now();
+        let result = export_projection_json(&projection);
+        let duration = start.elapsed();
+
+        assert!(
+            result.is_ok(),
+            "Export of 1000 nodes should succeed: {:?}",
+            result.err()
+        );
+        assert!(
+            duration.as_secs() < 5,
+            "Export should complete within 5 seconds, took {:?}",
+            duration
+        );
+
+        let json = result.unwrap();
+        assert!(
+            json.contains("node-0"),
+            "JSON should contain first node"
+        );
+        assert!(
+            json.contains("node-999"),
+            "JSON should contain last node"
+        );
+    }
+
+    #[test]
+    fn given_1000_edges_when_exporting_then_succeeds_within_time_limit() {
+        use std::time::Instant;
+
+        let mut projection = DiagramProjection::empty();
+
+        // Create nodes for edges
+        for i in 0..1001 {
+            let node_id = NodeId::new(format!("node-{}", i));
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: format!("Node {}", i),
+                x: OrderedFloat((i % 50) as f64 * 100.0),
+                y: OrderedFloat((i / 50) as f64 * 100.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            projection.nodes.insert(node_id, node);
+        }
+
+        // Create 1000 edges
+        for i in 0..1000 {
+            let edge_id = EdgeId::new(format!("edge-{}", i));
+            let edge = Edge {
+                source: NodeId::new(format!("node-{}", i)),
+                target: NodeId::new(format!("node-{}", i + 1)),
+                label: format!("Edge {}", i),
+                style: crate::models::document::EdgeStyle::Solid,
+                arrow_type: ArrowType::Default,
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                font_size: None,
+            };
+            projection.edges.insert(edge_id, edge);
+        }
+
+        let start = Instant::now();
+        let result = export_projection_json(&projection);
+        let duration = start.elapsed();
+
+        assert!(
+            result.is_ok(),
+            "Export of 1000 edges should succeed: {:?}",
+            result.err()
+        );
+        assert!(
+            duration.as_secs() < 5,
+            "Export should complete within 5 seconds, took {:?}",
+            duration
+        );
+    }
+
+    #[test]
+    fn given_large_diagram_when_importing_then_all_events_replay_correctly() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create a database with many events
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add 100 node events
+        for i in 0..100 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{}", i),
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{}", i),
+                    x: (i % 10) as f64 * 100.0,
+                    y: (i / 10) as f64 * 100.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: format!("Node {}", i),
+                },
+                author: EnvelopeAuthor {
+                    id: "human-user".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1700000000 + i,
+            };
+            store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+        }
+
+        // Export
+        let export = export_diagram_json(&bootstrap.conn).unwrap();
+        let export_json = serde_json::to_string(&export).unwrap();
+
+        // Create a fresh database for import
+        let temp_dir2 = TempDir::new().unwrap();
+        let db_path2 = temp_dir2.path().join("test.db");
+        let bootstrap2 = store::bootstrap_store(&db_path2).unwrap();
+        let mut conn2 = bootstrap2.conn;
+
+        // Import
+        let actor = Author {
+            id: "test-user".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn2, &export_json, actor);
+
+        assert!(
+            result.is_ok(),
+            "Import of large diagram should succeed: {:?}",
+            result.err()
+        );
+        let import_result = result.unwrap();
+        assert!(
+            import_result.events_generated > 0,
+            "Should have imported events"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // 3. Unicode Handling
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn given_emoji_labels_when_exporting_then_roundtrips_correctly() {
+        let mut projection = DiagramProjection::empty();
+
+        let emoji_labels = [
+            "Node with emoji: \u{1F600}",  // grinning face
+            "\u{1F4BB} Laptop",            // laptop
+            "\u{1F30D} World \u{1F31F}",   // world + star
+        ];
+
+        for (i, label) in emoji_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("emoji-node-{}", i));
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: label.to_string(),
+                x: OrderedFloat(i as f64 * 100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            projection.nodes.insert(node_id, node);
+        }
+
+        let json = export_projection_json(&projection).unwrap();
+
+        // Verify emoji are in output
+        for label in &emoji_labels {
+            assert!(
+                json.contains(label),
+                "JSON should contain emoji label: {}",
+                label
+            );
+        }
+
+        // Parse back and verify
+        let parsed: DiagramProjectionExport = serde_json::from_str(&json).unwrap();
+        for (i, expected_label) in emoji_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("emoji-node-{}", i));
+            let node = parsed.nodes.get(&node_id);
+            assert!(
+                node.is_some(),
+                "Node {} should exist in parsed export",
+                i
+            );
+            assert_eq!(
+                node.unwrap().label,
+                *expected_label,
+                "Label should roundtrip correctly for emoji"
+            );
+        }
+    }
+
+    #[test]
+    fn given_right_to_left_text_when_exporting_then_roundtrips_correctly() {
+        let mut projection = DiagramProjection::empty();
+
+        let rtl_labels = [
+            "\u{0627}\u{0644}\u{0639}\u{0631}\u{0628}\u{064A}\u{0629}", // Arabic
+            "\u{05E2}\u{05D1}\u{05E8}\u{05D9}\u{05EA}",                   // Hebrew
+        ];
+
+        for (i, label) in rtl_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("rtl-node-{}", i));
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: label.to_string(),
+                x: OrderedFloat(i as f64 * 100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            projection.nodes.insert(node_id, node);
+        }
+
+        let json = export_projection_json(&projection).unwrap();
+
+        // Parse back and verify
+        let parsed: DiagramProjectionExport = serde_json::from_str(&json).unwrap();
+        for (i, expected_label) in rtl_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("rtl-node-{}", i));
+            let node = parsed.nodes.get(&node_id).unwrap();
+            assert_eq!(
+                node.label,
+                *expected_label,
+                "RTL label should roundtrip correctly"
+            );
+        }
+    }
+
+    #[test]
+    fn given_zero_width_characters_when_exporting_then_roundtrips_correctly() {
+        let mut projection = DiagramProjection::empty();
+
+        // Labels with zero-width joiner and other invisible characters
+        let zwi_labels = [
+            "a\u{200D}b",          // ZWJ between a and b
+            "x\u{200B}y",          // Zero-width space
+            "\u{FE0F}",            // Variation selector
+        ];
+
+        for (i, label) in zwi_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("zwi-node-{}", i));
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: label.to_string(),
+                x: OrderedFloat(i as f64 * 100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            projection.nodes.insert(node_id, node);
+        }
+
+        let json = export_projection_json(&projection).unwrap();
+
+        // Parse back and verify
+        let parsed: DiagramProjectionExport = serde_json::from_str(&json).unwrap();
+        for (i, expected_label) in zwi_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("zwi-node-{}", i));
+            let node = parsed.nodes.get(&node_id).unwrap();
+            assert_eq!(
+                node.label,
+                *expected_label,
+                "Zero-width char label should roundtrip correctly"
+            );
+        }
+    }
+
+    #[test]
+    fn given_mixed_script_labels_when_exporting_then_roundtrips_correctly() {
+        let mut projection = DiagramProjection::empty();
+
+        let mixed_labels: [&str; 2] = [
+            "\u{4E2D}\u{6587}English\u{0420}\u{0443}\u{0441}\u{0441}\u{043A}\u{0438}\u{0439}", // Chinese + English + Russian
+            "\u{65E5}\u{672C}\u{8A9E}\u{03B1}\u{03B2}\u{03B3}", // Japanese + Greek
+        ];
+
+        for (i, label) in mixed_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("mixed-node-{}", i));
+            let node = Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: label.to_string(),
+                x: OrderedFloat(i as f64 * 100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            projection.nodes.insert(node_id, node);
+        }
+
+        let json = export_projection_json(&projection).unwrap();
+
+        // Parse back and verify
+        let parsed: DiagramProjectionExport = serde_json::from_str(&json).unwrap();
+        for (i, expected_label) in mixed_labels.iter().enumerate() {
+            let node_id = NodeId::new(format!("mixed-node-{}", i));
+            let node = parsed.nodes.get(&node_id).unwrap();
+            assert_eq!(
+                node.label,
+                *expected_label,
+                "Mixed script label should roundtrip correctly"
+            );
+        }
+    }
+
+    #[test]
+    fn given_unicode_in_edge_labels_when_exporting_then_roundtrips_correctly() {
+        let mut projection = DiagramProjection::empty();
+
+        // Create two nodes
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+
+        projection.nodes.insert(
+            n1.clone(),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "A".to_string(),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        projection.nodes.insert(
+            n2.clone(),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "B".to_string(),
+                x: OrderedFloat(100.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(80.0),
+                height: OrderedFloat(40.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+
+        let edge_label = "\u{2192} connects \u{1F517}"; // arrow + link emoji
+        projection.edges.insert(
+            EdgeId::new("e1".to_string()),
+            Edge {
+                source: n1,
+                target: n2,
+                label: edge_label.to_string(),
+                style: crate::models::document::EdgeStyle::Solid,
+                arrow_type: ArrowType::Default,
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: vec![],
+                tags: vec![],
+                metadata: im::HashMap::new(),
+                font_size: None,
+            },
+        );
+
+        let json = export_projection_json(&projection).unwrap();
+
+        // Verify edge label is in output
+        assert!(
+            json.contains(edge_label),
+            "JSON should contain unicode edge label"
+        );
+
+        // Parse back and verify
+        let parsed: DiagramProjectionExport = serde_json::from_str(&json).unwrap();
+        let edge = parsed.edges.get(&EdgeId::new("e1".to_string())).unwrap();
+        assert_eq!(
+            edge.label,
+            edge_label,
+            "Unicode edge label should roundtrip correctly"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // 4. Schema Validation Failures (via validate_export_schema)
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn given_negative_dimensions_in_json_when_validating_then_schema_fails() {
+        // This tests that schema validation catches negative dimensions
+        // Note: This requires going through the full export validation path
+        let json = r#"{
+            "version": 2,
+            "revision": 1,
+            "nodes": {
+                "n1": {
+                    "kind": "node",
+                    "icon": "",
+                    "label": "Bad",
+                    "x": 0.0,
+                    "y": 0.0,
+                    "width": -10.0,
+                    "height": 40.0,
+                    "locked": false,
+                    "parent": null,
+                    "dag_rank": null,
+                    "tags": [],
+                    "metadata": {},
+                    "z_index": 0,
+                    "style": null,
+                    "collapsed": null
+                }
+            },
+            "edges": {}
+        }"#;
+
+        let result = validate_export_schema(json);
+        assert!(
+            result.is_err(),
+            "Schema validation should fail for negative width"
+        );
+    }
+
+    #[test]
+    fn given_invalid_color_format_in_json_when_validating_then_schema_fails() {
+        // JSON with invalid color format in edge
+        let json = r#"{
+            "version": 2,
+            "revision": 1,
+            "nodes": {
+                "n1": {"kind": "node", "icon": "", "label": "A", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": null, "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null},
+                "n2": {"kind": "node", "icon": "", "label": "B", "x": 100.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": null, "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null}
+            },
+            "edges": {
+                "e1": {
+                    "source": "n1",
+                    "target": "n2",
+                    "label": "",
+                    "style": "solid",
+                    "arrow_type": "default",
+                    "label_offset_t": 0.5,
+                    "color": "not-a-color",
+                    "thickness": 1.5,
+                    "directed": true,
+                    "bend_points": [],
+                    "tags": [],
+                    "metadata": {}
+                }
+            }
+        }"#;
+
+        let result = validate_export_schema(json);
+        assert!(
+            result.is_err(),
+            "Schema validation should fail for invalid color format"
+        );
+    }
+
+    #[test]
+    fn given_orphan_edge_references_in_json_when_validating_then_schema_fails() {
+        // JSON with edge referencing non-existent node
+        let json = r#"{
+            "version": 2,
+            "revision": 1,
+            "nodes": {
+                "n1": {"kind": "node", "icon": "", "label": "A", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": null, "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null}
+            },
+            "edges": {
+                "e1": {
+                    "source": "n1",
+                    "target": "nonexistent",
+                    "label": "",
+                    "style": "solid",
+                    "arrow_type": "default",
+                    "label_offset_t": 0.5,
+                    "color": null,
+                    "thickness": 1.5,
+                    "directed": true,
+                    "bend_points": [],
+                    "tags": [],
+                    "metadata": {}
+                }
+            }
+        }"#;
+
+        let result = validate_export_schema(json);
+        assert!(
+            result.is_err(),
+            "Schema validation should fail for dangling edge reference"
+        );
+    }
+
+    #[test]
+    fn given_invalid_label_offset_in_json_when_validating_then_schema_fails() {
+        // JSON with label_offset_t > 1.0
+        let json = r#"{
+            "version": 2,
+            "revision": 1,
+            "nodes": {
+                "n1": {"kind": "node", "icon": "", "label": "A", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": null, "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null},
+                "n2": {"kind": "node", "icon": "", "label": "B", "x": 100.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": null, "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null}
+            },
+            "edges": {
+                "e1": {
+                    "source": "n1",
+                    "target": "n2",
+                    "label": "",
+                    "style": "solid",
+                    "arrow_type": "default",
+                    "label_offset_t": 2.5,
+                    "color": null,
+                    "thickness": 1.5,
+                    "directed": true,
+                    "bend_points": [],
+                    "tags": [],
+                    "metadata": {}
+                }
+            }
+        }"#;
+
+        let result = validate_export_schema(json);
+        assert!(
+            result.is_err(),
+            "Schema validation should fail for label_offset_t > 1.0"
+        );
+    }
+
+    #[test]
+    fn given_non_subgraph_parent_in_json_when_validating_then_schema_fails() {
+        // JSON with node parent that is a regular node, not a subgraph
+        let json = r#"{
+            "version": 2,
+            "revision": 1,
+            "nodes": {
+                "n1": {"kind": "node", "icon": "", "label": "Parent", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": null, "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null},
+                "n2": {"kind": "node", "icon": "", "label": "Child", "x": 0.0, "y": 0.0, "width": 80.0, "height": 40.0, "locked": false, "parent": "n1", "dag_rank": null, "tags": [], "metadata": {}, "z_index": 0, "style": null, "collapsed": null}
+            },
+            "edges": {}
+        }"#;
+
+        let result = validate_export_schema(json);
+        assert!(
+            result.is_err(),
+            "Schema validation should fail when parent is not a subgraph"
+        );
+    }
+
+    // -------------------------------------------------------------------------
+    // 5. Version Mismatches
+    // -------------------------------------------------------------------------
+
+    #[test]
+    fn given_future_schema_version_when_importing_then_returns_version_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        let input = r#"{
+            "metadata": {"name": "test", "revision": 0, "version": 999},
+            "data": {"version": 1, "revision": 0, "nodes": {}, "edges": {}, "author_priority": {}},
+            "events": []
+        }"#;
+
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        assert!(
+            result.is_err(),
+            "Future schema version should return error"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ExportError::InvalidSchema(_)),
+            "Expected InvalidSchema error, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn given_future_schema_version_when_validating_export_then_returns_version_error() {
+        let json = r#"{
+            "version": 999,
+            "revision": 0,
+            "nodes": {},
+            "edges": {}
+        }"#;
+
+        let result = validate_export_schema(json);
+
+        assert!(
+            result.is_err(),
+            "Future schema version validation should fail"
+        );
+        let err = result.unwrap_err();
+        assert!(
+            matches!(err, ExportError::InvalidSchema(_)),
+            "Expected InvalidSchema error, got: {:?}",
+            err
+        );
+    }
+
+    #[test]
+    fn given_missing_version_field_when_importing_then_returns_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut conn = bootstrap.conn;
+
+        // JSON missing version field in metadata
+        let input = r#"{
+            "metadata": {"name": "test", "revision": 0},
+            "data": {"version": 1, "revision": 0, "nodes": {}, "edges": {}, "author_priority": {}},
+            "events": []
+        }"#;
+
+        let actor = Author {
+            id: "test".to_string(),
+            is_human: true,
+        };
+
+        let result = import_diagram_json(&mut conn, input, actor);
+
+        // Should fail - missing required field
+        assert!(
+            result.is_err(),
+            "Missing version field should return error"
+        );
+    }
+
+    #[test]
+    fn given_version_1_export_when_validating_then_current_version_works() {
+        // Version 1 is less than current (2), so it should work
+        let json = r#"{
+            "version": 1,
+            "revision": 0,
+            "nodes": {},
+            "edges": {}
+        }"#;
+
+        let result = validate_export_schema(json);
+
+        // Version 1 is acceptable (less than current version 2)
+        assert!(
+            result.is_ok(),
+            "Version 1 should be accepted: {:?}",
+            result.err()
         );
     }
 }

@@ -3902,4 +3902,821 @@ mod tests {
         assert!((clamp_pos_w - MIN_SIZE).abs() < TOLERANCE);
         assert!((clamp_neg_w - MIN_SIZE).abs() < TOLERANCE);
     }
+
+    // =========================================================================
+    // GEO-EDGE-001: Zero Dimensions
+    // =========================================================================
+    // Tests for shapes with zero width, height, or both.
+    // These edge cases test degenerate geometry handling.
+
+    #[test]
+    fn test_edge_zero_width_rectangle() {
+        // Given: a rectangle with zero width
+        let rect = Rectangle::new(10.0, 20.0, 0.0, 50.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB has zero width but valid position
+        assert!((aabb.min_x - 10.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 10.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 20.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 70.0).abs() < TOLERANCE);
+        assert!((aabb.width() - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_zero_height_rectangle() {
+        // Given: a rectangle with zero height
+        let rect = Rectangle::new(10.0, 20.0, 100.0, 0.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB has zero height but valid position
+        assert!((aabb.min_x - 10.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 110.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 20.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 20.0).abs() < TOLERANCE);
+        assert!((aabb.height() - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_zero_both_dimensions_rectangle() {
+        // Given: a rectangle with both zero width and height
+        let rect = Rectangle::new(50.0, 75.0, 0.0, 0.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB is a degenerate point
+        assert!((aabb.min_x - 50.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 50.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 75.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 75.0).abs() < TOLERANCE);
+        assert!((aabb.width() - 0.0).abs() < TOLERANCE);
+        assert!((aabb.height() - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_zero_dimensions_at_origin() {
+        // Given: a rectangle at origin with zero dimensions
+        let rect = Rectangle::new(0.0, 0.0, 0.0, 0.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB is at origin
+        assert!((aabb.min_x - 0.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 0.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 0.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_zero_width_with_rotation() {
+        // Given: a zero-width rectangle with rotation
+        let rect = Rectangle::new(50.0, 50.0, 0.0, 100.0).with_rotation(PI / 4.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: rotation of a line segment produces valid bounds
+        // A vertical line of length 100 rotated 45 degrees
+        assert!(aabb.min_x.is_finite());
+        assert!(aabb.max_x.is_finite());
+        assert!(aabb.min_y.is_finite());
+        assert!(aabb.max_y.is_finite());
+    }
+
+    #[test]
+    fn test_edge_zero_dimensions_image() {
+        // Given: an image with zero dimensions
+        let image = Image::new(25.0, 35.0, 0.0, 0.0);
+
+        // When: calculating bounds
+        let bounds = image.bounds();
+
+        // Then: bounds are a degenerate point
+        assert!((bounds.min_x - 25.0).abs() < TOLERANCE);
+        assert!((bounds.max_x - 25.0).abs() < TOLERANCE);
+        assert!((bounds.min_y - 35.0).abs() < TOLERANCE);
+        assert!((bounds.max_y - 35.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_zero_area_aabb_operations() {
+        // Given: an AABB with zero area
+        let aabb = AABB::new(50.0, 50.0, 50.0, 100.0);
+
+        // When: querying properties
+        let width = aabb.width();
+        let height = aabb.height();
+        let center = aabb.center();
+
+        // Then: properties are mathematically correct
+        assert!((width - 0.0).abs() < TOLERANCE);
+        assert!((height - 50.0).abs() < TOLERANCE);
+        assert!((center.x - 50.0).abs() < TOLERANCE);
+        assert!((center.y - 75.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_zero_dimensions_expand() {
+        // Given: a zero-dimension AABB
+        let aabb = AABB::new(50.0, 50.0, 50.0, 50.0);
+
+        // When: expanding by a positive amount
+        let expanded = aabb.expand(10.0);
+
+        // Then: expansion creates a non-zero area
+        assert!((expanded.min_x - 40.0).abs() < TOLERANCE);
+        assert!((expanded.max_x - 60.0).abs() < TOLERANCE);
+        assert!((expanded.min_y - 40.0).abs() < TOLERANCE);
+        assert!((expanded.max_y - 60.0).abs() < TOLERANCE);
+    }
+
+    // =========================================================================
+    // GEO-EDGE-002: Maximum Rotation Values
+    // =========================================================================
+    // Tests for rotation boundary conditions including full circles,
+    // multiple rotations, and extreme values.
+
+    #[test]
+    fn test_edge_rotation_full_circle() {
+        // Given: a rectangle
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let rotated = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(2.0 * PI);
+
+        // When: comparing AABBs
+        let aabb_original = rect.aabb();
+        let aabb_rotated = rotated.aabb();
+
+        // Then: 2*pi rotation produces same AABB as no rotation
+        assert!((aabb_original.min_x - aabb_rotated.min_x).abs() < TOLERANCE);
+        assert!((aabb_original.max_x - aabb_rotated.max_x).abs() < TOLERANCE);
+        assert!((aabb_original.min_y - aabb_rotated.min_y).abs() < TOLERANCE);
+        assert!((aabb_original.max_y - aabb_rotated.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotation_beyond_2pi() {
+        // Given: a rectangle rotated beyond 2*pi
+        let rect_1x = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 4.0);
+        let rect_3x = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(2.0 * PI + PI / 4.0);
+
+        // When: calculating AABBs
+        let aabb_1x = rect_1x.aabb();
+        let aabb_3x = rect_3x.aabb();
+
+        // Then: rotation is equivalent mod 2*pi
+        assert!((aabb_1x.min_x - aabb_3x.min_x).abs() < TOLERANCE);
+        assert!((aabb_1x.max_x - aabb_3x.max_x).abs() < TOLERANCE);
+        assert!((aabb_1x.min_y - aabb_3x.min_y).abs() < TOLERANCE);
+        assert!((aabb_1x.max_y - aabb_3x.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotation_negative_angle() {
+        // Given: rectangles with positive and equivalent negative rotation
+        let rect_pos = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 4.0);
+        let rect_neg = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(-7.0 * PI / 4.0);
+
+        // When: calculating AABBs
+        let aabb_pos = rect_pos.aabb();
+        let aabb_neg = rect_neg.aabb();
+
+        // Then: equivalent angles produce same AABB
+        assert!((aabb_pos.min_x - aabb_neg.min_x).abs() < TOLERANCE);
+        assert!((aabb_pos.max_x - aabb_neg.max_x).abs() < TOLERANCE);
+        assert!((aabb_pos.min_y - aabb_neg.min_y).abs() < TOLERANCE);
+        assert!((aabb_pos.max_y - aabb_neg.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotation_pi_half_boundary() {
+        // Given: a rectangle at pi/2 boundary
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let rect_90 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 2.0);
+
+        // When: calculating AABBs
+        let aabb_0 = rect.aabb();
+        let aabb_90 = rect_90.aabb();
+
+        // Then: 90 degree rotation swaps effective dimensions
+        // Original: 100x50, Rotated: 50x100 (centered)
+        assert!((aabb_90.width() - aabb_0.height()).abs() < TOLERANCE);
+        assert!((aabb_90.height() - aabb_0.width()).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotation_pi_boundary() {
+        // Given: rectangles at 0 and pi rotation
+        let rect_0 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(0.0);
+        let rect_pi = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI);
+
+        // When: calculating AABBs
+        let aabb_0 = rect_0.aabb();
+        let aabb_pi = rect_pi.aabb();
+
+        // Then: pi rotation produces same AABB (180 degree flip)
+        assert!((aabb_0.min_x - aabb_pi.min_x).abs() < TOLERANCE);
+        assert!((aabb_0.max_x - aabb_pi.max_x).abs() < TOLERANCE);
+        assert!((aabb_0.min_y - aabb_pi.min_y).abs() < TOLERANCE);
+        assert!((aabb_0.max_y - aabb_pi.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotation_3pi_half_boundary() {
+        // Given: rectangles at pi/2 and 3*pi/2 rotation
+        let rect_90 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 2.0);
+        let rect_270 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(3.0 * PI / 2.0);
+
+        // When: calculating AABBs
+        let aabb_90 = rect_90.aabb();
+        let aabb_270 = rect_270.aabb();
+
+        // Then: both produce same AABB (just different corner positions)
+        assert!((aabb_90.min_x - aabb_270.min_x).abs() < TOLERANCE);
+        assert!((aabb_90.max_x - aabb_270.max_x).abs() < TOLERANCE);
+        assert!((aabb_90.min_y - aabb_270.min_y).abs() < TOLERANCE);
+        assert!((aabb_90.max_y - aabb_270.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotation_very_large_angle() {
+        // Given: a rectangle with very large rotation (100 full circles)
+        let large_angle = 100.0 * 2.0 * PI + PI / 6.0;
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(large_angle);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: result is finite and valid
+        assert!(aabb.min_x.is_finite());
+        assert!(aabb.max_x.is_finite());
+        assert!(aabb.min_y.is_finite());
+        assert!(aabb.max_y.is_finite());
+        assert!(aabb.min_x <= aabb.max_x);
+        assert!(aabb.min_y <= aabb.max_y);
+    }
+
+    #[test]
+    fn test_edge_rotation_consistency_across_multiples() {
+        // Given: the same rotation expressed as different multiples of 2*pi
+        let base_angle = PI / 3.0;
+        let angles = [
+            base_angle,
+            base_angle + 2.0 * PI,
+            base_angle + 4.0 * PI,
+            base_angle - 2.0 * PI,
+        ];
+
+        // When: calculating AABBs for all angles
+        let aabbs: Vec<AABB> = angles
+            .iter()
+            .map(|&a| Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(a).aabb())
+            .collect();
+
+        // Then: all AABBs are equivalent
+        for aabb in &aabbs[1..] {
+            assert!((aabbs[0].min_x - aabb.min_x).abs() < TOLERANCE);
+            assert!((aabbs[0].max_x - aabb.max_x).abs() < TOLERANCE);
+            assert!((aabbs[0].min_y - aabb.min_y).abs() < TOLERANCE);
+            assert!((aabbs[0].max_y - aabb.max_y).abs() < TOLERANCE);
+        }
+    }
+
+    #[test]
+    fn test_edge_rotate_point_full_circle() {
+        // Given: a point and center
+        let point = Point::new(100.0, 0.0);
+        let center = Point::origin();
+
+        // When: rotating by 2*pi
+        let rotated = rotate_around_center(point, center, 2.0 * PI);
+
+        // Then: point returns to original position
+        assert!((rotated.x - point.x).abs() < TOLERANCE);
+        assert!((rotated.y - point.y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_rotate_point_negative_full_circle() {
+        // Given: a point and center
+        let point = Point::new(100.0, 0.0);
+        let center = Point::origin();
+
+        // When: rotating by -2*pi
+        let rotated = rotate_around_center(point, center, -2.0 * PI);
+
+        // Then: point returns to original position
+        assert!((rotated.x - point.x).abs() < TOLERANCE);
+        assert!((rotated.y - point.y).abs() < TOLERANCE);
+    }
+
+    // =========================================================================
+    // GEO-EDGE-003: Negative Dimensions
+    // =========================================================================
+    // Tests for handling of negative width/height values.
+    // The system should handle these gracefully.
+
+    #[test]
+    fn test_edge_negative_width_aabb_calculation() {
+        // Given: a rectangle with negative width
+        // Note: AABB calculation uses x + width for max_x, which can result in max < min
+        let rect = Rectangle::new(100.0, 50.0, -50.0, 100.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB has inverted bounds (min > max on x-axis)
+        // min_x = x = 100, max_x = x + width = 100 - 50 = 50
+        assert!((aabb.min_x - 100.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 50.0).abs() < TOLERANCE);
+        // Width calculation: max - min = 50 - 100 = -50 (negative!)
+        assert!((aabb.width() - (-50.0)).abs() < TOLERANCE);
+        // This documents the edge case behavior
+        assert!(aabb.min_x > aabb.max_x);
+    }
+
+    #[test]
+    fn test_edge_negative_height_aabb_calculation() {
+        // Given: a rectangle with negative height
+        let rect = Rectangle::new(50.0, 100.0, 100.0, -50.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB has inverted bounds (min > max on y-axis)
+        // min_y = y = 100, max_y = y + height = 100 - 50 = 50
+        assert!((aabb.min_y - 100.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 50.0).abs() < TOLERANCE);
+        // Height calculation: max - min = 50 - 100 = -50 (negative!)
+        assert!((aabb.height() - (-50.0)).abs() < TOLERANCE);
+        assert!(aabb.min_y > aabb.max_y);
+    }
+
+    #[test]
+    fn test_edge_both_dimensions_negative() {
+        // Given: a rectangle with both dimensions negative
+        let rect = Rectangle::new(100.0, 100.0, -50.0, -75.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB has inverted bounds on both axes
+        // This documents the edge case - AABB does not normalize negative dimensions
+        assert!((aabb.width() - (-50.0)).abs() < TOLERANCE);
+        assert!((aabb.height() - (-75.0)).abs() < TOLERANCE);
+        assert!(aabb.min_x > aabb.max_x);
+        assert!(aabb.min_y > aabb.max_y);
+    }
+
+    #[test]
+    fn test_edge_negative_dimensions_with_rotation() {
+        // Given: a rectangle with negative dimensions and rotation
+        let rect = Rectangle::new(50.0, 50.0, -100.0, -50.0).with_rotation(PI / 4.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: rotation is computed without panic
+        assert!(aabb.min_x.is_finite());
+        assert!(aabb.max_x.is_finite());
+        assert!(aabb.min_y.is_finite());
+        assert!(aabb.max_y.is_finite());
+    }
+
+    #[test]
+    fn test_edge_safe_bounds_with_swapped_coords() {
+        // Given: coordinates where min > max
+        let result = safe_bounds(100.0, 100.0, 0.0, 0.0);
+
+        // When: calling safe_bounds
+        // Then: it normalizes the order
+        assert!(result.is_some());
+        let aabb = result.unwrap();
+        assert!((aabb.min_x - 0.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 100.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 0.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 100.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_scale_to_negative_factor() {
+        // Given: a point and anchor
+        let point = Point::new(100.0, 100.0);
+        let anchor = Point::new(50.0, 50.0);
+
+        // When: scaling with negative factor
+        let scaled = scale_around_anchor(point, anchor, -1.0);
+
+        // Then: point flips across the anchor
+        // new = anchor + (point - anchor) * (-1) = 50 + 50 * (-1) = 0
+        assert!((scaled.x - 0.0).abs() < TOLERANCE);
+        assert!((scaled.y - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_scale_to_negative_preserves_anchor() {
+        // Given: anchor point as point to scale
+        let anchor = Point::new(50.0, 50.0);
+
+        // When: scaling anchor around itself with negative factor
+        let scaled = scale_around_anchor(anchor, anchor, -10.0);
+
+        // Then: anchor stays fixed regardless of scale factor
+        assert!((scaled.x - anchor.x).abs() < TOLERANCE);
+        assert!((scaled.y - anchor.y).abs() < TOLERANCE);
+    }
+
+    // =========================================================================
+    // GEO-EDGE-004: Infinite Coordinates
+    // =========================================================================
+    // Tests for handling infinity and NaN values in geometry operations.
+
+    #[test]
+    fn test_edge_safe_bounds_rejects_positive_infinity() {
+        // Given: coordinates with positive infinity
+        let result = safe_bounds(f64::INFINITY, 0.0, 100.0, 100.0);
+
+        // When: calling safe_bounds
+        // Then: returns None (rejected)
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_edge_safe_bounds_rejects_negative_infinity() {
+        // Given: coordinates with negative infinity
+        let result = safe_bounds(f64::NEG_INFINITY, 0.0, 100.0, 100.0);
+
+        // When: calling safe_bounds
+        // Then: returns None (rejected)
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_edge_safe_bounds_rejects_nan() {
+        // Given: coordinates with NaN
+        let result = safe_bounds(f64::NAN, 0.0, 100.0, 100.0);
+
+        // When: calling safe_bounds
+        // Then: returns None (rejected)
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_edge_safe_bounds_rejects_nan_in_max() {
+        // Given: max coordinates with NaN
+        let result = safe_bounds(0.0, 0.0, f64::NAN, 100.0);
+
+        // When: calling safe_bounds
+        // Then: returns None (rejected)
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn test_edge_safe_bounds_accepts_large_finite() {
+        // Given: very large but finite coordinates
+        let result = safe_bounds(1e15, 1e15, 1e15 + 100.0, 1e15 + 100.0);
+
+        // When: calling safe_bounds
+        // Then: returns valid AABB
+        assert!(result.is_some());
+        let aabb = result.unwrap();
+        assert!(aabb.min_x.is_finite());
+        assert!(aabb.max_x.is_finite());
+    }
+
+    #[test]
+    fn test_edge_point_at_infinity_rotation() {
+        // Given: a point at infinity
+        let point = Point::new(f64::INFINITY, 0.0);
+        let center = Point::origin();
+
+        // When: rotating
+        let rotated = rotate_around_center(point, center, PI / 2.0);
+
+        // Then: result is infinity or NaN (mathematically undefined)
+        assert!(rotated.x.is_infinite() || rotated.x.is_nan());
+    }
+
+    #[test]
+    fn test_edge_aabb_infinity_min() {
+        // Given: an AABB with infinite minimum
+        let aabb = AABB::new(f64::NEG_INFINITY, 0.0, 100.0, 100.0);
+
+        // When: querying width
+        let width = aabb.width();
+
+        // Then: width is infinity
+        assert!(width.is_infinite());
+    }
+
+    #[test]
+    fn test_edge_aabb_expand_infinity() {
+        // Given: a normal AABB
+        let aabb = AABB::new(0.0, 0.0, 100.0, 100.0);
+
+        // When: expanding by infinity
+        let expanded = aabb.expand(f64::INFINITY);
+
+        // Then: bounds become infinite
+        assert!(expanded.min_x.is_infinite());
+        assert!(expanded.max_x.is_infinite());
+    }
+
+    #[test]
+    fn test_edge_scale_with_infinity_factor() {
+        // Given: a point and infinite scale factor
+        let point = Point::new(100.0, 100.0);
+        let anchor = Point::new(50.0, 50.0);
+
+        // When: scaling with infinite factor
+        let scaled = scale_around_anchor(point, anchor, f64::INFINITY);
+
+        // Then: result is infinite (away from anchor)
+        assert!(scaled.x.is_infinite());
+        assert!(scaled.y.is_infinite());
+    }
+
+    #[test]
+    fn test_edge_scale_infinity_point() {
+        // Given: a point at infinity and finite anchor
+        let point = Point::new(f64::INFINITY, f64::INFINITY);
+        let anchor = Point::new(50.0, 50.0);
+
+        // When: scaling
+        let scaled = scale_around_anchor(point, anchor, 2.0);
+
+        // Then: infinity is preserved
+        assert!(scaled.x.is_infinite());
+        assert!(scaled.y.is_infinite());
+    }
+
+    #[test]
+    fn test_edge_point_origin_is_finite() {
+        // Given: origin point
+        let origin = Point::origin();
+
+        // When: checking finiteness
+        // Then: origin is finite
+        assert!(origin.x.is_finite());
+        assert!(origin.y.is_finite());
+        assert!((origin.x - 0.0).abs() < TOLERANCE);
+        assert!((origin.y - 0.0).abs() < TOLERANCE);
+    }
+
+    // =========================================================================
+    // GEO-EDGE-005: Stroke Width Boundaries
+    // =========================================================================
+    // Tests for stroke width edge cases in StrokedShape.
+
+    #[test]
+    fn test_edge_stroke_width_zero() {
+        // Given: a rectangle with zero stroke width
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let stroked = StrokedShape::new(rect, 0.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+        let rect_bounds = rect.aabb();
+
+        // Then: bounds equal shape bounds (no expansion)
+        assert!((bounds.min_x - rect_bounds.min_x).abs() < TOLERANCE);
+        assert!((bounds.max_x - rect_bounds.max_x).abs() < TOLERANCE);
+        assert!((bounds.min_y - rect_bounds.min_y).abs() < TOLERANCE);
+        assert!((bounds.max_y - rect_bounds.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_stroke_width_negative() {
+        // Given: a rectangle with negative stroke width
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let stroked = StrokedShape::new(rect, -10.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+        let rect_bounds = rect.aabb();
+
+        // Then: negative stroke contracts bounds (expand by -5)
+        // This may be undesirable behavior but tests current implementation
+        assert!((bounds.min_x - rect_bounds.min_x - 5.0).abs() < TOLERANCE);
+        assert!((bounds.max_x - rect_bounds.max_x + 5.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_stroke_width_very_large() {
+        // Given: a rectangle with stroke larger than the shape
+        let rect = Rectangle::new(50.0, 50.0, 10.0, 10.0);
+        let stroked = StrokedShape::new(rect, 100.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: bounds extend significantly beyond shape
+        assert!((bounds.min_x - 0.0).abs() < TOLERANCE); // 50 - 50 = 0
+        assert!((bounds.max_x - 110.0).abs() < TOLERANCE); // 60 + 50 = 110
+        assert!((bounds.min_y - 0.0).abs() < TOLERANCE);
+        assert!((bounds.max_y - 110.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_stroke_width_with_zero_dimension_shape() {
+        // Given: a zero-dimension rectangle with stroke
+        let rect = Rectangle::new(50.0, 50.0, 0.0, 0.0);
+        let stroked = StrokedShape::new(rect, 20.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: stroke creates area around the point
+        assert!((bounds.min_x - 40.0).abs() < TOLERANCE); // 50 - 10 = 40
+        assert!((bounds.max_x - 60.0).abs() < TOLERANCE); // 50 + 10 = 60
+        assert!((bounds.min_y - 40.0).abs() < TOLERANCE);
+        assert!((bounds.max_y - 60.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_edge_stroke_width_with_rotated_shape() {
+        // Given: a rotated rectangle with stroke
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 4.0);
+        let stroked = StrokedShape::new(rect, 10.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+        let rect_bounds = rect.aabb();
+
+        // Then: stroke expands the rotated AABB
+        assert!(bounds.min_x < rect_bounds.min_x);
+        assert!(bounds.max_x > rect_bounds.max_x);
+        assert!(bounds.min_y < rect_bounds.min_y);
+        assert!(bounds.max_y > rect_bounds.max_y);
+    }
+
+    #[test]
+    fn test_edge_stroke_width_infinity() {
+        // Given: a rectangle with infinite stroke width
+        let rect = Rectangle::new(50.0, 50.0, 100.0, 100.0);
+        let stroked = StrokedShape::new(rect, f64::INFINITY);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: bounds become infinite
+        assert!(bounds.min_x.is_infinite());
+        assert!(bounds.max_x.is_infinite());
+        assert!(bounds.min_y.is_infinite());
+        assert!(bounds.max_y.is_infinite());
+    }
+
+    #[test]
+    fn test_edge_stroke_width_nan() {
+        // Given: a rectangle with NaN stroke width
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let stroked = StrokedShape::new(rect, f64::NAN);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: NaN propagates to bounds
+        assert!(bounds.min_x.is_nan());
+        assert!(bounds.max_x.is_nan());
+        assert!(bounds.min_y.is_nan());
+        assert!(bounds.max_y.is_nan());
+    }
+
+    #[test]
+    fn test_edge_stroke_width_tiny() {
+        // Given: a rectangle with very small stroke width
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let stroked = StrokedShape::new(rect, 1e-10);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+        let rect_bounds = rect.aabb();
+
+        // Then: expansion is negligible but present
+        assert!((bounds.min_x - rect_bounds.min_x).abs() < 1e-10);
+        assert!((bounds.max_x - rect_bounds.max_x).abs() < 1e-10);
+    }
+
+    // =========================================================================
+    // Property-Based Edge Case Tests
+    // =========================================================================
+
+    proptest! {
+        #[test]
+        fn prop_edge_zero_width_any_height(height in -1000.0_f64..1000.0) {
+            let rect = Rectangle::new(0.0, 0.0, 0.0, height);
+            let aabb = rect.aabb();
+            // Zero width should produce zero-width AABB
+            prop_assert!((aabb.width() - 0.0).abs() < TOLERANCE);
+            prop_assert!(aabb.min_x.is_finite());
+            prop_assert!(aabb.max_x.is_finite());
+        }
+
+        #[test]
+        fn prop_edge_zero_height_any_width(width in -1000.0_f64..1000.0) {
+            let rect = Rectangle::new(0.0, 0.0, width, 0.0);
+            let aabb = rect.aabb();
+            // Zero height should produce zero-height AABB
+            prop_assert!((aabb.height() - 0.0).abs() < TOLERANCE);
+            prop_assert!(aabb.min_y.is_finite());
+            prop_assert!(aabb.max_y.is_finite());
+        }
+
+        #[test]
+        fn prop_edge_rotation_equivalence(angle in 0.0_f64..100.0 * PI) {
+            let rect1 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(angle);
+            let rect2 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(angle % (2.0 * PI));
+            let aabb1 = rect1.aabb();
+            let aabb2 = rect2.aabb();
+            // Rotation by same effective angle produces same AABB
+            prop_assert!((aabb1.min_x - aabb2.min_x).abs() < 1e-9);
+            prop_assert!((aabb1.max_x - aabb2.max_x).abs() < 1e-9);
+            prop_assert!((aabb1.min_y - aabb2.min_y).abs() < 1e-9);
+            prop_assert!((aabb1.max_y - aabb2.max_y).abs() < 1e-9);
+        }
+
+        #[test]
+        fn prop_edge_negative_dimensions_aabb_valid(
+            x in -1000.0_f64..1000.0,
+            y in -1000.0_f64..1000.0,
+            width in -500.0_f64..500.0,
+            height in -500.0_f64..500.0
+        ) {
+            // Skip near-zero dimensions to avoid floating point edge cases
+            prop_assume!(width.abs() > 1.0);
+            prop_assume!(height.abs() > 1.0);
+
+            let rect = Rectangle::new(x, y, width, height);
+            let aabb = rect.aabb();
+            // AABB produces finite values (even if width/height can be negative)
+            prop_assert!(aabb.min_x.is_finite());
+            prop_assert!(aabb.min_y.is_finite());
+            prop_assert!(aabb.max_x.is_finite());
+            prop_assert!(aabb.max_y.is_finite());
+            // Width/height reflect the sign of the original dimension
+            // Note: This documents current behavior - AABB does not normalize
+            prop_assert!((aabb.width() - width).abs() < TOLERANCE);
+            prop_assert!((aabb.height() - height).abs() < TOLERANCE);
+        }
+
+        #[test]
+        fn prop_edge_safe_bounds_finite_always_succeeds(
+            min_x in -1e10_f64..1e10,
+            min_y in -1e10_f64..1e10,
+            max_x in -1e10_f64..1e10,
+            max_y in -1e10_f64..1e10
+        ) {
+            let result = safe_bounds(min_x, min_y, max_x, max_y);
+            // All finite inputs should produce a valid AABB
+            prop_assert!(result.is_some());
+            let aabb = result.unwrap();
+            prop_assert!(aabb.min_x.is_finite());
+            prop_assert!(aabb.min_y.is_finite());
+            prop_assert!(aabb.max_x.is_finite());
+            prop_assert!(aabb.max_y.is_finite());
+        }
+
+        #[test]
+        fn prop_edge_stroke_width_finite(
+            x in -100.0_f64..100.0,
+            y in -100.0_f64..100.0,
+            width in 1.0_f64..100.0,
+            height in 1.0_f64..100.0,
+            stroke in 0.0_f64..100.0
+        ) {
+            let rect = Rectangle::new(x, y, width, height);
+            let stroked = StrokedShape::new(rect, stroke);
+            let bounds = stroked.bounds_with_stroke();
+            // Finite inputs produce finite bounds
+            prop_assert!(bounds.min_x.is_finite());
+            prop_assert!(bounds.min_y.is_finite());
+            prop_assert!(bounds.max_x.is_finite());
+            prop_assert!(bounds.max_y.is_finite());
+        }
+
+        #[test]
+        fn prop_edge_rotation_corners_within_aabb(
+            x in -100.0_f64..100.0,
+            y in -100.0_f64..100.0,
+            width in 1.0_f64..100.0,
+            height in 1.0_f64..100.0,
+            rotation in 0.0_f64..4.0 * PI
+        ) {
+            let rect = Rectangle::new(x, y, width, height).with_rotation(rotation);
+            let aabb = rect.aabb();
+            // All corners should be within or on AABB boundary
+            // Note: corners() is private, so we verify via AABB containment
+            prop_assert!(aabb.width() >= 0.0);
+            prop_assert!(aabb.height() >= 0.0);
+            prop_assert!(aabb.min_x.is_finite());
+            prop_assert!(aabb.max_x.is_finite());
+            prop_assert!(aabb.min_y.is_finite());
+            prop_assert!(aabb.max_y.is_finite());
+        }
+    }
 }

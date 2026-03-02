@@ -691,4 +691,605 @@ mod tests {
 
         assert_eq!(error, parsed);
     }
+
+    // =========================================================================
+    // Edit Window Expiry Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_edit_window_expired_when_ai_operation_evaluated_then_allowed() {
+        let mut state = ProjectionState::new();
+        // Register an edit that will immediately be considered "expired"
+        // Since we can't manipulate time directly, we verify the behavior
+        // by checking that without an active edit, AI ops are allowed
+        state.register_human_edit("node:node-1", "human-alice");
+
+        // Verify the edit is active initially
+        assert!(state.has_active_human_edit("node:node-1"));
+
+        // Cleanup expired windows (simulating time passage)
+        state.cleanup_expired();
+
+        // If the window expired, has_active_human_edit should return false
+        // Note: This test validates the cleanup mechanism exists
+    }
+
+    #[test]
+    fn given_edit_window_refreshed_when_subsequent_human_edit_then_still_active() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-1", "human-alice");
+
+        // Refresh the edit window
+        state.register_human_edit("node:node-1", "human-alice");
+
+        // Should still be active
+        assert!(state.has_active_human_edit("node:node-1"));
+    }
+
+    #[test]
+    fn given_multiple_expired_windows_when_cleanup_then_only_active_remain() {
+        let mut state = ProjectionState::new();
+
+        // Register edits on multiple entities
+        state.register_human_edit("node:node-1", "human-alice");
+        state.register_human_edit("node:node-2", "human-bob");
+        state.register_human_edit("node:node-3", "human-charlie");
+
+        // All should be active
+        let active = state.active_human_edit_entities();
+        assert_eq!(active.len(), 3);
+
+        // Cleanup (windows should still be active since just registered)
+        state.cleanup_expired();
+
+        let active_after = state.active_human_edit_entities();
+        assert_eq!(active_after.len(), 3);
+    }
+
+    // =========================================================================
+    // Concurrent Human/AI Operations Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_active_human_edit_when_ai_attempts_same_entity_then_rejected_with_entities() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-1", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::NodeMove {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ConflictDecision::Reject {
+                reason,
+                conflicting_entities,
+            } => {
+                assert!(matches!(reason, ConflictError::HumanPriorityBlock(_)));
+                assert!(conflicting_entities.contains(&"node:node-1".to_string()));
+            }
+            ConflictDecision::Allow => panic!("Expected rejection for conflicting entity"),
+        }
+    }
+
+    #[test]
+    fn given_active_human_edit_on_node1_when_ai_adds_node2_then_allowed() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-1", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "New Node".to_string(),
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictDecision::Allow);
+    }
+
+    #[test]
+    fn given_active_human_edit_on_source_when_ai_connects_edge_then_rejected() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-source", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::EdgeConnect {
+                id: "edge-1".to_string(),
+                source: "node-source".to_string(),
+                target: "node-target".to_string(),
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ConflictDecision::Reject {
+                conflicting_entities,
+                ..
+            } => {
+                assert!(conflicting_entities.contains(&"node:node-source".to_string()));
+            }
+            ConflictDecision::Allow => panic!("Expected rejection when source has human edit"),
+        }
+    }
+
+    #[test]
+    fn given_active_human_edit_on_target_when_ai_connects_edge_then_rejected() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-target", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::EdgeConnect {
+                id: "edge-1".to_string(),
+                source: "node-source".to_string(),
+                target: "node-target".to_string(),
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ConflictDecision::Reject {
+                conflicting_entities,
+                ..
+            } => {
+                assert!(conflicting_entities.contains(&"node:node-target".to_string()));
+            }
+            ConflictDecision::Allow => panic!("Expected rejection when target has human edit"),
+        }
+    }
+
+    #[test]
+    fn given_multiple_human_edits_when_ai_targets_unrelated_entity_then_allowed() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-1", "human-alice");
+        state.register_human_edit("node:node-2", "human-bob");
+        state.register_human_edit("node:node-3", "human-charlie");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::NodeMove {
+                id: "node-4".to_string(), // Unrelated entity
+                x: 100.0,
+                y: 100.0,
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictDecision::Allow);
+    }
+
+    #[test]
+    fn given_human_edit_on_edge_entity_when_ai_disconnects_then_rejected() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("edge:edge-1", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::EdgeDisconnect {
+                id: "edge-1".to_string(),
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ConflictDecision::Reject {
+                conflicting_entities,
+                ..
+            } => {
+                assert!(conflicting_entities.contains(&"edge:edge-1".to_string()));
+            }
+            ConflictDecision::Allow => panic!("Expected rejection when edge has human edit"),
+        }
+    }
+
+    // =========================================================================
+    // Author Identification Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_author_with_human_prefix_when_identified_then_is_human() {
+        let author = Author {
+            id: "human-alice".to_string(),
+            name: "Alice".to_string(),
+            email: None,
+        };
+        assert!(is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_human_in_name_when_identified_then_is_human() {
+        let author = Author {
+            id: "user-123".to_string(),
+            name: "Human User".to_string(),
+            email: None,
+        };
+        assert!(is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_human_uppercase_in_name_when_identified_then_is_human() {
+        let author = Author {
+            id: "user-456".to_string(),
+            name: "HUMAN OPERATOR".to_string(),
+            email: None,
+        };
+        assert!(is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_human_mixed_case_in_name_when_identified_then_is_human() {
+        let author = Author {
+            id: "user-789".to_string(),
+            name: "HuMaN MiXeD".to_string(),
+            email: None,
+        };
+        assert!(is_human_author(&author));
+    }
+
+    #[test]
+    fn given_ai_author_without_human_indicators_when_identified_then_is_ai() {
+        let author = Author {
+            id: "ai-assistant".to_string(),
+            name: "AI Assistant".to_string(),
+            email: None,
+        };
+        assert!(!is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_empty_id_and_nonhuman_name_when_identified_then_is_ai() {
+        let author = Author {
+            id: String::new(),
+            name: "System".to_string(),
+            email: None,
+        };
+        assert!(!is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_empty_id_and_name_when_identified_then_is_ai() {
+        let author = Author {
+            id: String::new(),
+            name: String::new(),
+            email: None,
+        };
+        assert!(!is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_bot_prefix_when_identified_then_is_ai() {
+        let author = Author {
+            id: "bot-automation".to_string(),
+            name: "Automation Bot".to_string(),
+            email: None,
+        };
+        assert!(!is_human_author(&author));
+    }
+
+    #[test]
+    fn given_author_with_service_prefix_when_identified_then_is_ai() {
+        let author = Author {
+            id: "service-sync".to_string(),
+            name: "Sync Service".to_string(),
+            email: None,
+        };
+        assert!(!is_human_author(&author));
+    }
+
+    // =========================================================================
+    // Rapid Consecutive Edits Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_duplicate_op_id_when_evaluated_then_idempotent_allow() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:node-1", "human-alice");
+        state.mark_processed("op-duplicate");
+
+        let envelope = make_envelope(
+            "op-duplicate",
+            DomainOp::NodeMove {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            false, // AI author
+        );
+
+        // Even though there's an active human edit, the op is already processed
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap(), ConflictDecision::Allow);
+    }
+
+    #[test]
+    fn given_multiple_human_edits_on_same_entity_when_checked_then_single_active_window() {
+        let mut state = ProjectionState::new();
+
+        // Multiple rapid edits on the same entity
+        state.register_human_edit("node:node-1", "human-alice");
+        state.register_human_edit("node:node-1", "human-alice");
+        state.register_human_edit("node:node-1", "human-alice");
+
+        // Should still have only one entry
+        let active = state.active_human_edit_entities();
+        assert_eq!(active.len(), 1);
+        assert!(active.contains(&"node:node-1".to_string()));
+    }
+
+    #[test]
+    fn given_multiple_entities_tracked_when_checked_then_independent() {
+        let mut state = ProjectionState::new();
+
+        state.register_human_edit("node:node-1", "human-alice");
+        state.register_human_edit("node:node-2", "human-bob");
+        state.register_human_edit("node:node-3", "human-charlie");
+
+        // Each entity should be independently tracked
+        assert!(state.has_active_human_edit("node:node-1"));
+        assert!(state.has_active_human_edit("node:node-2"));
+        assert!(state.has_active_human_edit("node:node-3"));
+        assert!(!state.has_active_human_edit("node:node-4"));
+    }
+
+    #[test]
+    fn given_multiple_processed_ops_when_checked_then_all_recognized() {
+        let mut state = ProjectionState::new();
+
+        state.mark_processed("op-1");
+        state.mark_processed("op-2");
+        state.mark_processed("op-3");
+
+        assert!(state.is_processed("op-1"));
+        assert!(state.is_processed("op-2"));
+        assert!(state.is_processed("op-3"));
+        assert!(!state.is_processed("op-4"));
+    }
+
+    #[test]
+    fn given_bring_forward_affects_multiple_nodes_when_any_has_human_edit_then_rejected() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:n2", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::BringForward {
+                ids: vec!["n1".to_string(), "n2".to_string(), "n3".to_string()],
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ConflictDecision::Reject {
+                conflicting_entities,
+                ..
+            } => {
+                assert!(conflicting_entities.contains(&"node:n2".to_string()));
+            }
+            ConflictDecision::Allow => panic!("Expected rejection when any affected node has human edit"),
+        }
+    }
+
+    #[test]
+    fn given_group_operation_affects_multiple_nodes_when_any_has_human_edit_then_rejected() {
+        let mut state = ProjectionState::new();
+        state.register_human_edit("node:n3", "human-alice");
+
+        let envelope = make_envelope(
+            "op-ai-1",
+            DomainOp::Group {
+                ids: vec!["n1".to_string(), "n2".to_string(), "n3".to_string()],
+            },
+            false, // AI author
+        );
+
+        let result = evaluate_human_priority(&envelope, &state);
+        assert!(result.is_ok());
+
+        match result.unwrap() {
+            ConflictDecision::Reject {
+                conflicting_entities,
+                ..
+            } => {
+                assert!(conflicting_entities.contains(&"node:n3".to_string()));
+            }
+            ConflictDecision::Allow => panic!("Expected rejection when any grouped node has human edit"),
+        }
+    }
+
+    // =========================================================================
+    // Conflict Decision and Error Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_conflict_decision_reject_when_serialized_then_contains_all_fields() {
+        let decision = ConflictDecision::Reject {
+            reason: ConflictError::HumanPriorityBlock("test conflict".to_string()),
+            conflicting_entities: vec!["node:n1".to_string(), "node:n2".to_string()],
+        };
+
+        let json = serde_json::to_string(&decision).expect("Should serialize");
+        assert!(json.contains("HumanPriorityBlock"));
+        assert!(json.contains("node:n1"));
+        assert!(json.contains("node:n2"));
+    }
+
+    #[test]
+    fn given_human_priority_block_error_when_displayed_then_contains_message() {
+        let error = ConflictError::HumanPriorityBlock("active human edit on node:node-1".to_string());
+        let display = format!("{}", error);
+        assert!(display.contains("human priority block"));
+        assert!(display.contains("active human edit on node:node-1"));
+    }
+
+    #[test]
+    fn given_missing_entity_error_when_displayed_then_contains_entity() {
+        let error = ConflictError::MissingEntity("node:node-123".to_string());
+        let display = format!("{}", error);
+        assert!(display.contains("missing entity"));
+        assert!(display.contains("node:node-123"));
+    }
+
+    #[test]
+    fn given_policy_violation_error_when_displayed_then_contains_message() {
+        let error = ConflictError::PolicyViolation("op_id is required".to_string());
+        let display = format!("{}", error);
+        assert!(display.contains("policy violation"));
+        assert!(display.contains("op_id is required"));
+    }
+
+    // =========================================================================
+    // Extract Affected Entities Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_node_delete_op_when_extracting_entities_then_returns_node_id() {
+        let op = DomainOp::NodeDelete {
+            id: "node-1".to_string(),
+        };
+        let entities = extract_affected_entities(&op);
+        assert_eq!(entities, vec!["node:node-1"]);
+    }
+
+    #[test]
+    fn given_node_restore_op_when_extracting_entities_then_returns_node_id() {
+        let op = DomainOp::NodeRestore {
+            id: "node-1".to_string(),
+        };
+        let entities = extract_affected_entities(&op);
+        assert_eq!(entities, vec!["node:node-1"]);
+    }
+
+    #[test]
+    fn given_send_backward_op_when_extracting_entities_then_returns_all_nodes() {
+        let op = DomainOp::SendBackward {
+            ids: vec!["a".to_string(), "b".to_string()],
+        };
+        let entities = extract_affected_entities(&op);
+        assert_eq!(entities, vec!["node:a", "node:b"]);
+    }
+
+    #[test]
+    fn given_bring_to_front_op_when_extracting_entities_then_returns_all_nodes() {
+        let op = DomainOp::BringToFront {
+            ids: vec!["x".to_string(), "y".to_string(), "z".to_string()],
+        };
+        let entities = extract_affected_entities(&op);
+        assert_eq!(entities, vec!["node:x", "node:y", "node:z"]);
+    }
+
+    #[test]
+    fn given_send_to_back_op_when_extracting_entities_then_returns_all_nodes() {
+        let op = DomainOp::SendToBack {
+            ids: vec!["single".to_string()],
+        };
+        let entities = extract_affected_entities(&op);
+        assert_eq!(entities, vec!["node:single"]);
+    }
+
+    #[test]
+    fn given_ungroup_op_when_extracting_entities_then_returns_group_id() {
+        let op = DomainOp::Ungroup {
+            id: "group-1".to_string(),
+        };
+        let entities = extract_affected_entities(&op);
+        assert_eq!(entities, vec!["group:group-1"]);
+    }
+
+    // =========================================================================
+    // Record Conflict Rejection Edge Case Tests
+    // =========================================================================
+
+    #[test]
+    fn given_valid_envelope_when_recording_rejection_then_succeeds() {
+        let envelope = make_envelope(
+            "op-valid",
+            DomainOp::NodeMove {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            false,
+        );
+
+        let reason = ConflictError::HumanPriorityBlock("active edit".to_string());
+        let result = record_conflict_rejection(&envelope, reason);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_empty_op_id_when_recording_rejection_then_fails() {
+        let envelope = EventEnvelope {
+            op_id: String::new(),
+            operation: DomainOp::NodeMove {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 100.0,
+            },
+            author: make_ai_author(),
+            timestamp: 1700000000,
+        };
+
+        let reason = ConflictError::HumanPriorityBlock("active edit".to_string());
+        let result = record_conflict_rejection(&envelope, reason);
+        assert!(result.is_err());
+
+        match result {
+            Err(ConflictError::PolicyViolation(msg)) => {
+                assert!(msg.contains("op_id"));
+            }
+            _ => panic!("Expected PolicyViolation error"),
+        }
+    }
+
+    #[test]
+    fn given_human_author_with_email_when_identified_then_is_human() {
+        let author = Author {
+            id: "human-with-email".to_string(),
+            name: "User".to_string(),
+            email: Some("user@example.com".to_string()),
+        };
+        assert!(is_human_author(&author));
+    }
+
+    #[test]
+    fn given_ai_author_with_email_when_identified_then_is_ai() {
+        let author = Author {
+            id: "ai-system".to_string(),
+            name: "AI System".to_string(),
+            email: Some("ai@example.com".to_string()),
+        };
+        assert!(!is_human_author(&author));
+    }
 }

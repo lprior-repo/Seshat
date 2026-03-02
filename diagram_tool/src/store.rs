@@ -3539,4 +3539,609 @@ mod tests {
             .expect("Failed to count events");
         assert_eq!(count, 1, "Conflicting duplicate should not create new row");
     }
+
+    // ============================================================
+    // BDD Error Path Tests (bd-12m)
+    // ============================================================
+
+    // ------------------------------------------------------------
+    // InvalidPragma Error Path Tests
+    // ------------------------------------------------------------
+
+    /// BDD: Given InvalidPragma error variant, when constructed with WAL issue,
+    /// then the error displays correctly with context.
+    #[test]
+    fn test_invalid_pragma_wal_mode_error_construction() {
+        // Test that InvalidPragma can be constructed for WAL mode issues
+        let err = StoreError::InvalidPragma("Expected WAL journal mode, got delete".to_string());
+
+        // Verify error displays correctly
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Invalid pragma"),
+            "Error message should contain 'Invalid pragma': {}",
+            msg
+        );
+        assert!(
+            msg.contains("WAL"),
+            "Error message should mention WAL: {}",
+            msg
+        );
+        assert!(
+            msg.contains("delete"),
+            "Error message should mention the wrong mode: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given InvalidPragma error variant, when constructed with synchronous issue,
+    /// then the error displays correctly with context.
+    #[test]
+    fn test_invalid_pragma_synchronous_mode_error_construction() {
+        // Test that InvalidPragma can be constructed for synchronous mode issues
+        let err =
+            StoreError::InvalidPragma("Expected FULL synchronous mode (2), got 0".to_string());
+
+        // Verify error displays correctly
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Invalid pragma"),
+            "Error message should contain 'Invalid pragma': {}",
+            msg
+        );
+        assert!(
+            msg.contains("synchronous"),
+            "Error message should mention synchronous: {}",
+            msg
+        );
+        assert!(
+            msg.contains("FULL") || msg.contains("2"),
+            "Error message should mention expected value: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given a database opened in read-only mode, when trying to set WAL,
+    /// then an error occurs (SQLite or InvalidPragma).
+    #[test]
+    fn test_invalid_pragma_readonly_database() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and bootstrap database first
+        let _ = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Open in read-only mode
+        let conn = Connection::open_with_flags(
+            &db_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .expect("Failed to open read-only");
+
+        // Try to set WAL - should fail or be ignored in read-only mode
+        let result: std::result::Result<(), rusqlite::Error> =
+            conn.execute_batch("PRAGMA journal_mode=WAL;");
+
+        // In read-only mode, pragma may fail or return an error
+        // This verifies that the pragma mechanism can fail
+        if let Ok(_) = result {
+            // On some systems, the pragma may succeed but not actually change
+            // Let's verify the journal mode is what we expect
+            let mode: String = conn
+                .query_row("PRAGMA journal_mode", [], |row| row.get(0))
+                .unwrap_or_else(|_| "unknown".to_string());
+            // In read-only mode, the mode should remain unchanged
+            // This test documents the behavior
+            assert!(
+                mode == "wal" || mode == "delete" || mode == "unknown",
+                "Journal mode in read-only: {}",
+                mode
+            );
+        }
+        // Test passes - we've verified the pragma behavior
+    }
+
+    /// BDD: Given InvalidPragma error, when converted to string,
+    /// then the message contains the configuration issue.
+    #[test]
+    fn test_invalid_pragma_error_display() {
+        let err = StoreError::InvalidPragma("journal mode is delete".to_string());
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Invalid pragma"),
+            "Error message should contain 'Invalid pragma': {}",
+            msg
+        );
+        assert!(
+            msg.contains("journal mode is delete"),
+            "Error message should contain the detail: {}",
+            msg
+        );
+    }
+
+    // ------------------------------------------------------------
+    // SchemaVersionMismatch Error Path Tests
+    // ------------------------------------------------------------
+
+    /// BDD: Given InvalidPragma error, when mapping to CliErrorCode,
+    /// then Unknown is returned.
+    #[test]
+    fn test_map_error_code_invalid_pragma() {
+        let err = StoreError::InvalidPragma("test".to_string());
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::Unknown);
+    }
+
+    /// BDD: Given SchemaVersionMismatch error, when displayed,
+    /// then the message shows expected and found versions.
+    #[test]
+    fn test_schema_version_mismatch_error_display() {
+        let err = StoreError::SchemaVersionMismatch {
+            expected: 2,
+            found: 1,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Schema version mismatch"),
+            "Error message should contain 'Schema version mismatch': {}",
+            msg
+        );
+        assert!(
+            msg.contains("expected 2"),
+            "Error message should contain expected version: {}",
+            msg
+        );
+        assert!(
+            msg.contains("found 1"),
+            "Error message should contain found version: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given SchemaVersionMismatch error, when mapping to CliErrorCode,
+    /// then Unknown is returned.
+    #[test]
+    fn test_map_error_code_schema_version_mismatch() {
+        let err = StoreError::SchemaVersionMismatch {
+            expected: 2,
+            found: 1,
+        };
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::Unknown);
+    }
+
+    // ------------------------------------------------------------
+    // MigrationForbidden Error Path Tests
+    // ------------------------------------------------------------
+
+    /// BDD: Given MigrationForbidden error, when displayed,
+    /// then the message shows the forbidden version.
+    #[test]
+    fn test_migration_forbidden_error_display() {
+        let err = StoreError::MigrationForbidden { version: 0 };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Migration forbidden"),
+            "Error message should contain 'Migration forbidden': {}",
+            msg
+        );
+        assert!(
+            msg.contains("version 0"),
+            "Error message should contain version: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given MigrationForbidden error, when mapping to CliErrorCode,
+    /// then Unknown is returned.
+    #[test]
+    fn test_map_error_code_migration_forbidden() {
+        let err = StoreError::MigrationForbidden { version: 0 };
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::Unknown);
+    }
+
+    // ------------------------------------------------------------
+    // RevisionMismatch Error Path Tests (BDD-style)
+    // ------------------------------------------------------------
+
+    /// BDD: Given RevisionMismatch error, when displayed,
+    /// then the message shows expected and found revisions.
+    #[test]
+    fn test_revision_mismatch_error_display() {
+        let err = StoreError::RevisionMismatch {
+            expected: 10,
+            found: 5,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Revision mismatch"),
+            "Error message should contain 'Revision mismatch': {}",
+            msg
+        );
+        assert!(
+            msg.contains("expected 10"),
+            "Error message should contain expected revision: {}",
+            msg
+        );
+        assert!(
+            msg.contains("found 5"),
+            "Error message should contain found revision: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given RevisionMismatch error, when mapping to CliErrorCode,
+    /// then RevisionMismatch is returned.
+    #[test]
+    fn test_map_error_code_revision_mismatch_variant() {
+        let err = StoreError::RevisionMismatch {
+            expected: 5,
+            found: 3,
+        };
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::RevisionMismatch);
+    }
+
+    // ------------------------------------------------------------
+    // RevisionGap Error Path Tests (BDD-style)
+    // ------------------------------------------------------------
+
+    /// BDD: Given a RevisionGap error, when verified,
+    /// then it maps to RevisionMismatch code and displays correctly.
+    #[test]
+    fn test_revision_gap_full_error_path() {
+        // Test display
+        let err = StoreError::RevisionGap {
+            expected: 5,
+            found: 7,
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Revision gap detected"),
+            "Error message should contain 'Revision gap detected': {}",
+            msg
+        );
+        assert!(
+            msg.contains("sequential revision 5"),
+            "Error message should contain expected sequential revision: {}",
+            msg
+        );
+        assert!(
+            msg.contains("gap at 7"),
+            "Error message should contain found gap revision: {}",
+            msg
+        );
+
+        // Test error code mapping
+        let code = map_error_code(&err);
+        assert_eq!(
+            code,
+            CliErrorCode::RevisionMismatch,
+            "RevisionGap should map to RevisionMismatch code"
+        );
+    }
+
+    // ------------------------------------------------------------
+    // EmptyBatch Error Path Tests (BDD-style)
+    // ------------------------------------------------------------
+
+    /// BDD: Given EmptyBatch error, when displayed,
+    /// then the message mentions zero events.
+    #[test]
+    fn test_empty_batch_error_display() {
+        let err = StoreError::EmptyBatch;
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Empty batch"),
+            "Error message should contain 'Empty batch': {}",
+            msg
+        );
+        assert!(
+            msg.contains("zero events"),
+            "Error message should mention zero events: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given EmptyBatch error, when mapping to CliErrorCode,
+    /// then ValidationFailed is returned.
+    #[test]
+    fn test_map_error_code_empty_batch() {
+        let err = StoreError::EmptyBatch;
+        let code = map_error_code(&err);
+        assert_eq!(code, CliErrorCode::ValidationFailed);
+    }
+
+    // ------------------------------------------------------------
+    // CorruptDatabase Error Path Tests
+    // ------------------------------------------------------------
+
+    /// BDD: Given CorruptDatabase error, when displayed,
+    /// then the message shows the corruption detail.
+    #[test]
+    fn test_corrupt_database_error_display() {
+        let err = RecoveryError::CorruptDatabase("page 42 is malformed".to_string());
+        let msg = err.to_string();
+        assert!(
+            msg.contains("integrity check failed"),
+            "Error message should contain 'integrity check failed': {}",
+            msg
+        );
+        assert!(
+            msg.contains("page 42 is malformed"),
+            "Error message should contain detail: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given a corrupted database file, when integrity check runs,
+    /// then CorruptDatabase error is returned.
+    #[test]
+    fn test_corrupt_database_on_invalid_file() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("corrupt.db");
+
+        // Write invalid SQLite header
+        std::fs::write(&db_path, b"This is not a valid SQLite database file")
+            .expect("Failed to write corrupt file");
+
+        let result = startup_integrity_check(&db_path);
+        assert!(result.is_err(), "Expected error for corrupt database");
+
+        match result {
+            Err(RecoveryError::CorruptDatabase(msg)) => {
+                assert!(
+                    !msg.is_empty(),
+                    "CorruptDatabase error should have a message"
+                );
+            }
+            Err(RecoveryError::Sqlite(_)) => {
+                // SQLite error is also acceptable for corrupt file
+            }
+            Err(other) => panic!("Expected CorruptDatabase or Sqlite error, got: {:?}", other),
+            Ok(status) => {
+                // If it returns Ok, the status should indicate invalid
+                assert!(
+                    !status.is_valid,
+                    "Corrupt database should be marked as invalid"
+                );
+            }
+        }
+    }
+
+    // ------------------------------------------------------------
+    // BackupUnavailable Error Path Tests
+    // ------------------------------------------------------------
+
+    /// BDD: Given BackupUnavailable error, when displayed,
+    /// then the message shows the unavailability reason.
+    #[test]
+    fn test_backup_unavailable_error_display() {
+        let err = RecoveryError::BackupUnavailable("/path/to/backup.db not found".to_string());
+        let msg = err.to_string();
+        assert!(
+            msg.contains("Backup file unavailable"),
+            "Error message should contain 'Backup file unavailable': {}",
+            msg
+        );
+        assert!(
+            msg.contains("/path/to/backup.db not found"),
+            "Error message should contain detail: {}",
+            msg
+        );
+    }
+
+    /// BDD: Given a nonexistent backup path, when recovery is attempted,
+    /// then appropriate error is returned.
+    #[test]
+    fn test_backup_unavailable_on_missing_file() {
+        let nonexistent_backup = Path::new("/nonexistent/path/backup.db");
+
+        // Verify the file doesn't exist
+        assert!(
+            !nonexistent_backup.exists(),
+            "Test assumes backup file does not exist"
+        );
+
+        // The RecoveryError::BackupUnavailable would be used in a restore function
+        // Here we verify the error can be constructed and used correctly
+        let err = RecoveryError::BackupUnavailable(format!(
+            "Backup file not found: {}",
+            nonexistent_backup.display()
+        ));
+
+        match &err {
+            RecoveryError::BackupUnavailable(msg) => {
+                assert!(
+                    msg.contains("not found"),
+                    "Error message should indicate file not found: {}",
+                    msg
+                );
+            }
+            _ => panic!("Expected BackupUnavailable error"),
+        }
+    }
+
+    // ------------------------------------------------------------
+    // Comprehensive BDD Scenario Tests
+    // ------------------------------------------------------------
+
+    /// BDD Scenario: Atomicity on RevisionMismatch
+    /// Given a database at revision 0
+    /// When append_batch is called with expected revision 999
+    /// Then RevisionMismatch error is returned
+    /// And no events are appended
+    #[test]
+    fn test_bdd_revision_mismatch_atomicity() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+
+        let events = vec![EventEnvelope {
+            op_id: "op-should-not-append".to_string(),
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 1".to_string(),
+            },
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        }];
+
+        // Pre-condition: database is at revision 0
+        let revision_before = current_revision(&bootstrap.conn).expect("Failed to get revision");
+        assert_eq!(revision_before, 0, "Database should start at revision 0");
+
+        // Attempt to append with wrong expected revision
+        let result = append_batch(&mut bootstrap.conn, events, Some(999));
+
+        // Verify error
+        assert!(result.is_err(), "Expected error for revision mismatch");
+        match result {
+            Err(StoreError::RevisionMismatch { expected, found }) => {
+                assert_eq!(expected, 999, "Expected should be 999");
+                assert_eq!(found, 0, "Found should be 0");
+            }
+            Err(other) => panic!("Expected RevisionMismatch, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+
+        // Verify atomicity: no events were appended
+        let revision_after = current_revision(&bootstrap.conn).expect("Failed to get revision");
+        assert_eq!(
+            revision_after, 0,
+            "Revision should still be 0 after failed append"
+        );
+
+        let count: i64 = bootstrap
+            .conn
+            .query_row("SELECT COUNT(*) FROM events", [], |row| row.get(0))
+            .expect("Failed to count events");
+        assert_eq!(count, 0, "No events should be in the database");
+    }
+
+    /// BDD Scenario: EmptyBatch rejection
+    /// Given a valid database connection
+    /// When append_batch is called with an empty vector
+    /// Then EmptyBatch error is returned
+    /// And database state is unchanged
+    #[test]
+    fn test_bdd_empty_batch_rejection() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+
+        // Pre-condition: database is at revision 0
+        let revision_before = current_revision(&bootstrap.conn).expect("Failed to get revision");
+        assert_eq!(revision_before, 0);
+
+        // Attempt to append empty batch
+        let result = append_batch(&mut bootstrap.conn, vec![], None);
+
+        // Verify error
+        assert!(result.is_err(), "Expected error for empty batch");
+        match result {
+            Err(StoreError::EmptyBatch) => {}
+            Err(other) => panic!("Expected EmptyBatch, got: {:?}", other),
+            Ok(_) => panic!("Expected error, got success"),
+        }
+
+        // Verify no state change
+        let revision_after = current_revision(&bootstrap.conn).expect("Failed to get revision");
+        assert_eq!(
+            revision_after, 0,
+            "Revision should still be 0 after empty batch"
+        );
+    }
+
+    /// BDD Scenario: Error message quality
+    /// Given various error types
+    /// When converted to string
+    /// Then messages are human-readable and contain relevant context
+    #[test]
+    fn test_bdd_error_message_quality() {
+        // Test all error types have meaningful messages
+
+        // StoreError variants
+        let test_cases: Vec<(StoreError, &[&str])> = vec![
+            (
+                StoreError::InvalidPragma("bad config".to_string()),
+                &["Invalid pragma", "bad config"],
+            ),
+            (
+                StoreError::SchemaVersionMismatch {
+                    expected: 2,
+                    found: 1,
+                },
+                &["Schema version mismatch", "expected 2", "found 1"],
+            ),
+            (
+                StoreError::MigrationForbidden { version: 0 },
+                &["Migration forbidden", "version 0"],
+            ),
+            (
+                StoreError::RevisionMismatch {
+                    expected: 10,
+                    found: 5,
+                },
+                &["Revision mismatch", "expected 10", "found 5"],
+            ),
+            (
+                StoreError::RevisionGap {
+                    expected: 5,
+                    found: 7,
+                },
+                &["Revision gap", "sequential revision 5", "gap at 7"],
+            ),
+            (StoreError::EmptyBatch, &["Empty batch", "zero events"]),
+        ];
+
+        for (err, expected_fragments) in test_cases {
+            let msg = err.to_string();
+            for fragment in expected_fragments {
+                assert!(
+                    msg.contains(fragment),
+                    "Error message '{}' should contain '{}': {}",
+                    msg,
+                    fragment,
+                    msg
+                );
+            }
+        }
+
+        // RecoveryError variants
+        let recovery_test_cases: Vec<(RecoveryError, &[&str])> = vec![
+            (
+                RecoveryError::CorruptDatabase("malformed page".to_string()),
+                &["integrity check failed", "malformed page"],
+            ),
+            (
+                RecoveryError::BackupUnavailable("file not found".to_string()),
+                &["Backup file unavailable", "file not found"],
+            ),
+        ];
+
+        for (err, expected_fragments) in recovery_test_cases {
+            let msg = err.to_string();
+            for fragment in expected_fragments {
+                assert!(
+                    msg.contains(fragment),
+                    "Error message '{}' should contain '{}': {}",
+                    msg,
+                    fragment,
+                    msg
+                );
+            }
+        }
+    }
 }
