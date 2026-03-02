@@ -582,7 +582,11 @@ mod tests {
             panic!("undo should succeed");
         };
 
-        let restored_node = restored.document.nodes.get(&node_id).expect("node should exist");
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
         assert_eq!(restored_node.x.0, 100.0, "x should be restored to 100.0");
         assert_eq!(restored_node.y.0, 100.0, "y should be restored to 100.0");
     }
@@ -613,9 +617,19 @@ mod tests {
             panic!("undo should succeed");
         };
 
-        let restored_node = restored.document.nodes.get(&node_id).expect("node should exist");
-        assert_eq!(restored_node.width.0, 80.0, "width should be restored to 80.0");
-        assert_eq!(restored_node.height.0, 40.0, "height should be restored to 40.0");
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            restored_node.width.0, 80.0,
+            "width should be restored to 80.0"
+        );
+        assert_eq!(
+            restored_node.height.0, 40.0,
+            "height should be restored to 40.0"
+        );
     }
 
     /// HIS-003: Rotation undo restores original rotation (stored in metadata)
@@ -624,7 +638,9 @@ mod tests {
         let mut doc_before = DiagramDocument::default();
         let node_id = NodeId::new("node-1".to_string());
         let mut node = make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0);
-        let _ = node.metadata.insert("rotation".to_string(), serde_json::json!(0.0));
+        let _ = node
+            .metadata
+            .insert("rotation".to_string(), serde_json::json!(0.0));
         let _ = doc_before.document.nodes.insert(node_id.clone(), node);
 
         // Push the initial state (this is what undo will restore to)
@@ -633,7 +649,9 @@ mod tests {
         // Rotate the node (change rotation in metadata)
         let mut doc_after = doc_before.clone();
         if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
-            let _ = node.metadata.insert("rotation".to_string(), serde_json::json!(45.0));
+            let _ = node
+                .metadata
+                .insert("rotation".to_string(), serde_json::json!(45.0));
         }
         doc_after.revision = doc_after.revision.increment();
 
@@ -642,8 +660,15 @@ mod tests {
             panic!("undo should succeed");
         };
 
-        let restored_node = restored.document.nodes.get(&node_id).expect("node should exist");
-        let rotation = restored_node.metadata.get("rotation").and_then(|v| v.as_f64());
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        let rotation = restored_node
+            .metadata
+            .get("rotation")
+            .and_then(|v| v.as_f64());
         assert_eq!(rotation, Some(0.0), "rotation should be restored to 0.0");
     }
 
@@ -653,18 +678,30 @@ mod tests {
         let mut doc_before = DiagramDocument::default();
         let node_a = NodeId::new("node-a".to_string());
         let node_b = NodeId::new("node-b".to_string());
-        let _ = doc_before
-            .document
-            .nodes
-            .insert(node_a.clone(), make_node_for_his("node-a", 100.0, 100.0, 80.0, 40.0));
-        let _ = doc_before
-            .document
-            .nodes
-            .insert(node_b.clone(), make_node_for_his("node-b", 200.0, 100.0, 80.0, 40.0));
+        let _ = doc_before.document.nodes.insert(
+            node_a.clone(),
+            make_node_for_his("node-a", 100.0, 100.0, 80.0, 40.0),
+        );
+        let _ = doc_before.document.nodes.insert(
+            node_b.clone(),
+            make_node_for_his("node-b", 200.0, 100.0, 80.0, 40.0),
+        );
 
         // Before grouping, nodes have no parent
-        assert!(doc_before.document.nodes.get(&node_a).unwrap().parent.is_none());
-        assert!(doc_before.document.nodes.get(&node_b).unwrap().parent.is_none());
+        assert!(doc_before
+            .document
+            .nodes
+            .get(&node_a)
+            .unwrap()
+            .parent
+            .is_none());
+        assert!(doc_before
+            .document
+            .nodes
+            .get(&node_b)
+            .unwrap()
+            .parent
+            .is_none());
 
         // Push the initial state (this is what undo will restore to)
         let history = History::new().push(doc_before.clone());
@@ -714,8 +751,16 @@ mod tests {
         );
 
         // Nodes should have no parent
-        let restored_a = restored.document.nodes.get(&node_a).expect("node-a should exist");
-        let restored_b = restored.document.nodes.get(&node_b).expect("node-b should exist");
+        let restored_a = restored
+            .document
+            .nodes
+            .get(&node_a)
+            .expect("node-a should exist");
+        let restored_b = restored
+            .document
+            .nodes
+            .get(&node_b)
+            .expect("node-b should exist");
         assert!(restored_a.parent.is_none(), "node-a parent should be None");
         assert!(restored_b.parent.is_none(), "node-b parent should be None");
     }
@@ -728,14 +773,14 @@ mod tests {
         let parent2 = NodeId::new("parent-2".to_string());
         let child = NodeId::new("child".to_string());
 
-        let _ = doc_before
-            .document
-            .nodes
-            .insert(parent1.clone(), make_node_for_his("parent-1", 0.0, 0.0, 200.0, 150.0));
-        let _ = doc_before
-            .document
-            .nodes
-            .insert(parent2.clone(), make_node_for_his("parent-2", 300.0, 0.0, 200.0, 150.0));
+        let _ = doc_before.document.nodes.insert(
+            parent1.clone(),
+            make_node_for_his("parent-1", 0.0, 0.0, 200.0, 150.0),
+        );
+        let _ = doc_before.document.nodes.insert(
+            parent2.clone(),
+            make_node_for_his("parent-2", 300.0, 0.0, 200.0, 150.0),
+        );
 
         let mut child_node = make_node_for_his("child", 50.0, 50.0, 80.0, 40.0);
         child_node.parent = Some(parent1.clone());
@@ -756,7 +801,11 @@ mod tests {
             panic!("undo should succeed");
         };
 
-        let restored_child = restored.document.nodes.get(&child).expect("child should exist");
+        let restored_child = restored
+            .document
+            .nodes
+            .get(&child)
+            .expect("child should exist");
         assert_eq!(
             restored_child.parent,
             Some(parent1.clone()),
@@ -770,14 +819,14 @@ mod tests {
         let mut doc_before = DiagramDocument::default();
         let node_a = NodeId::new("node-a".to_string());
         let node_b = NodeId::new("node-b".to_string());
-        let _ = doc_before
-            .document
-            .nodes
-            .insert(node_a.clone(), make_node_for_his("node-a", 0.0, 0.0, 80.0, 40.0));
-        let _ = doc_before
-            .document
-            .nodes
-            .insert(node_b.clone(), make_node_for_his("node-b", 200.0, 0.0, 80.0, 40.0));
+        let _ = doc_before.document.nodes.insert(
+            node_a.clone(),
+            make_node_for_his("node-a", 0.0, 0.0, 80.0, 40.0),
+        );
+        let _ = doc_before.document.nodes.insert(
+            node_b.clone(),
+            make_node_for_his("node-b", 200.0, 0.0, 80.0, 40.0),
+        );
 
         // Initially no edges
         assert!(doc_before.document.edges.is_empty());
@@ -841,7 +890,11 @@ mod tests {
             panic!("undo should succeed");
         };
 
-        let restored_node = restored.document.nodes.get(&node_id).expect("node should exist");
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
         assert_eq!(
             restored_node.style,
             Some(NodeStyle::Box),
@@ -862,7 +915,11 @@ mod tests {
 
         // Push initial state
         let history = history.push(doc_before.clone());
-        assert_eq!(history.undo_stack.len(), 1, "should have one history entry after first push");
+        assert_eq!(
+            history.undo_stack.len(),
+            1,
+            "should have one history entry after first push"
+        );
 
         // Change label and push
         let mut doc_after = doc_before.clone();
@@ -1005,7 +1062,10 @@ mod tests {
         let Some((_, after_undo)) = history.undo(current.clone()) else {
             panic!("undo should succeed");
         };
-        assert!(!after_undo.redo_stack.is_empty(), "redo stack should have entries after undo");
+        assert!(
+            !after_undo.redo_stack.is_empty(),
+            "redo stack should have entries after undo"
+        );
 
         // Push a new state - redo stack should be cleared
         let new_doc = {
@@ -1071,22 +1131,43 @@ mod tests {
         let Some((state_c, history_after_1)) = history.undo(current.clone()) else {
             panic!("first undo should succeed");
         };
-        let node_c = state_c.document.nodes.get(&node_id).expect("node should exist");
-        assert_eq!(node_c.x.0, 300.0, "first undo should restore state C (x=300)");
+        let node_c = state_c
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_c.x.0, 300.0,
+            "first undo should restore state C (x=300)"
+        );
 
         // Second undo -> B
         let Some((state_b, history_after_2)) = history_after_1.undo(state_c.clone()) else {
             panic!("second undo should succeed");
         };
-        let node_b = state_b.document.nodes.get(&node_id).expect("node should exist");
-        assert_eq!(node_b.x.0, 200.0, "second undo should restore state B (x=200)");
+        let node_b = state_b
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_b.x.0, 200.0,
+            "second undo should restore state B (x=200)"
+        );
 
         // Third undo -> A
         let Some((state_a, _)) = history_after_2.undo(state_b.clone()) else {
             panic!("third undo should succeed");
         };
-        let node_a = state_a.document.nodes.get(&node_id).expect("node should exist");
-        assert_eq!(node_a.x.0, 100.0, "third undo should restore state A (x=100)");
+        let node_a = state_a
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_a.x.0, 100.0,
+            "third undo should restore state A (x=100)"
+        );
     }
 
     /// HIS-013: Redo after multiple undos works correctly
@@ -1139,22 +1220,442 @@ mod tests {
         let Some((state_b, history_after_2)) = history_after_1.undo(state_c.clone()) else {
             panic!("second undo should succeed");
         };
-        let node_b = state_b.document.nodes.get(&node_id).expect("node should exist");
+        let node_b = state_b
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
         assert_eq!(node_b.x.0, 200.0, "should be at state B (x=200)");
 
         // Redo once -> C
-        let Some((state_c_again, history_after_redo1)) = history_after_2.redo(state_b.clone()) else {
+        let Some((state_c_again, history_after_redo1)) = history_after_2.redo(state_b.clone())
+        else {
             panic!("first redo should succeed");
         };
-        let node_c = state_c_again.document.nodes.get(&node_id).expect("node should exist");
-        assert_eq!(node_c.x.0, 300.0, "first redo should restore state C (x=300)");
+        let node_c = state_c_again
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_c.x.0, 300.0,
+            "first redo should restore state C (x=300)"
+        );
 
         // Redo again -> current (400)
         let Some((state_current, _)) = history_after_redo1.redo(state_c_again.clone()) else {
             panic!("second redo should succeed");
         };
-        let node_final = state_current.document.nodes.get(&node_id).expect("node should exist");
-        assert_eq!(node_final.x.0, 400.0, "second redo should restore current state (x=400)");
+        let node_final = state_current
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_final.x.0, 400.0,
+            "second redo should restore current state (x=400)"
+        );
+    }
+
+    // ============================================================
+    // HIS undo/redo tests 2/2 (bd-due)
+    // Additional tests for redo chain, autosave, and inverse validation
+    // ============================================================
+
+    /// HIS-014: Redo chain preserved after multiple undos
+    /// Verifies that the redo stack maintains correct order and integrity
+    /// after performing multiple consecutive undos.
+    #[test]
+    fn given_history_with_four_states_when_undo_three_times_then_redo_chain_preserved() {
+        let mut doc_a = DiagramDocument::default();
+        let node_id = NodeId::new("node-1".to_string());
+        let _ = doc_a.document.nodes.insert(
+            node_id.clone(),
+            make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
+        );
+        doc_a.revision = Revision::INITIAL;
+
+        // Create states B, C, D with different x positions
+        let doc_b = {
+            let mut d = doc_a.clone();
+            if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                n.x = OrderedFloat(200.0);
+            }
+            d.revision = d.revision.increment();
+            d
+        };
+
+        let doc_c = {
+            let mut d = doc_b.clone();
+            if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                n.x = OrderedFloat(300.0);
+            }
+            d.revision = d.revision.increment();
+            d
+        };
+
+        let doc_d = {
+            let mut d = doc_c.clone();
+            if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                n.x = OrderedFloat(400.0);
+            }
+            d.revision = d.revision.increment();
+            d
+        };
+
+        let current = {
+            let mut d = doc_d.clone();
+            if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                n.x = OrderedFloat(500.0);
+            }
+            d.revision = d.revision.increment();
+            d
+        };
+
+        let history = History::new()
+            .push(doc_a.clone())
+            .push(doc_b.clone())
+            .push(doc_c.clone())
+            .push(doc_d.clone());
+
+        // Undo 3 times (back to A)
+        let Some((state_d, history_after_1)) = history.undo(current.clone()) else {
+            panic!("first undo should succeed");
+        };
+        let Some((state_c, history_after_2)) = history_after_1.undo(state_d.clone()) else {
+            panic!("second undo should succeed");
+        };
+        let Some((state_b, history_after_3)) = history_after_2.undo(state_c.clone()) else {
+            panic!("third undo should succeed");
+        };
+        let Some((state_a, history_after_4)) = history_after_3.undo(state_b.clone()) else {
+            panic!("fourth undo should succeed");
+        };
+
+        // Verify we're back at state A
+        let node_a = state_a
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(node_a.x.0, 100.0, "should be at state A (x=100)");
+
+        // Verify redo stack has 4 entries (B, C, D, current)
+        assert_eq!(
+            history_after_4.redo_stack.len(),
+            4,
+            "redo stack should have 4 entries after 4 undos"
+        );
+
+        // Now verify redo chain by redoing all the way
+        let Some((state_b_again, history_redo1)) = history_after_4.redo(state_a.clone()) else {
+            panic!("first redo should succeed");
+        };
+        let node_b = state_b_again
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_b.x.0, 200.0,
+            "first redo should restore state B (x=200)"
+        );
+
+        let Some((state_c_again, history_redo2)) = history_redo1.redo(state_b_again.clone()) else {
+            panic!("second redo should succeed");
+        };
+        let node_c = state_c_again
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_c.x.0, 300.0,
+            "second redo should restore state C (x=300)"
+        );
+
+        let Some((state_d_again, history_redo3)) = history_redo2.redo(state_c_again.clone()) else {
+            panic!("third redo should succeed");
+        };
+        let node_d = state_d_again
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_d.x.0, 400.0,
+            "third redo should restore state D (x=400)"
+        );
+
+        let Some((state_current, _)) = history_redo3.redo(state_d_again.clone()) else {
+            panic!("fourth redo should succeed");
+        };
+        let node_final = state_current
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            node_final.x.0, 500.0,
+            "fourth redo should restore current state (x=500)"
+        );
+    }
+
+    /// HIS-015: New action clears redo stack completely
+    /// Verifies that pushing a new state after undo clears all redo entries.
+    #[test]
+    fn given_history_with_redo_entries_when_new_action_pushed_then_redo_stack_empty() {
+        let mut doc1 = DiagramDocument::default();
+        let node_id = NodeId::new("node-1".to_string());
+        let _ = doc1.document.nodes.insert(
+            node_id.clone(),
+            make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
+        );
+
+        // Build history with 3 states
+        let history = History::new()
+            .push(doc1.clone())
+            .push({
+                let mut d = doc1.clone();
+                if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                    n.x = OrderedFloat(200.0);
+                }
+                d.revision = d.revision.increment();
+                d
+            })
+            .push({
+                let mut d = doc1.clone();
+                if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                    n.x = OrderedFloat(300.0);
+                }
+                d.revision = d.revision.increment();
+                d
+            });
+
+        let current = {
+            let mut d = doc1.clone();
+            if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                n.x = OrderedFloat(400.0);
+            }
+            d.revision = d.revision.increment();
+            d
+        };
+
+        // Undo twice to create redo entries
+        let Some((state_3, after_undo1)) = history.undo(current.clone()) else {
+            panic!("first undo should succeed");
+        };
+        let Some((state_2, after_undo2)) = after_undo1.undo(state_3.clone()) else {
+            panic!("second undo should succeed");
+        };
+
+        // Verify redo stack has 2 entries
+        assert_eq!(
+            after_undo2.redo_stack.len(),
+            2,
+            "redo stack should have 2 entries after 2 undos"
+        );
+
+        // Push a new action (simulating new user action)
+        let new_doc = {
+            let mut d = state_2.clone();
+            if let Some(n) = d.document.nodes.get_mut(&node_id) {
+                n.x = OrderedFloat(999.0);
+            }
+            d.revision = d.revision.increment();
+            d
+        };
+        let after_new_push = after_undo2.push(new_doc);
+
+        // Verify redo stack is completely empty
+        assert!(
+            after_new_push.redo_stack.is_empty(),
+            "redo stack should be completely empty after new push"
+        );
+
+        // Verify undo stack has the new state
+        assert!(
+            after_new_push.can_undo(),
+            "should be able to undo the new push"
+        );
+    }
+
+    /// HIS-016: Undo across autosave boundary
+    /// Verifies that undo correctly restores document state regardless of
+    /// revision numbers that might be associated with autosave intervals.
+    #[test]
+    fn given_document_with_high_revision_when_undo_then_state_and_revision_restored() {
+        let mut doc_before_autosave = DiagramDocument::default();
+        let node_id = NodeId::new("node-1".to_string());
+        let _ = doc_before_autosave.document.nodes.insert(
+            node_id.clone(),
+            make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
+        );
+        // Simulate revision at autosave boundary (e.g., revision 10)
+        for _ in 0..10 {
+            doc_before_autosave.revision = doc_before_autosave.revision.increment();
+        }
+
+        // Push state before autosave
+        let history = History::new().push(doc_before_autosave.clone());
+
+        // Simulate changes after autosave with higher revision
+        let mut doc_after_autosave = doc_before_autosave.clone();
+        if let Some(node) = doc_after_autosave.document.nodes.get_mut(&node_id) {
+            node.x = OrderedFloat(500.0);
+            node.y = OrderedFloat(500.0);
+        }
+        // Autosave might increment revision multiple times
+        for _ in 0..5 {
+            doc_after_autosave.revision = doc_after_autosave.revision.increment();
+        }
+
+        // Undo should restore state from before autosave
+        let Some((restored, after_undo)) = history.undo(doc_after_autosave.clone()) else {
+            panic!("undo should succeed");
+        };
+
+        // Verify document content is restored
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+        assert_eq!(
+            restored_node.x.0, 100.0,
+            "x should be restored to pre-autosave value"
+        );
+        assert_eq!(
+            restored_node.y.0, 100.0,
+            "y should be restored to pre-autosave value"
+        );
+
+        // Verify revision is from the pushed state
+        assert_eq!(
+            restored.revision, doc_before_autosave.revision,
+            "revision should be from pre-autosave state"
+        );
+
+        // Verify redo is available
+        assert!(after_undo.can_redo(), "redo should be available after undo");
+    }
+
+    /// HIS-017: Inverse property validation for move operations
+    /// Verifies that undo of a move operation restores exact original position.
+    #[test]
+    fn given_node_at_original_position_when_moved_and_undo_then_exact_position_restored() {
+        let original_x = 123.45;
+        let original_y = 678.90;
+        let new_x = 999.99;
+        let new_y = 111.11;
+
+        let mut doc_before = DiagramDocument::default();
+        let node_id = NodeId::new("node-1".to_string());
+        let _ = doc_before.document.nodes.insert(
+            node_id.clone(),
+            make_node_for_his("node-1", original_x, original_y, 80.0, 40.0),
+        );
+
+        let history = History::new().push(doc_before.clone());
+
+        // Move the node
+        let mut doc_after = doc_before.clone();
+        if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
+            node.x = OrderedFloat(new_x);
+            node.y = OrderedFloat(new_y);
+        }
+        doc_after.revision = doc_after.revision.increment();
+
+        // Undo should restore exact original position
+        let Some((restored, _)) = history.undo(doc_after) else {
+            panic!("undo should succeed");
+        };
+
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+
+        // Verify exact inverse property restoration
+        assert_eq!(
+            restored_node.x.0, original_x,
+            "x should be exactly restored to original value"
+        );
+        assert_eq!(
+            restored_node.y.0, original_y,
+            "y should be exactly restored to original value"
+        );
+
+        // Verify no floating point drift
+        let epsilon = 1e-10;
+        assert!(
+            (restored_node.x.0 - original_x).abs() < epsilon,
+            "x should have no floating point drift"
+        );
+        assert!(
+            (restored_node.y.0 - original_y).abs() < epsilon,
+            "y should have no floating point drift"
+        );
+    }
+
+    /// HIS-018: Inverse property validation for resize operations
+    /// Verifies that undo of a resize operation restores exact original dimensions.
+    #[test]
+    fn given_node_with_original_dimensions_when_resized_and_undo_then_exact_dimensions_restored() {
+        let original_width = 150.75;
+        let original_height = 200.25;
+        let new_width = 50.5;
+        let new_height = 75.5;
+
+        let mut doc_before = DiagramDocument::default();
+        let node_id = NodeId::new("node-1".to_string());
+        let _ = doc_before.document.nodes.insert(
+            node_id.clone(),
+            make_node_for_his("node-1", 100.0, 100.0, original_width, original_height),
+        );
+
+        let history = History::new().push(doc_before.clone());
+
+        // Resize the node
+        let mut doc_after = doc_before.clone();
+        if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
+            node.width = OrderedFloat(new_width);
+            node.height = OrderedFloat(new_height);
+        }
+        doc_after.revision = doc_after.revision.increment();
+
+        // Undo should restore exact original dimensions
+        let Some((restored, _)) = history.undo(doc_after) else {
+            panic!("undo should succeed");
+        };
+
+        let restored_node = restored
+            .document
+            .nodes
+            .get(&node_id)
+            .expect("node should exist");
+
+        // Verify exact inverse property restoration
+        assert_eq!(
+            restored_node.width.0, original_width,
+            "width should be exactly restored to original value"
+        );
+        assert_eq!(
+            restored_node.height.0, original_height,
+            "height should be exactly restored to original value"
+        );
+
+        // Verify no floating point drift
+        let epsilon = 1e-10;
+        assert!(
+            (restored_node.width.0 - original_width).abs() < epsilon,
+            "width should have no floating point drift"
+        );
+        assert!(
+            (restored_node.height.0 - original_height).abs() < epsilon,
+            "height should have no floating point drift"
+        );
     }
 }
 

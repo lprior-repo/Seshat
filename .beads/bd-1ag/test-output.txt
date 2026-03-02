@@ -1,0 +1,16 @@
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m2026-03-01 20:40:17.592[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/libdioxus_devtools-f7fd76b7ccc6e8b0.rlib[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.599[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/libheaders-5b851fe69227a8d3.rlib[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.610[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/libdlopen2-6e2487df6223fb00.rlib[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.636[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/.tmpw95NC8[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.640[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/libhyper_rustls-41a1a7c6aef8799c.rlib[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.644[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/libmanganis_core-116e9def60a8e2de.rlib[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.645[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/.tmpefPmLY[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.651[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/.tmpQTpoMW[0m but it does not exist, skipping 
+[2m[WebServer] [22m[38;5;239m[[0m[38;5;185m WARN[0m [38;5;239m20:40:17.651[0m[38;5;239m][0m [38;5;3mmoon_task_hasher::task_hasher[0m  Attempted to hash input [38;5;38mtarget/debug/deps/libprofiling-4dd11da7dd88389b.rlib[0m but it does not exist, skipping 
+Error: Process from config.webServer exited early.
+
+
+To open last HTML report run:
+[36m[39m
+[36m  npx playwright show-report ../../../../tmp/seshat-playwright/report[39m
+[36m[39m

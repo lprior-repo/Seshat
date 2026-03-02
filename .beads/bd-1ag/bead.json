@@ -1,0 +1,17 @@
+[
+  {
+    "id": "bd-1ag",
+    "title": "tests: Implement CLP clipboard tests 2/2",
+    "description": "Add 5 clipboard tests: paste into container, drag-drop external image, clipboard serialization no internal fields, paste huge payload 1000+ items.",
+    "status": "in_progress",
+    "priority": 2,
+    "issue_type": "task",
+    "assignee": "self",
+    "created_at": "2026-03-01T01:06:38.453218631Z",
+    "created_by": "lewis",
+    "updated_at": "2026-03-02T02:27:08.840063595Z",
+    "source_repo": ".",
+    "compaction_level": 0,
+    "original_size": 0
+  }
+]

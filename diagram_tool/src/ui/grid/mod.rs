@@ -564,15 +564,24 @@ mod snp_snapping_tests {
 
         // Value at 9.0 (less than half grid) should snap to 0.0
         let result = snap_value(9.0, true, grid);
-        assert!((result - 0.0).abs() < f64::EPSILON, "9.0 should snap to 0.0");
+        assert!(
+            (result - 0.0).abs() < f64::EPSILON,
+            "9.0 should snap to 0.0"
+        );
 
         // Value at 11.0 (more than half grid) should snap to 20.0
         let result = snap_value(11.0, true, grid);
-        assert!((result - 20.0).abs() < f64::EPSILON, "11.0 should snap to 20.0");
+        assert!(
+            (result - 20.0).abs() < f64::EPSILON,
+            "11.0 should snap to 20.0"
+        );
 
         // Value at 10.0 (exactly half) should snap to 20.0 (round half up)
         let result = snap_value(10.0, true, grid);
-        assert!((result - 20.0).abs() < f64::EPSILON, "10.0 should snap to 20.0");
+        assert!(
+            (result - 20.0).abs() < f64::EPSILON,
+            "10.0 should snap to 20.0"
+        );
     }
 
     #[test]
@@ -581,14 +590,14 @@ mod snp_snapping_tests {
 
         // Test threshold boundaries for multiple grid lines
         let test_cases = [
-            (0.0, 0.0),    // At origin
-            (10.0, 20.0),  // Halfway, rounds up
-            (19.9, 20.0),  // Just under next grid line
-            (20.0, 20.0),  // Exactly on grid
-            (20.1, 20.0),  // Just over grid line
-            (29.0, 20.0),  // Closer to 20 than 40
-            (30.0, 40.0),  // Halfway, rounds up
-            (31.0, 40.0),  // Closer to 40 than 20
+            (0.0, 0.0),   // At origin
+            (10.0, 20.0), // Halfway, rounds up
+            (19.9, 20.0), // Just under next grid line
+            (20.0, 20.0), // Exactly on grid
+            (20.1, 20.0), // Just over grid line
+            (29.0, 20.0), // Closer to 20 than 40
+            (30.0, 40.0), // Halfway, rounds up
+            (31.0, 40.0), // Closer to 40 than 20
         ];
 
         for (input, expected) in test_cases {
@@ -612,12 +621,12 @@ mod snp_snapping_tests {
 
         // Test dragging near grid edges
         let edge_cases = [
-            (-0.1, 0.0),   // Just before origin
-            (0.1, 0.0),    // Just after origin
-            (19.9, 20.0),  // Just before first grid line
-            (20.1, 20.0),  // Just after first grid line
-            (39.9, 40.0),  // Just before second grid line
-            (40.1, 40.0),  // Just after second grid line
+            (-0.1, 0.0),    // Just before origin
+            (0.1, 0.0),     // Just after origin
+            (19.9, 20.0),   // Just before first grid line
+            (20.1, 20.0),   // Just after first grid line
+            (39.9, 40.0),   // Just before second grid line
+            (40.1, 40.0),   // Just after second grid line
             (-10.0, -20.0), // Negative value near grid
             (-20.1, -20.0), // Just after negative grid line
         ];
@@ -707,9 +716,7 @@ mod snp_snapping_tests {
     fn given_snap_disabled_when_snapping_then_returns_value_unchanged() {
         let grid = GridSize::new(20.0).unwrap();
 
-        let test_values = [
-            0.0, 10.0, 15.5, 20.0, 37.5, 100.0, -15.0, -50.5, 999.999,
-        ];
+        let test_values = [0.0, 10.0, 15.5, 20.0, 37.5, 100.0, -15.0, -50.5, 999.999];
 
         for value in test_values {
             let result = snap_value(value, false, grid);
@@ -761,11 +768,17 @@ mod snp_snapping_tests {
         let grid = GridSize::new(20.0).unwrap();
 
         let result = snap_value(f64::NAN, false, grid);
-        assert!(result.is_nan(), "NaN should pass through when snap disabled");
+        assert!(
+            result.is_nan(),
+            "NaN should pass through when snap disabled"
+        );
 
         let result = snap_point((f64::NAN, 10.0), false, grid);
         assert!(result.0.is_nan(), "NaN x should pass through");
-        assert!((result.1 - 10.0).abs() < f64::EPSILON, "y should pass through");
+        assert!(
+            (result.1 - 10.0).abs() < f64::EPSILON,
+            "y should pass through"
+        );
     }
 
     #[test]
@@ -794,7 +807,11 @@ mod snp_snapping_tests {
         let result = snap_value(10.0, true, grid);
 
         // Verify the result is deterministic (either 0 or 20, consistently)
-        let expected = if (10.0_f64 / 20.0_f64).round() == 1.0 { 20.0 } else { 0.0 };
+        let expected = if (10.0_f64 / 20.0_f64).round() == 1.0 {
+            20.0
+        } else {
+            0.0
+        };
         assert!(
             (result - expected).abs() < f64::EPSILON,
             "Midway value should snap deterministically to {} but got {}",
@@ -825,7 +842,8 @@ mod snp_snapping_tests {
             let result3 = snap_value(value, true, grid);
 
             assert!(
-                (result1 - result2).abs() < f64::EPSILON && (result2 - result3).abs() < f64::EPSILON,
+                (result1 - result2).abs() < f64::EPSILON
+                    && (result2 - result3).abs() < f64::EPSILON,
                 "Snap should be deterministic for midway value {}: got {}, {}, {}",
                 value,
                 result1,
@@ -847,12 +865,7 @@ mod snp_snapping_tests {
         let grid = GridSize::new(20.0).unwrap();
 
         // Point exactly at grid cell center
-        let center_points = [
-            (10.0, 10.0),
-            (30.0, 10.0),
-            (10.0, 30.0),
-            (30.0, 30.0),
-        ];
+        let center_points = [(10.0, 10.0), (30.0, 10.0), (10.0, 30.0), (30.0, 30.0)];
 
         for (x, y) in center_points {
             let result1 = snap_point((x, y), true, grid);
@@ -891,7 +904,10 @@ mod snp_snapping_tests {
         let grid = GridSize::new(100.0).unwrap(); // Maximum grid size
 
         let result = snap_value(50.0, true, grid);
-        assert!((result - 100.0).abs() < f64::EPSILON, "Should snap to 100.0");
+        assert!(
+            (result - 100.0).abs() < f64::EPSILON,
+            "Should snap to 100.0"
+        );
 
         let result = snap_value(49.0, true, grid);
         assert!((result - 0.0).abs() < f64::EPSILON, "Should snap to 0.0");

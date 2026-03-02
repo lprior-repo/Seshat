@@ -715,12 +715,21 @@ pub fn apply_align_selection(
                 .map(|node| (node.x.0, node.x.0 + node.width.0))
                 .collect();
 
-            if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+            if positions
+                .iter()
+                .any(|(p, e)| !p.is_finite() || !e.is_finite())
+            {
                 return false;
             }
 
-            let min_x = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
-            let max_right = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+            let min_x = positions
+                .iter()
+                .map(|(p, _)| *p)
+                .fold(f64::INFINITY, f64::min);
+            let max_right = positions
+                .iter()
+                .map(|(_, e)| *e)
+                .fold(f64::NEG_INFINITY, f64::max);
 
             if !min_x.is_finite() || !max_right.is_finite() {
                 return false;
@@ -735,12 +744,21 @@ pub fn apply_align_selection(
                 .map(|node| (node.y.0, node.y.0 + node.height.0))
                 .collect();
 
-            if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+            if positions
+                .iter()
+                .any(|(p, e)| !p.is_finite() || !e.is_finite())
+            {
                 return false;
             }
 
-            let min_y = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
-            let max_bottom = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+            let min_y = positions
+                .iter()
+                .map(|(p, _)| *p)
+                .fold(f64::INFINITY, f64::min);
+            let max_bottom = positions
+                .iter()
+                .map(|(_, e)| *e)
+                .fold(f64::NEG_INFINITY, f64::max);
 
             if !min_y.is_finite() || !max_bottom.is_finite() {
                 return false;
@@ -853,7 +871,10 @@ pub fn apply_distribute_selection(
         .collect();
 
     // Check all positions and sizes are finite
-    if node_data.iter().any(|(_, pos, size)| !pos.is_finite() || !size.is_finite()) {
+    if node_data
+        .iter()
+        .any(|(_, pos, size)| !pos.is_finite() || !size.is_finite())
+    {
         return false;
     }
 
@@ -1344,8 +1365,14 @@ mod tests {
         let mut doc = DiagramDocument::default();
         // Add a node but select a different (non-existent) ID
         let real_id = NodeId::new("real-node".to_string());
-        let _ = doc.document.nodes.insert(real_id, make_node("real-node", 0.0, 0.0));
-        let _ = doc.editor_state.selected_items.insert("ghost-id".to_string());
+        let _ = doc
+            .document
+            .nodes
+            .insert(real_id, make_node("real-node", 0.0, 0.0));
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("ghost-id".to_string());
 
         let result = copy_selection_to_clipboard(&doc);
 
@@ -1360,9 +1387,18 @@ mod tests {
         let node_a = NodeId::new("node-a".to_string());
         let node_b = NodeId::new("node-b".to_string());
         let node_c = NodeId::new("node-c".to_string());
-        let _ = doc.document.nodes.insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
-        let _ = doc.document.nodes.insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
-        let _ = doc.document.nodes.insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
@@ -1394,7 +1430,10 @@ mod tests {
             let clip = s.borrow();
             if let Some(c) = clip.as_ref() {
                 assert_eq!(c.nodes.len(), 1, "should copy one node");
-                assert!(c.edges.is_empty(), "edge should be excluded when target not selected");
+                assert!(
+                    c.edges.is_empty(),
+                    "edge should be excluded when target not selected"
+                );
             } else {
                 panic!("clipboard should have content");
             }
@@ -1436,12 +1475,13 @@ mod tests {
             if let Some(c) = clip.as_ref() {
                 assert_eq!(c.nodes.len(), 2);
                 // Find the child node in clipboard
-                let child_in_clipboard = c
-                    .nodes
-                    .iter()
-                    .find(|(id, _)| id.to_string() == "child");
+                let child_in_clipboard = c.nodes.iter().find(|(id, _)| id.to_string() == "child");
                 if let Some((_, node)) = child_in_clipboard {
-                    assert_eq!(node.parent, Some(parent_id), "parent reference preserved during copy");
+                    assert_eq!(
+                        node.parent,
+                        Some(parent_id),
+                        "parent reference preserved during copy"
+                    );
                 } else {
                     panic!("child should be in clipboard");
                 }
@@ -1516,9 +1556,18 @@ mod tests {
         let node_a = NodeId::new("node-a".to_string());
         let node_b = NodeId::new("node-b".to_string());
         let node_c = NodeId::new("node-c".to_string());
-        let _ = doc.document.nodes.insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
-        let _ = doc.document.nodes.insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
-        let _ = doc.document.nodes.insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
@@ -1554,11 +1603,12 @@ mod tests {
             .document
             .edges
             .iter()
-            .find(|(_, edge)| {
-                edge.source != original_a && edge.target != original_b
-            });
+            .find(|(_, edge)| edge.source != original_a && edge.target != original_b);
 
-        assert!(pasted_edge.is_some(), "should have a pasted edge with remapped IDs");
+        assert!(
+            pasted_edge.is_some(),
+            "should have a pasted edge with remapped IDs"
+        );
         if let Some((_, edge)) = pasted_edge {
             // Verify the pasted edge's source and target are NOT the original IDs
             assert_ne!(edge.source, original_a);
@@ -1586,9 +1636,7 @@ mod tests {
             .document
             .nodes
             .iter()
-            .find(|(id, node)| {
-                id.to_string() != "child" && node.label == "child"
-            });
+            .find(|(id, node)| id.to_string() != "child" && node.label == "child");
 
         assert!(pasted_child.is_some());
         if let Some((_, child_node)) = pasted_child {
@@ -1624,15 +1672,14 @@ mod tests {
             .document
             .nodes
             .iter()
-            .find(|(id, node)| {
-                id.to_string() != "child" && node.label == "child"
-            });
+            .find(|(id, node)| id.to_string() != "child" && node.label == "child");
 
         assert!(pasted_child.is_some());
         if let Some((_, child_node)) = pasted_child {
             // Parent should still point to the original parent (not remapped)
             assert_eq!(
-                child_node.parent, Some(parent_id),
+                child_node.parent,
+                Some(parent_id),
                 "parent reference should be preserved when parent not pasted"
             );
         }
@@ -1642,7 +1689,10 @@ mod tests {
     fn given_paste_successful_when_paste_then_selection_updated() {
         clear_clipboard();
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
-        let _ = doc.editor_state.selected_items.insert("original-node".to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
 
         let _ = copy_selection_to_clipboard(&doc);
 
@@ -1657,7 +1707,10 @@ mod tests {
         let selected_id = doc.editor_state.selected_items.iter().next();
         assert!(selected_id.is_some());
         if let Some(id) = selected_id {
-            assert_ne!(id, "original-node", "selection should be the new pasted node, not original");
+            assert_ne!(
+                id, "original-node",
+                "selection should be the new pasted node, not original"
+            );
         }
     }
 
@@ -1665,7 +1718,10 @@ mod tests {
     fn given_paste_successful_when_paste_then_revision_incremented() {
         clear_clipboard();
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
-        let _ = doc.editor_state.selected_items.insert("original-node".to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
 
         let _ = copy_selection_to_clipboard(&doc);
 
@@ -2237,12 +2293,21 @@ mod tests {
                     .map(|node| (node.x.0, node.x.0 + node.width.0))
                     .collect();
 
-                if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+                if positions
+                    .iter()
+                    .any(|(p, e)| !p.is_finite() || !e.is_finite())
+                {
                     return false;
                 }
 
-                let min_x = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
-                let max_right = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+                let min_x = positions
+                    .iter()
+                    .map(|(p, _)| *p)
+                    .fold(f64::INFINITY, f64::min);
+                let max_right = positions
+                    .iter()
+                    .map(|(_, e)| *e)
+                    .fold(f64::NEG_INFINITY, f64::max);
 
                 if !min_x.is_finite() || !max_right.is_finite() {
                     return false;
@@ -2257,12 +2322,21 @@ mod tests {
                     .map(|node| (node.y.0, node.y.0 + node.height.0))
                     .collect();
 
-                if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+                if positions
+                    .iter()
+                    .any(|(p, e)| !p.is_finite() || !e.is_finite())
+                {
                     return false;
                 }
 
-                let min_y = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
-                let max_bottom = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+                let min_y = positions
+                    .iter()
+                    .map(|(p, _)| *p)
+                    .fold(f64::INFINITY, f64::min);
+                let max_bottom = positions
+                    .iter()
+                    .map(|(_, e)| *e)
+                    .fold(f64::NEG_INFINITY, f64::max);
 
                 if !min_y.is_finite() || !max_bottom.is_finite() {
                     return false;
@@ -2321,11 +2395,16 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
         assert!(result, "align_left should return true");
         assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(100.0));
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(100.0), "node-b x should be aligned to min_x");
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.x.0),
+            Some(100.0),
+            "node-b x should be aligned to min_x"
+        );
     }
 
     #[test]
@@ -2343,11 +2422,20 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::End);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::End);
 
         assert!(result, "align_right should return true");
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(200.0), "node-a x should be 200");
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(200.0), "node-b x should be 200");
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.x.0),
+            Some(200.0),
+            "node-a x should be 200"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.x.0),
+            Some(200.0),
+            "node-b x should be 200"
+        );
     }
 
     #[test]
@@ -2368,12 +2456,25 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Center);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Center);
 
         assert!(result, "align_center_horizontal should return true");
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(175.0), "node-a x should be centered");
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(175.0), "node-b x should be centered");
-        assert_eq!(doc.document.nodes.get(&node_c).map(|n| n.x.0), Some(175.0), "node-c x should be centered");
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.x.0),
+            Some(175.0),
+            "node-a x should be centered"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.x.0),
+            Some(175.0),
+            "node-b x should be centered"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_c).map(|n| n.x.0),
+            Some(175.0),
+            "node-c x should be centered"
+        );
     }
 
     #[test]
@@ -2391,11 +2492,16 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::Start);
 
         assert!(result, "align_top should return true");
         assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.y.0), Some(100.0));
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.y.0), Some(100.0), "node-b y should be aligned to min_y");
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.y.0),
+            Some(100.0),
+            "node-b y should be aligned to min_y"
+        );
     }
 
     #[test]
@@ -2416,8 +2522,16 @@ mod tests {
         let result = perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::End);
 
         assert!(result, "align_bottom should return true");
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.y.0), Some(200.0), "node-a y should be 200");
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.y.0), Some(200.0), "node-b y should be 200");
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.y.0),
+            Some(200.0),
+            "node-a y should be 200"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.y.0),
+            Some(200.0),
+            "node-b y should be 200"
+        );
     }
 
     #[test]
@@ -2438,12 +2552,25 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::Center);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::Center);
 
         assert!(result, "align_middle_vertical should return true");
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.y.0), Some(150.0), "node-a y should be centered");
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.y.0), Some(150.0), "node-b y should be centered");
-        assert_eq!(doc.document.nodes.get(&node_c).map(|n| n.y.0), Some(150.0), "node-c y should be centered");
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.y.0),
+            Some(150.0),
+            "node-a y should be centered"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.y.0),
+            Some(150.0),
+            "node-b y should be centered"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_c).map(|n| n.y.0),
+            Some(150.0),
+            "node-c y should be centered"
+        );
     }
 
     #[test]
@@ -2455,9 +2582,13 @@ mod tests {
             .document
             .nodes
             .update(node_id, make_node("single-node", 100.0, 100.0));
-        let _ = doc.editor_state.selected_items.insert("single-node".to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("single-node".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
         assert!(!result, "align should return false for single node");
     }
@@ -2472,7 +2603,8 @@ mod tests {
             .nodes
             .update(node_id, make_node("node", 100.0, 100.0));
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
         assert!(!result, "align should return false for empty selection");
     }
@@ -2498,12 +2630,25 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
         assert!(result, "align should return true with 2 movable nodes");
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(100.0), "node-a should be aligned");
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(200.0), "locked node-b should not move");
-        assert_eq!(doc.document.nodes.get(&node_c).map(|n| n.x.0), Some(100.0), "node-c should be aligned");
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.x.0),
+            Some(100.0),
+            "node-a should be aligned"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.x.0),
+            Some(200.0),
+            "locked node-b should not move"
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_c).map(|n| n.x.0),
+            Some(100.0),
+            "node-c should be aligned"
+        );
     }
 
     #[test]
@@ -2524,7 +2669,8 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
         assert!(!result, "align should return false for non-finite coords");
     }
@@ -2551,10 +2697,22 @@ mod tests {
 
         let _ = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.width.0), width_before_a);
-        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.height.0), height_before_a);
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.width.0), width_before_b);
-        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.height.0), height_before_b);
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.width.0),
+            width_before_a
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_a).map(|n| n.height.0),
+            height_before_a
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.width.0),
+            width_before_b
+        );
+        assert_eq!(
+            doc.document.nodes.get(&node_b).map(|n| n.height.0),
+            height_before_b
+        );
     }
 
     #[test]
@@ -2574,10 +2732,15 @@ mod tests {
 
         let revision_before = doc.revision;
 
-        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+        let result =
+            perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
 
         assert!(result);
-        assert_eq!(doc.revision, revision_before.increment(), "revision should be incremented");
+        assert_eq!(
+            doc.revision,
+            revision_before.increment(),
+            "revision should be incremented"
+        );
     }
 }
 
@@ -2760,14 +2923,14 @@ mod distribution_tests {
             .document
             .nodes
             .insert(node_a, make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_b, make_node_for_dist("node-b", 200.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_c, make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0));
+        let _ = doc.document.nodes.insert(
+            node_b,
+            make_node_for_dist("node-b", 200.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_c,
+            make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0),
+        );
 
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
@@ -2777,10 +2940,7 @@ mod distribution_tests {
     }
 
     /// Pure function for testing distribution logic
-    fn perform_distribute(
-        doc: &mut DiagramDocument,
-        axis: DistributionAxis,
-    ) -> bool {
+    fn perform_distribute(doc: &mut DiagramDocument, axis: DistributionAxis) -> bool {
         let selected_nodes: Vec<NodeId> = selected_node_ids(doc)
             .into_iter()
             .filter(|id| {
@@ -2809,7 +2969,10 @@ mod distribution_tests {
             })
             .collect();
 
-        if node_data.iter().any(|(_, pos, size)| !pos.is_finite() || !size.is_finite()) {
+        if node_data
+            .iter()
+            .any(|(_, pos, size)| !pos.is_finite() || !size.is_finite())
+        {
             return false;
         }
 
@@ -2885,13 +3048,28 @@ mod distribution_tests {
             "revision should be incremented"
         );
 
-        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
-        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
-        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+        let node_a = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-a".to_string()))
+            .expect("node-a");
+        let node_b = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-b".to_string()))
+            .expect("node-b");
+        let node_c = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-c".to_string()))
+            .expect("node-c");
 
         assert_eq!(node_a.x.0, 0.0, "node-a x should be 0");
         assert_eq!(node_c.x.0, 400.0, "node-c x should be 400");
-        assert_eq!(node_b.x.0, 200.0, "node-b x should be 200 for equal spacing");
+        assert_eq!(
+            node_b.x.0, 200.0,
+            "node-b x should be 200 for equal spacing"
+        );
     }
 
     #[test]
@@ -2905,14 +3083,14 @@ mod distribution_tests {
             .document
             .nodes
             .insert(node_a, make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_b, make_node_for_dist("node-b", 0.0, 200.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_c, make_node_for_dist("node-c", 0.0, 400.0, 100.0, 50.0));
+        let _ = doc.document.nodes.insert(
+            node_b,
+            make_node_for_dist("node-b", 0.0, 200.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_c,
+            make_node_for_dist("node-c", 0.0, 400.0, 100.0, 50.0),
+        );
 
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
@@ -2922,35 +3100,74 @@ mod distribution_tests {
 
         assert!(result, "distribute vertical should return true");
 
-        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
-        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
-        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+        let node_a = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-a".to_string()))
+            .expect("node-a");
+        let node_b = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-b".to_string()))
+            .expect("node-b");
+        let node_c = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-c".to_string()))
+            .expect("node-c");
 
         assert_eq!(node_a.y.0, 0.0, "node-a y should be 0");
         assert_eq!(node_c.y.0, 400.0, "node-c y should be 400");
-        assert_eq!(node_b.y.0, 200.0, "node-b y should be 200 for equal spacing");
+        assert_eq!(
+            node_b.y.0, 200.0,
+            "node-b y should be 200 for equal spacing"
+        );
     }
 
     #[test]
     fn test_distribute_horizontal_preserves_y() {
         let mut doc = make_doc_with_three_nodes_for_dist();
 
-        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-a".to_string())) {
+        if let Some(node) = doc
+            .document
+            .nodes
+            .get_mut(&NodeId::new("node-a".to_string()))
+        {
             node.y = OrderedFloat(100.0);
         }
-        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-b".to_string())) {
+        if let Some(node) = doc
+            .document
+            .nodes
+            .get_mut(&NodeId::new("node-b".to_string()))
+        {
             node.y = OrderedFloat(200.0);
         }
-        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-c".to_string())) {
+        if let Some(node) = doc
+            .document
+            .nodes
+            .get_mut(&NodeId::new("node-c".to_string()))
+        {
             node.y = OrderedFloat(300.0);
         }
 
         let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
         assert!(result);
 
-        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
-        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
-        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+        let node_a = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-a".to_string()))
+            .expect("node-a");
+        let node_b = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-b".to_string()))
+            .expect("node-b");
+        let node_c = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-c".to_string()))
+            .expect("node-c");
 
         assert_eq!(node_a.y.0, 100.0, "node-a y should be unchanged");
         assert_eq!(node_b.y.0, 200.0, "node-b y should be unchanged");
@@ -2964,18 +3181,18 @@ mod distribution_tests {
         let node_b = NodeId::new("node-b".to_string());
         let node_c = NodeId::new("node-c".to_string());
 
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_a.clone(), make_node_for_dist("node-a", 50.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_b.clone(), make_node_for_dist("node-b", 150.0, 200.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_c.clone(), make_node_for_dist("node-c", 250.0, 400.0, 100.0, 50.0));
+        let _ = doc.document.nodes.insert(
+            node_a.clone(),
+            make_node_for_dist("node-a", 50.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_b.clone(),
+            make_node_for_dist("node-b", 150.0, 200.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_c.clone(),
+            make_node_for_dist("node-c", 250.0, 400.0, 100.0, 50.0),
+        );
 
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
@@ -2984,9 +3201,21 @@ mod distribution_tests {
         let result = perform_distribute(&mut doc, DistributionAxis::Vertical);
         assert!(result);
 
-        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
-        let node_b = doc.document.nodes.get(&NodeId::new("node-b".to_string())).expect("node-b");
-        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+        let node_a = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-a".to_string()))
+            .expect("node-a");
+        let node_b = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-b".to_string()))
+            .expect("node-b");
+        let node_c = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-c".to_string()))
+            .expect("node-c");
 
         assert_eq!(node_a.x.0, 50.0, "node-a x should be unchanged");
         assert_eq!(node_b.x.0, 150.0, "node-b x should be unchanged");
@@ -3003,10 +3232,10 @@ mod distribution_tests {
             .document
             .nodes
             .insert(node_a, make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_b, make_node_for_dist("node-b", 200.0, 0.0, 100.0, 50.0));
+        let _ = doc.document.nodes.insert(
+            node_b,
+            make_node_for_dist("node-b", 200.0, 0.0, 100.0, 50.0),
+        );
 
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
@@ -3028,15 +3257,27 @@ mod distribution_tests {
     fn test_distribute_outermost_nodes_at_bounds() {
         let mut doc = make_doc_with_three_nodes_for_dist();
 
-        if let Some(node) = doc.document.nodes.get_mut(&NodeId::new("node-b".to_string())) {
+        if let Some(node) = doc
+            .document
+            .nodes
+            .get_mut(&NodeId::new("node-b".to_string()))
+        {
             node.x = OrderedFloat(350.0);
         }
 
         let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
         assert!(result);
 
-        let node_a = doc.document.nodes.get(&NodeId::new("node-a".to_string())).expect("node-a");
-        let node_c = doc.document.nodes.get(&NodeId::new("node-c".to_string())).expect("node-c");
+        let node_a = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-a".to_string()))
+            .expect("node-a");
+        let node_c = doc
+            .document
+            .nodes
+            .get(&NodeId::new("node-c".to_string()))
+            .expect("node-c");
 
         assert_eq!(node_a.x.0, 0.0, "leftmost node should stay at min bound");
         assert_eq!(node_c.x.0, 400.0, "rightmost node should stay at max bound");
@@ -3051,22 +3292,22 @@ mod distribution_tests {
         let node_c = NodeId::new("node-c".to_string());
         let node_d = NodeId::new("node-d".to_string());
 
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_a.clone(), make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_b.clone(), make_node_for_dist("node-b", 50.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_c.clone(), make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_d.clone(), make_node_for_dist("node-d", 600.0, 0.0, 100.0, 50.0));
+        let _ = doc.document.nodes.insert(
+            node_a.clone(),
+            make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_b.clone(),
+            make_node_for_dist("node-b", 50.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_c.clone(),
+            make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_d.clone(),
+            make_node_for_dist("node-d", 600.0, 0.0, 100.0, 50.0),
+        );
 
         for id in ["node-a", "node-b", "node-c", "node-d"] {
             let _ = doc.editor_state.selected_items.insert(id.to_string());
@@ -3172,22 +3413,22 @@ mod distribution_tests {
         let node_c = NodeId::new("node-c".to_string());
         let node_d = NodeId::new("node-d".to_string());
 
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_a.clone(), make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_b.clone(), make_node_for_dist("node-b", 50.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_c.clone(), make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0));
-        let _ = doc
-            .document
-            .nodes
-            .insert(node_d.clone(), make_node_for_dist("node-d", 600.0, 0.0, 100.0, 50.0));
+        let _ = doc.document.nodes.insert(
+            node_a.clone(),
+            make_node_for_dist("node-a", 0.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_b.clone(),
+            make_node_for_dist("node-b", 50.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_c.clone(),
+            make_node_for_dist("node-c", 400.0, 0.0, 100.0, 50.0),
+        );
+        let _ = doc.document.nodes.insert(
+            node_d.clone(),
+            make_node_for_dist("node-d", 600.0, 0.0, 100.0, 50.0),
+        );
 
         if let Some(node) = doc.document.nodes.get_mut(&node_b) {
             node.locked = true;
@@ -3204,7 +3445,10 @@ mod distribution_tests {
             .map(|n| n.x.0);
 
         let result = perform_distribute(&mut doc, DistributionAxis::Horizontal);
-        assert!(result, "distribute should return true with 3+ movable nodes");
+        assert!(
+            result,
+            "distribute should return true with 3+ movable nodes"
+        );
 
         let new_b_x = doc
             .document

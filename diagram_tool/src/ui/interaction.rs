@@ -644,9 +644,21 @@ mod snp_interaction_tests {
         let pos_b = updated.get(&NodeId::new("b".to_string())).copied();
         let pos_c = updated.get(&NodeId::new("c".to_string())).copied();
 
-        assert_eq!(pos_a, Some((30.0, 35.0)), "Node a should be at (10+20, 15+20)");
-        assert_eq!(pos_b, Some((120.0, 220.0)), "Node b should be at (100+20, 200+20)");
-        assert_eq!(pos_c, Some((-30.0, 95.0)), "Node c should be at (-50+20, 75+20)");
+        assert_eq!(
+            pos_a,
+            Some((30.0, 35.0)),
+            "Node a should be at (10+20, 15+20)"
+        );
+        assert_eq!(
+            pos_b,
+            Some((120.0, 220.0)),
+            "Node b should be at (100+20, 200+20)"
+        );
+        assert_eq!(
+            pos_c,
+            Some((-30.0, 95.0)),
+            "Node c should be at (-50+20, 75+20)"
+        );
     }
 
     #[test]
@@ -658,13 +670,22 @@ mod snp_interaction_tests {
             .update(NodeId::new("b".to_string()), (100.0, 200.0));
 
         // Drag by (14.0, 26.0) - no snap, should use raw delta
-        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (14.0, 26.0), false, grid);
+        let updated =
+            dragged_positions_with_snap(&originals, (0.0, 0.0), (14.0, 26.0), false, grid);
 
         let pos_a = updated.get(&NodeId::new("a".to_string())).copied();
         let pos_b = updated.get(&NodeId::new("b".to_string())).copied();
 
-        assert_eq!(pos_a, Some((24.0, 41.0)), "Node a should be at (10+14, 15+26)");
-        assert_eq!(pos_b, Some((114.0, 226.0)), "Node b should be at (100+14, 200+26)");
+        assert_eq!(
+            pos_a,
+            Some((24.0, 41.0)),
+            "Node a should be at (10+14, 15+26)"
+        );
+        assert_eq!(
+            pos_b,
+            Some((114.0, 226.0)),
+            "Node b should be at (100+14, 200+26)"
+        );
     }
 
     #[test]
@@ -679,21 +700,29 @@ mod snp_interaction_tests {
         // Delta (15, 28) with grid 20.0:
         // 15/20 = 0.75 -> rounds to 1 -> 20
         // 28/20 = 1.4 -> rounds to 1 -> 20
-        let updated = dragged_positions_with_snap(&originals, (100.0, 100.0), (115.0, 128.0), true, grid);
+        let updated =
+            dragged_positions_with_snap(&originals, (100.0, 100.0), (115.0, 128.0), true, grid);
 
         let pos_a = updated.get(&NodeId::new("a".to_string())).copied();
         let pos_b = updated.get(&NodeId::new("b".to_string())).copied();
 
-        assert_eq!(pos_a, Some((70.0, 80.0)), "Node a should be at (50+20, 60+20)");
-        assert_eq!(pos_b, Some((170.0, 180.0)), "Node b should be at (150+20, 160+20)");
+        assert_eq!(
+            pos_a,
+            Some((70.0, 80.0)),
+            "Node a should be at (50+20, 60+20)"
+        );
+        assert_eq!(
+            pos_b,
+            Some((170.0, 180.0)),
+            "Node b should be at (150+20, 160+20)"
+        );
     }
 
     #[test]
     fn given_single_node_drag_when_snap_enabled_then_position_snapped() {
         let grid = GridSize::new(20.0).unwrap();
 
-        let originals = HashMap::new()
-            .update(NodeId::new("single".to_string()), (0.0, 0.0));
+        let originals = HashMap::new().update(NodeId::new("single".to_string()), (0.0, 0.0));
 
         // Small drag that crosses snap threshold
         let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (11.0, 9.0), true, grid);
@@ -707,13 +736,13 @@ mod snp_interaction_tests {
     fn given_negative_drag_when_snap_enabled_then_snaps_to_negative_grid() {
         let grid = GridSize::new(20.0).unwrap();
 
-        let originals = HashMap::new()
-            .update(NodeId::new("a".to_string()), (100.0, 100.0));
+        let originals = HashMap::new().update(NodeId::new("a".to_string()), (100.0, 100.0));
 
         // Negative drag
         // -15/20 = -0.75 -> rounds to -1 -> -20
         // -25/20 = -1.25 -> rounds to -1 -> -20
-        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (-15.0, -25.0), true, grid);
+        let updated =
+            dragged_positions_with_snap(&originals, (0.0, 0.0), (-15.0, -25.0), true, grid);
 
         let pos = updated.get(&NodeId::new("a".to_string())).copied();
         // Delta (-15, -25) snaps to (-20, -20) with grid 20.0
@@ -755,7 +784,8 @@ mod snp_interaction_tests {
         let grid = GridSize::new(20.0).unwrap();
         let originals = HashMap::new();
 
-        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (100.0, 100.0), true, grid);
+        let updated =
+            dragged_positions_with_snap(&originals, (0.0, 0.0), (100.0, 100.0), true, grid);
 
         assert!(updated.is_empty());
     }
@@ -794,17 +824,17 @@ mod snp_interaction_tests {
     fn given_different_grid_sizes_when_snap_enabled_then_snaps_to_correct_grid() {
         // Test with minimum grid size
         let small_grid = GridSize::new(10.0).unwrap();
-        let originals = HashMap::new()
-            .update(NodeId::new("a".to_string()), (0.0, 0.0));
-        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (6.0, 4.0), true, small_grid);
+        let originals = HashMap::new().update(NodeId::new("a".to_string()), (0.0, 0.0));
+        let updated =
+            dragged_positions_with_snap(&originals, (0.0, 0.0), (6.0, 4.0), true, small_grid);
         let pos = updated.get(&NodeId::new("a".to_string())).copied();
         assert_eq!(pos, Some((10.0, 0.0))); // Delta (6, 4) snaps to (10, 0) with grid 10
 
         // Test with maximum grid size
         let large_grid = GridSize::new(100.0).unwrap();
-        let originals = HashMap::new()
-            .update(NodeId::new("b".to_string()), (0.0, 0.0));
-        let updated = dragged_positions_with_snap(&originals, (0.0, 0.0), (55.0, 45.0), true, large_grid);
+        let originals = HashMap::new().update(NodeId::new("b".to_string()), (0.0, 0.0));
+        let updated =
+            dragged_positions_with_snap(&originals, (0.0, 0.0), (55.0, 45.0), true, large_grid);
         let pos = updated.get(&NodeId::new("b".to_string())).copied();
         assert_eq!(pos, Some((100.0, 0.0))); // Delta (55, 45) snaps to (100, 0) with grid 100
     }

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "bd-1u1",
+    "title": "tests: Implement IO import/export tests 2/2",
+    "description": "Add 5 IO tests: export image bounds match, export with rotated items, save/reopen exact geometry, import large coordinates no float crash, import older version migration.",
+    "status": "in_progress",
+    "priority": 2,
+    "issue_type": "task",
+    "assignee": "self",
+    "created_at": "2026-03-01T01:06:51.989326585Z",
+    "created_by": "lewis",
+    "updated_at": "2026-03-02T02:27:08.713763571Z",
+    "source_repo": ".",
+    "compaction_level": 0,
+    "original_size": 0
+  }
+]

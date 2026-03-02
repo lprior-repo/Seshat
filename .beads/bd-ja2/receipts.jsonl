@@ -1,0 +1,3 @@
+{"timestamp":"2026-03-01T02:25:00Z","bead_id":"bd-ja2","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-ja2","exit_code":0,"stdout":"Closed bd-ja2: tests: Add golden scene fixtures (done)","stderr":"","replay":false}
+{"timestamp":"2026-03-01T02:25:00Z","bead_id":"bd-ja2","phase":"p4","actor":"orchestrator","action":"workspace cleanup","command":"jj workspace forget bd-ja2","exit_code":0,"stdout":"","stderr":"","replay":false}
+{"timestamp":"2026-03-01T02:25:00Z","bead_id":"bd-ja2","phase":"p4","actor":"orchestrator","action":"landing replay","command":"jj log -r main","exit_code":0,"stdout":"main at ce42b483 impl: bd-ja2 golden-scene-fixtures","stderr":"","replay":true}

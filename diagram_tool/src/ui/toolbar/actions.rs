@@ -110,27 +110,60 @@ pub fn toggle_grid(mut doc_signal: Signal<DiagramDocument>) {
 // Alignment actions
 
 pub fn align_left(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Horizontal, AlignmentMode::Start);
+    let _ = apply_align_selection(
+        doc_signal,
+        history_signal,
+        AlignmentAxis::Horizontal,
+        AlignmentMode::Start,
+    );
 }
 
-pub fn align_center_horizontal(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Horizontal, AlignmentMode::Center);
+pub fn align_center_horizontal(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+) {
+    let _ = apply_align_selection(
+        doc_signal,
+        history_signal,
+        AlignmentAxis::Horizontal,
+        AlignmentMode::Center,
+    );
 }
 
 pub fn align_right(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Horizontal, AlignmentMode::End);
+    let _ = apply_align_selection(
+        doc_signal,
+        history_signal,
+        AlignmentAxis::Horizontal,
+        AlignmentMode::End,
+    );
 }
 
 pub fn align_top(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Vertical, AlignmentMode::Start);
+    let _ = apply_align_selection(
+        doc_signal,
+        history_signal,
+        AlignmentAxis::Vertical,
+        AlignmentMode::Start,
+    );
 }
 
 pub fn align_middle_vertical(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Vertical, AlignmentMode::Center);
+    let _ = apply_align_selection(
+        doc_signal,
+        history_signal,
+        AlignmentAxis::Vertical,
+        AlignmentMode::Center,
+    );
 }
 
 pub fn align_bottom(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Vertical, AlignmentMode::End);
+    let _ = apply_align_selection(
+        doc_signal,
+        history_signal,
+        AlignmentAxis::Vertical,
+        AlignmentMode::End,
+    );
 }
 
 // Distribution actions

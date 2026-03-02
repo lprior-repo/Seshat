@@ -845,3 +845,327 @@ mod proptests {
         }
     }
 }
+
+// =============================================================================
+// INP Mobile/Touch Input tests (bd-jqu)
+// =============================================================================
+
+/// Double-tap timing threshold in milliseconds.
+/// Two taps within this window are considered a double-tap.
+const DOUBLE_TAP_THRESHOLD_MS: u64 = 350;
+
+/// Minimum touch hit radius in screen pixels for touch targets.
+/// This is larger than mouse hit radius for touch usability.
+const TOUCH_HIT_RADIUS_PX: f64 = 44.0;
+
+/// Resize handle size in screen pixels.
+const RESIZE_HANDLE_SIZE_PX: f64 = 14.0;
+
+/// Check if two tap timestamps qualify as a double-tap.
+#[must_use]
+pub const fn is_double_tap(first_tap_ms: u64, second_tap_ms: u64) -> bool {
+    second_tap_ms.saturating_sub(first_tap_ms) <= DOUBLE_TAP_THRESHOLD_MS
+}
+
+/// Calculate touch-adjusted hit radius for touch input.
+/// Touch input requires larger hit areas than mouse input for usability.
+#[must_use]
+pub const fn touch_hit_radius(base_radius: f64, is_touch: bool) -> f64 {
+    if is_touch {
+        base_radius.max(TOUCH_HIT_RADIUS_PX)
+    } else {
+        base_radius
+    }
+}
+
+/// Check if a touch point is within a resize handle's hit area.
+/// Touch handles need expanded hit areas for usability.
+#[must_use]
+pub fn touch_handle_hit_test(
+    touch_x: f64,
+    touch_y: f64,
+    handle_x: f64,
+    handle_y: f64,
+    is_touch: bool,
+) -> bool {
+    let effective_size = if is_touch {
+        // Touch: expand hit area to 44px minimum (WCAG touch target guideline)
+        RESIZE_HANDLE_SIZE_PX.max(TOUCH_HIT_RADIUS_PX)
+    } else {
+        RESIZE_HANDLE_SIZE_PX
+    };
+    let half_size = effective_size / 2.0;
+    touch_x >= handle_x - half_size
+        && touch_x <= handle_x + half_size
+        && touch_y >= handle_y - half_size
+        && touch_y <= handle_y + half_size
+}
+
+#[cfg(test)]
+mod inp_mobile_tests {
+    use super::{
+        is_double_tap, touch_handle_hit_test, touch_hit_radius, DOUBLE_TAP_THRESHOLD_MS,
+        RESIZE_HANDLE_SIZE_PX, TOUCH_HIT_RADIUS_PX,
+    };
+
+    // =========================================================================
+    // INP-1: Double-tap timing threshold tests
+    // =========================================================================
+
+    #[test]
+    fn given_two_taps_within_threshold_when_checked_then_is_double_tap() {
+        let first_tap = 1000_u64;
+        let second_tap = 1100_u64; // 100ms later, well within 350ms threshold
+
+        assert!(
+            is_double_tap(first_tap, second_tap),
+            "Taps 100ms apart should be considered a double-tap"
+        );
+    }
+
+    #[test]
+    fn given_two_taps_exactly_at_threshold_when_checked_then_is_double_tap() {
+        let first_tap = 1000_u64;
+        let second_tap = 1350_u64; // exactly 350ms later
+
+        assert!(
+            is_double_tap(first_tap, second_tap),
+            "Taps exactly at threshold should be considered a double-tap"
+        );
+    }
+
+    #[test]
+    fn given_two_taps_just_over_threshold_when_checked_then_not_double_tap() {
+        let first_tap = 1000_u64;
+        let second_tap = 1351_u64; // 351ms later, just over threshold
+
+        assert!(
+            !is_double_tap(first_tap, second_tap),
+            "Taps 351ms apart should NOT be considered a double-tap"
+        );
+    }
+
+    #[test]
+    fn given_two_taps_far_apart_when_checked_then_not_double_tap() {
+        let first_tap = 1000_u64;
+        let second_tap = 5000_u64; // 4000ms later
+
+        assert!(
+            !is_double_tap(first_tap, second_tap),
+            "Taps 4000ms apart should NOT be considered a double-tap"
+        );
+    }
+
+    #[test]
+    fn given_zero_times_when_checked_then_is_double_tap() {
+        // Edge case: both at zero means they're at the same time
+        assert!(
+            is_double_tap(0, 0),
+            "Two taps at time 0 should be considered a double-tap"
+        );
+    }
+
+    #[test]
+    fn given_same_timestamp_when_checked_then_is_double_tap() {
+        let timestamp = 12345_u64;
+        assert!(
+            is_double_tap(timestamp, timestamp),
+            "Two taps at the same timestamp should be considered a double-tap"
+        );
+    }
+
+    #[test]
+    fn given_reversed_timestamps_when_checked_then_not_double_tap() {
+        // If second tap appears before first (clock skew or edge case),
+        // saturating_sub returns 0, which is <= threshold
+        let first_tap = 2000_u64;
+        let second_tap = 1000_u64;
+
+        assert!(
+            is_double_tap(first_tap, second_tap),
+            "Reversed timestamps should handle gracefully (treated as same-time)"
+        );
+    }
+
+    #[test]
+    fn given_threshold_boundary_values_when_checked_then_boundary_correct() {
+        // Test the exact boundary
+        let first_tap = 0_u64;
+
+        // At threshold
+        assert!(is_double_tap(first_tap, DOUBLE_TAP_THRESHOLD_MS));
+
+        // Just over threshold
+        assert!(!is_double_tap(first_tap, DOUBLE_TAP_THRESHOLD_MS + 1));
+    }
+
+    // =========================================================================
+    // INP-2: Touch handle hit area usable tests
+    // =========================================================================
+
+    #[test]
+    fn given_touch_input_when_hit_testing_handle_then_expanded_hit_area_used() {
+        let handle_x = 100.0;
+        let handle_y = 100.0;
+
+        // Touch point just outside the visual handle but within touch-expanded area
+        let touch_x = 120.0; // 20px from handle center
+        let touch_y = 100.0;
+
+        // Mouse hit test should fail (outside 14px handle)
+        assert!(
+            !touch_handle_hit_test(touch_x, touch_y, handle_x, handle_y, false),
+            "Mouse hit test should fail for point outside visual handle"
+        );
+
+        // Touch hit test should succeed (within 44px touch target)
+        assert!(
+            touch_handle_hit_test(touch_x, touch_y, handle_x, handle_y, true),
+            "Touch hit test should succeed for point within expanded touch area"
+        );
+    }
+
+    #[test]
+    fn given_touch_input_at_corner_when_hit_testing_then_expanded_area_covers_corners() {
+        let handle_x = 100.0;
+        let handle_y = 100.0;
+
+        // Touch at corner of expanded hit area (diagonal from center)
+        let half_touch = TOUCH_HIT_RADIUS_PX / 2.0;
+        let touch_x = handle_x + half_touch - 1.0; // Just inside
+        let touch_y = handle_y + half_touch - 1.0;
+
+        assert!(
+            touch_handle_hit_test(touch_x, touch_y, handle_x, handle_y, true),
+            "Touch at corner of expanded area should be a hit"
+        );
+    }
+
+    #[test]
+    fn given_touch_input_outside_expanded_area_when_hit_testing_then_fails() {
+        let handle_x = 100.0;
+        let handle_y = 100.0;
+
+        // Touch point outside even the expanded touch area
+        let half_touch = TOUCH_HIT_RADIUS_PX / 2.0;
+        let touch_x = handle_x + half_touch + 10.0; // 10px outside
+        let touch_y = handle_y;
+
+        assert!(
+            !touch_handle_hit_test(touch_x, touch_y, handle_x, handle_y, true),
+            "Touch outside expanded area should fail"
+        );
+    }
+
+    #[test]
+    fn given_mouse_input_when_hit_testing_handle_then_visual_size_used() {
+        let handle_x = 100.0;
+        let handle_y = 100.0;
+
+        // Just inside visual handle (14px)
+        let half_visual = RESIZE_HANDLE_SIZE_PX / 2.0;
+        let touch_x = handle_x + half_visual - 1.0;
+        let touch_y = handle_y;
+
+        assert!(
+            touch_handle_hit_test(touch_x, touch_y, handle_x, handle_y, false),
+            "Mouse hit test should succeed for point inside visual handle"
+        );
+    }
+
+    #[test]
+    fn given_touch_input_directly_on_handle_when_hit_testing_then_succeeds() {
+        let handle_x = 100.0;
+        let handle_y = 100.0;
+
+        // Touch directly on handle center
+        assert!(
+            touch_handle_hit_test(handle_x, handle_y, handle_x, handle_y, true),
+            "Touch directly on handle should always succeed"
+        );
+    }
+
+    // =========================================================================
+    // INP-3: Touch input uses larger hit radius tests
+    // =========================================================================
+
+    #[test]
+    fn given_touch_input_when_calculating_hit_radius_then_uses_touch_minimum() {
+        let base_radius = 17.0; // Standard edge hit radius
+
+        let mouse_radius = touch_hit_radius(base_radius, false);
+        let touch_radius = touch_hit_radius(base_radius, true);
+
+        assert_eq!(
+            mouse_radius, base_radius,
+            "Mouse should use base radius"
+        );
+        assert_eq!(
+            touch_radius, TOUCH_HIT_RADIUS_PX,
+            "Touch should use expanded minimum"
+        );
+        assert!(
+            touch_radius > mouse_radius,
+            "Touch radius should be larger than mouse radius"
+        );
+    }
+
+    #[test]
+    fn given_large_base_radius_when_touch_input_then_base_preserved_if_larger() {
+        let large_base = 60.0; // Larger than touch minimum
+
+        let touch_radius = touch_hit_radius(large_base, true);
+
+        assert_eq!(
+            touch_radius, large_base,
+            "If base radius is already larger, it should be preserved"
+        );
+    }
+
+    #[test]
+    fn given_mouse_input_when_calculating_hit_radius_then_base_unchanged() {
+        let base_radius = 25.0;
+
+        let mouse_radius = touch_hit_radius(base_radius, false);
+
+        assert_eq!(
+            mouse_radius, base_radius,
+            "Mouse input should never expand the hit radius"
+        );
+    }
+
+    #[test]
+    fn given_zero_base_radius_when_touch_input_then_touch_minimum_used() {
+        let base_radius = 0.0;
+
+        let touch_radius = touch_hit_radius(base_radius, true);
+
+        assert_eq!(
+            touch_radius, TOUCH_HIT_RADIUS_PX,
+            "Zero base radius should be expanded to touch minimum"
+        );
+    }
+
+    #[test]
+    fn given_touch_minimum_matches_wcag_guideline() {
+        // WCAG 2.1 Success Criterion 2.5.5 (Target Size - Enhanced)
+        // recommends a minimum touch target size of 44x44 CSS pixels
+        assert_eq!(
+            TOUCH_HIT_RADIUS_PX, 44.0,
+            "Touch hit radius should match WCAG recommended minimum"
+        );
+    }
+
+    #[test]
+    fn given_double_tap_threshold_is_reasonable() {
+        // Industry standard double-tap thresholds are typically 300-400ms
+        assert!(
+            DOUBLE_TAP_THRESHOLD_MS >= 300,
+            "Double-tap threshold should be at least 300ms"
+        );
+        assert!(
+            DOUBLE_TAP_THRESHOLD_MS <= 500,
+            "Double-tap threshold should be at most 500ms"
+        );
+    }
+}

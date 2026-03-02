@@ -30,12 +30,10 @@ fn fixtures_dir() -> PathBuf {
 /// Load a fixture file as JSON
 fn load_fixture(name: &str) -> Value {
     let path = fixtures_dir().join(name);
-    let content = fs::read_to_string(&path).unwrap_or_else(|e| {
-        panic!("Failed to read fixture '{}': {}", name, e)
-    });
-    serde_json::from_str(&content).unwrap_or_else(|e| {
-        panic!("Failed to parse fixture '{}' as JSON: {}", name, e)
-    })
+    let content = fs::read_to_string(&path)
+        .unwrap_or_else(|e| panic!("Failed to read fixture '{}': {}", name, e));
+    serde_json::from_str(&content)
+        .unwrap_or_else(|e| panic!("Failed to parse fixture '{}' as JSON: {}", name, e))
 }
 
 /// Get nodes from a document
@@ -66,10 +64,18 @@ fn golden_mixed_selection_has_required_elements() {
     let edges = get_edges(&doc);
 
     // Verify node count (5 nodes minimum)
-    assert!(nodes.len() >= 5, "Expected at least 5 nodes, got {}", nodes.len());
+    assert!(
+        nodes.len() >= 5,
+        "Expected at least 5 nodes, got {}",
+        nodes.len()
+    );
 
     // Verify edge count (1 edge minimum)
-    assert!(edges.len() >= 1, "Expected at least 1 edge, got {}", edges.len());
+    assert!(
+        edges.len() >= 1,
+        "Expected at least 1 edge, got {}",
+        edges.len()
+    );
 }
 
 #[test]
@@ -120,12 +126,20 @@ fn golden_mixed_selection_all_ids_unique() {
     // Check node ID uniqueness
     let node_ids: Vec<_> = nodes.keys().collect();
     let unique_node_ids: HashSet<_> = node_ids.iter().collect();
-    assert_eq!(node_ids.len(), unique_node_ids.len(), "Duplicate node IDs found");
+    assert_eq!(
+        node_ids.len(),
+        unique_node_ids.len(),
+        "Duplicate node IDs found"
+    );
 
     // Check edge ID uniqueness
     let edge_ids: Vec<_> = edges.keys().collect();
     let unique_edge_ids: HashSet<_> = edge_ids.iter().collect();
-    assert_eq!(edge_ids.len(), unique_edge_ids.len(), "Duplicate edge IDs found");
+    assert_eq!(
+        edge_ids.len(),
+        unique_edge_ids.len(),
+        "Duplicate edge IDs found"
+    );
 }
 
 // ============================================================================
@@ -164,7 +178,9 @@ fn golden_nested_subgraph_shapes_nested_in_group() {
     let nodes = get_nodes(&doc);
 
     for shape_id in &["shape-1", "shape-2", "shape-3"] {
-        let shape = nodes.get(*shape_id).unwrap_or_else(|| panic!("Missing {}", shape_id));
+        let shape = nodes
+            .get(*shape_id)
+            .unwrap_or_else(|| panic!("Missing {}", shape_id));
         assert_eq!(shape["kind"].as_str(), Some("node"));
         assert_eq!(shape["parent"].as_str(), Some("group-1"));
     }
@@ -186,7 +202,8 @@ fn golden_nested_subgraph_parent_tree_valid() {
     let nodes = get_nodes(&doc);
 
     // Build parent map
-    let mut parent_map: std::collections::HashMap<&str, Option<&str>> = std::collections::HashMap::new();
+    let mut parent_map: std::collections::HashMap<&str, Option<&str>> =
+        std::collections::HashMap::new();
     for (id, node) in nodes {
         let parent = node["parent"].as_str();
         parent_map.insert(id, parent);
@@ -214,7 +231,10 @@ fn golden_move_snapshot_delta_is_single_move() {
     let after = load_fixture("move_after.json");
 
     // Revision should increment by 1
-    assert_eq!(before["revision"].as_u64().unwrap() + 1, after["revision"].as_u64().unwrap());
+    assert_eq!(
+        before["revision"].as_u64().unwrap() + 1,
+        after["revision"].as_u64().unwrap()
+    );
 
     // Same node count
     assert_eq!(get_nodes(&before).len(), get_nodes(&after).len());
@@ -252,7 +272,10 @@ fn golden_resize_snapshot_delta_is_single_resize() {
     let after = load_fixture("resize_after.json");
 
     // Revision should increment by 1
-    assert_eq!(before["revision"].as_u64().unwrap() + 1, after["revision"].as_u64().unwrap());
+    assert_eq!(
+        before["revision"].as_u64().unwrap() + 1,
+        after["revision"].as_u64().unwrap()
+    );
 
     // Same node count
     assert_eq!(get_nodes(&before).len(), get_nodes(&after).len());
@@ -267,8 +290,16 @@ fn golden_resize_snapshot_delta_is_single_resize() {
     // Size should double (80x40 -> 160x80)
     let width_after = node_after["width"].as_f64().unwrap();
     let height_after = node_after["height"].as_f64().unwrap();
-    assert!((width_after - 160.0).abs() < 0.001, "Expected width=160, got {}", width_after);
-    assert!((height_after - 80.0).abs() < 0.001, "Expected height=80, got {}", height_after);
+    assert!(
+        (width_after - 160.0).abs() < 0.001,
+        "Expected width=160, got {}",
+        width_after
+    );
+    assert!(
+        (height_after - 80.0).abs() < 0.001,
+        "Expected height=80, got {}",
+        height_after
+    );
 }
 
 // ============================================================================
@@ -281,7 +312,10 @@ fn golden_rotate_snapshot_delta_is_single_rotation() {
     let after = load_fixture("rotate_after.json");
 
     // Revision should increment by 1
-    assert_eq!(before["revision"].as_u64().unwrap() + 1, after["revision"].as_u64().unwrap());
+    assert_eq!(
+        before["revision"].as_u64().unwrap() + 1,
+        after["revision"].as_u64().unwrap()
+    );
 
     let node_before = get_nodes(&before).get("node-rotate-test").unwrap();
     let node_after = get_nodes(&after).get("node-rotate-test").unwrap();
@@ -296,8 +330,14 @@ fn golden_rotate_snapshot_delta_is_single_rotation() {
     let rot_before = node_before["metadata"]["rotation"].as_f64().unwrap_or(0.0);
     let rot_after = node_after["metadata"]["rotation"].as_f64().unwrap_or(0.0);
 
-    assert!((rot_before - 0.0).abs() < 0.001, "Expected before rotation=0");
-    assert!((rot_after - 45.0).abs() < 0.001, "Expected after rotation=45");
+    assert!(
+        (rot_before - 0.0).abs() < 0.001,
+        "Expected before rotation=0"
+    );
+    assert!(
+        (rot_after - 45.0).abs() < 0.001,
+        "Expected after rotation=45"
+    );
 }
 
 // ============================================================================
@@ -310,13 +350,18 @@ fn golden_group_snapshot_creates_subgraph() {
     let after = load_fixture("group_after.json");
 
     // Revision should increment by 1
-    assert_eq!(before["revision"].as_u64().unwrap() + 1, after["revision"].as_u64().unwrap());
+    assert_eq!(
+        before["revision"].as_u64().unwrap() + 1,
+        after["revision"].as_u64().unwrap()
+    );
 
     // After should have one more node (the group)
     assert_eq!(get_nodes(&before).len() + 1, get_nodes(&after).len());
 
     // Verify group exists
-    let group = get_nodes(&after).get("group-1").expect("Group should exist after operation");
+    let group = get_nodes(&after)
+        .get("group-1")
+        .expect("Group should exist after operation");
     assert_eq!(group["kind"].as_str(), Some("subgraph"));
 }
 
@@ -342,7 +387,10 @@ fn golden_reparent_snapshot_changes_parent() {
     let after = load_fixture("reparent_after.json");
 
     // Revision should increment by 1
-    assert_eq!(before["revision"].as_u64().unwrap() + 1, after["revision"].as_u64().unwrap());
+    assert_eq!(
+        before["revision"].as_u64().unwrap() + 1,
+        after["revision"].as_u64().unwrap()
+    );
 
     // Same node count
     assert_eq!(get_nodes(&before).len(), get_nodes(&after).len());
@@ -473,14 +521,22 @@ fn generate_stress_scene_json() -> Value {
 fn golden_stress_scene_generates_5000_nodes() {
     let doc = generate_stress_scene_json();
     let nodes = get_nodes(&doc);
-    assert!(nodes.len() >= 5000, "Expected 5000+ nodes, got {}", nodes.len());
+    assert!(
+        nodes.len() >= 5000,
+        "Expected 5000+ nodes, got {}",
+        nodes.len()
+    );
 }
 
 #[test]
 fn golden_stress_scene_generates_5000_edges() {
     let doc = generate_stress_scene_json();
     let edges = get_edges(&doc);
-    assert!(edges.len() >= 5000, "Expected 5000+ edges, got {}", edges.len());
+    assert!(
+        edges.len() >= 5000,
+        "Expected 5000+ edges, got {}",
+        edges.len()
+    );
 }
 
 #[test]
@@ -575,7 +631,12 @@ fn all_fixtures_have_valid_schema_version() {
     for fixture in fixtures {
         let doc = load_fixture(fixture);
         let version = doc["version"].as_u64().unwrap_or(0);
-        assert!(version >= 2, "Fixture {} has invalid version {}", fixture, version);
+        assert!(
+            version >= 2,
+            "Fixture {} has invalid version {}",
+            fixture,
+            version
+        );
     }
 }
 
