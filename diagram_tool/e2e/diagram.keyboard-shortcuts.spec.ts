@@ -28,8 +28,8 @@ async function selectBothTextNodes(page: Page): Promise<void> {
   await expectSelectedCount(page, 2);
 }
 
-test.describe("keyboard shortcuts", () => {
-  test("Ctrl+Z undoes node creation", async ({ page }) => {
+test.describe("keyboard shortcuts @baseline", () => {
+  test("Ctrl+Z undoes node creation @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -46,7 +46,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("Ctrl+Y redoes undone action", async ({ page }) => {
+  test("Ctrl+Y redoes undone action @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -66,7 +66,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("Ctrl+C copies selected nodes", async ({ page }) => {
+  test("Ctrl+C copies selected nodes @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -87,7 +87,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("Ctrl+V pastes copied nodes", async ({ page }) => {
+  test("Ctrl+V pastes copied nodes @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -109,7 +109,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("shortcuts do not fire when input has focus", async ({ page }) => {
+  test("shortcuts do not fire when input has focus @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -132,7 +132,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("Ctrl+Shift+Z also triggers redo", async ({ page }) => {
+  test("Ctrl+Shift+Z also triggers redo @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -152,7 +152,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("multiple paste operations stack correctly", async ({ page }) => {
+  test("multiple paste operations stack correctly @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -177,7 +177,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("undo after paste removes pasted nodes", async ({ page }) => {
+  test("undo after paste removes pasted nodes @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -201,7 +201,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("shortcuts blocked when textarea has focus", async ({ page }) => {
+  test("shortcuts blocked when textarea has focus @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 
@@ -225,7 +225,7 @@ test.describe("keyboard shortcuts", () => {
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("full undo-redo keyboard workflow", async ({ page }) => {
+  test("full undo-redo keyboard workflow @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     const canvasEl = await setupCanvas(page);
 

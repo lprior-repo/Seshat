@@ -3,9 +3,10 @@ use crate::layout::dag::{dag_layout, DagLayoutSettings};
 use crate::models::document::DiagramDocument;
 use crate::mutation::pipeline::run_mutation;
 use crate::ui::commands::{
-    apply_bring_forward, apply_bring_to_front, apply_copy_selection, apply_delete_selected,
-    apply_paste_selection, apply_redo, apply_send_backward, apply_send_to_back, apply_undo,
-    apply_zoom_in, apply_zoom_out, apply_zoom_reset, clipboard_has_content,
+    apply_align_selection, apply_bring_forward, apply_bring_to_front, apply_copy_selection,
+    apply_delete_selected, apply_distribute_selection, apply_paste_selection, apply_redo,
+    apply_send_backward, apply_send_to_back, apply_undo, apply_zoom_in, apply_zoom_out,
+    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, DistributionAxis,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -104,4 +105,40 @@ pub fn toggle_grid(mut doc_signal: Signal<DiagramDocument>) {
     doc_signal.with_mut(|doc| {
         doc.editor_state.show_grid = !doc.editor_state.show_grid;
     });
+}
+
+// Alignment actions
+
+pub fn align_left(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Horizontal, AlignmentMode::Start);
+}
+
+pub fn align_center_horizontal(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Horizontal, AlignmentMode::Center);
+}
+
+pub fn align_right(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Horizontal, AlignmentMode::End);
+}
+
+pub fn align_top(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Vertical, AlignmentMode::Start);
+}
+
+pub fn align_middle_vertical(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Vertical, AlignmentMode::Center);
+}
+
+pub fn align_bottom(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_align_selection(doc_signal, history_signal, AlignmentAxis::Vertical, AlignmentMode::End);
+}
+
+// Distribution actions
+
+pub fn distribute_horizontal(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Horizontal);
+}
+
+pub fn distribute_vertical(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Vertical);
 }

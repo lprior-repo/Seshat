@@ -1,0 +1,3 @@
+{"timestamp":"2026-03-01T01:09:00Z","bead_id":"bd-51b","phase":"p0","actor":"orchestrator","action":"bead claimed","command":"br update bd-51b --status in_progress --assignee self","exit_code":0,"evidence":"Bead status changed from open to in_progress, assignee set to self"}
+{"timestamp":"2026-03-01T01:10:00Z","bead_id":"bd-51b","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-51b","exit_code":0,"evidence":"Workspace bd-51b created at revision ytkrruwx"}
+{"timestamp":"2026-03-01T01:13:00Z","bead_id":"bd-51b","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract.md created from BR bead data","exit_code":0,"evidence":"Contract written to .beads/bd-51b/contract.md"}

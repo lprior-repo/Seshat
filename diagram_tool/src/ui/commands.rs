@@ -22,6 +22,28 @@ enum ZOrderOp {
     SendToBack,
 }
 
+/// Axis for alignment operations
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignmentAxis {
+    Horizontal,
+    Vertical,
+}
+
+/// Mode for alignment operations
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignmentMode {
+    Start,  // Left (Horizontal) or Top (Vertical)
+    Center, // Center (Horizontal) or Middle (Vertical)
+    End,    // Right (Horizontal) or Bottom (Vertical)
+}
+
+/// Axis for distribution operations
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum DistributionAxis {
+    Horizontal,
+    Vertical,
+}
+
 #[derive(Clone)]
 struct ClipboardState {
     nodes: Vec<(NodeId, Node)>,
@@ -648,6 +670,261 @@ fn selected_subgraphs_for_ungroup(doc: &DiagramDocument) -> BTreeSet<NodeId> {
         .collect::<BTreeSet<_>>()
 }
 
+/// Align selected nodes along the specified axis using the given mode.
+///
+/// Returns `true` if alignment was performed, `false` if:
+/// - Fewer than 2 nodes are selected
+/// - All selected nodes are locked
+/// - Any selected node has non-finite coordinates
+///
+/// # Invariants
+/// - Node dimensions (width, height) are never modified
+/// - Z-order is preserved
+/// - Locked nodes are skipped (unless they are Subgraphs)
+pub fn apply_align_selection(
+    mut doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    axis: AlignmentAxis,
+    mode: AlignmentMode,
+) -> bool {
+    let current = doc_signal.read().clone();
+
+    // Get selected nodes that are movable (not locked, or are subgraphs)
+    let selected_nodes: Vec<NodeId> = selected_node_ids(&current)
+        .into_iter()
+        .filter(|id| {
+            current.document.nodes.get(id).is_some_and(|node| {
+                let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
+                let movable = !node.locked || node.kind == NodeKind::Subgraph;
+                coords_finite && movable
+            })
+        })
+        .collect();
+
+    // Need at least 2 nodes to align
+    if selected_nodes.len() < 2 {
+        return false;
+    }
+
+    // Calculate bounding box
+    let (min_pos, max_pos, max_extent) = match axis {
+        AlignmentAxis::Horizontal => {
+            let positions: Vec<(f64, f64)> = selected_nodes
+                .iter()
+                .filter_map(|id| current.document.nodes.get(id))
+                .map(|node| (node.x.0, node.x.0 + node.width.0))
+                .collect();
+
+            if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+                return false;
+            }
+
+            let min_x = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
+            let max_right = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+
+            if !min_x.is_finite() || !max_right.is_finite() {
+                return false;
+            }
+
+            (min_x, max_right, max_right - min_x)
+        }
+        AlignmentAxis::Vertical => {
+            let positions: Vec<(f64, f64)> = selected_nodes
+                .iter()
+                .filter_map(|id| current.document.nodes.get(id))
+                .map(|node| (node.y.0, node.y.0 + node.height.0))
+                .collect();
+
+            if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+                return false;
+            }
+
+            let min_y = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
+            let max_bottom = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+
+            if !min_y.is_finite() || !max_bottom.is_finite() {
+                return false;
+            }
+
+            (min_y, max_bottom, max_bottom - min_y)
+        }
+    };
+
+    push_history(history_signal, current);
+
+    doc_signal.with_mut(|doc| {
+        for node_id in &selected_nodes {
+            if let Some(node) = doc.document.nodes.get_mut(node_id) {
+                // Double-check movability (should be redundant but defensive)
+                if node.locked && node.kind != NodeKind::Subgraph {
+                    continue;
+                }
+
+                match (axis, mode) {
+                    (AlignmentAxis::Horizontal, AlignmentMode::Start) => {
+                        // Align Left: set x to min_x
+                        node.x = OrderedFloat(min_pos);
+                    }
+                    (AlignmentAxis::Horizontal, AlignmentMode::Center) => {
+                        // Align Center H: center the node within the bounding box
+                        let center_x = min_pos + max_extent / 2.0;
+                        node.x = OrderedFloat(center_x - node.width.0 / 2.0);
+                    }
+                    (AlignmentAxis::Horizontal, AlignmentMode::End) => {
+                        // Align Right: set x so right edge aligns with max_right
+                        node.x = OrderedFloat(max_pos - node.width.0);
+                    }
+                    (AlignmentAxis::Vertical, AlignmentMode::Start) => {
+                        // Align Top: set y to min_y
+                        node.y = OrderedFloat(min_pos);
+                    }
+                    (AlignmentAxis::Vertical, AlignmentMode::Center) => {
+                        // Align Middle V: center the node within the bounding box
+                        let center_y = min_pos + max_extent / 2.0;
+                        node.y = OrderedFloat(center_y - node.height.0 / 2.0);
+                    }
+                    (AlignmentAxis::Vertical, AlignmentMode::End) => {
+                        // Align Bottom: set y so bottom edge aligns with max_bottom
+                        node.y = OrderedFloat(max_pos - node.height.0);
+                    }
+                }
+            }
+        }
+        doc.revision = doc.revision.increment();
+    });
+
+    true
+}
+
+/// Distribute selected nodes evenly along the specified axis.
+///
+/// # Preconditions
+/// - At least 3 nodes must be selected (distribution requires 3+ to be meaningful)
+/// - Selected nodes must have valid (finite) positions
+/// - Nodes must be movable (not locked, or are subgraphs)
+///
+/// # Postconditions
+/// - Outermost nodes remain at original bounds
+/// - Interior nodes are repositioned to create equal spacing
+/// - Node dimensions are preserved
+/// - History is updated for undo support
+///
+/// # Invariants
+/// - Distribution does not change node size
+/// - Horizontal distribution preserves Y positions
+/// - Vertical distribution preserves X positions
+/// - Z-order is preserved
+pub fn apply_distribute_selection(
+    mut doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    axis: DistributionAxis,
+) -> bool {
+    let current = doc_signal.read().clone();
+
+    // Get selected nodes that are movable (not locked, or are subgraphs)
+    let selected_nodes: Vec<NodeId> = selected_node_ids(&current)
+        .into_iter()
+        .filter(|id| {
+            current.document.nodes.get(id).is_some_and(|node| {
+                let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
+                let movable = !node.locked || node.kind == NodeKind::Subgraph;
+                coords_finite && movable
+            })
+        })
+        .collect();
+
+    // Need at least 3 nodes to distribute
+    if selected_nodes.len() < 3 {
+        return false;
+    }
+
+    // Collect node data: (id, position, size) sorted by position along axis
+    let mut node_data: Vec<(NodeId, f64, f64)> = selected_nodes
+        .iter()
+        .filter_map(|id| {
+            current.document.nodes.get(id).map(|node| {
+                let (pos, size) = match axis {
+                    DistributionAxis::Horizontal => (node.x.0, node.width.0),
+                    DistributionAxis::Vertical => (node.y.0, node.height.0),
+                };
+                (id.clone(), pos, size)
+            })
+        })
+        .collect();
+
+    // Check all positions and sizes are finite
+    if node_data.iter().any(|(_, pos, size)| !pos.is_finite() || !size.is_finite()) {
+        return false;
+    }
+
+    // Sort by position
+    node_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+
+    // Calculate bounds from outermost nodes
+    let first_pos = node_data.first().map(|(_, p, _)| *p);
+
+    let Some(first_pos) = first_pos else {
+        return false;
+    };
+    let Some(last_node_end) = node_data.last().map(|(_, p, s)| p + s) else {
+        return false;
+    };
+
+    if !first_pos.is_finite() || !last_node_end.is_finite() {
+        return false;
+    }
+
+    // Calculate total size of all nodes and available space
+    let total_node_size: f64 = node_data.iter().map(|(_, _, s)| *s).sum();
+    let total_extent = last_node_end - first_pos;
+
+    if total_extent <= f64::EPSILON {
+        return false; // Nodes are stacked, no room to distribute
+    }
+
+    // Calculate equal spacing between nodes
+    let node_count = node_data.len();
+    let gap_count = node_count.saturating_sub(1);
+    let available_space = total_extent - total_node_size;
+    let spacing = if gap_count > 0 {
+        available_space / f64::from(u32::try_from(gap_count).unwrap_or(1))
+    } else {
+        0.0
+    };
+
+    if !spacing.is_finite() {
+        return false;
+    }
+
+    push_history(history_signal, current);
+
+    doc_signal.with_mut(|doc| {
+        // Position each node: first stays at first_pos, others distributed
+        let mut current_pos = first_pos;
+        for (node_id, _, node_size) in &node_data {
+            if let Some(node) = doc.document.nodes.get_mut(node_id) {
+                // Double-check movability
+                if node.locked && node.kind != NodeKind::Subgraph {
+                    continue;
+                }
+
+                match axis {
+                    DistributionAxis::Horizontal => {
+                        node.x = OrderedFloat(current_pos);
+                    }
+                    DistributionAxis::Vertical => {
+                        node.y = OrderedFloat(current_pos);
+                    }
+                }
+                current_pos += node_size + spacing;
+            }
+        }
+        doc.revision = doc.revision.increment();
+    });
+
+    true
+}
+
 fn set_zoom_centered(
     doc: &mut DiagramDocument,
     target_zoom: f64,
@@ -1055,6 +1332,351 @@ mod tests {
             assert_eq!(p.x.0, 120.0);
             assert_eq!(p.y.0, 70.0);
         }
+    }
+
+    // =============================================================================
+    // Additional copy/paste tests (bd-2b4)
+    // =============================================================================
+
+    #[test]
+    fn given_selection_with_nonexistent_ids_when_copy_then_returns_false() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        // Add a node but select a different (non-existent) ID
+        let real_id = NodeId::new("real-node".to_string());
+        let _ = doc.document.nodes.insert(real_id, make_node("real-node", 0.0, 0.0));
+        let _ = doc.editor_state.selected_items.insert("ghost-id".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(!result);
+        CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
+    }
+
+    #[test]
+    fn given_three_nodes_selected_when_copy_then_copies_all() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+        let _ = doc.document.nodes.insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
+        let _ = doc.document.nodes.insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
+        let _ = doc.document.nodes.insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            if let Some(c) = clip.as_ref() {
+                assert_eq!(c.nodes.len(), 3);
+            } else {
+                panic!("clipboard should have content");
+            }
+        });
+    }
+
+    #[test]
+    fn given_partial_edge_selection_when_copy_then_excludes_edge() {
+        clear_clipboard();
+        let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
+        // Only select source node, not target
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            if let Some(c) = clip.as_ref() {
+                assert_eq!(c.nodes.len(), 1, "should copy one node");
+                assert!(c.edges.is_empty(), "edge should be excluded when target not selected");
+            } else {
+                panic!("clipboard should have content");
+            }
+        });
+    }
+
+    fn make_doc_with_parent_child(
+        parent_id: &str,
+        child_id: &str,
+    ) -> (DiagramDocument, NodeId, NodeId) {
+        let mut doc = DiagramDocument::default();
+        let parent_node_id = NodeId::new(parent_id.to_string());
+        let child_node_id = NodeId::new(child_id.to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(parent_node_id.clone(), make_node(parent_id, 0.0, 0.0));
+
+        let mut child_node = make_node(child_id, 50.0, 50.0);
+        child_node.parent = Some(parent_node_id.clone());
+        let _ = doc.document.nodes.insert(child_node_id.clone(), child_node);
+
+        (doc, parent_node_id, child_node_id)
+    }
+
+    #[test]
+    fn given_nested_nodes_selected_when_copy_then_preserves_parent_reference() {
+        clear_clipboard();
+        let (mut doc, parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
+        let _ = doc.editor_state.selected_items.insert("parent".to_string());
+        let _ = doc.editor_state.selected_items.insert("child".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            if let Some(c) = clip.as_ref() {
+                assert_eq!(c.nodes.len(), 2);
+                // Find the child node in clipboard
+                let child_in_clipboard = c
+                    .nodes
+                    .iter()
+                    .find(|(id, _)| id.to_string() == "child");
+                if let Some((_, node)) = child_in_clipboard {
+                    assert_eq!(node.parent, Some(parent_id), "parent reference preserved during copy");
+                } else {
+                    panic!("child should be in clipboard");
+                }
+            } else {
+                panic!("clipboard should have content");
+            }
+        });
+    }
+
+    #[test]
+    fn given_clipboard_with_empty_nodes_when_paste_then_returns_false() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_count_before = doc.document.nodes.len();
+
+        // Set clipboard with empty nodes vector
+        CLIPBOARD.with(|s| {
+            *s.borrow_mut() = Some(ClipboardState {
+                nodes: vec![],
+                edges: vec![],
+                paste_serial: 0,
+            });
+        });
+
+        let result = paste_from_clipboard(&mut doc);
+
+        assert!(!result);
+        assert_eq!(doc.document.nodes.len(), node_count_before);
+    }
+
+    #[test]
+    fn given_second_paste_when_paste_then_applies_double_offset() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+
+        // First paste
+        let _ = paste_from_clipboard(&mut doc);
+        // Second paste
+        let _ = paste_from_clipboard(&mut doc);
+
+        let original_id = NodeId::new("original-node".to_string());
+        // Find the second pasted node (there should be 2 pasted nodes now)
+        let pasted_nodes: Vec<_> = doc
+            .document
+            .nodes
+            .iter()
+            .filter(|(id, _)| *id != &original_id)
+            .collect();
+
+        assert_eq!(pasted_nodes.len(), 2);
+
+        // Second paste should have offset of 40.0 (20.0 * 2)
+        let second_paste_node = pasted_nodes
+            .iter()
+            .find(|(_, node)| node.x.0 == 140.0 && node.y.0 == 90.0);
+        assert!(
+            second_paste_node.is_some(),
+            "second paste should have offset of 40.0 (position 140.0, 90.0)"
+        );
+    }
+
+    #[test]
+    fn given_multiple_nodes_when_paste_then_all_ids_unique() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+        let _ = doc.document.nodes.insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
+        let _ = doc.document.nodes.insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
+        let _ = doc.document.nodes.insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Should have 6 nodes now (3 original + 3 pasted)
+        assert_eq!(doc.document.nodes.len(), 6);
+
+        // All IDs should be unique
+        let ids: std::collections::HashSet<_> = doc.document.nodes.keys().collect();
+        assert_eq!(ids.len(), 6, "all node IDs should be unique");
+    }
+
+    #[test]
+    fn given_edge_in_clipboard_when_paste_then_remapped_to_new_ids() {
+        clear_clipboard();
+        let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Should have 2 edges now
+        assert_eq!(doc.document.edges.len(), 2);
+
+        // Find the pasted edge (the one whose source/target are not the originals)
+        let original_a = NodeId::new("node-a".to_string());
+        let original_b = NodeId::new("node-b".to_string());
+        let pasted_edge = doc
+            .document
+            .edges
+            .iter()
+            .find(|(_, edge)| {
+                edge.source != original_a && edge.target != original_b
+            });
+
+        assert!(pasted_edge.is_some(), "should have a pasted edge with remapped IDs");
+        if let Some((_, edge)) = pasted_edge {
+            // Verify the pasted edge's source and target are NOT the original IDs
+            assert_ne!(edge.source, original_a);
+            assert_ne!(edge.target, original_b);
+            // And they should be actual node IDs in the document
+            assert!(doc.document.nodes.contains_key(&edge.source));
+            assert!(doc.document.nodes.contains_key(&edge.target));
+        }
+    }
+
+    #[test]
+    fn given_parent_also_pasted_when_paste_then_remapped() {
+        clear_clipboard();
+        let (mut doc, _parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
+        let _ = doc.editor_state.selected_items.insert("parent".to_string());
+        let _ = doc.editor_state.selected_items.insert("child".to_string());
+
+        let original_parent_id = NodeId::new("parent".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Find the pasted child node
+        let pasted_child = doc
+            .document
+            .nodes
+            .iter()
+            .find(|(id, node)| {
+                id.to_string() != "child" && node.label == "child"
+            });
+
+        assert!(pasted_child.is_some());
+        if let Some((_, child_node)) = pasted_child {
+            // Parent should be remapped to the new parent ID, not the original
+            if let Some(ref parent_ref) = child_node.parent {
+                assert_ne!(
+                    *parent_ref, original_parent_id,
+                    "parent should be remapped to new pasted parent ID"
+                );
+                // The new parent should exist in the document
+                assert!(
+                    doc.document.nodes.contains_key(parent_ref),
+                    "remapped parent should exist in document"
+                );
+            } else {
+                panic!("pasted child should have a parent");
+            }
+        }
+    }
+
+    #[test]
+    fn given_parent_not_pasted_when_paste_then_preserved() {
+        clear_clipboard();
+        let (mut doc, parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
+        // Only select and copy the child, not the parent
+        let _ = doc.editor_state.selected_items.insert("child".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Find the pasted child node
+        let pasted_child = doc
+            .document
+            .nodes
+            .iter()
+            .find(|(id, node)| {
+                id.to_string() != "child" && node.label == "child"
+            });
+
+        assert!(pasted_child.is_some());
+        if let Some((_, child_node)) = pasted_child {
+            // Parent should still point to the original parent (not remapped)
+            assert_eq!(
+                child_node.parent, Some(parent_id),
+                "parent reference should be preserved when parent not pasted"
+            );
+        }
+    }
+
+    #[test]
+    fn given_paste_successful_when_paste_then_selection_updated() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc.editor_state.selected_items.insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+
+        // Clear selection before paste to test that paste updates it
+        doc.editor_state.selected_items.clear();
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Selection should contain only the new pasted node
+        assert_eq!(doc.editor_state.selected_items.len(), 1);
+
+        // The selected item should NOT be the original node
+        let selected_id = doc.editor_state.selected_items.iter().next();
+        assert!(selected_id.is_some());
+        if let Some(id) = selected_id {
+            assert_ne!(id, "original-node", "selection should be the new pasted node, not original");
+        }
+    }
+
+    #[test]
+    fn given_paste_successful_when_paste_then_revision_incremented() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc.editor_state.selected_items.insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+
+        let revision_before = doc.revision;
+        let _ = paste_from_clipboard(&mut doc);
+
+        assert_eq!(
+            doc.revision,
+            revision_before.increment(),
+            "revision should be incremented after successful paste"
+        );
     }
 
     #[test]
@@ -1578,6 +2200,384 @@ mod tests {
             !result,
             "group_selection should return false when only one non-subgraph node is selected"
         );
+    }
+
+    // =============================================================================
+    // Alignment tests (bd-2ng)
+    // =============================================================================
+
+    /// Pure function implementing alignment logic for testing
+    fn perform_align_selection(
+        doc: &mut DiagramDocument,
+        axis: AlignmentAxis,
+        mode: AlignmentMode,
+    ) -> bool {
+        // Get selected nodes that are movable
+        let selected_nodes: Vec<NodeId> = selected_node_ids(doc)
+            .into_iter()
+            .filter(|id| {
+                doc.document.nodes.get(id).is_some_and(|node| {
+                    let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
+                    let movable = !node.locked || node.kind == NodeKind::Subgraph;
+                    coords_finite && movable
+                })
+            })
+            .collect();
+
+        if selected_nodes.len() < 2 {
+            return false;
+        }
+
+        // Calculate bounding box
+        let (min_pos, max_pos, max_extent) = match axis {
+            AlignmentAxis::Horizontal => {
+                let positions: Vec<(f64, f64)> = selected_nodes
+                    .iter()
+                    .filter_map(|id| doc.document.nodes.get(id))
+                    .map(|node| (node.x.0, node.x.0 + node.width.0))
+                    .collect();
+
+                if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+                    return false;
+                }
+
+                let min_x = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
+                let max_right = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+
+                if !min_x.is_finite() || !max_right.is_finite() {
+                    return false;
+                }
+
+                (min_x, max_right, max_right - min_x)
+            }
+            AlignmentAxis::Vertical => {
+                let positions: Vec<(f64, f64)> = selected_nodes
+                    .iter()
+                    .filter_map(|id| doc.document.nodes.get(id))
+                    .map(|node| (node.y.0, node.y.0 + node.height.0))
+                    .collect();
+
+                if positions.iter().any(|(p, e)| !p.is_finite() || !e.is_finite()) {
+                    return false;
+                }
+
+                let min_y = positions.iter().map(|(p, _)| *p).fold(f64::INFINITY, f64::min);
+                let max_bottom = positions.iter().map(|(_, e)| *e).fold(f64::NEG_INFINITY, f64::max);
+
+                if !min_y.is_finite() || !max_bottom.is_finite() {
+                    return false;
+                }
+
+                (min_y, max_bottom, max_bottom - min_y)
+            }
+        };
+
+        for node_id in &selected_nodes {
+            if let Some(node) = doc.document.nodes.get_mut(node_id) {
+                if node.locked && node.kind != NodeKind::Subgraph {
+                    continue;
+                }
+
+                match (axis, mode) {
+                    (AlignmentAxis::Horizontal, AlignmentMode::Start) => {
+                        node.x = OrderedFloat(min_pos);
+                    }
+                    (AlignmentAxis::Horizontal, AlignmentMode::Center) => {
+                        let center_x = min_pos + max_extent / 2.0;
+                        node.x = OrderedFloat(center_x - node.width.0 / 2.0);
+                    }
+                    (AlignmentAxis::Horizontal, AlignmentMode::End) => {
+                        node.x = OrderedFloat(max_pos - node.width.0);
+                    }
+                    (AlignmentAxis::Vertical, AlignmentMode::Start) => {
+                        node.y = OrderedFloat(min_pos);
+                    }
+                    (AlignmentAxis::Vertical, AlignmentMode::Center) => {
+                        let center_y = min_pos + max_extent / 2.0;
+                        node.y = OrderedFloat(center_y - node.height.0 / 2.0);
+                    }
+                    (AlignmentAxis::Vertical, AlignmentMode::End) => {
+                        node.y = OrderedFloat(max_pos - node.height.0);
+                    }
+                }
+            }
+        }
+        doc.revision = doc.revision.increment();
+        true
+    }
+
+    #[test]
+    fn given_two_nodes_when_align_left_then_both_share_min_x() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 150.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert!(result, "align_left should return true");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(100.0));
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(100.0), "node-b x should be aligned to min_x");
+    }
+
+    #[test]
+    fn given_two_nodes_when_align_right_then_both_share_max_right() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 150.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::End);
+
+        assert!(result, "align_right should return true");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(200.0), "node-a x should be 200");
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(200.0), "node-b x should be 200");
+    }
+
+    #[test]
+    fn given_three_nodes_when_align_center_horizontal_then_centered() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 250.0, 150.0))
+            .update(node_c.clone(), make_node("node-c", 180.0, 200.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Center);
+
+        assert!(result, "align_center_horizontal should return true");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(175.0), "node-a x should be centered");
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(175.0), "node-b x should be centered");
+        assert_eq!(doc.document.nodes.get(&node_c).map(|n| n.x.0), Some(175.0), "node-c x should be centered");
+    }
+
+    #[test]
+    fn given_two_nodes_when_align_top_then_both_share_min_y() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 200.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::Start);
+
+        assert!(result, "align_top should return true");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.y.0), Some(100.0));
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.y.0), Some(100.0), "node-b y should be aligned to min_y");
+    }
+
+    #[test]
+    fn given_two_nodes_when_align_bottom_then_both_share_max_bottom() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 200.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::End);
+
+        assert!(result, "align_bottom should return true");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.y.0), Some(200.0), "node-a y should be 200");
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.y.0), Some(200.0), "node-b y should be 200");
+    }
+
+    #[test]
+    fn given_three_nodes_when_align_middle_vertical_then_centered() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 200.0))
+            .update(node_c.clone(), make_node("node-c", 150.0, 150.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Vertical, AlignmentMode::Center);
+
+        assert!(result, "align_middle_vertical should return true");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.y.0), Some(150.0), "node-a y should be centered");
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.y.0), Some(150.0), "node-b y should be centered");
+        assert_eq!(doc.document.nodes.get(&node_c).map(|n| n.y.0), Some(150.0), "node-c y should be centered");
+    }
+
+    #[test]
+    fn given_single_node_selected_when_align_then_returns_false() {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new("single-node".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_id, make_node("single-node", 100.0, 100.0));
+        let _ = doc.editor_state.selected_items.insert("single-node".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert!(!result, "align should return false for single node");
+    }
+
+    #[test]
+    fn given_empty_selection_when_align_then_returns_false() {
+        let mut doc = DiagramDocument::default();
+        let node_id = NodeId::new("node".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_id, make_node("node", 100.0, 100.0));
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert!(!result, "align should return false for empty selection");
+    }
+
+    #[test]
+    fn given_locked_node_when_align_then_skips_locked() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+
+        let mut locked_node = make_node("node-b", 200.0, 100.0);
+        locked_node.locked = true;
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), locked_node)
+            .update(node_c.clone(), make_node("node-c", 150.0, 100.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert!(result, "align should return true with 2 movable nodes");
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.x.0), Some(100.0), "node-a should be aligned");
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.x.0), Some(200.0), "locked node-b should not move");
+        assert_eq!(doc.document.nodes.get(&node_c).map(|n| n.x.0), Some(100.0), "node-c should be aligned");
+    }
+
+    #[test]
+    fn given_selection_with_infinite_coords_when_align_then_returns_false() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        let mut inf_node = make_node("node-b", 200.0, 100.0);
+        inf_node.x = OrderedFloat(f64::INFINITY);
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), inf_node);
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert!(!result, "align should return false for non-finite coords");
+    }
+
+    #[test]
+    fn given_alignment_when_successful_then_dimensions_unchanged() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 150.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let width_before_a = doc.document.nodes.get(&node_a).map(|n| n.width.0);
+        let height_before_a = doc.document.nodes.get(&node_a).map(|n| n.height.0);
+        let width_before_b = doc.document.nodes.get(&node_b).map(|n| n.width.0);
+        let height_before_b = doc.document.nodes.get(&node_b).map(|n| n.height.0);
+
+        let _ = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.width.0), width_before_a);
+        assert_eq!(doc.document.nodes.get(&node_a).map(|n| n.height.0), height_before_a);
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.width.0), width_before_b);
+        assert_eq!(doc.document.nodes.get(&node_b).map(|n| n.height.0), height_before_b);
+    }
+
+    #[test]
+    fn given_alignment_when_successful_then_revision_incremented() {
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(node_a.clone(), make_node("node-a", 100.0, 100.0))
+            .update(node_b.clone(), make_node("node-b", 200.0, 150.0));
+
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let revision_before = doc.revision;
+
+        let result = perform_align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start);
+
+        assert!(result);
+        assert_eq!(doc.revision, revision_before.increment(), "revision should be incremented");
     }
 }
 

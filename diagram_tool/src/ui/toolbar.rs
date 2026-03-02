@@ -215,6 +215,68 @@ pub fn Toolbar() -> Element {
 
             div { style: "width: 1px; height: 20px; background: {BORDER};" }
 
+            // Alignment buttons - require 2+ selected nodes
+            button {
+                "data-testid": "toolbar-align-left",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::align_left(doc_signal, history_signal),
+                disabled: stats.selected_count < 2,
+                "Left"
+            }
+            button {
+                "data-testid": "toolbar-align-center-h",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::align_center_horizontal(doc_signal, history_signal),
+                disabled: stats.selected_count < 2,
+                "H-Center"
+            }
+            button {
+                "data-testid": "toolbar-align-right",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::align_right(doc_signal, history_signal),
+                disabled: stats.selected_count < 2,
+                "Right"
+            }
+            button {
+                "data-testid": "toolbar-align-top",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::align_top(doc_signal, history_signal),
+                disabled: stats.selected_count < 2,
+                "Top"
+            }
+            button {
+                "data-testid": "toolbar-align-middle-v",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::align_middle_vertical(doc_signal, history_signal),
+                disabled: stats.selected_count < 2,
+                "V-Center"
+            }
+            button {
+                "data-testid": "toolbar-align-bottom",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::align_bottom(doc_signal, history_signal),
+                disabled: stats.selected_count < 2,
+                "Bottom"
+            }
+
+            // Distribution buttons - require 3+ selected nodes
+            button {
+                "data-testid": "toolbar-distribute-h",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::distribute_horizontal(doc_signal, history_signal),
+                disabled: stats.selected_count < 3,
+                "Dist H"
+            }
+            button {
+                "data-testid": "toolbar-distribute-v",
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::distribute_vertical(doc_signal, history_signal),
+                disabled: stats.selected_count < 3,
+                "Dist V"
+            }
+
+            div { style: "width: 1px; height: 20px; background: {BORDER};" }
+
             button {
                 "data-testid": "toolbar-validate",
                 style: "padding: 5px 10px; cursor: pointer; background: {ACCENT}; border: none; border-radius: 4px; color: {BG_BASE};",
