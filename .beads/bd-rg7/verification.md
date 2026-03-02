@@ -2,8 +2,8 @@
 
 bead_id: bd-rg7
 bead_title: tests: Implement CLP clipboard tests
-phase: p2
-updated_at: 2026-03-01T02:02:00Z
+phase: p4
+updated_at: 2026-03-01T02:23:00Z
 
 ## Verification Summary
 
@@ -49,6 +49,17 @@ updated_at: 2026-03-01T02:02:00Z
 | multi-paste offset | PASS | CLP-009 |
 | empty selection copy | PASS | CLP-010 |
 
+### Rust Unit Tests
+
+```
+cargo test clipboard
+running 3 tests
+test ui::commands::tests::given_clipboard_with_empty_nodes_when_paste_then_returns_false ... ok
+test ui::commands::tests::given_empty_clipboard_when_paste_then_returns_false ... ok
+test ui::commands::tests::given_edge_in_clipboard_when_paste_then_remapped_to_new_ids ... ok
+test result: ok. 3 passed; 0 failed
+```
+
 ### Implementation Notes
 
 1. **Cut (Ctrl+X)**: Not implemented in the application. CLP-004 tests a workaround using copy + delete + paste.
@@ -61,7 +72,7 @@ updated_at: 2026-03-01T02:02:00Z
 
 - `/home/lewis/src/seshat/diagram_tool/e2e/diagram.clipboard.spec.ts` (310 lines)
 
-### Next Steps
+### Delivery
 
-1. Run `moon run :test` to verify Rust unit tests pass
-2. Run `moon run :e2e-baseline` to verify e2e tests pass with web server
+- Commit: `2921a542` pushed to `main`
+- Bead: `bd-rg7` closed successfully
