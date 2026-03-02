@@ -446,9 +446,9 @@ mod tests {
         );
     }
 
-    /// IO-TEST-5c: Missing version field defaults gracefully
+    /// IO-TEST-5c: Version field is required
     #[test]
-    fn given_document_without_version_when_import_then_succeeds() {
+    fn given_document_without_version_when_import_then_fails_gracefully() {
         // Given - Document without explicit version field
         let json = r#"{
             "revision": 0,
@@ -483,11 +483,17 @@ mod tests {
         // When
         let result = super::parse_diagram_document_with_compat(json);
 
-        // Then - should parse with default version
+        // Then - should fail gracefully with clear error (version is required)
         assert!(
-            result.is_ok(),
-            "Document without version should parse: {:?}",
-            result.err()
+            result.is_err(),
+            "Document without version should fail: expected error, got {:?}",
+            result.ok()
+        );
+        let err_msg = result.expect_err("should have error");
+        assert!(
+            err_msg.contains("version"),
+            "Error message should mention version field: {}",
+            err_msg
         );
     }
 }

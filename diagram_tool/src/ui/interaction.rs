@@ -991,7 +991,7 @@ mod inp_mobile_touch_tests {
     fn given_touch_hit_area_when_checking_selection_handles_then_meets_minimum() {
         // Selection handles should be at least 44x44 points (22px radius)
         // This is based on accessibility guidelines for touch targets
-        let handle_hit_radius = 7.0; // Current handle size from canvas_view.rs
+        let handle_hit_radius: f64 = 7.0; // Current handle size from canvas_view.rs
         let touch_enlarged_radius = handle_hit_radius.max(TOUCH_HIT_RADIUS_MIN);
 
         assert!(

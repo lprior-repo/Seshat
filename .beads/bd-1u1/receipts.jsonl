@@ -2,3 +2,5 @@
 {"timestamp":"2026-03-02T02:27:12Z","bead_id":"bd-1u1","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-1u1","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
 {"timestamp":"2026-03-02T02:27:15Z","bead_id":"bd-1u1","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract file exists or derived from BR bead","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
 {"timestamp":"2026-03-02T02:27:15Z","bead_id":"bd-1u1","phase":"p0","actor":"orchestrator","action":"claim replay","command":"br show bd-1u1","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":true}
+{"timestamp":"2026-03-02T02:35:00Z","bead_id":"bd-1u1","phase":"p1","actor":"functional-rust","action":"implementation complete","command":"cargo test -p diagram_tool","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-02T02:38:00Z","bead_id":"bd-1u1","phase":"p2","actor":"orchestrator","action":"moon test","command":"moon run :test","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
