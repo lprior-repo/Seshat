@@ -5,3 +5,6 @@
 {"timestamp":"2026-03-01T20:56:00Z","bead_id":"bd-27q","phase":"p2","actor":"orchestrator","action":"moon clippy","command":"moon run :clippy","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
 {"timestamp":"2026-03-01T20:56:00Z","bead_id":"bd-27q","phase":"p2","actor":"orchestrator","action":"moon test","command":"moon run :test-rust","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
 {"timestamp":"2026-03-01T20:56:00Z","bead_id":"bd-27q","phase":"p2","actor":"orchestrator","action":"inp mobile tests","command":"cargo test --package diagram_tool inp_mobile","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":true}
+{"timestamp":"2026-03-01T21:01:00Z","bead_id":"bd-27q","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-27q","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T21:01:00Z","bead_id":"bd-27q","phase":"p4","actor":"orchestrator","action":"workspace cleanup","command":"jj workspace forget bd-27q","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":false}
+{"timestamp":"2026-03-01T21:01:00Z","bead_id":"bd-27q","phase":"p4","actor":"orchestrator","action":"landing replay","command":"jj log -r main","exit_code":0,"stdout_file":null,"stderr_file":null,"replay":true}
