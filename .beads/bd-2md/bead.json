@@ -1,0 +1,17 @@
+[
+  {
+    "id": "bd-2md",
+    "title": "edge-case-bdd-tests-concurrent-access",
+    "description": "Add BDD tests for concurrent access: lock timeouts, concurrent operations on same diagram, lock release failures, queue overflow",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "self",
+    "created_at": "2026-03-02T04:44:27.472277807Z",
+    "created_by": "lewis",
+    "updated_at": "2026-03-02T05:23:34.603484897Z",
+    "source_repo": ".",
+    "compaction_level": 0,
+    "original_size": 0
+  }
+]

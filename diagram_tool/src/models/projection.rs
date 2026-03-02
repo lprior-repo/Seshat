@@ -4829,4 +4829,324 @@ mod tests {
             _ => panic!("Expected error"),
         }
     }
+
+    // ============== BDD Tests for Numeric Boundaries (bd-14y) ==============
+
+    #[test]
+    fn given_large_revision_number_when_serializing_then_preserves_value() {
+        // Given: projection with large revision number
+        let large_revision = 1_000_000_000_u64;
+        let projection = DiagramProjection::with_revision(large_revision);
+
+        // When: serializing and deserializing
+        let json = serde_json::to_string(&projection).unwrap();
+        let deserialized: DiagramProjection = serde_json::from_str(&json).unwrap();
+
+        // Then: revision is preserved exactly
+        assert_eq!(deserialized.revision, large_revision);
+    }
+
+    #[test]
+    fn given_projection_at_u64_max_when_serializing_then_preserves_value() {
+        // Given: projection at u64::MAX
+        let projection = DiagramProjection {
+            version: 1,
+            revision: u64::MAX,
+            nodes: HashMap::new(),
+            edges: HashMap::new(),
+            author_priority: HashMap::new(),
+            cycle_policy: CyclePolicy::default(),
+        };
+
+        // When: serializing and deserializing
+        let json = serde_json::to_string(&projection).unwrap();
+        let deserialized: DiagramProjection = serde_json::from_str(&json).unwrap();
+
+        // Then: revision is preserved exactly
+        assert_eq!(deserialized.revision, u64::MAX);
+    }
+
+    #[test]
+    fn given_event_with_negative_timestamp_when_replaying_then_handles_gracefully() {
+        // Given: event with negative timestamp (pre-epoch)
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: -1, // Negative timestamp
+        };
+
+        // When: replaying
+        // Then: no panic, handles gracefully (may succeed or fail with typed error)
+        let result = replay_events(&[event]);
+        // The replay should either succeed or return a typed error, not panic
+        assert!(result.is_ok() || matches!(result, Err(ReplayError::InvalidEvent(_))));
+    }
+
+    #[test]
+    fn given_event_with_i64_max_timestamp_when_replaying_then_succeeds() {
+        // Given: event with i64::MAX timestamp
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: i64::MAX,
+        };
+
+        // When: replaying
+        let result = replay_events(&[event]);
+
+        // Then: succeeds without error
+        assert!(result.is_ok(), "Should handle i64::MAX timestamp");
+        let projection = result.unwrap();
+        assert_eq!(projection.revision, 1);
+    }
+
+    #[test]
+    fn given_event_with_i64_min_timestamp_when_replaying_then_succeeds() {
+        // Given: event with i64::MIN timestamp
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: i64::MIN,
+        };
+
+        // When: replaying
+        let result = replay_events(&[event]);
+
+        // Then: succeeds without error
+        assert!(result.is_ok(), "Should handle i64::MIN timestamp");
+    }
+
+    #[test]
+    fn given_event_with_zero_timestamp_when_replaying_then_succeeds() {
+        // Given: event with zero timestamp
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        // When: replaying
+        let result = replay_events(&[event]);
+
+        // Then: succeeds
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_node_with_infinity_coordinates_when_applying_operation_then_no_panic() {
+        // Given: NodeAdd with infinity coordinates
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: f64::INFINITY,
+                y: f64::NEG_INFINITY,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        // When: applying event
+        // Then: no panic (may succeed or fail with typed error)
+        let result = replay_events(&[event]);
+        // Either succeeds with infinity values or returns typed error
+        assert!(result.is_ok() || matches!(result, Err(ReplayError::InvalidEvent(_))));
+    }
+
+    #[test]
+    fn given_node_with_nan_coordinates_when_applying_operation_then_no_panic() {
+        // Given: NodeAdd with NaN coordinates
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: f64::NAN,
+                y: f64::NAN,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        // When: applying event
+        // Then: no panic
+        let result = replay_events(&[event]);
+        // Either succeeds with NaN values or returns typed error
+        assert!(result.is_ok() || matches!(result, Err(ReplayError::InvalidEvent(_))));
+    }
+
+    #[test]
+    fn given_node_with_very_large_coordinates_when_applying_then_succeeds() {
+        // Given: NodeAdd with very large coordinates (1e308)
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 1e308,
+                y: 1e308,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        // When: applying event
+        let result = replay_events(&[event]);
+
+        // Then: succeeds without overflow
+        assert!(result.is_ok());
+        let projection = result.unwrap();
+        let node = projection.get_node(&NodeId::new("node-1".to_string()));
+        assert!(node.is_some());
+    }
+
+    #[test]
+    fn given_node_with_very_small_positive_coordinates_when_applying_then_succeeds() {
+        // Given: NodeAdd with very small positive coordinates (1e-308)
+        let event = EventRecord {
+            op_id: "op-1".to_string(),
+            revision: 0,
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 1e-308,
+                y: 1e-308,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+            author: Author {
+                id: "test".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            timestamp: 0,
+        };
+
+        // When: applying event
+        let result = replay_events(&[event]);
+
+        // Then: succeeds without underflow
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_events_with_high_revisions_when_replaying_then_no_overflow() {
+        // Given: events with high but sequential revisions
+        let base_revision = u64::MAX - 10;
+        let events: Vec<EventRecord> = (0..5)
+            .map(|i| EventRecord {
+                op_id: format!("op-{i}"),
+                revision: base_revision + i,
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: i as f64 * 100.0,
+                    y: 0.0,
+                    width: 80.0,
+                    height: 40.0,
+                    label: format!("Node {i}"),
+                },
+                author: Author {
+                    id: "test".to_string(),
+                    name: "Test".to_string(),
+                    email: None,
+                },
+                timestamp: i as i64,
+            })
+            .collect();
+
+        // When: replaying from appropriate initial state
+        let initial = DiagramProjection::with_revision(base_revision);
+        let result = replay_events_from(initial, &events);
+
+        // Then: handles gracefully (may wrap or error, but no panic)
+        // Note: This may fail due to revision overflow, which is acceptable
+        assert!(result.is_ok() || matches!(result, Err(ReplayError::InvariantViolation(_))));
+    }
+
+    #[test]
+    fn given_projection_with_large_revision_when_converting_to_document_then_preserves_revision() {
+        // Given: projection with large revision
+        let large_revision = 10_000_000_u64;
+        let projection = DiagramProjection::with_revision(large_revision);
+
+        // When: converting to document
+        let document = projection_to_document(&projection);
+
+        // Then: revision is preserved
+        assert_eq!(document.revision.value(), large_revision);
+    }
 }

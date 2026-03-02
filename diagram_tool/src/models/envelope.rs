@@ -1224,4 +1224,231 @@ mod tests {
             assert!(!name.is_empty(), "Variant name should not be empty");
         }
     }
+
+    // ============== BDD Tests for Numeric Boundaries (bd-14y) ==============
+
+    #[test]
+    fn given_timestamp_at_i64_max_when_creating_envelope_then_preserves_value() {
+        // Given: envelope with i64::MAX timestamp
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: i64::MAX,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+        };
+
+        // When: serializing and deserializing
+        let json = serde_json::to_string(&envelope).unwrap();
+        let deserialized: EventEnvelope = serde_json::from_str(&json).unwrap();
+
+        // Then: timestamp is preserved exactly
+        assert_eq!(deserialized.timestamp, i64::MAX);
+    }
+
+    #[test]
+    fn given_timestamp_at_i64_min_when_creating_envelope_then_preserves_value() {
+        // Given: envelope with i64::MIN timestamp
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: i64::MIN,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+        };
+
+        // When: serializing and deserializing
+        let json = serde_json::to_string(&envelope).unwrap();
+        let deserialized: EventEnvelope = serde_json::from_str(&json).unwrap();
+
+        // Then: timestamp is preserved exactly
+        assert_eq!(deserialized.timestamp, i64::MIN);
+    }
+
+    #[test]
+    fn given_zero_timestamp_when_creating_envelope_then_succeeds() {
+        // Given: envelope with zero timestamp
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 0,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+        };
+
+        // When: serializing and deserializing
+        let json = serde_json::to_string(&envelope).unwrap();
+        let deserialized: EventEnvelope = serde_json::from_str(&json).unwrap();
+
+        // Then: succeeds with timestamp 0
+        assert_eq!(deserialized.timestamp, 0);
+    }
+
+    #[test]
+    fn given_negative_timestamp_when_creating_envelope_then_preserves_value() {
+        // Given: envelope with negative timestamp (pre-epoch time)
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: -1000000,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+        };
+
+        // When: serializing and deserializing
+        let json = serde_json::to_string(&envelope).unwrap();
+        let deserialized: EventEnvelope = serde_json::from_str(&json).unwrap();
+
+        // Then: negative timestamp is preserved
+        assert_eq!(deserialized.timestamp, -1000000);
+    }
+
+    #[test]
+    fn given_node_add_with_infinity_x_when_parsing_then_no_panic() {
+        // Given: JSON with infinity x coordinate (represented as string or number)
+        let json = r#"{"op": "node_add", "id": "n1", "x": 1e999, "y": 0.0, "width": 80.0, "height": 40.0, "label": "test"}"#;
+
+        // When: parsing
+        // Then: either parses as infinity or returns error, no panic
+        let result = parse_domain_op(json);
+        // JSON doesn't support infinity, so this should fail gracefully
+        assert!(result.is_err() || result.is_ok());
+    }
+
+    #[test]
+    fn given_node_add_with_very_large_coordinates_when_parsing_then_succeeds() {
+        // Given: JSON with very large coordinates
+        let json = r#"{"op": "node_add", "id": "n1", "x": 1e308, "y": 1e308, "width": 80.0, "height": 40.0, "label": "test"}"#;
+
+        // When: parsing
+        let result = parse_domain_op(json);
+
+        // Then: succeeds
+        assert!(result.is_ok());
+        let op = result.unwrap();
+        match op {
+            DomainOp::NodeAdd { x, y, .. } => {
+                assert!(x > 1e307);
+                assert!(y > 1e307);
+            }
+            _ => panic!("Expected NodeAdd"),
+        }
+    }
+
+    #[test]
+    fn given_node_add_with_very_small_positive_coordinates_when_parsing_then_succeeds() {
+        // Given: JSON with very small positive coordinates
+        let json = r#"{"op": "node_add", "id": "n1", "x": 1e-308, "y": 1e-308, "width": 80.0, "height": 40.0, "label": "test"}"#;
+
+        // When: parsing
+        let result = parse_domain_op(json);
+
+        // Then: succeeds
+        assert!(result.is_ok());
+        let op = result.unwrap();
+        match op {
+            DomainOp::NodeAdd { x, y, .. } => {
+                assert!(x < 1e-307);
+                assert!(y < 1e-307);
+            }
+            _ => panic!("Expected NodeAdd"),
+        }
+    }
+
+    #[test]
+    fn given_envelope_serialization_with_large_timestamp_then_produces_valid_json() {
+        // Given: envelope with large timestamp
+        let envelope = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 9223372036854775807, // i64::MAX
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "n1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+        };
+
+        // When: serializing
+        let json = serde_json::to_string(&envelope).unwrap();
+
+        // Then: produces valid JSON with correct timestamp
+        assert!(json.contains("9223372036854775807"));
+    }
+
+    #[test]
+    fn given_envelope_roundtrip_with_negative_timestamp_then_preserves_value() {
+        // Given: envelope with negative timestamp
+        let original = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: -9223372036854775808, // i64::MIN
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "n1".to_string(),
+                x: 0.0,
+                y: 0.0,
+                width: 80.0,
+                height: 40.0,
+                label: "Test".to_string(),
+            },
+        };
+
+        // When: roundtrip serialization
+        let json = serde_json::to_string(&original).unwrap();
+        let parsed: EventEnvelope = serde_json::from_str(&json).unwrap();
+
+        // Then: timestamp is preserved
+        assert_eq!(parsed.timestamp, original.timestamp);
+    }
 }

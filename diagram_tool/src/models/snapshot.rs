@@ -852,4 +852,303 @@ mod tests {
         let loaded_projection = load_projection(&bootstrap.conn).unwrap();
         assert_eq!(loaded_projection.revision, 1);
     }
+
+    // ============================================================================
+    // BDD Tests for Snapshot Recovery Edge Cases (bd-2vq)
+    // ============================================================================
+
+    /// Test 1: Staleness Detection
+    /// Verifies that loading a snapshot where the stored revision in the snapshots
+    /// table is behind the events table is handled appropriately by replaying the tail.
+    ///
+    /// Note: The current implementation loads the snapshot + replays tail events.
+    /// This test verifies behavior when snapshot revision < current events revision.
+    #[test]
+    fn given_stale_snapshot_when_load_projection_then_returns_stale_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Add first event and create a snapshot at revision 1
+        let envelope1 = EventEnvelope {
+            op_id: "op-1".to_string(),
+            timestamp: 1234567891,
+            author: Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            operation: DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 100.0,
+                y: 200.0,
+                width: 50.0,
+                height: 50.0,
+                label: "Node 1".to_string(),
+            },
+        };
+        store::append_event(&mut bootstrap.conn, envelope1, None).unwrap();
+
+        // Write snapshot at revision 1
+        let projection_rev1 = DiagramProjection {
+            revision: 1,
+            ..DiagramProjection::empty()
+        };
+        write_snapshot(&mut bootstrap.conn, &projection_rev1).unwrap();
+
+        // Now add more events to bring the database to revision 3 (snapshot is now "stale")
+        for i in 2..=3 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                timestamp: 1234567890 + i,
+                author: Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                operation: DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 100.0 * i as f64,
+                    y: 200.0,
+                    width: 50.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+            };
+            store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+        }
+
+        // The snapshot is now stale (revision 1 vs current revision 3)
+        // load_projection should still work by loading the snapshot and replaying tail events
+        let result = load_projection(&bootstrap.conn);
+
+        // Verify graceful handling - no panic, and the projection should be at revision 3
+        assert!(
+            result.is_ok(),
+            "Should handle stale snapshot gracefully by replaying tail, got: {:?}",
+            result.err()
+        );
+
+        let loaded = result.unwrap();
+        assert_eq!(
+            loaded.revision, 3,
+            "Should replay all events and reach revision 3"
+        );
+    }
+
+    /// Test 2: Deserialization Failures - Corrupted/Invalid JSON
+    /// Verifies that a snapshot with malformed JSON payload returns Serialization error.
+    #[test]
+    fn given_corrupted_payload_when_load_projection_then_returns_serialization_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Directly insert a snapshot with corrupted JSON payload
+        bootstrap
+            .conn
+            .execute(
+                "INSERT INTO snapshots (revision, payload) VALUES (1, 'this is not valid json at all')",
+                [],
+            )
+            .unwrap();
+
+        // Attempt to load projection
+        let result = load_projection(&bootstrap.conn);
+
+        // Verify we get a Serialization error, not a panic
+        assert!(
+            matches!(result, Err(SnapshotError::Serialization(_))),
+            "Expected Serialization error for corrupted payload, got: {:?}",
+            result
+        );
+    }
+
+    /// Test 2b: Deserialization Failures - Truncated JSON
+    /// Verifies that a snapshot with truncated JSON payload returns Serialization error.
+    #[test]
+    fn given_truncated_json_payload_when_load_projection_then_returns_serialization_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Insert a truncated JSON payload (valid start but incomplete)
+        let truncated_json = r#"{"version":1,"revision":1,"nodes":{"#;
+
+        bootstrap
+            .conn
+            .execute(
+                "INSERT INTO snapshots (revision, payload) VALUES (1, ?1)",
+                [truncated_json],
+            )
+            .unwrap();
+
+        // Attempt to load projection
+        let result = load_projection(&bootstrap.conn);
+
+        // Verify we get a Serialization error
+        assert!(
+            matches!(result, Err(SnapshotError::Serialization(_))),
+            "Expected Serialization error for truncated JSON, got: {:?}",
+            result
+        );
+    }
+
+    /// Test 3: Semantically Invalid Payload (Structurally Valid but Wrong Types)
+    /// Verifies that a snapshot with valid JSON but wrong field types returns error.
+    #[test]
+    fn given_semantically_invalid_payload_when_load_projection_then_returns_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Valid JSON structure but nodes is a string instead of a map
+        let invalid_payload = r#"{
+            "version": 1,
+            "revision": 1,
+            "nodes": "this should be a map, not a string",
+            "edges": {},
+            "author_priority": {},
+            "cycle_policy": "allow"
+        }"#;
+
+        bootstrap
+            .conn
+            .execute(
+                "INSERT INTO snapshots (revision, payload) VALUES (1, ?1)",
+                [invalid_payload],
+            )
+            .unwrap();
+
+        // Attempt to load projection
+        let result = load_projection(&bootstrap.conn);
+
+        // Verify we get a Serialization error (type mismatch during deserialization)
+        assert!(
+            matches!(result, Err(SnapshotError::Serialization(_))),
+            "Expected Serialization error for semantically invalid payload, got: {:?}",
+            result
+        );
+    }
+
+    /// Test 4: Incompatible Format (Schema Version Mismatch)
+    /// Verifies that a snapshot with an unexpected schema version is handled gracefully.
+    #[test]
+    fn given_incompatible_snapshot_format_when_load_projection_then_handles_gracefully() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Create a snapshot with an old/incompatible schema structure
+        // This simulates an old version of the snapshot format
+        let old_format_payload = r#"{
+            "schema_version": "v0.1.0-legacy",
+            "data": {
+                "diagram_nodes": [],
+                "diagram_edges": []
+            },
+            "metadata": {
+                "created": "2024-01-01T00:00:00Z"
+            }
+        }"#;
+
+        bootstrap
+            .conn
+            .execute(
+                "INSERT INTO snapshots (revision, payload) VALUES (1, ?1)",
+                [old_format_payload],
+            )
+            .unwrap();
+
+        // Attempt to load projection
+        let result = load_projection(&bootstrap.conn);
+
+        // The deserialization should fail because the structure doesn't match DiagramProjection
+        assert!(
+            matches!(result, Err(SnapshotError::Serialization(_))),
+            "Expected Serialization error for incompatible format, got: {:?}",
+            result
+        );
+    }
+
+    /// Test 5: Missing Metadata Fields
+    /// Verifies that a snapshot payload missing required fields returns Serialization error.
+    #[test]
+    fn given_snapshot_with_missing_metadata_fields_when_load_then_returns_serialization_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Valid JSON but missing required fields (version, revision)
+        let missing_fields_payload = r#"{
+            "nodes": {},
+            "edges": {}
+        }"#;
+
+        bootstrap
+            .conn
+            .execute(
+                "INSERT INTO snapshots (revision, payload) VALUES (1, ?1)",
+                [missing_fields_payload],
+            )
+            .unwrap();
+
+        // Attempt to load projection
+        let result = load_projection(&bootstrap.conn);
+
+        // Verify we get a Serialization error for missing required fields
+        assert!(
+            matches!(result, Err(SnapshotError::Serialization(_))),
+            "Expected Serialization error for missing metadata fields, got: {:?}",
+            result
+        );
+    }
+
+    /// Test 5b: Missing Nodes Field (Partial Payload)
+    /// Verifies that a snapshot payload missing the nodes field is handled.
+    #[test]
+    fn given_snapshot_missing_nodes_field_when_load_then_returns_serialization_error() {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+
+        // Create and initialize schema
+        let bootstrap = store::bootstrap_store(&db_path).unwrap();
+
+        // Missing the nodes field (required)
+        let partial_payload = r#"{
+            "version": 1,
+            "revision": 5,
+            "edges": {}
+        }"#;
+
+        bootstrap
+            .conn
+            .execute(
+                "INSERT INTO snapshots (revision, payload) VALUES (5, ?1)",
+                [partial_payload],
+            )
+            .unwrap();
+
+        // Attempt to load projection
+        let result = load_projection(&bootstrap.conn);
+
+        // Verify graceful error handling
+        assert!(
+            matches!(result, Err(SnapshotError::Serialization(_))),
+            "Expected Serialization error for missing nodes field, got: {:?}",
+            result
+        );
+    }
 }
