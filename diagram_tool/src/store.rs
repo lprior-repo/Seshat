@@ -3369,10 +3369,7 @@ mod tests {
                 |row| row.get(0),
             )
             .expect("Failed to count events");
-        assert_eq!(
-            count, 0,
-            "Stale operation should not be in the database"
-        );
+        assert_eq!(count, 0, "Stale operation should not be in the database");
     }
 
     /// Regression test: exact duplicate op_id must return no-op success
@@ -3414,7 +3411,10 @@ mod tests {
             result1.err()
         );
         let outcome1 = result1.expect("checked is_ok");
-        assert_eq!(outcome1.revision, 1, "First append should create revision 1");
+        assert_eq!(
+            outcome1.revision, 1,
+            "First append should create revision 1"
+        );
         assert_eq!(outcome1.op_id, "op-duplicate-test");
         assert_eq!(outcome1.timestamp, 1700000420);
 
@@ -3450,10 +3450,7 @@ mod tests {
                 |row| row.get(0),
             )
             .expect("Failed to count events");
-        assert_eq!(
-            count, 1,
-            "Exact duplicate should not create a new row"
-        );
+        assert_eq!(count, 1, "Exact duplicate should not create a new row");
 
         // Verify current revision is still 1
         let current = current_revision(&bootstrap.conn).expect("Failed to get revision");

@@ -266,12 +266,14 @@ mod tests {
             .update(c_id, node(NodeKind::Subgraph, Some(b_id)));
 
         let result = validate_schema(&doc);
-        assert!(result.is_err(), "circular parent chain should fail validation");
+        assert!(
+            result.is_err(),
+            "circular parent chain should fail validation"
+        );
 
         let err_msg = result.unwrap_err().to_string();
         assert!(
-            err_msg.to_lowercase().contains("circular")
-                || err_msg.to_lowercase().contains("cycle"),
+            err_msg.to_lowercase().contains("circular") || err_msg.to_lowercase().contains("cycle"),
             "error message should mention circular or cycle: {}",
             err_msg
         );
@@ -283,11 +285,14 @@ mod tests {
         let a_id = NodeId::new(String::from("subgraph-a"));
 
         let mut doc = DiagramDocument::default();
-        doc.document.nodes = HashMap::new()
-            .update(a_id.clone(), node(NodeKind::Subgraph, Some(a_id)));
+        doc.document.nodes =
+            HashMap::new().update(a_id.clone(), node(NodeKind::Subgraph, Some(a_id)));
 
         let result = validate_schema(&doc);
-        assert!(result.is_err(), "self-referential parent should fail validation");
+        assert!(
+            result.is_err(),
+            "self-referential parent should fail validation"
+        );
     }
 
     #[test]
@@ -302,7 +307,10 @@ mod tests {
             .update(b_id, node(NodeKind::Subgraph, Some(a_id)));
 
         let result = validate_schema(&doc);
-        assert!(result.is_err(), "two-node parent cycle should fail validation");
+        assert!(
+            result.is_err(),
+            "two-node parent cycle should fail validation"
+        );
     }
 }
 

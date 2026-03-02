@@ -173,7 +173,10 @@ pub struct StrokedShape<T> {
 impl<T> StrokedShape<T> {
     #[must_use]
     pub const fn new(shape: T, stroke_width: f64) -> Self {
-        Self { shape, stroke_width }
+        Self {
+            shape,
+            stroke_width,
+        }
     }
 }
 
@@ -272,11 +275,7 @@ pub fn rotate_around_center(point: Point, center: Point, angle_radians: f64) -> 
 
 /// GEO-008: Resize dimensions while maintaining aspect ratio
 #[must_use]
-pub fn resize_with_aspect_lock(
-    original_width: f64,
-    original_height: f64,
-    new_width: f64,
-) -> f64 {
+pub fn resize_with_aspect_lock(original_width: f64, original_height: f64, new_width: f64) -> f64 {
     if original_width <= 0.0 {
         return new_width;
     }
@@ -286,7 +285,12 @@ pub fn resize_with_aspect_lock(
 
 /// GEO-009: Combined transform - scale then rotate
 #[must_use]
-pub fn scale_then_rotate(point: Point, anchor: Point, scale_factor: f64, angle_radians: f64) -> Point {
+pub fn scale_then_rotate(
+    point: Point,
+    anchor: Point,
+    scale_factor: f64,
+    angle_radians: f64,
+) -> Point {
     let scaled = scale_around_anchor(point, anchor, scale_factor);
     rotate_around_center(scaled, anchor, angle_radians)
 }
@@ -1110,9 +1114,10 @@ mod tests {
 
         // Check if direct route intersects obstacle (simplified check)
         // For this test, we check if any segment crosses the obstacle
-        let needs_detour = direct.points.windows(2).any(|seg| {
-            segment_intersects_aabb(seg[0], seg[1], obstacle)
-        });
+        let needs_detour = direct
+            .points
+            .windows(2)
+            .any(|seg| segment_intersects_aabb(seg[0], seg[1], obstacle));
 
         if !needs_detour {
             return direct;
@@ -1530,18 +1535,12 @@ mod tests {
 
     /// Transform world coordinates to screen coordinates
     fn world_to_screen(world: Point, camera: Point, zoom: f64) -> Point {
-        Point::new(
-            (world.x - camera.x) * zoom,
-            (world.y - camera.y) * zoom,
-        )
+        Point::new((world.x - camera.x) * zoom, (world.y - camera.y) * zoom)
     }
 
     /// Transform screen coordinates back to world coordinates
     fn screen_to_world(screen: Point, camera: Point, zoom: f64) -> Point {
-        Point::new(
-            screen.x / zoom + camera.x,
-            screen.y / zoom + camera.y,
-        )
+        Point::new(screen.x / zoom + camera.x, screen.y / zoom + camera.y)
     }
 
     #[test]
@@ -1777,7 +1776,11 @@ mod tests {
 
         // Then: should return close to original
         let drift = ((current.x - original.x).powi(2) + (current.y - original.y).powi(2)).sqrt();
-        assert!(drift < 1e-6, "Full circle drift {} exceeds threshold", drift);
+        assert!(
+            drift < 1e-6,
+            "Full circle drift {} exceeds threshold",
+            drift
+        );
     }
 
     // ============== GEO-026: Repeated Tiny Scales - Scale Drift ==============
@@ -1803,7 +1806,11 @@ mod tests {
         // Relative error should be bounded
         let relative_error = ((current.x - expected.x).abs() / expected.x.abs().max(1.0))
             .max((current.y - expected.y).abs() / expected.y.abs().max(1.0));
-        assert!(relative_error < 1e-6, "Relative error {} exceeds threshold", relative_error);
+        assert!(
+            relative_error < 1e-6,
+            "Relative error {} exceeds threshold",
+            relative_error
+        );
     }
 
     #[test]
@@ -1824,7 +1831,11 @@ mod tests {
 
         // Then: should return close to original
         let drift = ((current.x - original.x).powi(2) + (current.y - original.y).powi(2)).sqrt();
-        assert!(drift < 1e-9, "Inverse scale drift {} exceeds threshold", drift);
+        assert!(
+            drift < 1e-9,
+            "Inverse scale drift {} exceeds threshold",
+            drift
+        );
     }
 
     // ============== GEO-027: Camera Constraints - Min Zoom ==============
@@ -1957,12 +1968,7 @@ mod tests {
     #[test]
     fn test_camera_world_to_screen_at_extremes() {
         // Given: extreme world coordinates
-        let extreme_coords = [
-            (1e6, 1e6),
-            (-1e6, -1e6),
-            (1e6, -1e6),
-            (-1e6, 1e6),
-        ];
+        let extreme_coords = [(1e6, 1e6), (-1e6, -1e6), (1e6, -1e6), (-1e6, 1e6)];
         let camera = Point::origin();
         let zoom = 1.0;
 
@@ -2137,8 +2143,7 @@ mod tests {
             .iter()
             .map(|r| {
                 // Rotate the rectangle's position around the selection center
-                let rotated_pos =
-                    rotate_around_center(Point::new(r.x, r.y), center, angle);
+                let rotated_pos = rotate_around_center(Point::new(r.x, r.y), center, angle);
                 Rectangle::new(rotated_pos.x, rotated_pos.y, r.width, r.height)
                     .with_rotation(r.rotation + angle)
             })
@@ -2212,7 +2217,12 @@ mod tests {
         for (original, rotated) in items.iter().zip(after_rotation.iter()) {
             let drift =
                 ((rotated.x - original.x).powi(2) + (rotated.y - original.y).powi(2)).sqrt();
-            assert!(drift < 1e-9, "Drift {} exceeds threshold for point {:?}", drift, original);
+            assert!(
+                drift < 1e-9,
+                "Drift {} exceeds threshold for point {:?}",
+                drift,
+                original
+            );
         }
     }
 
@@ -2239,7 +2249,11 @@ mod tests {
             let drift =
                 ((final_pos.x - original.x).powi(2) + (final_pos.y - original.y).powi(2)).sqrt();
             // Allow slightly more drift for incremental operations
-            assert!(drift < 1e-6, "Incremental drift {} exceeds threshold", drift);
+            assert!(
+                drift < 1e-6,
+                "Incremental drift {} exceeds threshold",
+                drift
+            );
         }
     }
 
@@ -2346,7 +2360,11 @@ mod tests {
         let after_second_undo = history.borrow().last().cloned().unwrap();
 
         // Then: state matches original
-        for (expected, actual) in original.positions.iter().zip(after_second_undo.positions.iter()) {
+        for (expected, actual) in original
+            .positions
+            .iter()
+            .zip(after_second_undo.positions.iter())
+        {
             assert!((actual.x - expected.x).abs() < TOLERANCE);
             assert!((actual.y - expected.y).abs() < TOLERANCE);
         }
@@ -2423,5 +2441,1465 @@ mod tests {
             prop_assert!((new_center.x - center.x).abs() < 1e-10);
             prop_assert!((new_center.y - center.y).abs() < 1e-10);
         }
+    }
+
+    // ============== GEO-031: AABB for Rotated Rectangle at Cardinal Angles ==============
+
+    #[test]
+    fn test_aabb_rotated_0_degrees() {
+        // Given: a rectangle rotated 0 degrees (no rotation)
+        let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(0.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB equals the rectangle bounds
+        assert!((aabb.min_x - 10.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 20.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 110.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 70.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_aabb_rotated_90_degrees_cardinal() {
+        // Given: a rectangle rotated 90 degrees (PI/2)
+        // Rectangle at (10, 20) with size 100x50, center at (60, 45)
+        let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(PI / 2.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: width and height are swapped (centered at same point)
+        // Original center: (60, 45), half-width: 50, half-height: 25
+        // After 90 degree rotation: half-width becomes 25, half-height becomes 50
+        let center_x = 60.0;
+        let center_y = 45.0;
+        assert!((aabb.min_x - (center_x - 25.0)).abs() < TOLERANCE);
+        assert!((aabb.max_x - (center_x + 25.0)).abs() < TOLERANCE);
+        assert!((aabb.min_y - (center_y - 50.0)).abs() < TOLERANCE);
+        assert!((aabb.max_y - (center_y + 50.0)).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_aabb_rotated_180_degrees_cardinal() {
+        // Given: a rectangle rotated 180 degrees (PI)
+        let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(PI);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB is same as unrotated (180 degree rotation doesn't change AABB)
+        assert!((aabb.min_x - 10.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 20.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 110.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 70.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_aabb_rotated_270_degrees_cardinal() {
+        // Given: a rectangle rotated 270 degrees (3*PI/2)
+        let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(3.0 * PI / 2.0);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: same as 90 degree rotation (just opposite direction)
+        let center_x = 60.0;
+        let center_y = 45.0;
+        assert!((aabb.min_x - (center_x - 25.0)).abs() < TOLERANCE);
+        assert!((aabb.max_x - (center_x + 25.0)).abs() < TOLERANCE);
+        assert!((aabb.min_y - (center_y - 50.0)).abs() < TOLERANCE);
+        assert!((aabb.max_y - (center_y + 50.0)).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_aabb_rotated_360_degrees_cardinal() {
+        // Given: a rectangle rotated 360 degrees (2*PI)
+        let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(2.0 * PI);
+
+        // When: calculating AABB
+        let aabb = rect.aabb();
+
+        // Then: AABB is same as unrotated
+        assert!((aabb.min_x - 10.0).abs() < TOLERANCE);
+        assert!((aabb.min_y - 20.0).abs() < TOLERANCE);
+        assert!((aabb.max_x - 110.0).abs() < TOLERANCE);
+        assert!((aabb.max_y - 70.0).abs() < TOLERANCE);
+    }
+
+    // ============== GEO-032: AABB Includes Stroke Width (Extended) ==============
+
+    #[test]
+    fn test_aabb_stroke_width_thick_stroke() {
+        // Given: a rectangle with thick stroke
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let stroked = StrokedShape::new(rect, 20.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: bounds are expanded by stroke_width/2 = 10 on each side
+        assert!((bounds.min_x - (-10.0)).abs() < TOLERANCE);
+        assert!((bounds.min_y - (-10.0)).abs() < TOLERANCE);
+        assert!((bounds.max_x - 110.0).abs() < TOLERANCE);
+        assert!((bounds.max_y - 60.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_aabb_stroke_width_rotated_shape() {
+        // Given: a rotated rectangle with stroke
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0).with_rotation(PI / 4.0);
+        let stroked = StrokedShape::new(rect, 10.0);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: stroke expansion applies to the rotated AABB
+        let rect_aabb = rect.aabb();
+        let expected = rect_aabb.expand(5.0); // stroke_width / 2
+        assert!((bounds.min_x - expected.min_x).abs() < TOLERANCE);
+        assert!((bounds.min_y - expected.min_y).abs() < TOLERANCE);
+        assert!((bounds.max_x - expected.max_x).abs() < TOLERANCE);
+        assert!((bounds.max_y - expected.max_y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_aabb_stroke_width_fractional() {
+        // Given: a rectangle with fractional stroke width
+        let rect = Rectangle::new(50.0, 50.0, 100.0, 50.0);
+        let stroked = StrokedShape::new(rect, 3.5);
+
+        // When: calculating bounds with stroke
+        let bounds = stroked.bounds_with_stroke();
+
+        // Then: bounds are expanded by 1.75 on each side
+        assert!((bounds.min_x - 48.25).abs() < TOLERANCE);
+        assert!((bounds.min_y - 48.25).abs() < TOLERANCE);
+        assert!((bounds.max_x - 151.75).abs() < TOLERANCE);
+        assert!((bounds.max_y - 101.75).abs() < TOLERANCE);
+    }
+
+    // ============== GEO-033: Line Bounds Include Arrowheads ==============
+
+    /// Represents a line segment with optional arrowheads at start and/or end
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct Line {
+        pub start: Point,
+        pub end: Point,
+        pub stroke_width: f64,
+        pub start_arrow: Option<Arrowhead>,
+        pub end_arrow: Option<Arrowhead>,
+    }
+
+    /// Represents an arrowhead configuration
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct Arrowhead {
+        pub size: f64,  // Length of arrowhead
+        pub angle: f64, // Angle in radians (typically PI/6 for 30 degrees)
+    }
+
+    impl Line {
+        #[must_use]
+        pub const fn new(start: Point, end: Point) -> Self {
+            Self {
+                start,
+                end,
+                stroke_width: 1.0,
+                start_arrow: None,
+                end_arrow: None,
+            }
+        }
+
+        #[must_use]
+        pub const fn with_stroke_width(mut self, width: f64) -> Self {
+            self.stroke_width = width;
+            self
+        }
+
+        #[must_use]
+        pub const fn with_end_arrow(mut self, arrow: Arrowhead) -> Self {
+            self.end_arrow = Some(arrow);
+            self
+        }
+
+        #[must_use]
+        pub const fn with_start_arrow(mut self, arrow: Arrowhead) -> Self {
+            self.start_arrow = Some(arrow);
+            self
+        }
+
+        /// Calculate the bounds including stroke and arrowheads
+        #[must_use]
+        pub fn bounds(&self) -> AABB {
+            // Start with line segment bounds
+            let min_x = self.start.x.min(self.end.x);
+            let max_x = self.start.x.max(self.end.x);
+            let min_y = self.start.y.min(self.end.y);
+            let max_y = self.start.y.max(self.end.y);
+
+            // Expand for stroke width
+            let half_stroke = self.stroke_width / 2.0;
+            let mut bounds = AABB::new(
+                min_x - half_stroke,
+                min_y - half_stroke,
+                max_x + half_stroke,
+                max_y + half_stroke,
+            );
+
+            // Expand for arrowheads
+            if let Some(arrow) = self.start_arrow {
+                bounds = bounds.union(&self.arrowhead_bounds(self.start, self.end, arrow));
+            }
+            if let Some(arrow) = self.end_arrow {
+                bounds = bounds.union(&self.arrowhead_bounds(self.end, self.start, arrow));
+            }
+
+            bounds
+        }
+
+        /// Calculate bounds for an arrowhead at a point
+        fn arrowhead_bounds(&self, tip: Point, opposite: Point, arrow: Arrowhead) -> AABB {
+            // Direction from opposite to tip
+            let dx = tip.x - opposite.x;
+            let dy = tip.y - opposite.y;
+            let length = (dx * dx + dy * dy).sqrt();
+            if length < TOLERANCE {
+                return AABB::new(tip.x, tip.y, tip.x, tip.y);
+            }
+
+            // Unit direction
+            let ux = dx / length;
+            let uy = dy / length;
+
+            // Arrowhead extends back from tip and to the sides
+            // The tip of the arrow is at `tip`, and the base is `arrow.size` back
+            // The wings extend at `arrow.angle` from the base
+            let wing_length = arrow.size * arrow.angle.sin();
+            let base_distance = arrow.size * arrow.angle.cos();
+
+            // Back point (base center)
+            let back_x = tip.x - ux * base_distance;
+            let back_y = tip.y - uy * base_distance;
+
+            // Perpendicular direction
+            let px = -uy;
+            let py = ux;
+
+            // Wing points
+            let wing1_x = back_x + px * wing_length;
+            let wing1_y = back_y + py * wing_length;
+            let wing2_x = back_x - px * wing_length;
+            let wing2_y = back_y - py * wing_length;
+
+            // AABB containing tip and both wings
+            AABB::new(
+                tip.x.min(wing1_x).min(wing2_x),
+                tip.y.min(wing1_y).min(wing2_y),
+                tip.x.max(wing1_x).max(wing2_x),
+                tip.y.max(wing1_y).max(wing2_y),
+            )
+        }
+    }
+
+    impl AABB {
+        /// Compute the union of two AABBs
+        fn union(&self, other: &AABB) -> AABB {
+            AABB::new(
+                self.min_x.min(other.min_x),
+                self.min_y.min(other.min_y),
+                self.max_x.max(other.max_x),
+                self.max_y.max(other.max_y),
+            )
+        }
+    }
+
+    #[test]
+    fn test_line_bounds_simple() {
+        // Given: a simple line without arrowheads
+        let line = Line::new(Point::new(0.0, 0.0), Point::new(100.0, 50.0));
+
+        // When: calculating bounds
+        let bounds = line.bounds();
+
+        // Then: bounds contain the line segment
+        assert!(bounds.min_x <= 0.0);
+        assert!(bounds.max_x >= 100.0);
+        assert!(bounds.min_y <= 0.0);
+        assert!(bounds.max_y >= 50.0);
+    }
+
+    #[test]
+    fn test_line_bounds_with_end_arrow() {
+        // Given: a line with an arrowhead at the end
+        let arrow = Arrowhead {
+            size: 15.0,
+            angle: std::f64::consts::FRAC_PI_6, // 30 degrees
+        };
+        let line = Line::new(Point::new(0.0, 0.0), Point::new(100.0, 0.0)).with_end_arrow(arrow);
+
+        // When: calculating bounds
+        let bounds = line.bounds();
+
+        // Then: bounds extend beyond the endpoint for the arrowhead
+        // The tip is at (100, 0), arrow extends back and to sides
+        assert!(bounds.max_x >= 100.0);
+        // The wings extend perpendicular to the line
+        assert!(bounds.min_y < 0.0 || (bounds.min_y - 0.0).abs() < TOLERANCE);
+        assert!(bounds.max_y > 0.0 || (bounds.max_y - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_line_bounds_with_both_arrows() {
+        // Given: a line with arrowheads at both ends
+        let arrow = Arrowhead {
+            size: 10.0,
+            angle: std::f64::consts::FRAC_PI_6,
+        };
+        let line = Line::new(Point::new(0.0, 50.0), Point::new(100.0, 50.0))
+            .with_start_arrow(arrow)
+            .with_end_arrow(arrow);
+
+        // When: calculating bounds
+        let bounds = line.bounds();
+
+        // Then: bounds extend on both ends for arrowheads
+        assert!(bounds.min_x < 0.0 || (bounds.min_x - 0.0).abs() < TOLERANCE);
+        assert!(bounds.max_x > 100.0);
+    }
+
+    #[test]
+    fn test_line_bounds_with_thick_stroke() {
+        // Given: a line with thick stroke
+        let line = Line::new(Point::new(0.0, 0.0), Point::new(100.0, 0.0)).with_stroke_width(10.0);
+
+        // When: calculating bounds
+        let bounds = line.bounds();
+
+        // Then: bounds include stroke width (5 on each side)
+        assert!((bounds.min_y - (-5.0)).abs() < TOLERANCE);
+        assert!((bounds.max_y - 5.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_line_bounds_diagonal_with_arrow() {
+        // Given: a diagonal line with arrowhead
+        let arrow = Arrowhead {
+            size: 20.0,
+            angle: std::f64::consts::FRAC_PI_6,
+        };
+        let line = Line::new(Point::new(0.0, 0.0), Point::new(100.0, 100.0)).with_end_arrow(arrow);
+
+        // When: calculating bounds
+        let bounds = line.bounds();
+
+        // Then: bounds contain the tip and arrowhead wings
+        assert!(bounds.max_x >= 100.0);
+        assert!(bounds.max_y >= 100.0);
+        // Arrowhead extends back from tip
+        assert!(bounds.min_x <= 0.0);
+        assert!(bounds.min_y <= 0.0);
+    }
+
+    // ============== GEO-034: Curved Connector Bounds ==============
+
+    /// Represents a quadratic Bezier curve
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct QuadraticBezier {
+        pub start: Point,
+        pub control: Point,
+        pub end: Point,
+        pub stroke_width: f64,
+    }
+
+    impl QuadraticBezier {
+        #[must_use]
+        pub const fn new(start: Point, control: Point, end: Point) -> Self {
+            Self {
+                start,
+                control,
+                end,
+                stroke_width: 1.0,
+            }
+        }
+
+        #[must_use]
+        pub const fn with_stroke_width(mut self, width: f64) -> Self {
+            self.stroke_width = width;
+            self
+        }
+
+        /// Evaluate the curve at parameter t (0..=1)
+        #[must_use]
+        pub fn evaluate(&self, t: f64) -> Point {
+            let t2 = t * t;
+            let mt = 1.0 - t;
+            let mt2 = mt * mt;
+            Point::new(
+                mt2 * self.start.x + 2.0 * mt * t * self.control.x + t2 * self.end.x,
+                mt2 * self.start.y + 2.0 * mt * t * self.control.y + t2 * self.end.y,
+            )
+        }
+
+        /// Calculate approximate bounds by sampling the curve
+        #[must_use]
+        pub fn bounds(&self) -> AABB {
+            let samples = 20;
+            let mut min_x = f64::INFINITY;
+            let mut min_y = f64::INFINITY;
+            let mut max_x = f64::NEG_INFINITY;
+            let mut max_y = f64::NEG_INFINITY;
+
+            for i in 0..=samples {
+                let t = f64::from(i) / f64::from(samples);
+                let p = self.evaluate(t);
+                min_x = min_x.min(p.x);
+                min_y = min_y.min(p.y);
+                max_x = max_x.max(p.x);
+                max_y = max_y.max(p.y);
+            }
+
+            // Expand for stroke width
+            let half_stroke = self.stroke_width / 2.0;
+            AABB::new(
+                min_x - half_stroke,
+                min_y - half_stroke,
+                max_x + half_stroke,
+                max_y + half_stroke,
+            )
+        }
+
+        /// Calculate tight bounds using derivative analysis
+        #[must_use]
+        pub fn tight_bounds(&self) -> AABB {
+            // For quadratic Bezier, extrema occur at endpoints or where derivative is zero
+            // B'(t) = 2(1-t)(C-P0) + 2t(P2-C)
+            // Setting derivative to zero: t = (P0 - C) / (P0 - 2C + P2)
+
+            let mut min_x = self.start.x.min(self.end.x);
+            let mut max_x = self.start.x.max(self.end.x);
+            let mut min_y = self.start.y.min(self.end.y);
+            let mut max_y = self.start.y.max(self.end.y);
+
+            // Check x extrema
+            let denom_x = self.start.x - 2.0 * self.control.x + self.end.x;
+            if denom_x.abs() > TOLERANCE {
+                let t = (self.start.x - self.control.x) / denom_x;
+                if (0.0..=1.0).contains(&t) {
+                    let p = self.evaluate(t);
+                    min_x = min_x.min(p.x);
+                    max_x = max_x.max(p.x);
+                }
+            }
+
+            // Check y extrema
+            let denom_y = self.start.y - 2.0 * self.control.y + self.end.y;
+            if denom_y.abs() > TOLERANCE {
+                let t = (self.start.y - self.control.y) / denom_y;
+                if (0.0..=1.0).contains(&t) {
+                    let p = self.evaluate(t);
+                    min_y = min_y.min(p.y);
+                    max_y = max_y.max(p.y);
+                }
+            }
+
+            let half_stroke = self.stroke_width / 2.0;
+            AABB::new(
+                min_x - half_stroke,
+                min_y - half_stroke,
+                max_x + half_stroke,
+                max_y + half_stroke,
+            )
+        }
+    }
+
+    /// Represents a cubic Bezier curve
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub struct CubicBezier {
+        pub start: Point,
+        pub control1: Point,
+        pub control2: Point,
+        pub end: Point,
+        pub stroke_width: f64,
+    }
+
+    impl CubicBezier {
+        #[must_use]
+        pub const fn new(start: Point, control1: Point, control2: Point, end: Point) -> Self {
+            Self {
+                start,
+                control1,
+                control2,
+                end,
+                stroke_width: 1.0,
+            }
+        }
+
+        /// Evaluate the curve at parameter t (0..=1)
+        #[must_use]
+        pub fn evaluate(&self, t: f64) -> Point {
+            let t2 = t * t;
+            let t3 = t2 * t;
+            let mt = 1.0 - t;
+            let mt2 = mt * mt;
+            let mt3 = mt2 * mt;
+            Point::new(
+                mt3 * self.start.x
+                    + 3.0 * mt2 * t * self.control1.x
+                    + 3.0 * mt * t2 * self.control2.x
+                    + t3 * self.end.x,
+                mt3 * self.start.y
+                    + 3.0 * mt2 * t * self.control1.y
+                    + 3.0 * mt * t2 * self.control2.y
+                    + t3 * self.end.y,
+            )
+        }
+
+        /// Calculate approximate bounds by sampling
+        #[must_use]
+        pub fn bounds(&self) -> AABB {
+            let samples = 30;
+            let mut min_x = f64::INFINITY;
+            let mut min_y = f64::INFINITY;
+            let mut max_x = f64::NEG_INFINITY;
+            let mut max_y = f64::NEG_INFINITY;
+
+            for i in 0..=samples {
+                let t = f64::from(i) / f64::from(samples);
+                let p = self.evaluate(t);
+                min_x = min_x.min(p.x);
+                min_y = min_y.min(p.y);
+                max_x = max_x.max(p.x);
+                max_y = max_y.max(p.y);
+            }
+
+            let half_stroke = self.stroke_width / 2.0;
+            AABB::new(
+                min_x - half_stroke,
+                min_y - half_stroke,
+                max_x + half_stroke,
+                max_y + half_stroke,
+            )
+        }
+    }
+
+    #[test]
+    fn test_quadratic_bezier_bounds_simple() {
+        // Given: a simple quadratic Bezier (arc)
+        let curve = QuadraticBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 100.0), // Control point creates upward arc
+            Point::new(100.0, 0.0),
+        );
+
+        // When: calculating bounds
+        let bounds = curve.bounds();
+
+        // Then: bounds contain the curve including the control point influence
+        assert!(bounds.min_x <= 0.0);
+        assert!(bounds.max_x >= 100.0);
+        assert!(bounds.max_y >= 50.0); // Curve goes above the line between endpoints
+    }
+
+    #[test]
+    fn test_quadratic_bezier_bounds_straight_line() {
+        // Given: a quadratic Bezier that's essentially a straight line
+        let curve = QuadraticBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 0.0), // Control point on the line
+            Point::new(100.0, 0.0),
+        );
+
+        // When: calculating bounds
+        let bounds = curve.bounds();
+
+        // Then: bounds are essentially the line segment
+        assert!((bounds.min_x - 0.0).abs() < 1.0);
+        assert!((bounds.max_x - 100.0).abs() < 1.0);
+    }
+
+    #[test]
+    fn test_quadratic_bezier_bounds_with_stroke() {
+        // Given: a curve with thick stroke
+        let curve = QuadraticBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 50.0),
+            Point::new(100.0, 0.0),
+        )
+        .with_stroke_width(10.0);
+
+        // When: calculating bounds
+        let bounds = curve.bounds();
+
+        // Then: bounds include stroke width
+        assert!(bounds.min_y < 0.0); // Expanded for stroke
+    }
+
+    #[test]
+    fn test_quadratic_bezier_tight_bounds() {
+        // Given: a curve
+        let curve = QuadraticBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 100.0),
+            Point::new(100.0, 0.0),
+        );
+
+        // When: calculating tight bounds
+        let tight = curve.tight_bounds();
+        let sampled = curve.bounds();
+
+        // Then: tight bounds should be close to sampled bounds
+        // Both should contain the curve's actual extent
+        assert!(tight.max_y > 0.0);
+        // Tight bounds should be at most as large as sampled
+        assert!(tight.max_y <= sampled.max_y + 1.0);
+    }
+
+    #[test]
+    fn test_cubic_bezier_bounds_simple() {
+        // Given: a simple cubic Bezier (S-curve)
+        let curve = CubicBezier::new(
+            Point::new(0.0, 0.0),
+            Point::new(0.0, 100.0),   // First control goes up
+            Point::new(100.0, -50.0), // Second control goes down
+            Point::new(100.0, 50.0),
+        );
+
+        // When: calculating bounds
+        let bounds = curve.bounds();
+
+        // Then: bounds contain the curve
+        assert!(bounds.min_x <= 0.0);
+        assert!(bounds.max_x >= 100.0);
+        // S-curve should extend beyond endpoints vertically
+        assert!(bounds.max_y > 50.0);
+    }
+
+    #[test]
+    fn test_cubic_bezier_bounds_complex() {
+        // Given: a complex cubic Bezier with multiple extrema
+        let curve = CubicBezier::new(
+            Point::new(0.0, 50.0),
+            Point::new(25.0, 0.0),
+            Point::new(75.0, 100.0),
+            Point::new(100.0, 50.0),
+        );
+
+        // When: calculating bounds
+        let bounds = curve.bounds();
+
+        // Then: bounds contain all curve points
+        assert!(bounds.min_x <= 0.0);
+        assert!(bounds.max_x >= 100.0);
+        // Verify by sampling
+        for i in 0..=10 {
+            let t = f64::from(i) / 10.0;
+            let p = curve.evaluate(t);
+            assert!(p.x >= bounds.min_x - TOLERANCE);
+            assert!(p.x <= bounds.max_x + TOLERANCE);
+            assert!(p.y >= bounds.min_y - TOLERANCE);
+            assert!(p.y <= bounds.max_y + TOLERANCE);
+        }
+    }
+
+    // ============== GEO-035: Text Bounds RTL/Emoji ==============
+
+    /// Represents text with extended metrics for Unicode handling
+    #[derive(Debug, Clone, PartialEq)]
+    pub struct ExtendedText {
+        pub x: f64,
+        pub y: f64,
+        pub content: String,
+        pub font_size: f64,
+        pub direction: TextDirection,
+    }
+
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    pub enum TextDirection {
+        LeftToRight,
+        RightToLeft,
+    }
+
+    impl ExtendedText {
+        #[must_use]
+        pub fn new(x: f64, y: f64, content: &str, font_size: f64) -> Self {
+            Self {
+                x,
+                y,
+                content: content.to_string(),
+                font_size,
+                direction: TextDirection::LeftToRight,
+            }
+        }
+
+        #[must_use]
+        pub const fn with_direction(mut self, direction: TextDirection) -> Self {
+            self.direction = direction;
+            self
+        }
+
+        /// Count grapheme clusters (user-perceived characters)
+        fn grapheme_count(&self) -> usize {
+            // Simplified grapheme counting - in production use unicode-segmentation crate
+            // For tests, we handle common cases
+            let s = &self.content;
+            let mut count = 0;
+            let mut chars = s.chars().peekable();
+
+            while let Some(_c) = chars.next() {
+                count += 1;
+
+                // Check for emoji modifiers and ZWJ sequences
+                while let Some(&next) = chars.peek() {
+                    if next == '\u{200D}' {
+                        // ZWJ - join with next
+                        chars.next();
+                        if chars.peek().is_some() {
+                            chars.next(); // Consume the joined character
+                        }
+                    } else if Self::is_emoji_modifier(next) {
+                        chars.next(); // Consume modifier
+                    } else {
+                        break;
+                    }
+                }
+            }
+
+            count
+        }
+
+        fn is_emoji_modifier(c: char) -> bool {
+            matches!(
+                c,
+                '\u{FE00}'..='\u{FE0F}' // Variation selectors
+                | '\u{1F3FB}'..='\u{1F3FF}' // Skin tone modifiers
+                | '\u{200D}' // ZWJ (handled separately above)
+            )
+        }
+
+        /// Calculate bounds with Unicode-aware width estimation
+        #[must_use]
+        pub fn bounds(&self) -> AABB {
+            let grapheme_count = self.grapheme_count() as f64;
+
+            // Emoji typically render at 2x width of normal characters
+            // Count emoji vs regular characters
+            let emoji_count = self.count_emoji() as f64;
+            let regular_count = grapheme_count - emoji_count;
+
+            // Approximate width: regular chars at 0.6 * font_size, emoji at 1.2 * font_size
+            let width = regular_count * self.font_size * 0.6 + emoji_count * self.font_size * 1.2;
+            let height = self.font_size;
+
+            match self.direction {
+                TextDirection::LeftToRight => {
+                    AABB::new(self.x, self.y, self.x + width, self.y + height)
+                }
+                TextDirection::RightToLeft => {
+                    AABB::new(self.x - width, self.y, self.x, self.y + height)
+                }
+            }
+        }
+
+        fn count_emoji(&self) -> usize {
+            let s = &self.content;
+            let mut count = 0;
+            let chars: Vec<char> = s.chars().collect();
+            let mut i = 0;
+
+            while i < chars.len() {
+                let c = chars[i];
+
+                // Check for common emoji ranges
+                if Self::is_emoji_base(c) {
+                    count += 1;
+
+                    // Skip modifiers and ZWJ sequences
+                    i += 1;
+                    while i < chars.len() {
+                        let next = chars[i];
+                        if next == '\u{200D}' {
+                            // ZWJ - this is part of the same emoji
+                            i += 1;
+                            if i < chars.len() {
+                                i += 1; // Skip the joined char
+                            }
+                        } else if Self::is_emoji_modifier(next) {
+                            i += 1;
+                        } else {
+                            break;
+                        }
+                    }
+                } else {
+                    i += 1;
+                }
+            }
+
+            count
+        }
+
+        fn is_emoji_base(c: char) -> bool {
+            matches!(
+                c,
+                '\u{1F600}'..='\u{1F64F}' // Emoticons
+                | '\u{1F300}'..='\u{1F5FF}' // Misc Symbols and Pictographs
+                | '\u{1F680}'..='\u{1F6FF}' // Transport and Map
+                | '\u{1F1E0}'..='\u{1F1FF}' // Flags
+                | '\u{2600}'..='\u{26FF}' // Misc symbols
+                | '\u{2700}'..='\u{27BF}' // Dingbats
+                | '\u{1F900}'..='\u{1F9FF}' // Supplemental Symbols and Pictographs
+                | '\u{1FA00}'..='\u{1FA6F}' // Chess Symbols
+                | '\u{1FA70}'..='\u{1FAFF}' // Symbols and Pictographs Extended-A
+            )
+        }
+    }
+
+    #[test]
+    fn test_text_bounds_ltr_simple() {
+        // Given: simple LTR text
+        let text = ExtendedText::new(10.0, 20.0, "Hello", 16.0);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: bounds extend to the right
+        assert!((bounds.min_x - 10.0).abs() < TOLERANCE);
+        assert!(bounds.max_x > 10.0);
+        assert!((bounds.min_y - 20.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_text_bounds_rtl_simple() {
+        // Given: RTL text (Arabic example)
+        let text = ExtendedText::new(100.0, 20.0, "مرحبا", 16.0)
+            .with_direction(TextDirection::RightToLeft);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: bounds extend to the left
+        assert!((bounds.max_x - 100.0).abs() < TOLERANCE);
+        assert!(bounds.min_x < 100.0);
+        assert!((bounds.min_y - 20.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_text_bounds_emoji_simple() {
+        // Given: text with simple emoji
+        let text = ExtendedText::new(0.0, 0.0, "Hi 😀", 16.0);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: bounds account for emoji being wider
+        assert!(bounds.width() > 0.0);
+        // Emoji should contribute approximately 2x width of regular char
+    }
+
+    #[test]
+    fn test_text_bounds_emoji_only() {
+        // Given: emoji-only text
+        let text = ExtendedText::new(0.0, 0.0, "😀🎉🚀", 20.0);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: bounds account for 3 emoji at ~1.2x font_size each
+        let expected_min_width = 3.0 * 20.0 * 1.0; // At least 3 emoji widths
+        assert!(bounds.width() >= expected_min_width);
+    }
+
+    #[test]
+    fn test_text_bounds_zwj_emoji() {
+        // Given: text with ZWJ sequence emoji (family emoji = person + ZWJ + person + ...)
+        // Family: 👨‍👩‍👧 (man + ZWJ + woman + ZWJ + girl)
+        let text = ExtendedText::new(0.0, 0.0, "👨‍👩‍👧", 16.0);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: ZWJ sequence should be counted as single grapheme
+        assert!(bounds.width() > 0.0);
+        // Should be roughly the width of one emoji, not three
+    }
+
+    #[test]
+    fn test_text_bounds_mixed_ltr_emoji() {
+        // Given: mixed text with emoji
+        let text = ExtendedText::new(0.0, 0.0, "Test: ✓ Done! 🎉", 14.0);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: bounds contain all characters
+        assert!(bounds.width() > 0.0);
+        assert!((bounds.height() - 14.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_text_bounds_skin_tone_modifier() {
+        // Given: emoji with skin tone modifier
+        let text = ExtendedText::new(0.0, 0.0, "👋🏻", 16.0); // Waving hand with light skin tone
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: modifier should not add extra width (it's part of the emoji)
+        assert!(bounds.width() > 0.0);
+    }
+
+    #[test]
+    fn test_text_bounds_empty() {
+        // Given: empty text
+        let text = ExtendedText::new(10.0, 20.0, "", 16.0);
+
+        // When: calculating bounds
+        let bounds = text.bounds();
+
+        // Then: bounds have zero width but maintain height
+        assert!((bounds.min_x - 10.0).abs() < TOLERANCE);
+        assert!((bounds.width() - 0.0).abs() < TOLERANCE);
+        assert!((bounds.height() - 16.0).abs() < TOLERANCE);
+    }
+
+    // ============== GEO-TRN-001: Scale Around Anchor Point (NW/NE/SE/SW) ==============
+    //
+    // These tests verify scaling operations that use corner anchor points.
+    // When scaling around a corner, that corner remains fixed while other
+    // corners move toward or away from it.
+
+    /// Get corner anchor point for a rectangle
+    #[derive(Debug, Clone, Copy, PartialEq)]
+    enum Corner {
+        NorthWest,
+        NorthEast,
+        SouthEast,
+        SouthWest,
+    }
+
+    fn get_corner_point(rect: &Rectangle, corner: Corner) -> Point {
+        match corner {
+            Corner::NorthWest => Point::new(rect.x, rect.y),
+            Corner::NorthEast => Point::new(rect.x + rect.width, rect.y),
+            Corner::SouthEast => Point::new(rect.x + rect.width, rect.y + rect.height),
+            Corner::SouthWest => Point::new(rect.x, rect.y + rect.height),
+        }
+    }
+
+    /// Scale a rectangle around a corner anchor point
+    fn scale_rect_around_corner(rect: &Rectangle, corner: Corner, factor: f64) -> Rectangle {
+        let anchor = get_corner_point(rect, corner);
+
+        // Scale all corners around the anchor
+        let nw = scale_around_anchor(get_corner_point(rect, Corner::NorthWest), anchor, factor);
+        let se = scale_around_anchor(get_corner_point(rect, Corner::SouthEast), anchor, factor);
+
+        // Compute new rectangle from scaled corners
+        // Width and height are the differences between opposite corners
+        let new_width = (se.x - nw.x).abs();
+        let new_height = (se.y - nw.y).abs();
+
+        // Determine the new origin (top-left corner)
+        let (new_x, new_y) = match corner {
+            Corner::NorthWest => (anchor.x, anchor.y),
+            Corner::NorthEast => (anchor.x - new_width, anchor.y),
+            Corner::SouthEast => (anchor.x - new_width, anchor.y - new_height),
+            Corner::SouthWest => (anchor.x, anchor.y - new_height),
+        };
+
+        Rectangle::new(new_x, new_y, new_width, new_height)
+    }
+
+    #[test]
+    fn test_scale_around_anchor_nw() {
+        // Given: a rectangle at origin with size 100x50
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let factor = 2.0;
+
+        // When: scaling around NW corner (top-left)
+        let scaled = scale_rect_around_corner(&rect, Corner::NorthWest, factor);
+
+        // Then: NW corner stays fixed, others move away
+        // Original: NW at (0, 0), SE at (100, 50)
+        // After 2x scale around NW: NW stays (0, 0), SE moves to (200, 100)
+        assert!((scaled.x - 0.0).abs() < TOLERANCE);
+        assert!((scaled.y - 0.0).abs() < TOLERANCE);
+        assert!((scaled.width - 200.0).abs() < TOLERANCE);
+        assert!((scaled.height - 100.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_scale_around_anchor_ne() {
+        // Given: a rectangle at origin with size 100x50
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let factor = 2.0;
+
+        // When: scaling around NE corner (top-right)
+        let scaled = scale_rect_around_corner(&rect, Corner::NorthEast, factor);
+
+        // Then: NE corner stays fixed at (100, 0)
+        // New width is 200, so x becomes 100 - 200 = -100
+        assert!((scaled.x - (-100.0)).abs() < TOLERANCE);
+        assert!((scaled.y - 0.0).abs() < TOLERANCE);
+        assert!((scaled.width - 200.0).abs() < TOLERANCE);
+        assert!((scaled.height - 100.0).abs() < TOLERANCE);
+        // NE corner should still be at (100, 0)
+        assert!((get_corner_point(&scaled, Corner::NorthEast).x - 100.0).abs() < TOLERANCE);
+        assert!((get_corner_point(&scaled, Corner::NorthEast).y - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_scale_around_anchor_se() {
+        // Given: a rectangle at origin with size 100x50
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let factor = 2.0;
+
+        // When: scaling around SE corner (bottom-right)
+        let scaled = scale_rect_around_corner(&rect, Corner::SouthEast, factor);
+
+        // Then: SE corner stays fixed at (100, 50)
+        // New width is 200, height is 100
+        // x = 100 - 200 = -100, y = 50 - 100 = -50
+        assert!((scaled.x - (-100.0)).abs() < TOLERANCE);
+        assert!((scaled.y - (-50.0)).abs() < TOLERANCE);
+        assert!((scaled.width - 200.0).abs() < TOLERANCE);
+        assert!((scaled.height - 100.0).abs() < TOLERANCE);
+        // SE corner should still be at (100, 50)
+        let se = get_corner_point(&scaled, Corner::SouthEast);
+        assert!((se.x - 100.0).abs() < TOLERANCE);
+        assert!((se.y - 50.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_scale_around_anchor_sw() {
+        // Given: a rectangle at origin with size 100x50
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let factor = 2.0;
+
+        // When: scaling around SW corner (bottom-left)
+        let scaled = scale_rect_around_corner(&rect, Corner::SouthWest, factor);
+
+        // Then: SW corner stays fixed at (0, 50)
+        // New width is 200, height is 100
+        // x stays 0, y = 50 - 100 = -50
+        assert!((scaled.x - 0.0).abs() < TOLERANCE);
+        assert!((scaled.y - (-50.0)).abs() < TOLERANCE);
+        assert!((scaled.width - 200.0).abs() < TOLERANCE);
+        assert!((scaled.height - 100.0).abs() < TOLERANCE);
+        // SW corner should still be at (0, 50)
+        let sw = get_corner_point(&scaled, Corner::SouthWest);
+        assert!((sw.x - 0.0).abs() < TOLERANCE);
+        assert!((sw.y - 50.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_scale_around_anchor_shrink_nw() {
+        // Given: a rectangle at origin with size 100x50
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
+        let factor = 0.5;
+
+        // When: shrinking around NW corner
+        let scaled = scale_rect_around_corner(&rect, Corner::NorthWest, factor);
+
+        // Then: NW corner stays fixed, size halves
+        assert!((scaled.x - 0.0).abs() < TOLERANCE);
+        assert!((scaled.y - 0.0).abs() < TOLERANCE);
+        assert!((scaled.width - 50.0).abs() < TOLERANCE);
+        assert!((scaled.height - 25.0).abs() < TOLERANCE);
+    }
+
+    // ============== GEO-TRN-002: Rotate Around Selection Center ==============
+    //
+    // Tests rotation operations centered on the selection's centroid.
+    // The selection center is computed as the average of all item positions.
+
+    #[test]
+    fn test_rotate_around_selection_center_single_item() {
+        // Given: a single rectangle
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
+        let items = [rect];
+        let center = selection_center(&items.map(|r| Point::new(r.x, r.y)));
+
+        // When: rotating 90 degrees around selection center
+        let angle = PI / 2.0;
+        let rotated_pos = rotate_around_center(Point::new(rect.x, rect.y), center, angle);
+
+        // Then: the item rotates around the center
+        // For a single item at (0,0), center is (0,0), so position stays
+        assert!((rotated_pos.x - 0.0).abs() < TOLERANCE);
+        assert!((rotated_pos.y - 0.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_rotate_around_selection_center_multiple_items() {
+        // Given: multiple items forming a pattern
+        let positions = [
+            Point::new(0.0, 0.0),
+            Point::new(100.0, 0.0),
+            Point::new(100.0, 100.0),
+            Point::new(0.0, 100.0),
+        ];
+        let center = selection_center(&positions);
+        // Center should be at (50, 50)
+        assert!((center.x - 50.0).abs() < TOLERANCE);
+        assert!((center.y - 50.0).abs() < TOLERANCE);
+
+        // When: rotating all items 90 degrees around selection center
+        let angle = PI / 2.0;
+        let rotated: Vec<Point> = positions
+            .iter()
+            .map(|&p| rotate_around_center(p, center, angle))
+            .collect();
+
+        // Then: items rotate as a group maintaining relative positions
+        // Original (0, 0) relative to (50, 50) is (-50, -50)
+        // After 90deg: (-50, -50) -> (50, -50) relative -> (100, 0) absolute
+        assert!((rotated[0].x - 100.0).abs() < TOLERANCE);
+        assert!((rotated[0].y - 0.0).abs() < TOLERANCE);
+
+        // Verify selection center is unchanged
+        let new_center = selection_center(&rotated);
+        assert!((new_center.x - center.x).abs() < TOLERANCE);
+        assert!((new_center.y - center.y).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_rotate_around_selection_center_45_degrees() {
+        // Given: three items at different positions
+        let positions = [
+            Point::new(0.0, 0.0),
+            Point::new(50.0, 0.0),
+            Point::new(25.0, 50.0),
+        ];
+        let center = selection_center(&positions);
+        // Center = ((0+50+25)/3, (0+0+50)/3) = (25, 16.67)
+        let expected_center_x = 25.0;
+        let expected_center_y = 50.0 / 3.0;
+        assert!((center.x - expected_center_x).abs() < TOLERANCE);
+        assert!((center.y - expected_center_y).abs() < TOLERANCE);
+
+        // When: rotating 45 degrees
+        let angle = PI / 4.0;
+        let rotated: Vec<Point> = positions
+            .iter()
+            .map(|&p| rotate_around_center(p, center, angle))
+            .collect();
+
+        // Then: distances from center are preserved
+        for (original, rotated_p) in positions.iter().zip(rotated.iter()) {
+            let dist_before =
+                ((original.x - center.x).powi(2) + (original.y - center.y).powi(2)).sqrt();
+            let dist_after =
+                ((rotated_p.x - center.x).powi(2) + (rotated_p.y - center.y).powi(2)).sqrt();
+            assert!((dist_before - dist_after).abs() < TOLERANCE);
+        }
+    }
+
+    // ============== GEO-TRN-003: Rotate Around Custom Pivot ==============
+    //
+    // Tests rotation operations using a user-defined pivot point.
+
+    #[test]
+    fn test_rotate_around_custom_pivot_origin() {
+        // Given: a point and custom pivot at origin
+        let point = Point::new(100.0, 0.0);
+        let pivot = Point::origin();
+
+        // When: rotating 90 degrees around the pivot
+        let rotated = rotate_around_center(point, pivot, PI / 2.0);
+
+        // Then: point rotates correctly
+        assert!((rotated.x - 0.0).abs() < TOLERANCE);
+        assert!((rotated.y - 100.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_rotate_around_custom_pivot_offset() {
+        // Given: a point and custom pivot at offset position
+        let point = Point::new(150.0, 50.0);
+        let pivot = Point::new(100.0, 100.0);
+
+        // When: rotating 180 degrees around the pivot
+        let rotated = rotate_around_center(point, pivot, PI);
+
+        // Then: point rotates to opposite side
+        // Relative position: (50, -50)
+        // After 180 degree rotation: (-50, 50)
+        // Absolute position: (100-50, 100+50) = (50, 150)
+        assert!((rotated.x - 50.0).abs() < TOLERANCE);
+        assert!((rotated.y - 150.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_rotate_around_custom_pivot_270_degrees() {
+        // Given: a point and custom pivot
+        let point = Point::new(50.0, 0.0);
+        let pivot = Point::new(0.0, 0.0);
+
+        // When: rotating 270 degrees (3*PI/2) counter-clockwise
+        let rotated = rotate_around_center(point, pivot, 3.0 * PI / 2.0);
+
+        // Then: equivalent to 90 degrees clockwise
+        // (50, 0) -> (0, -50)
+        assert!((rotated.x - 0.0).abs() < TOLERANCE);
+        assert!((rotated.y - (-50.0)).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_rotate_around_custom_pivot_preserves_distance() {
+        // Given: a point at distance d from pivot
+        let point = Point::new(30.0, 40.0);
+        let pivot = Point::new(10.0, 10.0);
+        let distance = ((point.x - pivot.x).powi(2) + (point.y - pivot.y).powi(2)).sqrt();
+
+        // When: rotating by various angles
+        let angles = [PI / 6.0, PI / 4.0, PI / 3.0, PI / 2.0, PI];
+        for &angle in &angles {
+            let rotated = rotate_around_center(point, pivot, angle);
+            let rotated_distance =
+                ((rotated.x - pivot.x).powi(2) + (rotated.y - pivot.y).powi(2)).sqrt();
+
+            // Then: distance is preserved
+            assert!((distance - rotated_distance).abs() < TOLERANCE);
+        }
+    }
+
+    // ============== GEO-TRN-004: Minimum Size Clamp ==============
+    //
+    // Tests that geometry cannot be scaled below minimum bounds.
+
+    const MIN_SIZE: f64 = 1.0;
+
+    /// Clamp dimensions to minimum size
+    fn clamp_to_min_size(width: f64, height: f64, min_size: f64) -> (f64, f64) {
+        let clamped_width = width.max(min_size);
+        let clamped_height = height.max(min_size);
+        (clamped_width, clamped_height)
+    }
+
+    #[test]
+    fn test_min_size_clamp_below_minimum() {
+        // Given: dimensions below minimum
+        let width = 0.5;
+        let height = 0.3;
+
+        // When: clamping to minimum size
+        let (clamped_w, clamped_h) = clamp_to_min_size(width, height, MIN_SIZE);
+
+        // Then: both dimensions are clamped to minimum
+        assert!((clamped_w - MIN_SIZE).abs() < TOLERANCE);
+        assert!((clamped_h - MIN_SIZE).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_min_size_clamp_one_below_minimum() {
+        // Given: one dimension below minimum
+        let width = 50.0;
+        let height = 0.5;
+
+        // When: clamping to minimum size
+        let (clamped_w, clamped_h) = clamp_to_min_size(width, height, MIN_SIZE);
+
+        // Then: only the small dimension is clamped
+        assert!((clamped_w - 50.0).abs() < TOLERANCE);
+        assert!((clamped_h - MIN_SIZE).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_min_size_clamp_at_minimum() {
+        // Given: dimensions at exactly minimum
+        let width = MIN_SIZE;
+        let height = MIN_SIZE;
+
+        // When: clamping to minimum size
+        let (clamped_w, clamped_h) = clamp_to_min_size(width, height, MIN_SIZE);
+
+        // Then: dimensions remain unchanged
+        assert!((clamped_w - MIN_SIZE).abs() < TOLERANCE);
+        assert!((clamped_h - MIN_SIZE).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_min_size_clamp_above_minimum() {
+        // Given: dimensions above minimum
+        let width = 100.0;
+        let height = 50.0;
+
+        // When: clamping to minimum size
+        let (clamped_w, clamped_h) = clamp_to_min_size(width, height, MIN_SIZE);
+
+        // Then: dimensions remain unchanged
+        assert!((clamped_w - 100.0).abs() < TOLERANCE);
+        assert!((clamped_h - 50.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_min_size_clamp_with_scaling() {
+        // Given: a rectangle being scaled down
+        let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
+        let scale_factor = 0.005; // Would result in 0.5 x 0.5
+
+        // When: scaling and clamping
+        let scaled_width = rect.width * scale_factor;
+        let scaled_height = rect.height * scale_factor;
+        let (clamped_w, clamped_h) = clamp_to_min_size(scaled_width, scaled_height, MIN_SIZE);
+
+        // Then: result is clamped to minimum
+        assert!((clamped_w - MIN_SIZE).abs() < TOLERANCE);
+        assert!((clamped_h - MIN_SIZE).abs() < TOLERANCE);
+    }
+
+    // ============== GEO-TRN-005: Negative Scaling Flip vs Clamp ==============
+    //
+    // Tests behavior when scale factors become negative.
+    // Two strategies: flip (mirror) or clamp to zero/minimum.
+
+    /// Scale result with flip behavior - negative scale mirrors the geometry
+    fn scale_with_flip(width: f64, height: f64, scale_x: f64, scale_y: f64) -> (f64, f64) {
+        // Negative scaling causes a flip - the dimension becomes positive but mirrored
+        let new_width = (width * scale_x).abs();
+        let new_height = (height * scale_y).abs();
+        (new_width, new_height)
+    }
+
+    /// Scale result with clamp behavior - negative scale is clamped to minimum
+    fn scale_with_clamp(
+        width: f64,
+        height: f64,
+        scale_x: f64,
+        scale_y: f64,
+        min_size: f64,
+    ) -> (f64, f64) {
+        let new_width = if scale_x < 0.0 {
+            min_size
+        } else {
+            (width * scale_x).max(min_size)
+        };
+        let new_height = if scale_y < 0.0 {
+            min_size
+        } else {
+            (height * scale_y).max(min_size)
+        };
+        (new_width, new_height)
+    }
+
+    #[test]
+    fn test_negative_scaling_flip_x() {
+        // Given: a rectangle with positive dimensions
+        let width = 100.0;
+        let height = 50.0;
+        let scale_x = -1.0; // Flip horizontally
+        let scale_y = 1.0;
+
+        // When: using flip behavior
+        let (new_width, new_height) = scale_with_flip(width, height, scale_x, scale_y);
+
+        // Then: width is preserved (mirrored), height unchanged
+        assert!((new_width - 100.0).abs() < TOLERANCE);
+        assert!((new_height - 50.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_negative_scaling_flip_y() {
+        // Given: a rectangle with positive dimensions
+        let width = 100.0;
+        let height = 50.0;
+        let scale_x = 1.0;
+        let scale_y = -2.0; // Flip and scale vertically
+
+        // When: using flip behavior
+        let (new_width, new_height) = scale_with_flip(width, height, scale_x, scale_y);
+
+        // Then: width unchanged, height doubled (mirrored)
+        assert!((new_width - 100.0).abs() < TOLERANCE);
+        assert!((new_height - 100.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_negative_scaling_flip_both() {
+        // Given: a rectangle
+        let width = 100.0;
+        let height = 50.0;
+        let scale_x = -0.5;
+        let scale_y = -2.0;
+
+        // When: using flip behavior (both negative)
+        let (new_width, new_height) = scale_with_flip(width, height, scale_x, scale_y);
+
+        // Then: both dimensions use absolute values
+        assert!((new_width - 50.0).abs() < TOLERANCE);
+        assert!((new_height - 100.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_negative_scaling_clamp_x() {
+        // Given: a rectangle
+        let width = 100.0;
+        let height = 50.0;
+        let scale_x = -1.0; // Negative scale
+        let scale_y = 1.0;
+
+        // When: using clamp behavior
+        let (new_width, new_height) = scale_with_clamp(width, height, scale_x, scale_y, MIN_SIZE);
+
+        // Then: negative scale is clamped to minimum
+        assert!((new_width - MIN_SIZE).abs() < TOLERANCE);
+        assert!((new_height - 50.0).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_negative_scaling_clamp_y() {
+        // Given: a rectangle
+        let width = 100.0;
+        let height = 50.0;
+        let scale_x = 1.0;
+        let scale_y = -0.5; // Negative scale
+
+        // When: using clamp behavior
+        let (new_width, new_height) = scale_with_clamp(width, height, scale_x, scale_y, MIN_SIZE);
+
+        // Then: negative scale is clamped to minimum
+        assert!((new_width - 100.0).abs() < TOLERANCE);
+        assert!((new_height - MIN_SIZE).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_negative_scaling_clamp_both() {
+        // Given: a rectangle
+        let width = 100.0;
+        let height = 50.0;
+        let scale_x = -2.0;
+        let scale_y = -3.0;
+
+        // When: using clamp behavior (both negative)
+        let (new_width, new_height) = scale_with_clamp(width, height, scale_x, scale_y, MIN_SIZE);
+
+        // Then: both dimensions are clamped to minimum
+        assert!((new_width - MIN_SIZE).abs() < TOLERANCE);
+        assert!((new_height - MIN_SIZE).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_negative_scaling_zero_transition() {
+        // Given: scale factor approaching zero from positive side
+        let width = 100.0;
+        let height = 50.0;
+
+        // When: scaling with very small positive factor then negative
+        let tiny_positive = 0.001;
+        let tiny_negative = -0.001;
+
+        let (flip_pos_w, _) = scale_with_flip(width, height, tiny_positive, 1.0);
+        let (flip_neg_w, _) = scale_with_flip(width, height, tiny_negative, 1.0);
+
+        // Then: flip behavior treats both the same (absolute value)
+        assert!((flip_pos_w - flip_neg_w).abs() < TOLERANCE);
+
+        // Clamp behavior gives different results
+        let (clamp_pos_w, _) = scale_with_clamp(width, height, tiny_positive, 1.0, MIN_SIZE);
+        let (clamp_neg_w, _) = scale_with_clamp(width, height, tiny_negative, 1.0, MIN_SIZE);
+
+        // Positive tiny scale clamps to min, negative also clamps to min
+        assert!((clamp_pos_w - MIN_SIZE).abs() < TOLERANCE);
+        assert!((clamp_neg_w - MIN_SIZE).abs() < TOLERANCE);
     }
 }

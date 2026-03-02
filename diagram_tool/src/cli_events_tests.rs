@@ -107,9 +107,8 @@ mod cli_event_tests {
     /// Test: Given stale revision error, when error_code called, then returns stale_revision
     #[test]
     fn given_stale_revision_error_when_error_code_called_then_returns_stale_revision() {
-        let err = anyhow!(
-            "stale_revision: test failed at /revision: expected Some(999) but got Some(1)"
-        );
+        let err =
+            anyhow!("stale_revision: test failed at /revision: expected Some(999) but got Some(1)");
         let code = error_code(&err);
 
         assert_eq!(

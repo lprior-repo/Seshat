@@ -105,8 +105,14 @@ mod tests {
         doc.document.nodes = doc
             .document
             .nodes
-            .update(shape_id.clone(), make_node(NodeKind::Node, 50.0, 50.0, 80.0, 60.0))
-            .update(text_id.clone(), make_node(NodeKind::Text, 200.0, 100.0, 100.0, 30.0));
+            .update(
+                shape_id.clone(),
+                make_node(NodeKind::Node, 50.0, 50.0, 80.0, 60.0),
+            )
+            .update(
+                text_id.clone(),
+                make_node(NodeKind::Text, 200.0, 100.0, 100.0, 30.0),
+            );
 
         // Select both nodes (edges are not returned by selected_node_ids since they have no bounds)
         let _ = doc.editor_state.selected_items.insert(shape_id.to_string());
@@ -134,10 +140,10 @@ mod tests {
         // Given: A document with selected items
         let mut doc = DiagramDocument::default();
         let node_id = NodeId::new(String::from("test_node"));
-        doc.document.nodes = doc
-            .document
-            .nodes
-            .update(node_id.clone(), make_node(NodeKind::Node, 100.0, 100.0, 50.0, 50.0));
+        doc.document.nodes = doc.document.nodes.update(
+            node_id.clone(),
+            make_node(NodeKind::Node, 100.0, 100.0, 50.0, 50.0),
+        );
         let _ = doc.editor_state.selected_items.insert(node_id.to_string());
 
         // Capture initial state
@@ -188,7 +194,10 @@ mod tests {
             .document
             .nodes
             .update(n1.clone(), make_node(NodeKind::Node, 0.0, 0.0, 50.0, 50.0))
-            .update(n2.clone(), make_node(NodeKind::Node, 100.0, 0.0, 50.0, 50.0));
+            .update(
+                n2.clone(),
+                make_node(NodeKind::Node, 100.0, 0.0, 50.0, 50.0),
+            );
 
         let mut history = History::new();
 
@@ -227,7 +236,9 @@ mod tests {
         );
 
         // When: Redo is called
-        let (redone_doc, _history) = history.redo(restored_doc.clone()).expect("redo should succeed");
+        let (redone_doc, _history) = history
+            .redo(restored_doc.clone())
+            .expect("redo should succeed");
 
         // Then: selection contains only n2
         assert_eq!(
@@ -254,9 +265,18 @@ mod tests {
         doc.document.nodes = doc
             .document
             .nodes
-            .update(neg_x.clone(), make_node(NodeKind::Node, -100.0, 50.0, 80.0, 60.0))
-            .update(neg_y.clone(), make_node(NodeKind::Node, 50.0, -100.0, 80.0, 60.0))
-            .update(neg_both.clone(), make_node(NodeKind::Node, -200.0, -200.0, 100.0, 100.0));
+            .update(
+                neg_x.clone(),
+                make_node(NodeKind::Node, -100.0, 50.0, 80.0, 60.0),
+            )
+            .update(
+                neg_y.clone(),
+                make_node(NodeKind::Node, 50.0, -100.0, 80.0, 60.0),
+            )
+            .update(
+                neg_both.clone(),
+                make_node(NodeKind::Node, -200.0, -200.0, 100.0, 100.0),
+            );
 
         // When: All three nodes are selected
         let _ = doc.editor_state.selected_items.insert(neg_x.to_string());
@@ -265,7 +285,10 @@ mod tests {
 
         // Then: selection_bounds returns correct min/max values
         let bounds = selection_bounds(&doc);
-        assert!(bounds.is_some(), "Bounds should be computed for negative coords");
+        assert!(
+            bounds.is_some(),
+            "Bounds should be computed for negative coords"
+        );
 
         let (min_x, min_y, width, height) = bounds.unwrap();
 
@@ -304,14 +327,25 @@ mod tests {
             );
 
         // Single selection is the precondition for edit mode
-        let _ = doc.editor_state.selected_items.insert(editable_id.to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(editable_id.to_string());
 
         // When: We query the selection for edit mode target
         let selected = selected_node_ids(&doc);
 
         // Then: Exactly one node is selected and identifiable
-        assert_eq!(selected.len(), 1, "Exactly one node should be selected for edit mode");
-        assert_eq!(selected.first(), Some(&editable_id), "The editable node should be the selection target");
+        assert_eq!(
+            selected.len(),
+            1,
+            "Exactly one node should be selected for edit mode"
+        );
+        assert_eq!(
+            selected.first(),
+            Some(&editable_id),
+            "The editable node should be the selection target"
+        );
 
         // And: The selected node exists in the document
         assert!(
@@ -321,6 +355,9 @@ mod tests {
 
         // And: We can retrieve the node's current label for editing
         let node = doc.document.nodes.get(&editable_id).expect("node exists");
-        assert!(!node.label.is_empty() || node.label.is_empty(), "Label is accessible for editing");
+        assert!(
+            !node.label.is_empty() || node.label.is_empty(),
+            "Label is accessible for editing"
+        );
     }
 }

@@ -1,0 +1,17 @@
+[
+  {
+    "id": "bd-387",
+    "title": "tests: Implement MUL multi-select tests - resize edge cases",
+    "description": "Add 5 multi-select resize tests: resize selection containing rotated items, resize selection with text, resize selection with 2-point line, resize selection with curved arrow, resize selection past inversion.",
+    "status": "in_progress",
+    "priority": 1,
+    "issue_type": "task",
+    "assignee": "self",
+    "created_at": "2026-03-01T01:07:15.823010651Z",
+    "created_by": "lewis",
+    "updated_at": "2026-03-02T00:38:49.728643154Z",
+    "source_repo": ".",
+    "compaction_level": 0,
+    "original_size": 0
+  }
+]

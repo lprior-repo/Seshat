@@ -1034,7 +1034,9 @@ fn test_crash_after_append_before_memory_apply() -> Result<TestReport, VerifyErr
     // Verify projection has the node
     if !projection
         .nodes
-        .contains_key(&crate::models::document::NodeId::new("node-crash-1".to_string()))
+        .contains_key(&crate::models::document::NodeId::new(
+            "node-crash-1".to_string(),
+        ))
     {
         return Ok(TestReport::failing(
             1,
@@ -1363,9 +1365,7 @@ pub fn assert_human_priority(report: &TestReport) -> Result<(), VerifyError> {
 
 /// Test that human drag operations take priority over AI move on the same node
 fn test_human_drag_beats_ai_move_same_node() -> Result<TestReport, VerifyError> {
-    use crate::models::conflict::{
-        evaluate_human_priority, ConflictDecision, ProjectionState,
-    };
+    use crate::models::conflict::{evaluate_human_priority, ConflictDecision, ProjectionState};
 
     let mut state = ProjectionState::new();
 
@@ -1403,9 +1403,7 @@ fn test_human_drag_beats_ai_move_same_node() -> Result<TestReport, VerifyError> 
 
 /// Test that AI operations are rejected when human has active edit
 fn test_ai_rejected_on_active_human_edit() -> Result<TestReport, VerifyError> {
-    use crate::models::conflict::{
-        evaluate_human_priority, ConflictDecision, ProjectionState,
-    };
+    use crate::models::conflict::{evaluate_human_priority, ConflictDecision, ProjectionState};
 
     let mut state = ProjectionState::new();
 
@@ -1453,9 +1451,7 @@ fn test_ai_rejected_on_active_human_edit() -> Result<TestReport, VerifyError> {
 
 /// Test that human operations are allowed even during AI edits
 fn test_human_allowed_during_ai_edit() -> Result<TestReport, VerifyError> {
-    use crate::models::conflict::{
-        evaluate_human_priority, ConflictDecision, ProjectionState,
-    };
+    use crate::models::conflict::{evaluate_human_priority, ConflictDecision, ProjectionState};
 
     let state = ProjectionState::new();
 
@@ -1490,9 +1486,7 @@ fn test_human_allowed_during_ai_edit() -> Result<TestReport, VerifyError> {
 
 /// Test that AI operations on different entities are allowed during human edit
 fn test_ai_allowed_on_different_entity() -> Result<TestReport, VerifyError> {
-    use crate::models::conflict::{
-        evaluate_human_priority, ConflictDecision, ProjectionState,
-    };
+    use crate::models::conflict::{evaluate_human_priority, ConflictDecision, ProjectionState};
 
     let mut state = ProjectionState::new();
 
@@ -1530,9 +1524,7 @@ fn test_ai_allowed_on_different_entity() -> Result<TestReport, VerifyError> {
 
 /// Test that edge operations conflict with human edit on source/target nodes
 fn test_edge_conflict_with_human_node_edit() -> Result<TestReport, VerifyError> {
-    use crate::models::conflict::{
-        evaluate_human_priority, ConflictDecision, ProjectionState,
-    };
+    use crate::models::conflict::{evaluate_human_priority, ConflictDecision, ProjectionState};
 
     let mut state = ProjectionState::new();
 
@@ -1564,7 +1556,10 @@ fn test_edge_conflict_with_human_node_edit() -> Result<TestReport, VerifyError> 
             ..
         } => {
             // Verify the conflict includes the source node
-            if conflicting_entities.iter().any(|e| e.contains("source-node")) {
+            if conflicting_entities
+                .iter()
+                .any(|e| e.contains("source-node"))
+            {
                 Ok(TestReport::passing(1))
             } else {
                 Ok(TestReport::failing(
@@ -1587,9 +1582,7 @@ fn test_edge_conflict_with_human_node_edit() -> Result<TestReport, VerifyError> 
 
 /// Test conflict detection across multiple entities
 fn test_multi_entity_conflict_detection() -> Result<TestReport, VerifyError> {
-    use crate::models::conflict::{
-        evaluate_human_priority, ConflictDecision, ProjectionState,
-    };
+    use crate::models::conflict::{evaluate_human_priority, ConflictDecision, ProjectionState};
 
     let mut state = ProjectionState::new();
 
@@ -2351,7 +2344,11 @@ mod tests {
     #[test]
     fn test_run_human_ai_conflict_e2e_returns_passing_report() {
         let result = run_human_ai_conflict_e2e();
-        assert!(result.is_ok(), "e2e suite should not error: {:?}", result.err());
+        assert!(
+            result.is_ok(),
+            "e2e suite should not error: {:?}",
+            result.err()
+        );
 
         let report = result.expect("Checked is_ok");
         assert!(report.cases_run > 0, "Should run at least one test case");
@@ -2456,7 +2453,10 @@ mod tests {
         let result = super::test_human_priority_preserved_across_replay();
         assert!(result.is_ok(), "Test should not error");
         let report = result.expect("Checked is_ok");
-        assert!(report.passed, "Human priority should be preserved in replay");
+        assert!(
+            report.passed,
+            "Human priority should be preserved in replay"
+        );
     }
 
     // Tests for bd-320: verify-crash-recovery
@@ -2519,6 +2519,9 @@ mod tests {
         let result = super::test_incomplete_snapshot_fallback();
         assert!(result.is_ok(), "Test should not error");
         let report = result.expect("Checked is_ok");
-        assert!(report.passed, "Incomplete snapshot should fall back to replay");
+        assert!(
+            report.passed,
+            "Incomplete snapshot should fall back to replay"
+        );
     }
 }
