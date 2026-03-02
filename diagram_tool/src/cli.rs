@@ -244,6 +244,37 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             // Load the document
             let current_doc = load_doc(input)?;
 
+            // Save LKG (Last Known Good) before any patch operations
+            // This ensures we have a recovery point regardless of how the patch fails
+            let input_path = Path::new(input);
+            let lkg_dir = input_path.parent().unwrap_or(Path::new(".")).join(".lkg");
+            std::fs::create_dir_all(&lkg_dir).ok();
+            let lkg_filename = format!(
+                "{}.lkg",
+                input_path
+                    .file_name()
+                    .map(|n| n.to_string_lossy())
+                    .unwrap_or_default()
+            );
+            let lkg_path = lkg_dir.join(lkg_filename);
+
+            if let Err(e) = save_workspace_atomic(&current_doc, &lkg_path) {
+                emit_stage_event(
+                    "lkg_save_failed",
+                    &StageDetails::new()
+                        .with_path(&lkg_path)
+                        .with_code("lkg_save_failed")
+                        .with_message(&e.to_string()),
+                );
+            } else {
+                emit_stage_event(
+                    "lkg_saved",
+                    &StageDetails::new()
+                        .with_path(&lkg_path)
+                        .with_code("success"),
+                );
+            }
+
             // Read and parse the patch file
             let patch_content = std::fs::read_to_string(patch)
                 .map_err(|e| anyhow!("Failed to read patch file: {e}"))?;

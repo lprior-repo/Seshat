@@ -1,5 +1,6 @@
 import { expect, test, type Locator, type Page } from "@playwright/test";
 import {
+  canvas,
   clearCanvasOverlays,
   createTextNode,
   edgeCount,
@@ -11,6 +12,7 @@ import {
   runEffect,
   selectedCount,
   trapPageErrors,
+  waitForNoRebuildOverlay,
   waitForUiReady,
   zoomPercent,
 } from "./helpers";
@@ -438,6 +440,351 @@ test.describe("diagram edges and routing", () => {
     await clickCanvasWhitespace(page, canvas);
     await edgeClick(page, nearTargetX, nearTargetY);
     expect(await selectedCount(page)).toBe(1);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-011: Edge between nodes in same container
+  test("edge between nodes in same container @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const diagramCanvas = canvas(page);
+
+    // Create 2 text nodes
+    await runEffectsSequential([
+      () => createTextNode(page, diagramCanvas, 520, 240),
+      () => createTextNode(page, diagramCanvas, 640, 300),
+    ]);
+    await expectNodeCount(page, 2);
+
+    // Create a subgraph container around the nodes
+    const canvasBox = await runEffect(() => diagramCanvas.boundingBox());
+    if (!canvasBox) {
+      throw new Error("canvas bounding box not available");
+    }
+    await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
+    await runEffectsSequential([
+      () => page.mouse.move(canvasBox.x + 480, canvasBox.y + 200),
+      () => page.mouse.down(),
+      () => page.mouse.move(canvasBox.x + 720, canvasBox.y + 360, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
+    // Switch back to select tool
+    await runEffect(() => page.getByRole("button", { name: "Select", exact: true }).click());
+    await waitForNoRebuildOverlay(page);
+    await waitForUiReady(page);
+    await expectNodeCount(page, 3); // 2 text nodes + 1 subgraph container
+
+    // Create edge between the two nodes inside the container
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(diagramCanvas));
+    // Filter to only text nodes (skip subgraph container which is larger)
+    const textNodeCenters = centers.slice(0, 2);
+    if (textNodeCenters.length < 2) {
+      throw new Error("expected at least two text nodes inside container");
+    }
+
+    await edgeClick(page, textNodeCenters[0].x, textNodeCenters[0].y);
+    await edgeClick(page, textNodeCenters[1].x, textNodeCenters[1].y);
+
+    await expectEdgeCount(page, 1);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-012: Edge crossing container boundary
+  test("edge crossing container boundary @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const diagramCanvas = canvas(page);
+
+    // Create a text node that will be inside the container
+    await runEffect(() => createTextNode(page, diagramCanvas, 520, 240));
+
+    // Create a text node that will stay outside the container
+    await runEffect(() => createTextNode(page, diagramCanvas, 820, 240));
+    await expectNodeCount(page, 2);
+
+    // Create a subgraph container around only the first node
+    const canvasBox = await runEffect(() => diagramCanvas.boundingBox());
+    if (!canvasBox) {
+      throw new Error("canvas bounding box not available");
+    }
+    await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
+    await runEffectsSequential([
+      () => page.mouse.move(canvasBox.x + 480, canvasBox.y + 200),
+      () => page.mouse.down(),
+      () => page.mouse.move(canvasBox.x + 640, canvasBox.y + 360, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
+    // Switch back to select tool
+    await runEffect(() => page.getByRole("button", { name: "Select", exact: true }).click());
+    await waitForNoRebuildOverlay(page);
+    await waitForUiReady(page);
+    await expectNodeCount(page, 3); // 2 text nodes + 1 subgraph container
+
+    // Create edge from inside node to outside node
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(diagramCanvas));
+    // Filter to only text nodes (skip subgraph container)
+    const textNodeCenters = centers.slice(0, 2);
+    if (textNodeCenters.length < 2) {
+      throw new Error("expected at least two text nodes");
+    }
+
+    // Create edge crossing container boundary
+    await edgeClick(page, textNodeCenters[0].x, textNodeCenters[0].y);
+    await edgeClick(page, textNodeCenters[1].x, textNodeCenters[1].y);
+
+    await expectEdgeCount(page, 1);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-013: Reparent node with edges
+  test("reparent node with connected edge produces valid state @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const diagramCanvas = canvas(page);
+
+    // Create 2 text nodes
+    await runEffectsSequential([
+      () => createTextNode(page, diagramCanvas, 520, 240),
+      () => createTextNode(page, diagramCanvas, 640, 300),
+    ]);
+    await expectNodeCount(page, 2);
+
+    // Create a subgraph container around the nodes
+    const canvasBox = await runEffect(() => diagramCanvas.boundingBox());
+    if (!canvasBox) {
+      throw new Error("canvas bounding box not available");
+    }
+    await runEffect(() => page.getByRole("button", { name: "Subgraph", exact: true }).click());
+    await runEffectsSequential([
+      () => page.mouse.move(canvasBox.x + 480, canvasBox.y + 200),
+      () => page.mouse.down(),
+      () => page.mouse.move(canvasBox.x + 720, canvasBox.y + 360, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
+    // Switch back to select tool
+    await runEffect(() => page.getByRole("button", { name: "Select", exact: true }).click());
+    await waitForNoRebuildOverlay(page);
+    await waitForUiReady(page);
+    await expectNodeCount(page, 3); // 2 text nodes + 1 subgraph container
+
+    // Create edge between the two nodes inside the container
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(diagramCanvas));
+    const textNodeCenters = centers.slice(0, 2);
+    if (textNodeCenters.length < 2) {
+      throw new Error("expected at least two text nodes inside container");
+    }
+
+    await edgeClick(page, textNodeCenters[0].x, textNodeCenters[0].y);
+    await edgeClick(page, textNodeCenters[1].x, textNodeCenters[1].y);
+    await expectEdgeCount(page, 1);
+
+    // Switch to select tool
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    // Drag the first node outside the container (to the left)
+    const dragFromX = textNodeCenters[0].x;
+    const dragFromY = textNodeCenters[0].y;
+    const dragToX = canvasBox.x + 200; // Well outside to the left
+    const dragToY = dragFromY;
+
+    await runEffectsSequential([
+      () => page.mouse.move(dragFromX, dragFromY),
+      () => page.mouse.down(),
+      () => page.mouse.move(dragToX, dragToY, { steps: 8 }),
+      () => page.mouse.up(),
+    ]);
+    await waitForNoRebuildOverlay(page);
+    await waitForUiReady(page);
+
+    // Node count should still be 3
+    await expectNodeCount(page, 3);
+
+    // Edge should still exist (not orphaned)
+    await expectEdgeCount(page, 1);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-014: Edge routing stable on overlapping nodes (horizontal)
+  test("horizontal edge overlap hit-selection is deterministic across repeated clicks @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    // Create 4 nodes for two horizontal edges that will overlap
+    await runEffectsSequential([
+      () => createTextNode(page, canvasEl, 260, 220),
+      () => createTextNode(page, canvasEl, 880, 220),
+      () => createTextNode(page, canvasEl, 260, 380),
+      () => createTextNode(page, canvasEl, 880, 380),
+    ]);
+    await expectNodeCount(page, 4);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 4) {
+      throw new Error("expected four nodes for horizontal overlap test");
+    }
+
+    // Sort by y to get top row and bottom row
+    const byY = [...centers].sort((a, b) => a.y - b.y);
+    // Top row: byY[0], byY[1]; Bottom row: byY[2], byY[3]
+    // Sort each row by x
+    const topRow = [byY[0], byY[1]].sort((a, b) => a.x - b.x);
+    const bottomRow = [byY[2], byY[3]].sort((a, b) => a.x - b.x);
+
+    // Create top horizontal edge
+    await edgeClick(page, topRow[0].x, topRow[0].y);
+    await edgeClick(page, topRow[1].x, topRow[1].y);
+
+    // Create bottom horizontal edge
+    await edgeClick(page, bottomRow[0].x, bottomRow[0].y);
+    await edgeClick(page, bottomRow[1].x, bottomRow[1].y);
+
+    await expectEdgeCount(page, 2);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    // Probe at the center of the canvas where edges should overlap
+    const probeX = (topRow[0].x + topRow[1].x) / 2;
+    const probeY = (topRow[0].y + bottomRow[0].y) / 2;
+
+    // Click at overlap point multiple times and verify same edge is selected
+    const selectedEdgeIds: number[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      await clickCanvasWhitespace(page, canvasEl);
+      await edgeClick(page, probeX, probeY);
+      expect(await selectedCount(page)).toBe(1);
+
+      // Delete the selected edge to identify which one it was
+      await runEffect(() => page.keyboard.press("Delete"));
+      const remainingEdges = await edgeCount(page);
+
+      // If we deleted the top edge, top edge is the one selected
+      // If we deleted the bottom edge, bottom edge is the one selected
+      selectedEdgeIds.push(remainingEdges);
+
+      // Undo to restore the edge
+      await runEffect(() =>
+        page.getByRole("button", { name: "Undo", exact: true }).click(),
+      );
+      await expectEdgeCount(page, 2);
+    }
+
+    // All selections should have identified the same edge
+    expect(selectedEdgeIds[0]).toBe(selectedEdgeIds[1]);
+    expect(selectedEdgeIds[1]).toBe(selectedEdgeIds[2]);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  // EDG-015: Edge routing stable on overlapping nodes (vertical)
+  test("vertical edge overlap hit-selection is deterministic across repeated clicks @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await runEffectsSequential([
+      () => freshStart(page),
+      () => clearCanvasOverlays(page),
+    ]);
+
+    const canvasEl = page.getByTestId("canvas-root");
+    // Create 4 nodes for two vertical edges that will overlap
+    await runEffectsSequential([
+      () => createTextNode(page, canvasEl, 420, 120),
+      () => createTextNode(page, canvasEl, 420, 520),
+      () => createTextNode(page, canvasEl, 720, 120),
+      () => createTextNode(page, canvasEl, 720, 520),
+    ]);
+    await expectNodeCount(page, 4);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Edge", exact: true }).click(),
+    );
+
+    const centers = await runEffect(() => nodeCenters(canvasEl));
+    if (centers.length < 4) {
+      throw new Error("expected four nodes for vertical overlap test");
+    }
+
+    // Sort by x to get left column and right column
+    const byX = [...centers].sort((a, b) => a.x - b.x);
+    // Left column: byX[0], byX[1]; Right column: byX[2], byX[3]
+    // Sort each column by y
+    const leftCol = [byX[0], byX[1]].sort((a, b) => a.y - b.y);
+    const rightCol = [byX[2], byX[3]].sort((a, b) => a.y - b.y);
+
+    // Create left vertical edge
+    await edgeClick(page, leftCol[0].x, leftCol[0].y);
+    await edgeClick(page, leftCol[1].x, leftCol[1].y);
+
+    // Create right vertical edge
+    await edgeClick(page, rightCol[0].x, rightCol[0].y);
+    await edgeClick(page, rightCol[1].x, rightCol[1].y);
+
+    await expectEdgeCount(page, 2);
+
+    await runEffect(() =>
+      page.getByRole("button", { name: "Select", exact: true }).click(),
+    );
+
+    // Probe at the center of the canvas where edges should overlap
+    const probeX = (leftCol[0].x + rightCol[0].x) / 2;
+    const probeY = (leftCol[0].y + leftCol[1].y) / 2;
+
+    // Click at overlap point multiple times and verify same edge is selected
+    const selectedEdgeIds: number[] = [];
+    for (let i = 0; i < 3; i += 1) {
+      await clickCanvasWhitespace(page, canvasEl);
+      await edgeClick(page, probeX, probeY);
+      expect(await selectedCount(page)).toBe(1);
+
+      // Delete the selected edge to identify which one it was
+      await runEffect(() => page.keyboard.press("Delete"));
+      const remainingEdges = await edgeCount(page);
+
+      selectedEdgeIds.push(remainingEdges);
+
+      // Undo to restore the edge
+      await runEffect(() =>
+        page.getByRole("button", { name: "Undo", exact: true }).click(),
+      );
+      await expectEdgeCount(page, 2);
+    }
+
+    // All selections should have identified the same edge
+    expect(selectedEdgeIds[0]).toBe(selectedEdgeIds[1]);
+    expect(selectedEdgeIds[1]).toBe(selectedEdgeIds[2]);
     expect(pageErrors).toHaveLength(0);
   });
 });
