@@ -1,0 +1,61 @@
+{
+  "version": 2,
+  "revision": 1,
+  "document": {
+    "nodes": {
+      "group-source": {
+        "kind": "subgraph",
+        "icon": "",
+        "label": "Source Group",
+        "x": 50,
+        "y": 50,
+        "width": 200,
+        "height": 150,
+        "locked": false,
+        "tags": [],
+        "metadata": {},
+        "z_index": 0
+      },
+      "group-target": {
+        "kind": "subgraph",
+        "icon": "",
+        "label": "Target Group",
+        "x": 300,
+        "y": 50,
+        "width": 200,
+        "height": 150,
+        "locked": false,
+        "tags": [],
+        "metadata": {},
+        "z_index": 1
+      },
+      "movable-node": {
+        "kind": "node",
+        "icon": "",
+        "label": "Movable",
+        "x": 350,
+        "y": 100,
+        "width": 80,
+        "height": 50,
+        "locked": false,
+        "parent": "group-target",
+        "tags": [],
+        "metadata": {},
+        "z_index": 2
+      }
+    },
+    "edges": {}
+  },
+  "editor_state": {
+    "camera_x": 0,
+    "camera_y": 0,
+    "zoom": 1,
+    "grid_size": 20,
+    "snap_to_grid": true,
+    "selected_items": ["movable-node"],
+    "editing_edge_id": null,
+    "theme": "system",
+    "show_grid": true,
+    "minimap_visible": false
+  }
+}

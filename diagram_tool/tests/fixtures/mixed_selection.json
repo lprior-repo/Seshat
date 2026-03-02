@@ -1,0 +1,106 @@
+{
+  "version": 2,
+  "revision": 0,
+  "document": {
+    "nodes": {
+      "rect-1": {
+        "kind": "node",
+        "icon": "",
+        "label": "Rectangle",
+        "x": 100,
+        "y": 100,
+        "width": 120,
+        "height": 80,
+        "locked": false,
+        "tags": ["shape", "rect"],
+        "metadata": {},
+        "z_index": 1,
+        "style": "box"
+      },
+      "ellipse-1": {
+        "kind": "node",
+        "icon": "",
+        "label": "Ellipse",
+        "x": 300,
+        "y": 100,
+        "width": 100,
+        "height": 100,
+        "locked": false,
+        "tags": ["shape", "ellipse"],
+        "metadata": {},
+        "z_index": 2,
+        "style": "cloud"
+      },
+      "text-1": {
+        "kind": "text",
+        "icon": "",
+        "label": "Sample Text Label",
+        "x": 100,
+        "y": 250,
+        "width": 150,
+        "height": 30,
+        "fontSize": 14,
+        "font_weight": "normal",
+        "locked": false,
+        "tags": ["text"],
+        "metadata": {},
+        "z_index": 3
+      },
+      "image-1": {
+        "kind": "node",
+        "icon": "image",
+        "label": "Image Placeholder",
+        "x": 300,
+        "y": 250,
+        "width": 160,
+        "height": 120,
+        "locked": false,
+        "tags": ["image"],
+        "metadata": {
+          "image_ref": "placeholder.png"
+        },
+        "z_index": 4
+      },
+      "arrow-target": {
+        "kind": "node",
+        "icon": "",
+        "label": "Arrow Target",
+        "x": 500,
+        "y": 150,
+        "width": 80,
+        "height": 60,
+        "locked": false,
+        "tags": [],
+        "metadata": {},
+        "z_index": 5
+      }
+    },
+    "edges": {
+      "arrow-1": {
+        "source": "rect-1",
+        "target": "arrow-target",
+        "label": "connects to",
+        "style": "solid",
+        "arrowType": "sharp",
+        "label_offset_t": 0.5,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [],
+        "tags": ["arrow"],
+        "metadata": {}
+      }
+    }
+  },
+  "editor_state": {
+    "camera_x": 0,
+    "camera_y": 0,
+    "zoom": 1,
+    "grid_size": 20,
+    "snap_to_grid": true,
+    "selected_items": [],
+    "editing_edge_id": null,
+    "theme": "system",
+    "show_grid": true,
+    "minimap_visible": false
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "version": 2,
+  "revision": 0,
+  "document": {
+    "nodes": {
+      "frame-1": {
+        "kind": "subgraph",
+        "icon": "",
+        "label": "Main Frame",
+        "x": 50,
+        "y": 50,
+        "width": 600,
+        "height": 400,
+        "locked": false,
+        "parent": null,
+        "tags": ["frame"],
+        "metadata": {},
+        "z_index": 0
+      },
+      "group-1": {
+        "kind": "subgraph",
+        "icon": "",
+        "label": "Inner Group",
+        "x": 80,
+        "y": 100,
+        "width": 300,
+        "height": 280,
+        "locked": false,
+        "parent": "frame-1",
+        "tags": ["group"],
+        "metadata": {},
+        "z_index": 1
+      },
+      "shape-1": {
+        "kind": "node",
+        "icon": "",
+        "label": "Shape A",
+        "x": 100,
+        "y": 130,
+        "width": 80,
+        "height": 50,
+        "locked": false,
+        "parent": "group-1",
+        "tags": ["shape"],
+        "metadata": {"color": "#ff6b6b"},
+        "z_index": 2
+      },
+      "shape-2": {
+        "kind": "node",
+        "icon": "",
+        "label": "Shape B",
+        "x": 220,
+        "y": 130,
+        "width": 80,
+        "height": 50,
+        "locked": false,
+        "parent": "group-1",
+        "tags": ["shape"],
+        "metadata": {"color": "#4ecdc4"},
+        "z_index": 3
+      },
+      "shape-3": {
+        "kind": "node",
+        "icon": "",
+        "label": "Shape C",
+        "x": 160,
+        "y": 220,
+        "width": 80,
+        "height": 50,
+        "locked": false,
+        "parent": "group-1",
+        "tags": ["shape"],
+        "metadata": {"color": "#45b7d1"},
+        "z_index": 4
+      },
+      "external-1": {
+        "kind": "node",
+        "icon": "",
+        "label": "External Node",
+        "x": 450,
+        "y": 200,
+        "width": 100,
+        "height": 60,
+        "locked": false,
+        "parent": "frame-1",
+        "tags": ["external"],
+        "metadata": {},
+        "z_index": 5
+      }
+    },
+    "edges": {
+      "edge-internal-1": {
+        "source": "shape-1",
+        "target": "shape-2",
+        "label": "",
+        "style": "solid",
+        "arrowType": "default",
+        "label_offset_t": 0.5,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [],
+        "tags": ["internal"],
+        "metadata": {}
+      },
+      "edge-internal-2": {
+        "source": "shape-2",
+        "target": "shape-3",
+        "label": "",
+        "style": "solid",
+        "arrowType": "default",
+        "label_offset_t": 0.5,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [],
+        "tags": ["internal"],
+        "metadata": {}
+      },
+      "edge-crossing": {
+        "source": "shape-3",
+        "target": "external-1",
+        "label": "crosses boundary",
+        "style": "dashed",
+        "arrowType": "default",
+        "label_offset_t": 0.5,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [{"x": 380, "y": 250}],
+        "tags": ["crossing"],
+        "metadata": {}
+      }
+    }
+  },
+  "editor_state": {
+    "camera_x": 0,
+    "camera_y": 0,
+    "zoom": 1,
+    "grid_size": 20,
+    "snap_to_grid": true,
+    "selected_items": [],
+    "editing_edge_id": null,
+    "theme": "system",
+    "show_grid": true,
+    "minimap_visible": false
+  }
+}
