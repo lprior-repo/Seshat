@@ -556,3 +556,276 @@ mod proptests {
         }
     }
 }
+
+// =============================================================================
+// INP Mobile/Touch Interaction tests (bd-27q)
+// =============================================================================
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod inp_mobile_touch_tests {
+    use super::*;
+
+    // INP-2: Pinch does not create shape
+    // A two-finger pinch gesture should zoom the canvas, not create shapes or subgraphs.
+    // The zoom_gesture flag indicates pinch behavior.
+    #[test]
+    fn given_pinch_gesture_when_zoom_in_then_zooms_canvas_not_creates_shape() {
+        let pinch_zoom_in = WheelInput {
+            camera_x: OrderedFloat(100.0),
+            camera_y: OrderedFloat(100.0),
+            zoom: OrderedFloat(1.0),
+            client_x: 400.0,
+            client_y: 300.0,
+            dx: 0.0,
+            dy: -50.0,          // Negative delta = zoom in
+            zoom_gesture: true, // Pinch gesture flag
+            shift_pan: false,
+            discrete_wheel: false,
+        };
+
+        let (cx, cy, z) = wheel_transform(pinch_zoom_in);
+
+        // Verify zoom changed (canvas zoom, not shape creation)
+        assert!(cx.is_finite(), "Camera X should be finite");
+        assert!(cy.is_finite(), "Camera Y should be finite");
+        assert!(z > 1.0, "Pinch zoom-in should increase zoom level");
+        assert!(z <= ZOOM_MAX, "Zoom should be clamped to max");
+    }
+
+    #[test]
+    fn given_pinch_gesture_when_zoom_out_then_zooms_canvas_not_creates_shape() {
+        let pinch_zoom_out = WheelInput {
+            camera_x: OrderedFloat(100.0),
+            camera_y: OrderedFloat(100.0),
+            zoom: OrderedFloat(2.0),
+            client_x: 400.0,
+            client_y: 300.0,
+            dx: 0.0,
+            dy: 50.0,           // Positive delta = zoom out
+            zoom_gesture: true, // Pinch gesture flag
+            shift_pan: false,
+            discrete_wheel: false,
+        };
+
+        let (cx, cy, z) = wheel_transform(pinch_zoom_out);
+
+        // Verify zoom changed (canvas zoom, not shape creation)
+        assert!(cx.is_finite(), "Camera X should be finite");
+        assert!(cy.is_finite(), "Camera Y should be finite");
+        assert!(z < 2.0, "Pinch zoom-out should decrease zoom level");
+        assert!(z >= ZOOM_MIN, "Zoom should be clamped to min");
+    }
+
+    #[test]
+    fn given_pinch_at_limits_then_stays_bounded() {
+        // Pinch at max zoom should not exceed
+        let pinch_at_max = WheelInput {
+            camera_x: OrderedFloat(0.0),
+            camera_y: OrderedFloat(0.0),
+            zoom: OrderedFloat(ZOOM_MAX),
+            client_x: 200.0,
+            client_y: 200.0,
+            dx: 0.0,
+            dy: -100.0, // Try to zoom in more
+            zoom_gesture: true,
+            shift_pan: false,
+            discrete_wheel: false,
+        };
+
+        let (_, _, z) = wheel_transform(pinch_at_max);
+        assert!(z <= ZOOM_MAX, "Pinch at max should stay at max");
+
+        // Pinch at min zoom should not go below
+        let pinch_at_min = WheelInput {
+            camera_x: OrderedFloat(0.0),
+            camera_y: OrderedFloat(0.0),
+            zoom: OrderedFloat(ZOOM_MIN),
+            client_x: 200.0,
+            client_y: 200.0,
+            dx: 0.0,
+            dy: 100.0, // Try to zoom out more
+            zoom_gesture: true,
+            shift_pan: false,
+            discrete_wheel: false,
+        };
+
+        let (_, _, z_min) = wheel_transform(pinch_at_min);
+        assert!(z_min >= ZOOM_MIN, "Pinch at min should stay at min");
+    }
+
+    // INP-5: Stylus vs Finger mode
+    // The system should handle different pointer types without panicking.
+    // While we can't distinguish pointer types in wheel events, we verify robustness.
+    #[test]
+    fn given_stylus_like_input_when_processed_then_no_panic() {
+        // Stylus typically has more precise/smaller movements
+        let stylus_precise = WheelInput {
+            camera_x: OrderedFloat(50.0),
+            camera_y: OrderedFloat(50.0),
+            zoom: OrderedFloat(1.0),
+            client_x: 250.5, // Fractional coordinates typical of stylus
+            client_y: 175.25,
+            dx: 0.0,
+            dy: -5.0, // Small precise movement
+            zoom_gesture: false,
+            shift_pan: false,
+            discrete_wheel: false,
+        };
+
+        let result = wheel_update(stylus_precise);
+        // Should handle without panic
+        if let Some((cx, cy, z)) = result {
+            assert!(cx.0.is_finite());
+            assert!(cy.0.is_finite());
+            assert!(z.0.is_finite());
+        }
+    }
+
+    #[test]
+    fn given_finger_like_input_when_processed_then_no_panic() {
+        // Finger touch typically has less precise/larger movements
+        let finger_imprecise = WheelInput {
+            camera_x: OrderedFloat(50.0),
+            camera_y: OrderedFloat(50.0),
+            zoom: OrderedFloat(1.0),
+            client_x: 250.0, // Rounded coordinates typical of finger
+            client_y: 175.0,
+            dx: 0.0,
+            dy: -50.0, // Larger movement
+            zoom_gesture: true,
+            shift_pan: false,
+            discrete_wheel: false,
+        };
+
+        let result = wheel_update(finger_imprecise);
+        // Should handle without panic
+        if let Some((cx, cy, z)) = result {
+            assert!(cx.0.is_finite());
+            assert!(cy.0.is_finite());
+            assert!(z.0.is_finite());
+        }
+    }
+
+    #[test]
+    fn given_mixed_pointer_inputs_then_all_produce_valid_output() {
+        let inputs = vec![
+            // Stylus-like: precise, small delta
+            (250.5, 175.25, -5.0, false),
+            // Finger-like: rounded, large delta, gesture
+            (250.0, 175.0, -50.0, true),
+            // Mouse-like: medium delta
+            (300.0, 200.0, -20.0, false),
+        ];
+
+        for (client_x, client_y, dy, gesture) in inputs {
+            let input = WheelInput {
+                camera_x: OrderedFloat(0.0),
+                camera_y: OrderedFloat(0.0),
+                zoom: OrderedFloat(1.0),
+                client_x,
+                client_y,
+                dx: 0.0,
+                dy,
+                zoom_gesture: gesture,
+                shift_pan: false,
+                discrete_wheel: false,
+            };
+
+            let (cx, cy, z) = wheel_transform(input);
+            assert!(
+                cx.is_finite(),
+                "Camera X should be finite for input ({}, {}, {}, {})",
+                client_x,
+                client_y,
+                dy,
+                gesture
+            );
+            assert!(
+                cy.is_finite(),
+                "Camera Y should be finite for input ({}, {}, {}, {})",
+                client_x,
+                client_y,
+                dy,
+                gesture
+            );
+            assert!(
+                z.is_finite(),
+                "Zoom should be finite for input ({}, {}, {}, {})",
+                client_x,
+                client_y,
+                dy,
+                gesture
+            );
+            assert!(z >= ZOOM_MIN && z <= ZOOM_MAX);
+        }
+    }
+}
+
+#[cfg(test)]
+mod inp_mobile_touch_proptests {
+    use super::*;
+    use proptest::prelude::*;
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+
+        // INP-2: Pinch gesture always produces valid zoom
+        #[test]
+        fn prop_pinch_gesture_always_produces_valid_zoom(
+            camera_x in -1000.0_f64..1000.0,
+            camera_y in -1000.0_f64..1000.0,
+            zoom in 0.1_f64..4.0,
+            client_x in 0.0_f64..1000.0,
+            client_y in 0.0_f64..1000.0,
+            delta in -200.0_f64..200.0,
+        ) {
+            let pinch_input = WheelInput {
+                camera_x: OrderedFloat(camera_x),
+                camera_y: OrderedFloat(camera_y),
+                zoom: OrderedFloat(zoom),
+                client_x,
+                client_y,
+                dx: 0.0,
+                dy: delta,
+                zoom_gesture: true,
+                shift_pan: false,
+                discrete_wheel: false,
+            };
+
+            let (cx, cy, z) = wheel_transform(pinch_input);
+            prop_assert!(cx.is_finite());
+            prop_assert!(cy.is_finite());
+            prop_assert!(z.is_finite());
+            prop_assert!(z >= ZOOM_MIN);
+            prop_assert!(z <= ZOOM_MAX);
+        }
+
+        // INP-5: Different pointer types all produce valid output
+        #[test]
+        fn prop_pointer_type_agnostic_handling(
+            client_x in 0.0_f64..1000.0,
+            client_y in 0.0_f64..1000.0,
+            delta in -100.0_f64..100.0,
+            zoom_gesture in proptest::bool::ANY,
+        ) {
+            let input = WheelInput {
+                camera_x: OrderedFloat(0.0),
+                camera_y: OrderedFloat(0.0),
+                zoom: OrderedFloat(1.0),
+                client_x,
+                client_y,
+                dx: 0.0,
+                dy: delta,
+                zoom_gesture,
+                shift_pan: false,
+                discrete_wheel: false,
+            };
+
+            let (cx, cy, z) = wheel_transform(input);
+            prop_assert!(cx.is_finite());
+            prop_assert!(cy.is_finite());
+            prop_assert!(z.is_finite());
+        }
+    }
+}

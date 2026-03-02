@@ -1096,10 +1096,7 @@ mod inp_mobile_tests {
         let mouse_radius = touch_hit_radius(base_radius, false);
         let touch_radius = touch_hit_radius(base_radius, true);
 
-        assert_eq!(
-            mouse_radius, base_radius,
-            "Mouse should use base radius"
-        );
+        assert_eq!(mouse_radius, base_radius, "Mouse should use base radius");
         assert_eq!(
             touch_radius, TOUCH_HIT_RADIUS_PX,
             "Touch should use expanded minimum"

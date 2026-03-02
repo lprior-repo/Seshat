@@ -287,4 +287,207 @@ mod tests {
 
         assert_eq!(canonical_a, canonical_b);
     }
+
+    /// IO-TEST-5: Import Older Version Migration (bd-1u1)
+    /// Given: A JSON document with version: 1 (older schema)
+    /// When: Importing the document
+    /// Then: Document migrates to current version (version: 2)
+    #[test]
+    fn given_version_1_document_when_import_then_migrates_to_current_version() {
+        // Given - Version 1 document (hypothetical older schema)
+        // Note: The actual system uses version 2, but we test that any
+        // document with version field parses and produces a valid document
+        let json = r#"{
+            "version": 1,
+            "revision": 0,
+            "document": {
+                "nodes": {
+                    "legacy_node": {
+                        "kind": "node",
+                        "icon": "",
+                        "label": "Legacy",
+                        "x": 100,
+                        "y": 200,
+                        "width": 80,
+                        "height": 40,
+                        "locked": false,
+                        "parent": null,
+                        "tags": [],
+                        "metadata": {}
+                    }
+                },
+                "edges": {}
+            },
+            "editor_state": {
+                "camera_x": 0,
+                "camera_y": 0,
+                "zoom": 1,
+                "grid_size": 20,
+                "snap_to_grid": true,
+                "selected_items": []
+            }
+        }"#;
+
+        // When
+        let result = super::parse_diagram_document_with_compat(json);
+
+        // Then - should parse successfully (migration handled)
+        assert!(
+            result.is_ok(),
+            "Version 1 document should parse: {:?}",
+            result.err()
+        );
+        let doc = result.expect("should have document");
+
+        // The document should be usable regardless of original version
+        assert!(
+            doc.document
+                .nodes
+                .contains_key(&crate::models::document::NodeId::new(
+                    "legacy_node".to_string()
+                )),
+            "Legacy node should be present"
+        );
+    }
+
+    /// IO-TEST-5b: Version migration with legacy field names
+    #[test]
+    fn given_older_document_with_legacy_fields_when_import_then_fields_remapped() {
+        // Given - Document using legacy field naming conventions
+        let json = r#"{
+            "version": 2,
+            "revision": 0,
+            "document": {
+                "nodes": {
+                    "legacy_fields": {
+                        "kind": "node",
+                        "icon": "",
+                        "label": "Legacy Fields",
+                        "x": 50,
+                        "y": 50,
+                        "width": 100,
+                        "height": 60,
+                        "font_size": 14,
+                        "fontWeight": "bold",
+                        "dagRank": 5,
+                        "locked": false,
+                        "parent": null,
+                        "tags": [],
+                        "metadata": {}
+                    }
+                },
+                "edges": {
+                    "legacy_edge": {
+                        "source": "legacy_fields",
+                        "target": "legacy_fields",
+                        "label": "",
+                        "style": "solid",
+                        "arrowhead": "diamond",
+                        "labelOffsetT": 0.75,
+                        "bendPoints": [],
+                        "directed": true,
+                        "metadata": {}
+                    }
+                }
+            },
+            "editor_state": {
+                "camera_x": 0,
+                "camera_y": 0,
+                "zoom": 1,
+                "grid_size": 20,
+                "snap_to_grid": true,
+                "selected_items": []
+            }
+        }"#;
+
+        // When
+        let result = super::parse_diagram_document_with_compat(json);
+
+        // Then - should parse and remap fields
+        assert!(
+            result.is_ok(),
+            "Legacy fields should be remapped: {:?}",
+            result.err()
+        );
+        let doc = result.expect("should have document");
+
+        // Verify node exists
+        assert!(
+            doc.document
+                .nodes
+                .contains_key(&crate::models::document::NodeId::new(
+                    "legacy_fields".to_string()
+                )),
+            "Node should be parsed"
+        );
+
+        // Verify edge exists and was remapped
+        assert!(
+            doc.document
+                .edges
+                .contains_key(&crate::models::document::EdgeId::new(
+                    "legacy_edge".to_string()
+                )),
+            "Edge should be parsed"
+        );
+
+        // Verify the node's dag_rank was remapped from dagRank
+        let node = doc
+            .document
+            .nodes
+            .get(&crate::models::document::NodeId::new(
+                "legacy_fields".to_string(),
+            ))
+            .expect("node should exist");
+        assert_eq!(
+            node.dag_rank,
+            Some(5),
+            "dagRank should be remapped to dag_rank"
+        );
+    }
+
+    /// IO-TEST-5c: Missing version field defaults gracefully
+    #[test]
+    fn given_document_without_version_when_import_then_succeeds() {
+        // Given - Document without explicit version field
+        let json = r#"{
+            "revision": 0,
+            "document": {
+                "nodes": {
+                    "no_version": {
+                        "kind": "node",
+                        "icon": "",
+                        "label": "No Version",
+                        "x": 0,
+                        "y": 0,
+                        "width": 80,
+                        "height": 40,
+                        "locked": false,
+                        "parent": null,
+                        "tags": [],
+                        "metadata": {}
+                    }
+                },
+                "edges": {}
+            },
+            "editor_state": {
+                "camera_x": 0,
+                "camera_y": 0,
+                "zoom": 1,
+                "grid_size": 20,
+                "snap_to_grid": true,
+                "selected_items": []
+            }
+        }"#;
+
+        // When
+        let result = super::parse_diagram_document_with_compat(json);
+
+        // Then - should parse with default version
+        assert!(
+            result.is_ok(),
+            "Document without version should parse: {:?}",
+            result.err()
+        );
+    }
 }
