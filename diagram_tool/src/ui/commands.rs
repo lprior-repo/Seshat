@@ -44,15 +44,252 @@ pub enum DistributionAxis {
     Vertical,
 }
 
-#[derive(Clone)]
-struct ClipboardState {
-    nodes: Vec<(NodeId, Node)>,
-    edges: Vec<Edge>,
-    paste_serial: u32,
+/// Pure clipboard data type - immutable state for clipboard operations.
+///
+/// This replaces the mutable thread_local RefCell-based clipboard with
+/// a pure functional approach where clipboard state is passed explicitly.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Clipboard {
+    /// The nodes that were copied to the clipboard
+    pub nodes: Vec<(NodeId, Node)>,
+    /// The edges that were copied to the clipboard
+    pub edges: Vec<Edge>,
+    /// Serial number for tracking paste operations (for offset calculation)
+    pub paste_serial: u32,
 }
 
-thread_local! {
-    static CLIPBOARD: RefCell<Option<ClipboardState>> = const { RefCell::new(None) };
+impl Clipboard {
+    /// Creates a new empty clipboard
+    #[must_use]
+    pub const fn new() -> Self {
+        Self {
+            nodes: Vec::new(),
+            edges: Vec::new(),
+            paste_serial: 0,
+        }
+    }
+
+    /// Returns true if the clipboard has content that can be pasted
+    #[must_use]
+    pub const fn has_content(&self) -> bool {
+        !self.nodes.is_empty()
+    }
+
+    /// Prepares the clipboard for a paste operation by incrementing the serial
+    #[must_use]
+    pub fn prepare_paste(mut self) -> Self {
+        self.paste_serial = self.paste_serial.saturating_add(1);
+        self
+    }
+}
+
+impl Default for Clipboard {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
+/// Pure function: Checks if the given clipboard has pasteable content
+#[must_use]
+pub const fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
+    clipboard.as_ref().is_some_and(Clipboard::has_content)
+}
+
+/// Pure function: Creates a clipboard with the selected nodes and edges from the document.
+///
+/// Returns `None` if no nodes are selected, otherwise returns a new `Clipboard` with the
+/// selected content.
+#[must_use]
+pub fn copy_selection(doc: &DiagramDocument) -> Option<Clipboard> {
+    let selected_nodes = selected_node_ids(doc);
+    if selected_nodes.is_empty() {
+        return None;
+    }
+
+    let nodes = selected_nodes
+        .iter()
+        .filter_map(|id| {
+            doc.document
+                .nodes
+                .get(id)
+                .map(|node| (id.clone(), node.clone()))
+        })
+        .collect();
+
+    let edges = doc
+        .document
+        .edges
+        .iter()
+        .filter(|(_, edge)| {
+            selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
+        })
+        .map(|(_, edge)| edge.clone())
+        .collect();
+
+    Some(Clipboard {
+        nodes,
+        edges,
+        paste_serial: 0,
+    })
+}
+
+/// Pure function: Creates a clipboard for duplicate operations.
+///
+/// Unlike `copy_selection`, this sets `paste_serial` to 1 to indicate
+/// the content should be pasted with an offset.
+#[must_use]
+pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> {
+    let selected_nodes = selected_node_ids(doc);
+    if selected_nodes.is_empty() {
+        return None;
+    }
+
+    let nodes = selected_nodes
+        .iter()
+        .filter_map(|id| {
+            doc.document
+                .nodes
+                .get(id)
+                .map(|node| (id.clone(), node.clone()))
+        })
+        .collect();
+
+    let edges = doc
+        .document
+        .edges
+        .iter()
+        .filter(|(_, edge)| {
+            selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
+        })
+        .map(|(_, edge)| edge.clone())
+        .collect();
+
+    Some(Clipboard {
+        nodes,
+        edges,
+        paste_serial: 1,
+    })
+}
+
+/// Pure function: Pastes clipboard content into the document.
+///
+/// Returns `None` if the clipboard is empty or has no nodes.
+/// Otherwise returns a tuple of (updated_document, updated_clipboard).
+#[must_use]
+pub fn paste_contents(mut clipboard: Clipboard, doc: DiagramDocument) -> Option<(DiagramDocument, Clipboard)> {
+    if clipboard.nodes.is_empty() {
+        return None;
+    }
+
+    clipboard.paste_serial = clipboard.paste_serial.saturating_add(1);
+    let serial = clipboard.paste_serial;
+
+    let mut doc = doc;
+    let offset = 20.0 * f64::from(serial.max(1));
+    let id_map = clipboard
+        .nodes
+        .iter()
+        .map(|(old_id, _)| (old_id.clone(), NodeId::new(Uuid::new_v4().to_string())))
+        .collect::<HashMap<_, _>>();
+    let mut selected = im::HashSet::new();
+
+    for (old_id, node) in &clipboard.nodes {
+        let Some(new_id) = id_map.get(old_id).cloned() else {
+            continue;
+        };
+        let mut next = node.clone();
+        next.x = OrderedFloat(next.x.0 + offset);
+        next.y = OrderedFloat(next.y.0 + offset);
+        next.parent = remap_pasted_parent(next.parent, &id_map);
+        let _ = selected.insert(new_id.to_string());
+        let _ = doc.document.nodes.insert(new_id, next);
+    }
+
+    for edge in &clipboard.edges {
+        if let (Some(new_source), Some(new_target)) =
+            (id_map.get(&edge.source), id_map.get(&edge.target))
+        {
+            let mut next = edge.clone();
+            next.source = new_source.clone();
+            next.target = new_target.clone();
+            let new_edge_id = crate::models::document::EdgeId::new(Uuid::new_v4().to_string());
+            let _ = doc.document.edges.insert(new_edge_id, next);
+        }
+    }
+
+    doc.editor_state.selected_items = selected;
+    doc.revision = doc.revision.increment();
+
+    Some((doc, clipboard))
+}
+
+/// Public API: Applies copy operation using a clipboard signal.
+///
+/// This function maintains backward compatibility with the existing API
+/// by using a Dioxus signal for clipboard state management.
+pub fn apply_copy_selection(
+    mut doc_signal: Signal<DiagramDocument>,
+    mut clipboard_signal: Signal<Option<Clipboard>>,
+) -> bool {
+    let doc = doc_signal.read().clone();
+    if let Some(clipboard) = copy_selection(&doc) {
+        clipboard_signal.set(Some(clipboard));
+        true
+    } else {
+        false
+    }
+}
+
+/// Public API: Applies paste operation using a clipboard signal.
+///
+/// Returns true if paste was successful, false otherwise.
+pub fn apply_paste_selection(
+    mut doc_signal: Signal<DiagramDocument>,
+    mut clipboard_signal: Signal<Option<Clipboard>>,
+    history_signal: Signal<History>,
+) -> bool {
+    let current = doc_signal.read().clone();
+    let clipboard = clipboard_signal.read().clone();
+
+    let Some(clipboard) = clipboard else {
+        return false;
+    };
+
+    let Some((new_doc, new_clipboard)) = paste_contents(clipboard, current) else {
+        return false;
+    };
+
+    push_history(history_signal, doc_signal.read().clone());
+    doc_signal.set(new_doc);
+    clipboard_signal.set(Some(new_clipboard));
+    true
+}
+
+/// Public API: Applies duplicate operation.
+///
+/// This is equivalent to copy followed by paste, but uses paste_serial=1
+/// to ensure the duplicated content is offset from the original.
+pub fn apply_duplicate_selection(
+    mut doc_signal: Signal<DiagramDocument>,
+    mut clipboard_signal: Signal<Option<Clipboard>>,
+    history_signal: Signal<History>,
+) -> bool {
+    let doc = doc_signal.read().clone();
+    let Some(clipboard) = copy_selection_for_duplicate(&doc) else {
+        return false;
+    };
+
+    let Some((new_doc, _)) = paste_contents(clipboard, doc) else {
+        return false;
+    };
+
+    // Update clipboard with the duplicated content (for subsequent pastes)
+    let updated_clipboard = copy_selection_for_duplicate(&new_doc);
+
+    push_history(history_signal, doc_signal.read().clone());
+    doc_signal.set(new_doc);
+    clipboard_signal.set(updated_clipboard);
+    true
 }
 
 fn selected_node_ids(doc: &DiagramDocument) -> BTreeSet<NodeId> {
@@ -345,177 +582,6 @@ pub fn apply_nudge_selection(
             }
         }
         doc.revision = doc.revision.increment();
-    });
-    true
-}
-
-pub fn clipboard_has_content() -> bool {
-    CLIPBOARD.with(|slot| {
-        slot.borrow()
-            .as_ref()
-            .is_some_and(|state| !state.nodes.is_empty())
-    })
-}
-
-pub fn apply_copy_selection(doc_signal: Signal<DiagramDocument>) -> bool {
-    let doc = doc_signal.read();
-    copy_selection_to_clipboard(&doc)
-}
-
-fn copy_selection_to_clipboard(doc: &DiagramDocument) -> bool {
-    let selected_nodes = selected_node_ids(doc);
-    if selected_nodes.is_empty() {
-        return false;
-    }
-
-    let nodes = selected_nodes
-        .iter()
-        .filter_map(|id| {
-            doc.document
-                .nodes
-                .get(id)
-                .map(|node| (id.clone(), node.clone()))
-        })
-        .collect::<Vec<_>>();
-
-    let edges = doc
-        .document
-        .edges
-        .iter()
-        .filter(|(_, edge)| {
-            selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
-        })
-        .map(|(_, edge)| edge.clone())
-        .collect::<Vec<_>>();
-
-    CLIPBOARD.with(|slot| {
-        *slot.borrow_mut() = Some(ClipboardState {
-            nodes,
-            edges,
-            paste_serial: 0,
-        });
-    });
-    true
-}
-
-fn paste_from(
-    nodes: Vec<(NodeId, Node)>,
-    edges: Vec<Edge>,
-    serial: u32,
-    doc: &mut DiagramDocument,
-) {
-    let offset = 20.0 * f64::from(serial.max(1));
-    let id_map = nodes
-        .iter()
-        .map(|(old_id, _)| (old_id.clone(), NodeId::new(Uuid::new_v4().to_string())))
-        .collect::<HashMap<_, _>>();
-    let mut selected = im::HashSet::new();
-
-    for (old_id, node) in nodes {
-        let Some(new_id) = id_map.get(&old_id).cloned() else {
-            continue;
-        };
-        let mut next = node;
-        next.x = OrderedFloat(next.x.0 + offset);
-        next.y = OrderedFloat(next.y.0 + offset);
-        next.parent = remap_pasted_parent(next.parent, &id_map);
-        let _ = selected.insert(new_id.to_string());
-        let _ = doc.document.nodes.insert(new_id, next);
-    }
-
-    for edge in edges {
-        if let (Some(new_source), Some(new_target)) =
-            (id_map.get(&edge.source), id_map.get(&edge.target))
-        {
-            let mut next = edge;
-            next.source = new_source.clone();
-            next.target = new_target.clone();
-            let new_edge_id = crate::models::document::EdgeId::new(Uuid::new_v4().to_string());
-            let _ = doc.document.edges.insert(new_edge_id, next);
-        }
-    }
-
-    doc.editor_state.selected_items = selected;
-    doc.revision = doc.revision.increment();
-}
-
-pub fn apply_paste_selection(
-    mut doc_signal: Signal<DiagramDocument>,
-    history_signal: Signal<History>,
-) -> bool {
-    let current = doc_signal.read().clone();
-    let did_paste = doc_signal.with_mut(paste_from_clipboard);
-    if did_paste {
-        push_history(history_signal, current);
-    }
-    did_paste
-}
-
-fn paste_from_clipboard(doc: &mut DiagramDocument) -> bool {
-    let clipboard = CLIPBOARD.with(|slot| {
-        let mut state = slot.borrow_mut();
-        state.as_mut().map(|clip| {
-            clip.paste_serial = clip.paste_serial.saturating_add(1);
-            (clip.nodes.clone(), clip.edges.clone(), clip.paste_serial)
-        })
-    });
-
-    let Some((nodes, edges, serial)) = clipboard else {
-        return false;
-    };
-    if nodes.is_empty() {
-        return false;
-    }
-
-    paste_from(nodes, edges, serial, doc);
-    true
-}
-
-pub fn apply_duplicate_selection(
-    mut doc_signal: Signal<DiagramDocument>,
-    history_signal: Signal<History>,
-) -> bool {
-    let (nodes, edges) = {
-        let doc = doc_signal.read();
-        let selected_nodes = selected_node_ids(&doc);
-        if selected_nodes.is_empty() {
-            return false;
-        }
-
-        let nodes = selected_nodes
-            .iter()
-            .filter_map(|id| {
-                doc.document
-                    .nodes
-                    .get(id)
-                    .map(|node| (id.clone(), node.clone()))
-            })
-            .collect::<Vec<_>>();
-
-        let edges = doc
-            .document
-            .edges
-            .iter()
-            .filter(|(_, edge)| {
-                selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
-            })
-            .map(|(_, edge)| edge.clone())
-            .collect::<Vec<_>>();
-
-        CLIPBOARD.with(|slot| {
-            *slot.borrow_mut() = Some(ClipboardState {
-                nodes: nodes.clone(),
-                edges: edges.clone(),
-                paste_serial: 1,
-            });
-        });
-
-        (nodes, edges)
-    };
-
-    push_history(history_signal, doc_signal.read().clone());
-    doc_signal.with_mut(|doc| {
-        paste_from(nodes, edges, 1, doc);
     });
     true
 }
@@ -1170,10 +1236,6 @@ mod tests {
         assert!(doc.editor_state.zoom.0.is_finite());
     }
 
-    fn clear_clipboard() {
-        CLIPBOARD.with(|s| *s.borrow_mut() = None);
-    }
-
     fn make_node(label: &str, x: f64, y: f64) -> Node {
         Node {
             kind: NodeKind::Node,
@@ -1239,87 +1301,77 @@ mod tests {
         (doc, edge_id)
     }
 
+    // Pure clipboard function tests
+
     #[test]
-    fn given_empty_selection_when_copy_then_returns_false() {
-        clear_clipboard();
+    fn given_empty_selection_when_copy_then_returns_none() {
         let doc = DiagramDocument::default();
-        let result = copy_selection_to_clipboard(&doc);
-        assert!(!result);
-        CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
+        let result = copy_selection(&doc);
+        assert!(result.is_none());
     }
 
     #[test]
     fn given_single_node_selected_when_copy_then_succeeds() {
-        clear_clipboard();
         let mut doc = make_doc_with_node("node-1", 100.0, 50.0);
         let _ = doc.editor_state.selected_items.insert("node-1".to_string());
 
-        let result = copy_selection_to_clipboard(&doc);
+        let result = copy_selection(&doc);
 
-        assert!(result);
-        CLIPBOARD.with(|s| {
-            let clip = s.borrow();
-            let clip_ref = clip.as_ref();
-            assert!(clip_ref.is_some());
-            if let Some(c) = clip_ref {
-                assert_eq!(c.nodes.len(), 1);
-                assert!(c.edges.is_empty());
-                assert_eq!(c.paste_serial, 0);
-            }
-        });
+        assert!(result.is_some());
+        let clipboard = result.unwrap();
+        assert_eq!(clipboard.nodes.len(), 1);
+        assert!(clipboard.edges.is_empty());
+        assert_eq!(clipboard.paste_serial, 0);
     }
 
     #[test]
     fn given_multiple_nodes_selected_when_copy_then_includes_edges() {
-        clear_clipboard();
         let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
 
-        let result = copy_selection_to_clipboard(&doc);
+        let result = copy_selection(&doc);
 
-        assert!(result);
-        CLIPBOARD.with(|s| {
-            let clip = s.borrow();
-            let clip_ref = clip.as_ref();
-            assert!(clip_ref.is_some());
-            if let Some(c) = clip_ref {
-                assert_eq!(c.nodes.len(), 2);
-                assert_eq!(c.edges.len(), 1);
-            }
-        });
+        assert!(result.is_some());
+        let clipboard = result.unwrap();
+        assert_eq!(clipboard.nodes.len(), 2);
+        assert_eq!(clipboard.edges.len(), 1);
     }
 
     #[test]
-    fn given_empty_clipboard_when_paste_then_returns_false() {
-        clear_clipboard();
-        let mut doc = DiagramDocument::default();
+    fn given_empty_clipboard_when_paste_then_returns_none() {
+        let clipboard = Clipboard::new();
+        let doc = DiagramDocument::default();
         let node_count_before = doc.document.nodes.len();
 
-        let result = paste_from_clipboard(&mut doc);
+        let result = paste_contents(clipboard, doc);
 
-        assert!(!result);
-        assert_eq!(doc.document.nodes.len(), node_count_before);
+        assert!(result.is_none());
+        // Document should not be modified
+        let (_, returned_doc) = result.unwrap_or_default();
+        assert_eq!(returned_doc.document.nodes.len(), node_count_before);
     }
 
     #[test]
     fn given_copied_nodes_when_paste_then_creates_new_ids() {
-        clear_clipboard();
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
         let _ = doc
             .editor_state
             .selected_items
             .insert("original-node".to_string());
 
-        let copy_result = copy_selection_to_clipboard(&doc);
-        assert!(copy_result);
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+        assert!(clipboard.has_content());
 
-        let paste_result = paste_from_clipboard(&mut doc);
-        assert!(paste_result);
+        let Some((new_doc, _)) = paste_contents(clipboard, doc) else {
+            panic!("Paste should succeed");
+        };
 
-        assert_eq!(doc.document.nodes.len(), 2);
+        assert_eq!(new_doc.document.nodes.len(), 2);
         let original_id = NodeId::new("original-node".to_string());
-        let pasted_ids: Vec<_> = doc
+        let pasted_ids: Vec<_> = new_doc
             .document
             .nodes
             .keys()
@@ -1330,18 +1382,22 @@ mod tests {
 
     #[test]
     fn given_copied_nodes_when_paste_then_applies_offset() {
-        clear_clipboard();
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
         let _ = doc
             .editor_state
             .selected_items
             .insert("original-node".to_string());
 
-        let _ = copy_selection_to_clipboard(&doc);
-        let _ = paste_from_clipboard(&mut doc);
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+
+        let Some((new_doc, _)) = paste_contents(clipboard, doc) else {
+            panic!("Paste should succeed");
+        };
 
         let original_id = NodeId::new("original-node".to_string());
-        let pasted_node = doc
+        let pasted_node = new_doc
             .document
             .nodes
             .iter()
@@ -1733,6 +1789,127 @@ mod tests {
             revision_before.increment(),
             "revision should be incremented after successful paste"
         );
+    }
+
+    #[test]
+    fn given_clipboard_when_has_content_then_returns_true() {
+        let clipboard = Clipboard {
+            nodes: vec![(
+                NodeId::new("test".to_string()),
+                make_node("test", 0.0, 0.0),
+            )],
+            edges: Vec::new(),
+            paste_serial: 0,
+        };
+        assert!(clipboard.has_content());
+    }
+
+    #[test]
+    fn given_empty_clipboard_when_has_content_then_returns_false() {
+        let clipboard = Clipboard::new();
+        assert!(!clipboard.has_content());
+    }
+
+    #[test]
+    fn given_none_clipboard_when_clipboard_has_content_then_returns_false() {
+        assert!(!clipboard_has_content(&None));
+    }
+
+    #[test]
+    fn given_some_clipboard_when_clipboard_has_content_then_reflects_content() {
+        let empty = Clipboard::new();
+        assert!(!clipboard_has_content(&Some(empty)));
+
+        let with_content = Clipboard {
+            nodes: vec![(
+                NodeId::new("test".to_string()),
+                make_node("test", 0.0, 0.0),
+            )],
+            edges: Vec::new(),
+            paste_serial: 0,
+        };
+        assert!(clipboard_has_content(&Some(with_content)));
+    }
+
+    #[test]
+    fn given_clipboard_when_prepare_paste_then_increments_serial() {
+        let clipboard = Clipboard {
+            nodes: vec![(
+                NodeId::new("test".to_string()),
+                make_node("test", 0.0, 0.0),
+            )],
+            edges: Vec::new(),
+            paste_serial: 0,
+        };
+
+        let prepared = clipboard.prepare_paste();
+        assert_eq!(prepared.paste_serial, 1);
+
+        let prepared_again = prepared.prepare_paste();
+        assert_eq!(prepared_again.paste_serial, 2);
+    }
+
+    #[test]
+    fn given_selection_when_copy_selection_for_duplicate_then_sets_serial_to_1() {
+        let mut doc = make_doc_with_node("node-1", 100.0, 50.0);
+        let _ = doc.editor_state.selected_items.insert("node-1".to_string());
+
+        let Some(clipboard) = copy_selection_for_duplicate(&doc) else {
+            panic!("Copy should succeed");
+        };
+
+        assert_eq!(clipboard.paste_serial, 1);
+        assert!(!clipboard.nodes.is_empty());
+    }
+
+    #[test]
+    fn given_multiple_pastes_then_offset_increases() {
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+
+        // First paste
+        let Some((doc1, clipboard1)) = paste_contents(clipboard, doc) else {
+            panic!("First paste should succeed");
+        };
+
+        // Second paste
+        let Some((doc2, _)) = paste_contents(clipboard1, doc1) else {
+            panic!("Second paste should succeed");
+        };
+
+        assert_eq!(doc2.document.nodes.len(), 3); // Original + 2 pasted
+
+        // Check that the second paste has more offset
+        let original_id = NodeId::new("original-node".to_string());
+        let pasted_nodes: Vec<_> = doc2
+            .document
+            .nodes
+            .iter()
+            .filter(|(id, _)| *id != &original_id)
+            .map(|(_, node)| node.clone())
+            .collect();
+
+        assert_eq!(pasted_nodes.len(), 2);
+
+        // First paste should be at (120, 70)
+        // Second paste should be at (140, 90) - offset increases with serial
+        let mut positions: Vec<_> = pasted_nodes
+            .iter()
+            .map(|n| (n.x.0, n.y.0))
+            .collect();
+        positions.sort_by_key(|&(x, y)| (x as i64, y as i64));
+
+        assert_eq!(positions[0].0, 120.0);
+        assert_eq!(positions[0].1, 70.0);
+        assert_eq!(positions[1].0, 140.0);
+        assert_eq!(positions[1].1, 90.0);
     }
 
     #[test]
@@ -2814,7 +2991,7 @@ mod proptests {
             let mut doc = make_doc_for_prop(f64::NAN, 0.0, 0.0);
             let _ = zoom_to_center(&mut doc, factor, viewport);
 
-            prop_assert!(doc.editor_state.zoom.0.is_finite());
+            prop_assert!(doc.editor_state.zoom.0.is_finite);
             prop_assert!(doc.editor_state.zoom.0 >= 0.1);
             prop_assert!(doc.editor_state.zoom.0 <= 4.0);
         }
@@ -2827,7 +3004,7 @@ mod proptests {
             let mut doc = make_doc_for_prop(f64::INFINITY, 0.0, 0.0);
             let _ = zoom_to_center(&mut doc, factor, viewport);
 
-            prop_assert!(doc.editor_state.zoom.0.is_finite());
+            prop_assert!(doc.editor_state.zoom.0.is_finite);
         }
 
         #[test]
