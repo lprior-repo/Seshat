@@ -41,3 +41,6 @@ dont-fuck-up/
 # Codanna
 .codanna/
 .codannaignore
+
+# Vendored third-party resources
+third_party/
