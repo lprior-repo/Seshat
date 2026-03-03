@@ -1,8 +1,0 @@
-{"timestamp":"2026-03-01T21:09:53Z","bead_id":"bd-320","phase":"p0","actor":"orchestrator","action":"bead claimed","command":"br update bd-320 --status in_progress --assignee self","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T21:10:00Z","bead_id":"bd-320","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-320","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T21:10:05Z","bead_id":"bd-320","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract file exists","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T21:28:00Z","bead_id":"bd-320","phase":"p1","actor":"functional-rust","action":"implementation complete","command":"cargo check -p diagram_tool","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T21:29:00Z","bead_id":"bd-320","phase":"p2","actor":"orchestrator","action":"moon test","command":"cargo test -p diagram_tool harness","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T21:26:00Z","bead_id":"bd-320","phase":"p3","actor":"qa-enforcer","action":"qa verification","command":"cargo test -p diagram_tool harness","exit_code":0,"stdout":"37 passed; 0 failed","stderr":"","replay":false}
-{"timestamp":"2026-03-01T21:26:11Z","bead_id":"bd-320","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-320","exit_code":0,"stdout":"Closed bd-320","stderr":"","replay":false}
-{"timestamp":"2026-03-01T21:26:30Z","bead_id":"bd-320","phase":"p4","actor":"orchestrator","action":"workspace cleanup","command":"jj workspace forget bd-320","exit_code":0,"replay":false}

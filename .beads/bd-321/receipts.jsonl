@@ -1,9 +1,0 @@
-{"bead_id":"bd-321","phase":"p0","actor":"orchestrator","action":"bead claimed","command":"br update bd-321 --status in_progress --assignee self","exit_code":0,"timestamp":"2026-03-01T00:38:54Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-321","exit_code":0,"timestamp":"2026-03-01T00:39:00Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract file created from BR bead","exit_code":0,"timestamp":"2026-03-01T00:42:00Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p1","actor":"functional-rust","action":"implementation complete","command":"edit interaction_reducer.rs with 5 tests","exit_code":0,"timestamp":"2026-03-01T00:48:00Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p2","actor":"orchestrator","action":"cargo check","command":"cargo check -p diagram_tool","exit_code":0,"timestamp":"2026-03-01T00:50:00Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p2","actor":"orchestrator","action":"cargo test","command":"cargo test -p diagram_tool subgraph","exit_code":0,"timestamp":"2026-03-01T00:52:00Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p4","actor":"orchestrator","action":"bead closed","command":"br close bd-321","exit_code":0,"timestamp":"2026-03-01T00:49:03Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p4","actor":"orchestrator","action":"workspace cleanup","command":"jj workspace forget bd-321","exit_code":0,"timestamp":"2026-03-01T00:49:20Z","is_replay":false}
-{"bead_id":"bd-321","phase":"p4","actor":"orchestrator","action":"landing replay","command":"jj log -r main","exit_code":0,"timestamp":"2026-03-01T00:49:30Z","is_replay":true}

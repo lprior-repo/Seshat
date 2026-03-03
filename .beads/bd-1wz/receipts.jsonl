@@ -1,8 +1,0 @@
-{"timestamp":"2026-03-01T22:55:22Z","bead_id":"bd-1wz","phase":"p0","actor":"orchestrator","action":"bead claimed","command":"br update bd-1wz --status in_progress --assignee self","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T22:55:30Z","bead_id":"bd-1wz","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-1wz","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T22:55:45Z","bead_id":"bd-1wz","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract file derived from bead analysis","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T23:05:00Z","bead_id":"bd-1wz","phase":"p1","actor":"functional-rust","action":"implementation complete","command":"edit cli.rs and cli_events_tests.rs","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T23:08:00Z","bead_id":"bd-1wz","phase":"p2","actor":"orchestrator","action":"moon check","command":"moon run :check","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T23:10:00Z","bead_id":"bd-1wz","phase":"p2","actor":"orchestrator","action":"moon test","command":"moon run :test","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T23:10:30Z","bead_id":"bd-1wz","phase":"p2","actor":"orchestrator","action":"unit tests pass","command":"cargo test --package diagram_tool cli_event_tests","exit_code":0,"replay":false}
-{"timestamp":"2026-03-01T23:10:45Z","bead_id":"bd-1wz","phase":"p2","actor":"orchestrator","action":"e2e tests pass","command":"cargo test --package diagram_tool --test cli_e2e","exit_code":0,"replay":false}

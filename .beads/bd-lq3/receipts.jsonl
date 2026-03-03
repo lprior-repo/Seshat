@@ -1,5 +1,0 @@
-{"timestamp": "2026-03-01T22:38:00Z", "phase": "p0", "actor": "orchestrator", "action": "bead claimed", "command": "br show bd-lq3 --json", "exit_code": 0, "stdout_file": null, "stderr_file": null, "replay": false}
-{"timestamp": "2026-03-01T22:40:00Z", "phase": "p0", "actor": "orchestrator", "action": "contract resolved", "command": "cat > .beads/bd-lq3/contract.md", "exit_code": 0, "stdout_file": null, "stderr_file": null, "replay": false}
-{"timestamp": "2026-03-01T22:42:00Z", "phase": "p1", "actor": "functional-rust", "action": "implementation created", "command": "write diagram.subgraph-behavior.spec.ts", "exit_code": 0, "stdout_file": null, "stderr_file": null, "replay": false}
-{"timestamp": "2026-03-01T22:45:00Z", "phase": "p1", "actor": "orchestrator", "action": "implementation documented", "command": "write implementation.md", "exit_code": 0, "stdout_file": null, "stderr_file": null, "replay": false}
-{"timestamp": "2026-03-01T22:50:00Z", "phase": "p2", "actor": "orchestrator", "action": "verification documented", "command": "write verification.md", "exit_code": 0, "stdout_file": null, "stderr_file": null, "replay": false}

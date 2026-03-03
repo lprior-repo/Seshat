@@ -1,8 +1,0 @@
-{"bead_id":"bd-387","phase":"p0","actor":"orchestrator","action":"bead claimed","command":"br update bd-387 --status in_progress --assignee self","exit_code":0,"timestamp":"2026-03-02T00:38:51Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p0","actor":"orchestrator","action":"workspace isolated","command":"jj workspace add ../bd-387","exit_code":0,"timestamp":"2026-03-02T00:39:00Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p0","actor":"orchestrator","action":"contract resolved","command":"contract file exists or derived from BR bead","exit_code":0,"timestamp":"2026-03-02T00:39:10Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p1","actor":"functional-rust","action":"tests implemented","command":"Added 5 multi-select resize edge case tests to interaction_reducer.rs","exit_code":0,"timestamp":"2026-03-02T00:45:00Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p2","actor":"orchestrator","action":"cargo check","command":"/usr/bin/cargo check","exit_code":0,"timestamp":"2026-03-02T00:48:00Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p2","actor":"orchestrator","action":"cargo clippy","command":"/usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic","exit_code":0,"timestamp":"2026-03-02T00:48:30Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p2","actor":"orchestrator","action":"cargo test","command":"/usr/bin/cargo test","exit_code":0,"timestamp":"2026-03-02T00:50:00Z","is_replay":false}
-{"bead_id":"bd-387","phase":"p2","actor":"orchestrator","action":"cargo fmt","command":"/usr/bin/cargo fmt --check","exit_code":0,"timestamp":"2026-03-02T00:50:30Z","is_replay":false}
