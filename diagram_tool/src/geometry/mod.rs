@@ -12,6 +12,9 @@
 #![allow(clippy::cast_precision_loss)]
 #![forbid(unsafe_code)]
 
+// Snap and alignment module (SNP-001 through SNP-010)
+pub mod snap;
+
 /// Represents a 2D point
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct Point {

@@ -1,0 +1,22 @@
+{
+  "id": "bd-1l3",
+  "title": "viewport: Fix viewport zoom/pan operations (CAM-001 to CAM-012)",
+  "priority": "P2",
+  "type": "feature",
+  "status": "completed",
+  "created": "2026-03-03",
+  "completed": "2026-03-03",
+  "test_cases": 12,
+  "tests_passed": 55,
+  "files_created": [
+    "diagram_tool/src/viewport/mod.rs",
+    "diagram_tool/src/viewport/transform.rs",
+    "diagram_tool/src/viewport/operations.rs",
+    "diagram_tool/src/viewport/tests.rs",
+    ".beads/bd-1l3/contract-spec.md",
+    ".beads/bd-1l3/martin-fowler-tests.md"
+  ],
+  "files_modified": [
+    "diagram_tool/src/lib.rs"
+  ]
+}

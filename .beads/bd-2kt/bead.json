@@ -1,0 +1,45 @@
+{
+  "id": "bd-2kt",
+  "title": "history: Fix undo/redo reliability (HIS-001 to HIS-013)",
+  "priority": "P1",
+  "type": "feature",
+  "status": "complete",
+  "created": "2026-03-03",
+  "completed": "2026-03-03",
+  "files": [
+    "diagram_tool/src/history.rs"
+  ],
+  "tests": {
+    "total": 51,
+    "passed": 51,
+    "failed": 0,
+    "his_tests": {
+      "HIS-001": "pass",
+      "HIS-002": "pass",
+      "HIS-003": "pass",
+      "HIS-004": "pass",
+      "HIS-005": "pass",
+      "HIS-006": "pass",
+      "HIS-007": "pass",
+      "HIS-008": "pass",
+      "HIS-009": "pass",
+      "HIS-010": "pass",
+      "HIS-011": "pass",
+      "HIS-012": "pass",
+      "HIS-013": "pass"
+    }
+  },
+  "quality": {
+    "zero_unwrap": true,
+    "zero_expect": true,
+    "zero_panic": true,
+    "zero_unsafe": true
+  },
+  "deliverables": [
+    ".beads/bd-2kt/contract-spec.md",
+    ".beads/bd-2kt/martin-fowler-tests.md",
+    ".beads/bd-2kt/adversarial-tests.md",
+    ".beads/bd-2kt/verification-report.md",
+    ".beads/bd-2kt/bead.json"
+  ]
+}

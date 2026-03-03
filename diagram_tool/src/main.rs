@@ -22,7 +22,9 @@ mod icons;
 mod layout;
 mod models;
 mod mutation;
+mod perf;
 mod store;
+mod test_harness;
 mod ui;
 
 use crate::app::App;
