@@ -44,3 +44,7 @@ dont-fuck-up/
 
 # Vendored third-party resources
 third_party/
+
+# Dolt database files (added by bd init)
+.dolt/
+*.db
