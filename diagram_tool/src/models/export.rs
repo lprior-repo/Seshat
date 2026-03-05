@@ -422,7 +422,7 @@ pub fn import_diagram_json(
                 // If found > expected, someone else wrote - this is a conflict.
                 if found <= exp {
                     // Idempotent case - event likely already exists, skip but count as processed
-                    events_generated += 1;
+                    events_imported += 1;
                 } else {
                     // Conflict - return error for retry
                     return Err(ExportError::Conflict {

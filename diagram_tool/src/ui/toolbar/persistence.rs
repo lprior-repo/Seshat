@@ -2,7 +2,7 @@ use crate::history::History;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
-use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
+use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
 use crate::ui::editor::ToolMode;
 use crate::ui::toast::{ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue, ToastUpdate};
 use dioxus::prelude::*;

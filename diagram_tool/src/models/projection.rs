@@ -217,8 +217,8 @@ pub fn replay_events_from(
     initial_state: DiagramProjection,
     events: &[EventRecord],
 ) -> Result<DiagramProjection, ReplayError> {
-    // Validate revision sequence starts from initial state's revision
-    let mut expected_revision = initial_state.revision;
+    // Validate revision sequence starts from initial state's next revision
+    let mut expected_revision = initial_state.revision + 1;
     for event in events {
         if event.revision != expected_revision {
             return Err(ReplayError::InvariantViolation(format!(

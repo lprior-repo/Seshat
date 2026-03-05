@@ -737,7 +737,6 @@ impl RecoveryHandle {
                     "timestamp": timestamp
                 })
             })
-            .map_err(RecoveryError::Sqlite)?
             .collect::<Result<Vec<_>, _>>()
             .map_err(|e| RecoveryError::Sqlite(e))?;
 
