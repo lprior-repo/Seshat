@@ -178,7 +178,7 @@ impl SnapNode {
     }
 
     #[must_use]
-    pub fn center(&self) -> Point {
+    pub const fn center(&self) -> Point {
         Point::new(self.center_x(), self.center_y())
     }
 }
@@ -227,7 +227,7 @@ impl SnapState {
 ///
 /// # Postconditions
 /// - Returned coordinates are multiples of `grid_size`
-/// - Original position preserved if grid_size is invalid
+/// - Original position preserved if `grid_size` is invalid
 #[must_use]
 pub fn snap_to_grid(point: Point, grid_size: f64) -> Point {
     // P1: Validate grid size
@@ -265,6 +265,7 @@ pub fn is_on_grid(value: f64, grid_size: f64) -> bool {
 /// # Postconditions
 /// - Returns Some(Point) if snap applied, None otherwise
 /// - Snapped point is within threshold of a guide
+#[must_use]
 pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<Point> {
     // P2: Validate threshold
     if threshold < 0.0 || !threshold.is_finite() {
