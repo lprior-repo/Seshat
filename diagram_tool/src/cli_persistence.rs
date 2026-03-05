@@ -19,7 +19,7 @@ use crate::models::schema::validate_schema;
 use serde::Serialize;
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Errors that can occur during CLI persistence operations.
@@ -42,6 +42,60 @@ pub enum CliPersistenceError {
 
     #[error("Both primary and LKG files failed to load: {0}")]
     NoValidDocument(String),
+
+    #[error("Path traversal denied: path '{path}' escapes allowed directory")]
+    PathTraversalDenied { path: String },
+}
+
+/// Validates that a path stays within the allowed base directory.
+///
+/// This function prevents path traversal attacks by:
+/// 1. Canonicalizing the input path (resolves `..`, symlinks, relative paths)
+/// 2. Canonicalizing the base directory
+/// 3. Ensuring the canonicalized path starts with the base directory
+///
+/// # Errors
+///
+/// Returns `CliPersistenceError::PathTraversalDenied` if:
+/// - The path resolves to a location outside the base directory
+/// - The path is an absolute path outside the cwd
+/// - Canonicalization fails for any reason
+pub fn validate_safe_path(path: &Path, base_dir: &Path) -> Result<PathBuf, CliPersistenceError> {
+    // Canonicalize the base directory
+    let canonical_base = base_dir
+        .canonicalize()
+        .map_err(|_e| CliPersistenceError::PathTraversalDenied {
+            path: path.to_string_lossy().to_string(),
+        })?;
+
+    // For the input path, we need to handle both relative and absolute paths
+    // If the path is relative, resolve it relative to the base directory
+    let resolved_path = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_dir.join(path)
+    };
+
+    // Canonicalize the resolved path
+    let canonical_path = resolved_path
+        .canonicalize()
+        .map_err(|_e| CliPersistenceError::PathTraversalDenied {
+            path: path.to_string_lossy().to_string(),
+        })?;
+
+    // Check if canonical path starts with the canonical base directory
+    let canonical_base_str = canonical_base.to_string_lossy();
+    let canonical_path_str = canonical_path.to_string_lossy();
+
+    if !canonical_path_str.as_ref().starts_with(canonical_base_str.as_ref())
+        && canonical_path_str.as_ref() != canonical_base_str.as_ref()
+    {
+        return Err(CliPersistenceError::PathTraversalDenied {
+            path: path.to_string_lossy().to_string(),
+        });
+    }
+
+    Ok(canonical_path)
 }
 
 /// Details for stage event emissions.
@@ -480,5 +534,91 @@ mod tests {
             !has_temp_files,
             "Temp files should be cleaned up after atomic save"
         );
+    }
+
+    // === Path Traversal Prevention Tests ===
+
+    #[test]
+    fn given_simple_filename_when_validated_then_allowed() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        let path = Path::new("diagram.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_ok(), "Simple filename should be allowed");
+    }
+
+    #[test]
+    fn given_path_traversal_when_validated_then_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // This tries to escape the base directory
+        let path = Path::new("../../etc/passwd");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err(),
+            Some(CliPersistenceError::PathTraversalDenied { .. })
+        ));
+    }
+
+    #[test]
+    fn given_absolute_path_outside_cwd_when_validated_then_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // Absolute path outside the base directory
+        let path = Path::new("/etc/shadow");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err(),
+            Some(CliPersistenceError::PathTraversalDenied { .. })
+        ));
+    }
+
+    #[test]
+    fn given_sibling_escape_when_validated_then_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // Path that tries to escape via .. after canonicalization
+        let path = Path::new("diagram/../sibling.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        // This should be rejected because canonicalization resolves ../
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err(),
+            Some(CliPersistenceError::PathTraversalDenied { .. })
+        ));
+    }
+
+    #[test]
+    fn given_valid_subpath_when_validated_then_allowed() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // Valid path inside the base directory
+        let path = Path::new("subdir/diagram.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_ok(), "Valid subdirectory path should be allowed");
+    }
+
+    #[test]
+    fn given_relative_path_with_dot_prefix_when_validated_then_allowed() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // ./diagram.json is equivalent to diagram.json
+        let path = Path::new("./diagram.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_ok(), "Path with ./ prefix should be allowed");
     }
 }
