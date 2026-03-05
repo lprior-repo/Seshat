@@ -866,7 +866,12 @@ fn apply_send_to_back(
         .filter(|id| selected.contains(*id))
         .cloned()
         .collect();
-    reordered.extend(node_ids.iter().filter(|id| !selected.contains(*id)).cloned());
+    reordered.extend(
+        node_ids
+            .iter()
+            .filter(|id| !selected.contains(*id))
+            .cloned(),
+    );
     node_ids = reordered;
 
     let min_z = node_ids
@@ -893,10 +898,7 @@ fn apply_group(
         return Ok(state);
     }
 
-    let node_ids: Vec<NodeId> = ids
-        .iter()
-        .map(|s| NodeId::new(s.clone()))
-        .collect();
+    let node_ids: Vec<NodeId> = ids.iter().map(|s| NodeId::new(s.clone())).collect();
 
     let valid_ids: Vec<NodeId> = node_ids
         .iter()
@@ -970,10 +972,7 @@ fn apply_group(
 }
 
 /// Apply Ungroup operation - removes the subgraph node and clears parent on all children
-fn apply_ungroup(
-    mut state: DiagramProjection,
-    id: &str,
-) -> Result<DiagramProjection, ReplayError> {
+fn apply_ungroup(mut state: DiagramProjection, id: &str) -> Result<DiagramProjection, ReplayError> {
     let subgraph_id = NodeId::new(id.to_string());
 
     if !state.has_node(&subgraph_id) {
@@ -981,7 +980,7 @@ fn apply_ungroup(
     }
 
     let subgraph = state.nodes.get(&subgraph_id).cloned();
-    let subgraph = match subgraph {
+    let _subgraph = match subgraph {
         Some(s) if s.kind == crate::models::document::NodeKind::Subgraph => s,
         _ => return Ok(state),
     };
@@ -3921,7 +3920,10 @@ mod tests {
 
         let result = replay_events(events);
 
-        assert!(result.is_ok(), "Empty stream should produce empty projection");
+        assert!(
+            result.is_ok(),
+            "Empty stream should produce empty projection"
+        );
         let projection = result.unwrap();
         assert_eq!(projection.revision, 0, "Revision should be 0");
         assert!(projection.nodes.is_empty(), "Nodes should be empty");
@@ -3966,8 +3968,7 @@ mod tests {
         assert!(result.is_ok());
         let final_projection = result.unwrap();
         assert_eq!(
-            final_projection.revision,
-            5,
+            final_projection.revision, 5,
             "Revision should remain unchanged"
         );
         assert_eq!(
@@ -4269,7 +4270,10 @@ mod tests {
 
         let result = apply_policy_op(projection, &cyclic_op);
 
-        assert!(result.is_err(), "Cycle creation should fail with Deny policy");
+        assert!(
+            result.is_err(),
+            "Cycle creation should fail with Deny policy"
+        );
         match result {
             Err(ReplayError::CycleViolation(msg)) => {
                 assert!(
@@ -4793,7 +4797,10 @@ mod tests {
 
         assert!(result.is_ok());
         let projection = result.unwrap();
-        assert_eq!(projection.revision, 3, "Revision should be 3 after 3 events");
+        assert_eq!(
+            projection.revision, 3,
+            "Revision should be 3 after 3 events"
+        );
     }
 
     /// BDD: Given failed operation, when applying, then state is unchanged (atomicity).

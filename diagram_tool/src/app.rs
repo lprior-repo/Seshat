@@ -5,13 +5,13 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use crate::ui::commands::Clipboard;
 use crate::history::History;
 use crate::hooks::e2e_reset::use_e2e_reset_hook;
 use crate::hooks::keyboard::use_global_keyboard;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::validation::validate_document_data;
 use crate::ui::canvas::Canvas;
+use crate::ui::commands::Clipboard;
 use crate::ui::editor::ToolMode;
 use crate::ui::minimap::Minimap;
 use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};

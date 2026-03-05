@@ -303,25 +303,23 @@ fn fetch_events_after(
         match row {
             Ok((operation_id, revision, payload, timestamp)) => {
                 match parse_event_envelope(&payload) {
-                    Ok(envelope) => {
-                        match timestamp.parse::<i64>() {
-                            Ok(ts) => {
-                                events.push(EventRecord {
-                                    op_id: envelope.op_id,
-                                    revision: revision as u64,
-                                    operation: envelope.operation,
-                                    author: envelope.author,
-                                    timestamp: ts,
-                                });
-                            }
-                            Err(e) => {
-                                first_error.get_or_insert(format!(
-                                    "Failed to parse timestamp '{}' for operation '{}': {}",
-                                    timestamp, operation_id, e
-                                ));
-                            }
+                    Ok(envelope) => match timestamp.parse::<i64>() {
+                        Ok(ts) => {
+                            events.push(EventRecord {
+                                op_id: envelope.op_id,
+                                revision: revision as u64,
+                                operation: envelope.operation,
+                                author: envelope.author,
+                                timestamp: ts,
+                            });
                         }
-                    }
+                        Err(e) => {
+                            first_error.get_or_insert(format!(
+                                "Failed to parse timestamp '{}' for operation '{}': {}",
+                                timestamp, operation_id, e
+                            ));
+                        }
+                    },
                     Err(e) => {
                         first_error.get_or_insert(format!(
                             "Failed to parse event envelope for operation '{}': {}",

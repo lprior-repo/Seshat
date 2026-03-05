@@ -1097,7 +1097,9 @@ mod tests {
             } => {
                 assert!(conflicting_entities.contains(&"node:n2".to_string()));
             }
-            ConflictDecision::Allow => panic!("Expected rejection when any affected node has human edit"),
+            ConflictDecision::Allow => {
+                panic!("Expected rejection when any affected node has human edit")
+            }
         }
     }
 
@@ -1124,7 +1126,9 @@ mod tests {
             } => {
                 assert!(conflicting_entities.contains(&"node:n3".to_string()));
             }
-            ConflictDecision::Allow => panic!("Expected rejection when any grouped node has human edit"),
+            ConflictDecision::Allow => {
+                panic!("Expected rejection when any grouped node has human edit")
+            }
         }
     }
 
@@ -1147,7 +1151,8 @@ mod tests {
 
     #[test]
     fn given_human_priority_block_error_when_displayed_then_contains_message() {
-        let error = ConflictError::HumanPriorityBlock("active human edit on node:node-1".to_string());
+        let error =
+            ConflictError::HumanPriorityBlock("active human edit on node:node-1".to_string());
         let display = format!("{}", error);
         assert!(display.contains("human priority block"));
         assert!(display.contains("active human edit on node:node-1"));

@@ -29,7 +29,13 @@ impl Operation {
     /// Returns all operations.
     #[must_use]
     pub const fn all() -> [Operation; 5] {
-        [Self::Pan, Self::Zoom, Self::Select, Self::Drag, Self::RenderFrame]
+        [
+            Self::Pan,
+            Self::Zoom,
+            Self::Select,
+            Self::Drag,
+            Self::RenderFrame,
+        ]
     }
 
     /// Returns the operation name.
@@ -48,10 +54,10 @@ impl Operation {
     #[must_use]
     pub const fn complexity_factor(self) -> f64 {
         match self {
-            Self::Pan => 0.8,       // Relatively cheap
-            Self::Zoom => 0.9,      // Slightly more expensive
-            Self::Select => 0.7,    // Single node lookup
-            Self::Drag => 1.0,      // Baseline
+            Self::Pan => 0.8,         // Relatively cheap
+            Self::Zoom => 0.9,        // Slightly more expensive
+            Self::Select => 0.7,      // Single node lookup
+            Self::Drag => 1.0,        // Baseline
             Self::RenderFrame => 1.2, // Full render is most expensive
         }
     }
@@ -147,12 +153,12 @@ impl Baseline {
     /// Returns `PerfError` if any result is invalid.
     pub fn validate(&self) -> Result<(), PerfError> {
         for (name, result) in &self.results {
-            result.validate().map_err(|e| {
-                PerfError::InvariantViolation {
+            result
+                .validate()
+                .map_err(|e| PerfError::InvariantViolation {
                     invariant: "BASELINE_VALIDITY",
                     details: format!("{}: {}", name, e),
-                }
-            })?;
+                })?;
         }
         Ok(())
     }
@@ -459,8 +465,7 @@ mod tests {
     #[test]
     fn test_harness_quick_benchmark() {
         let temp_dir = tempfile::tempdir().unwrap();
-        let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf())
-            .with_node_count(100);
+        let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf()).with_node_count(100);
 
         let results = harness.quick_benchmark();
         assert!(results.is_ok());

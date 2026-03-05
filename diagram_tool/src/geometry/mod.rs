@@ -4178,7 +4178,11 @@ mod tests {
         // When: calculating AABBs for all angles
         let aabbs: Vec<AABB> = angles
             .iter()
-            .map(|&a| Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(a).aabb())
+            .map(|&a| {
+                Rectangle::new(0.0, 0.0, 100.0, 50.0)
+                    .with_rotation(a)
+                    .aabb()
+            })
             .collect();
 
         // Then: all AABBs are equivalent
@@ -4831,7 +4835,13 @@ mod tests {
         // Given: negative infinity in all coordinates
         // When: calling safe_bounds
         // Then: returns None
-        assert!(safe_bounds(f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY, f64::NEG_INFINITY).is_none());
+        assert!(safe_bounds(
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY,
+            f64::NEG_INFINITY
+        )
+        .is_none());
     }
 
     #[test]

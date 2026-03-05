@@ -335,7 +335,10 @@ impl ViewportState {
     pub fn screen_to_world(&self, screen_x: f64, screen_y: f64) -> WorldPoint {
         let world_x = self.camera_x + screen_x / self.zoom;
         let world_y = self.camera_y + screen_y / self.zoom;
-        WorldPoint { x: world_x, y: world_y }
+        WorldPoint {
+            x: world_x,
+            y: world_y,
+        }
     }
 
     /// Convert world coordinates to screen coordinates
@@ -343,7 +346,10 @@ impl ViewportState {
     pub fn world_to_screen(&self, world_x: f64, world_y: f64) -> ScreenPoint {
         let screen_x = (world_x - self.camera_x) * self.zoom;
         let screen_y = (world_y - self.camera_y) * self.zoom;
-        ScreenPoint { x: screen_x, y: screen_y }
+        ScreenPoint {
+            x: screen_x,
+            y: screen_y,
+        }
     }
 
     /// Get the visible world bounds (AABB)

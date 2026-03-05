@@ -29,8 +29,7 @@ fn hp_001_measure_fps_3000_nodes() {
 #[test]
 fn hp_002_pan_benchmark() {
     let temp_dir = TempDir::new().unwrap();
-    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf())
-        .with_node_count(3000);
+    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf()).with_node_count(3000);
 
     let result = harness.run_benchmark(Operation::Pan);
     assert!(result.is_ok());
@@ -43,8 +42,7 @@ fn hp_002_pan_benchmark() {
 #[test]
 fn hp_003_zoom_benchmark() {
     let temp_dir = TempDir::new().unwrap();
-    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf())
-        .with_node_count(3000);
+    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf()).with_node_count(3000);
 
     let result = harness.run_benchmark(Operation::Zoom);
     assert!(result.is_ok());
@@ -57,8 +55,7 @@ fn hp_003_zoom_benchmark() {
 #[test]
 fn hp_004_select_benchmark() {
     let temp_dir = TempDir::new().unwrap();
-    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf())
-        .with_node_count(3000);
+    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf()).with_node_count(3000);
 
     let result = harness.run_benchmark(Operation::Select);
     assert!(result.is_ok());
@@ -71,8 +68,7 @@ fn hp_004_select_benchmark() {
 #[test]
 fn hp_005_drag_benchmark() {
     let temp_dir = TempDir::new().unwrap();
-    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf())
-        .with_node_count(3000);
+    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf()).with_node_count(3000);
 
     let result = harness.run_benchmark(Operation::Drag);
     assert!(result.is_ok());
@@ -85,8 +81,7 @@ fn hp_005_drag_benchmark() {
 #[test]
 fn hp_006_generate_baseline_json() {
     let temp_dir = TempDir::new().unwrap();
-    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf())
-        .with_node_count(100); // Smaller for faster test
+    let harness = BenchmarkHarness::new(temp_dir.path().to_path_buf()).with_node_count(100); // Smaller for faster test
 
     let baseline = harness.establish_baseline();
     assert!(baseline.is_ok());
@@ -131,8 +126,8 @@ fn hp_010_benchmark_reproducibility() {
     assert!(result2.fps_report.mean_fps.is_finite());
 
     // Both should have similar sample counts (within 20%)
-    let sample_ratio = result1.fps_report.sample_count as f64
-        / result2.fps_report.sample_count.max(1) as f64;
+    let sample_ratio =
+        result1.fps_report.sample_count as f64 / result2.fps_report.sample_count.max(1) as f64;
     assert!(
         sample_ratio > 0.8 && sample_ratio < 1.2,
         "Sample count ratio {} should be between 0.8 and 1.2",

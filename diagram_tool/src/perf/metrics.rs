@@ -149,11 +149,7 @@ impl Statistics {
 
         // Compute variance
         let variance = if count > 1 {
-            samples
-                .iter()
-                .map(|x| (x - mean).powi(2))
-                .sum::<f64>()
-                / (count - 1) as f64
+            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (count - 1) as f64
         } else {
             0.0
         };

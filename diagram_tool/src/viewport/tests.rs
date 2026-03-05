@@ -601,14 +601,8 @@ fn invariant_camera_finite() {
     // Try various invalid values
     for invalid in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY] {
         viewport.set_camera(invalid, invalid);
-        assert!(
-            viewport.camera_x().is_finite(),
-            "Camera X should be finite"
-        );
-        assert!(
-            viewport.camera_y().is_finite(),
-            "Camera Y should be finite"
-        );
+        assert!(viewport.camera_x().is_finite(), "Camera X should be finite");
+        assert!(viewport.camera_y().is_finite(), "Camera Y should be finite");
     }
 }
 

@@ -119,9 +119,7 @@ impl PerfError {
     pub const fn is_recoverable(&self) -> bool {
         matches!(
             self,
-            Self::Timeout { .. }
-                | Self::InsufficientSamples { .. }
-                | Self::Environment(_)
+            Self::Timeout { .. } | Self::InsufficientSamples { .. } | Self::Environment(_)
         )
     }
 }
@@ -170,20 +168,14 @@ mod tests {
     #[test]
     fn test_is_recoverable() {
         assert!(PerfError::Timeout { ms: 1000 }.is_recoverable());
-        assert!(PerfError::InsufficientSamples {
-            got: 5,
-            need: 10
-        }
-        .is_recoverable());
+        assert!(PerfError::InsufficientSamples { got: 5, need: 10 }.is_recoverable());
         assert!(!PerfError::InvalidNodeCount(0).is_recoverable());
     }
 
     #[test]
     fn test_invariant_violation_constructor() {
-        let err = PerfError::invariant_violation(
-            "INV-1",
-            "NaN detected in measurements".to_string(),
-        );
+        let err =
+            PerfError::invariant_violation("INV-1", "NaN detected in measurements".to_string());
         assert!(matches!(
             err,
             PerfError::InvariantViolation {

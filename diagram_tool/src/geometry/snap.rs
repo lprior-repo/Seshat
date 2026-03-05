@@ -450,7 +450,10 @@ pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
         .sum::<f64>()
         / nodes.len() as f64;
 
-    nodes.iter().map(|n| Point::new(avg_center - n.width / 2.0, n.y)).collect()
+    nodes
+        .iter()
+        .map(|n| Point::new(avg_center - n.width / 2.0, n.y))
+        .collect()
 }
 
 /// Align nodes to their right edges.
@@ -466,7 +469,10 @@ pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
 
-    nodes.iter().map(|n| Point::new(max_right - n.width, n.y)).collect()
+    nodes
+        .iter()
+        .map(|n| Point::new(max_right - n.width, n.y))
+        .collect()
 }
 
 /// Align nodes to their top edges.
@@ -498,7 +504,10 @@ pub fn align_middle(nodes: &[SnapNode]) -> Vec<Point> {
         .sum::<f64>()
         / nodes.len() as f64;
 
-    nodes.iter().map(|n| Point::new(n.x, avg_middle - n.height / 2.0)).collect()
+    nodes
+        .iter()
+        .map(|n| Point::new(n.x, avg_middle - n.height / 2.0))
+        .collect()
 }
 
 /// Align nodes to their bottom edges.
@@ -514,7 +523,10 @@ pub fn align_bottom(nodes: &[SnapNode]) -> Vec<Point> {
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
 
-    nodes.iter().map(|n| Point::new(n.x, max_bottom - n.height)).collect()
+    nodes
+        .iter()
+        .map(|n| Point::new(n.x, max_bottom - n.height))
+        .collect()
 }
 
 /// Generic alignment function using anchor type.
@@ -543,7 +555,12 @@ pub fn distribute_horizontally(nodes: &[SnapNode]) -> Result<Vec<Point>, SnapErr
     }
 
     let mut sorted_indices: Vec<usize> = (0..nodes.len()).collect();
-    sorted_indices.sort_by(|&a, &b| nodes[a].x.partial_cmp(&nodes[b].x).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_indices.sort_by(|&a, &b| {
+        nodes[a]
+            .x
+            .partial_cmp(&nodes[b].x)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let first_idx = sorted_indices.first().copied().unwrap_or(0);
     let last_idx = sorted_indices.last().copied().unwrap_or(0);
@@ -577,7 +594,12 @@ pub fn distribute_vertically(nodes: &[SnapNode]) -> Result<Vec<Point>, SnapError
     }
 
     let mut sorted_indices: Vec<usize> = (0..nodes.len()).collect();
-    sorted_indices.sort_by(|&a, &b| nodes[a].y.partial_cmp(&nodes[b].y).unwrap_or(std::cmp::Ordering::Equal));
+    sorted_indices.sort_by(|&a, &b| {
+        nodes[a]
+            .y
+            .partial_cmp(&nodes[b].y)
+            .unwrap_or(std::cmp::Ordering::Equal)
+    });
 
     let first_idx = sorted_indices.first().copied().unwrap_or(0);
     let last_idx = sorted_indices.last().copied().unwrap_or(0);
@@ -657,7 +679,10 @@ pub fn drag_multi_with_snap(
     }
 
     if !snap_enabled || grid_size <= 0.0 {
-        return nodes.iter().map(|n| Point::new(n.x + drag_delta.x, n.y + drag_delta.y)).collect();
+        return nodes
+            .iter()
+            .map(|n| Point::new(n.x + drag_delta.x, n.y + drag_delta.y))
+            .collect();
     }
 
     // Calculate primary node snap
@@ -924,7 +949,10 @@ pub fn snap_multi_nodes(nodes: &[SnapNode], grid_size: f64) -> Vec<Point> {
         return nodes.iter().map(|n| Point::new(n.x, n.y)).collect();
     }
 
-    nodes.iter().map(|n| snap_to_grid(Point::new(n.x, n.y), grid_size)).collect()
+    nodes
+        .iter()
+        .map(|n| snap_to_grid(Point::new(n.x, n.y), grid_size))
+        .collect()
 }
 
 /// Snap multiple nodes with primary selection determining snap target.
@@ -943,10 +971,7 @@ pub fn snap_multi_to_primary(
     };
 
     let primary_snapped = snap_to_grid(Point::new(primary.x, primary.y), grid_size);
-    let snap_offset = Point::new(
-        primary_snapped.x - primary.x,
-        primary_snapped.y - primary.y,
-    );
+    let snap_offset = Point::new(primary_snapped.x - primary.x, primary_snapped.y - primary.y);
 
     nodes
         .iter()
@@ -974,7 +999,11 @@ pub const fn is_snap_enabled(state: SnapState) -> bool {
 ///
 /// # Returns
 /// - (new_position, was_committed)
-pub fn toggle_during_drag(position: Point, snap_was_enabled: bool, grid_size: f64) -> (Point, bool) {
+pub fn toggle_during_drag(
+    position: Point,
+    snap_was_enabled: bool,
+    grid_size: f64,
+) -> (Point, bool) {
     if snap_was_enabled {
         // Was snapping, now disabled - commit at current (snapped) position
         (position, false)
@@ -1357,8 +1386,8 @@ mod tests {
         // After distribution: n1 at 0, n2 at 50, n3 at 100
         // In original order: n3 gets index 2 position (100), n1 gets index 0 (0), n2 gets index 1 (50)
         assert!((result[0].x - 100.0).abs() < EPSILON); // n3
-        assert!((result[1].x - 0.0).abs() < EPSILON);   // n1
-        assert!((result[2].x - 50.0).abs() < EPSILON);  // n2
+        assert!((result[1].x - 0.0).abs() < EPSILON); // n1
+        assert!((result[2].x - 50.0).abs() < EPSILON); // n2
         assert_eq!(result[0].y, 300.0); // Y preserved
         assert_eq!(result[1].y, 100.0);
         assert_eq!(result[2].y, 200.0);

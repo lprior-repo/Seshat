@@ -37,10 +37,7 @@ impl FpsReport {
         let frame_time_stats = Statistics::from_samples(&frame_times);
         let fps_stats = Statistics::from_samples(&fps_values);
 
-        let duration_ms = samples
-            .last()
-            .map(|s| s.timestamp_ms)
-            .unwrap_or(0.0);
+        let duration_ms = samples.last().map(|s| s.timestamp_ms).unwrap_or(0.0);
 
         let target_achieved = fps_stats.mean >= target_fps;
 
@@ -172,15 +169,14 @@ impl FpsMeasurement {
     pub fn record_frame(&mut self) {
         let now = Instant::now();
 
-        let (frame_time_ms, timestamp_ms) = if let (Some(start), Some(last)) =
-            (self.start_time, self.last_frame_time)
-        {
-            let frame_time = now.duration_since(last).as_nanos() as f64 / 1_000_000.0;
-            let timestamp = now.duration_since(start).as_nanos() as f64 / 1_000_000.0;
-            (frame_time, timestamp)
-        } else {
-            (0.0, 0.0)
-        };
+        let (frame_time_ms, timestamp_ms) =
+            if let (Some(start), Some(last)) = (self.start_time, self.last_frame_time) {
+                let frame_time = now.duration_since(last).as_nanos() as f64 / 1_000_000.0;
+                let timestamp = now.duration_since(start).as_nanos() as f64 / 1_000_000.0;
+                (frame_time, timestamp)
+            } else {
+                (0.0, 0.0)
+            };
 
         self.samples.push(FrameSample::new(
             self.frame_count,

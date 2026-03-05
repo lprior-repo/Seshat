@@ -302,10 +302,7 @@ impl PerformanceReport {
     pub fn markdown_summary(&self) -> String {
         let status = if self.all_passed { "PASSED" } else { "FAILED" };
 
-        let mut md = format!(
-            "# Performance Report\n\n**Status**: {}\n\n",
-            status
-        );
+        let mut md = format!("# Performance Report\n\n**Status**: {}\n\n", status);
 
         md.push_str("## Regression Results\n\n");
         md.push_str("| Operation | Current FPS | Baseline FPS | Delta | Status |\n");
@@ -447,9 +444,8 @@ mod tests {
 
     #[test]
     fn test_performance_report_new() {
-        let results: Vec<RegressionResult> = vec![
-            RegressionResult::new(Operation::Pan, 120.0, 120.0, 20.0),
-        ];
+        let results: Vec<RegressionResult> =
+            vec![RegressionResult::new(Operation::Pan, 120.0, 120.0, 20.0)];
 
         let report = PerformanceReport::new(results);
         assert!(report.all_passed);
@@ -458,9 +454,8 @@ mod tests {
 
     #[test]
     fn test_performance_report_markdown() {
-        let results: Vec<RegressionResult> = vec![
-            RegressionResult::new(Operation::Pan, 120.0, 120.0, 20.0),
-        ];
+        let results: Vec<RegressionResult> =
+            vec![RegressionResult::new(Operation::Pan, 120.0, 120.0, 20.0)];
 
         let report = PerformanceReport::new(results);
         let md = report.markdown_summary();
@@ -475,15 +470,17 @@ mod tests {
         let temp_dir = tempfile::tempdir().unwrap();
         let path = temp_dir.path().join("report.json");
 
-        let results: Vec<RegressionResult> = vec![
-            RegressionResult::new(Operation::Pan, 120.0, 120.0, 20.0),
-        ];
+        let results: Vec<RegressionResult> =
+            vec![RegressionResult::new(Operation::Pan, 120.0, 120.0, 20.0)];
 
         let report = PerformanceReport::new(results);
         report.save(&path).unwrap();
 
         let loaded = PerformanceReport::load(&path).unwrap();
         assert_eq!(loaded.all_passed, report.all_passed);
-        assert_eq!(loaded.regression_results.len(), report.regression_results.len());
+        assert_eq!(
+            loaded.regression_results.len(),
+            report.regression_results.len()
+        );
     }
 }

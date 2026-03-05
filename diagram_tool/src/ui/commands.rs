@@ -175,7 +175,10 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> 
 /// Returns `None` if the clipboard is empty or has no nodes.
 /// Otherwise returns a tuple of (updated_document, updated_clipboard).
 #[must_use]
-pub fn paste_contents(mut clipboard: Clipboard, doc: DiagramDocument) -> Option<(DiagramDocument, Clipboard)> {
+pub fn paste_contents(
+    mut clipboard: Clipboard,
+    doc: DiagramDocument,
+) -> Option<(DiagramDocument, Clipboard)> {
     if clipboard.nodes.is_empty() {
         return None;
     }
@@ -1344,7 +1347,10 @@ mod tests {
 
         let result = paste_contents(clipboard, doc);
 
-        assert!(result.is_none(), "paste_contents should return None for empty clipboard");
+        assert!(
+            result.is_none(),
+            "paste_contents should return None for empty clipboard"
+        );
     }
 
     #[test]
@@ -1425,7 +1431,10 @@ mod tests {
 
         let result = copy_selection(&doc);
 
-        assert!(result.is_none(), "copy_selection should return None when selection contains non-existent IDs");
+        assert!(
+            result.is_none(),
+            "copy_selection should return None when selection contains non-existent IDs"
+        );
     }
 
     #[test]
@@ -1467,7 +1476,10 @@ mod tests {
         assert!(result.is_some(), "copy_selection should succeed");
         let clipboard = result.unwrap();
         assert_eq!(clipboard.nodes.len(), 1, "should copy one node");
-        assert!(clipboard.edges.is_empty(), "edge should be excluded when target not selected");
+        assert!(
+            clipboard.edges.is_empty(),
+            "edge should be excluded when target not selected"
+        );
     }
 
     fn make_doc_with_parent_child(
@@ -1501,7 +1513,10 @@ mod tests {
         assert!(result.is_some(), "copy_selection should succeed");
         let clipboard = result.unwrap();
         assert_eq!(clipboard.nodes.len(), 2);
-        let child_in_clipboard = clipboard.nodes.iter().find(|(id, _)| id.to_string() == "child");
+        let child_in_clipboard = clipboard
+            .nodes
+            .iter()
+            .find(|(id, _)| id.to_string() == "child");
         assert!(child_in_clipboard.is_some(), "child should be in clipboard");
         if let Some((_, node)) = child_in_clipboard {
             assert_eq!(
@@ -1520,7 +1535,10 @@ mod tests {
 
         let result = paste_contents(clipboard, doc);
 
-        assert!(result.is_none(), "paste_contents should return None for empty clipboard");
+        assert!(
+            result.is_none(),
+            "paste_contents should return None for empty clipboard"
+        );
         assert_eq!(node_count_before, 0, "document should be empty");
     }
 
@@ -1750,10 +1768,7 @@ mod tests {
     #[test]
     fn given_clipboard_when_has_content_then_returns_true() {
         let clipboard = Clipboard {
-            nodes: vec![(
-                NodeId::new("test".to_string()),
-                make_node("test", 0.0, 0.0),
-            )],
+            nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
@@ -1777,10 +1792,7 @@ mod tests {
         assert!(!clipboard_has_content(&Some(empty)));
 
         let with_content = Clipboard {
-            nodes: vec![(
-                NodeId::new("test".to_string()),
-                make_node("test", 0.0, 0.0),
-            )],
+            nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
@@ -1790,10 +1802,7 @@ mod tests {
     #[test]
     fn given_clipboard_when_prepare_paste_then_increments_serial() {
         let clipboard = Clipboard {
-            nodes: vec![(
-                NodeId::new("test".to_string()),
-                make_node("test", 0.0, 0.0),
-            )],
+            nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
@@ -1856,10 +1865,7 @@ mod tests {
 
         // First paste should be at (120, 70)
         // Second paste should be at (140, 90) - offset increases with serial
-        let mut positions: Vec<_> = pasted_nodes
-            .iter()
-            .map(|n| (n.x.0, n.y.0))
-            .collect();
+        let mut positions: Vec<_> = pasted_nodes.iter().map(|n| (n.x.0, n.y.0)).collect();
         positions.sort_by_key(|&(x, y)| (x as i64, y as i64));
 
         assert_eq!(positions[0].0, 120.0);

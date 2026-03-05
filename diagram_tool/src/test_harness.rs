@@ -21,8 +21,8 @@
 #![allow(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use std::path::{Path, PathBuf};
 use std::fs;
+use std::path::{Path, PathBuf};
 
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -311,8 +311,8 @@ pub fn load_fixture_from_path(path: &Path) -> Result<Value, TestHarnessError> {
         .map(|n| n.to_string_lossy().to_string())
         .unwrap_or_else(|| "unknown".to_string());
 
-    let content = fs::read_to_string(path)
-        .map_err(|_| TestHarnessError::FixtureNotFound(name.clone()))?;
+    let content =
+        fs::read_to_string(path).map_err(|_| TestHarnessError::FixtureNotFound(name.clone()))?;
 
     serde_json::from_str(&content).map_err(|e| TestHarnessError::InvalidJson {
         name,
@@ -620,7 +620,10 @@ pub fn verify_invariants(doc: &DiagramDocument) -> Result<(), TestHarnessError> 
 /// # Errors
 ///
 /// Returns `TestHarnessError::PropertyFailure` if a property is violated.
-pub fn fuzz_document_operations(seed: u64, operations: usize) -> Result<FuzzReport, TestHarnessError> {
+pub fn fuzz_document_operations(
+    seed: u64,
+    operations: usize,
+) -> Result<FuzzReport, TestHarnessError> {
     // Deterministic hash based on seed
     let projection_hash = format!("{seed:016x}-{operations:08x}");
 
@@ -829,7 +832,9 @@ mod tests {
         assert!(result.is_err());
 
         if let Err(err) = result {
-            assert!(matches!(err, TestHarnessError::FixtureNotFound(name) if name == "nonexistent_fixture_12345.json"));
+            assert!(
+                matches!(err, TestHarnessError::FixtureNotFound(name) if name == "nonexistent_fixture_12345.json")
+            );
         }
     }
 
@@ -983,7 +988,9 @@ mod tests {
             collapsed: None,
         };
 
-        doc.document.nodes.insert(NodeId::new("node-1".to_string()), node);
+        doc.document
+            .nodes
+            .insert(NodeId::new("node-1".to_string()), node);
 
         let result = verify_invariants(&doc);
         assert!(result.is_ok());
@@ -1013,7 +1020,9 @@ mod tests {
             collapsed: None,
         };
 
-        doc.document.nodes.insert(NodeId::new("bad-node".to_string()), node);
+        doc.document
+            .nodes
+            .insert(NodeId::new("bad-node".to_string()), node);
 
         let result = verify_invariants(&doc);
         assert!(result.is_err());
@@ -1049,7 +1058,9 @@ mod tests {
             collapsed: None,
         };
 
-        doc.document.nodes.insert(NodeId::new("negative-node".to_string()), node);
+        doc.document
+            .nodes
+            .insert(NodeId::new("negative-node".to_string()), node);
 
         let result = verify_invariants(&doc);
         assert!(result.is_err());
