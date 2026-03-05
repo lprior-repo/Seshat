@@ -176,7 +176,10 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> 
 /// Returns `None` if the clipboard is empty or has no nodes.
 /// Otherwise returns a tuple of (updated_document, updated_clipboard).
 #[must_use]
-pub fn paste_contents(mut clipboard: Clipboard, doc: DiagramDocument) -> Option<(DiagramDocument, Clipboard)> {
+pub fn paste_contents(
+    mut clipboard: Clipboard,
+    doc: DiagramDocument,
+) -> Option<(DiagramDocument, Clipboard)> {
     if clipboard.nodes.is_empty() {
         return None;
     }
@@ -1248,11 +1251,7 @@ pub fn apply_undo(
         }
         None => {
             if let Some(toast) = toast {
-                let _ = toast.show(
-                    crate::ui::toast::ToastIntent::Info,
-                    "Nothing to undo",
-                    None,
-                );
+                let _ = toast.show(crate::ui::toast::ToastIntent::Info, "Nothing to undo", None);
             }
         }
     }
@@ -1272,11 +1271,7 @@ pub fn apply_redo(
         }
         None => {
             if let Some(toast) = toast {
-                let _ = toast.show(
-                    crate::ui::toast::ToastIntent::Info,
-                    "Nothing to redo",
-                    None,
-                );
+                let _ = toast.show(crate::ui::toast::ToastIntent::Info, "Nothing to redo", None);
             }
         }
     }
@@ -1975,10 +1970,7 @@ mod tests {
     #[test]
     fn given_clipboard_when_has_content_then_returns_true() {
         let clipboard = Clipboard {
-            nodes: vec![(
-                NodeId::new("test".to_string()),
-                make_node("test", 0.0, 0.0),
-            )],
+            nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
@@ -2002,10 +1994,7 @@ mod tests {
         assert!(!clipboard_has_content(&Some(empty)));
 
         let with_content = Clipboard {
-            nodes: vec![(
-                NodeId::new("test".to_string()),
-                make_node("test", 0.0, 0.0),
-            )],
+            nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
@@ -2015,10 +2004,7 @@ mod tests {
     #[test]
     fn given_clipboard_when_prepare_paste_then_increments_serial() {
         let clipboard = Clipboard {
-            nodes: vec![(
-                NodeId::new("test".to_string()),
-                make_node("test", 0.0, 0.0),
-            )],
+            nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
@@ -2081,10 +2067,7 @@ mod tests {
 
         // First paste should be at (120, 70)
         // Second paste should be at (140, 90) - offset increases with serial
-        let mut positions: Vec<_> = pasted_nodes
-            .iter()
-            .map(|n| (n.x.0, n.y.0))
-            .collect();
+        let mut positions: Vec<_> = pasted_nodes.iter().map(|n| (n.x.0, n.y.0)).collect();
         positions.sort_by_key(|&(x, y)| (x as i64, y as i64));
 
         assert_eq!(positions[0].0, 120.0);

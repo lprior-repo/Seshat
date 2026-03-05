@@ -736,8 +736,7 @@ impl RecoveryHandle {
                     "timestamp": timestamp
                 })
             })
-            .collect::<Result<Vec<_>, _>>()
-            .map_err(|e| RecoveryError::Sqlite(e))?;
+            .collect();
 
         // Write to JSON file
         let json_content = serde_json::to_string_pretty(&events)
@@ -3720,11 +3719,9 @@ mod tests {
         let _ = bootstrap_store(&db_path).expect("Failed to bootstrap store");
 
         // Open in read-only mode
-        let conn = Connection::open_with_flags(
-            &db_path,
-            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
-        )
-        .expect("Failed to open read-only");
+        let conn =
+            Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
+                .expect("Failed to open read-only");
 
         // Try to set WAL - should fail or be ignored in read-only mode
         let result: std::result::Result<(), rusqlite::Error> =

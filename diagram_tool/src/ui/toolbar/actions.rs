@@ -6,7 +6,8 @@ use crate::ui::commands::{
     apply_align_selection, apply_bring_forward, apply_bring_to_front, apply_copy_selection,
     apply_delete_selected, apply_distribute_selection, apply_paste_selection, apply_redo,
     apply_send_backward, apply_send_to_back, apply_undo, apply_zoom_in, apply_zoom_out,
-    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, Clipboard, DistributionAxis,
+    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, Clipboard,
+    DistributionAxis,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -237,7 +238,12 @@ pub fn distribute_horizontal(
     history_signal: Signal<History>,
     toast: Option<ToastApi>,
 ) {
-    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Horizontal, toast);
+    let _ = apply_distribute_selection(
+        doc_signal,
+        history_signal,
+        DistributionAxis::Horizontal,
+        toast,
+    );
 }
 
 pub fn distribute_vertical(
@@ -245,5 +251,10 @@ pub fn distribute_vertical(
     history_signal: Signal<History>,
     toast: Option<ToastApi>,
 ) {
-    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Vertical, toast);
+    let _ = apply_distribute_selection(
+        doc_signal,
+        history_signal,
+        DistributionAxis::Vertical,
+        toast,
+    );
 }

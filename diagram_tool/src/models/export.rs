@@ -34,7 +34,11 @@ pub enum ExportError {
     #[error("validation error: {0}")]
     Validation(String),
     #[error("conflict: expected revision {expected} but found {found} for op {op_id}")]
-    Conflict { expected: i64, found: i64, op_id: String },
+    Conflict {
+        expected: i64,
+        found: i64,
+        op_id: String,
+    },
 }
 
 /// Schema version for exports
@@ -277,35 +281,37 @@ fn fetch_all_events(conn: &Connection) -> Result<Vec<EventRecord>, ExportError> 
     let mut decode_errors = Vec::new();
     let events: Vec<EventRecord> = row_results
         .into_iter()
-        .filter_map(|result| {
-            match result {
-                Ok((operation_id, revision, payload, timestamp)) => {
-                    match parse_event_envelope(&payload) {
-                        Ok(envelope) => {
-                            match timestamp.parse::<i64>() {
-                                Ok(timestamp) => Some(Ok(EventRecord {
-                                    op_id: envelope.op_id,
-                                    revision: revision as u64,
-                                    operation: envelope.operation,
-                                    author: envelope.author,
-                                    timestamp,
-                                })),
-                                Err(e) => {
-                                    decode_errors.push(format!("timestamp parse error for op {}: {}", operation_id, e));
-                                    None
-                                }
-                            }
-                        }
+        .filter_map(|result| match result {
+            Ok((operation_id, revision, payload, timestamp)) => {
+                match parse_event_envelope(&payload) {
+                    Ok(envelope) => match timestamp.parse::<i64>() {
+                        Ok(timestamp) => Some(Ok(EventRecord {
+                            op_id: envelope.op_id,
+                            revision: revision as u64,
+                            operation: envelope.operation,
+                            author: envelope.author,
+                            timestamp,
+                        })),
                         Err(e) => {
-                            decode_errors.push(format!("envelope parse error for op {}: {}", operation_id, e));
+                            decode_errors.push(format!(
+                                "timestamp parse error for op {}: {}",
+                                operation_id, e
+                            ));
                             None
                         }
+                    },
+                    Err(e) => {
+                        decode_errors.push(format!(
+                            "envelope parse error for op {}: {}",
+                            operation_id, e
+                        ));
+                        None
                     }
                 }
-                Err(e) => {
-                    decode_errors.push(format!("row error: {}", e));
-                    None
-                }
+            }
+            Err(e) => {
+                decode_errors.push(format!("row error: {}", e));
+                None
             }
         })
         .collect::<Result<Vec<_>, ExportError>>()
@@ -416,7 +422,10 @@ pub fn import_diagram_json(
             Ok(_outcome) => {
                 events_imported += 1;
             }
-            Err(store::StoreError::RevisionMismatch { expected: exp, found }) => {
+            Err(store::StoreError::RevisionMismatch {
+                expected: exp,
+                found,
+            }) => {
                 // RevisionMismatch means the DB revision is different than expected.
                 // If found <= expected, the event might already exist (idempotent case).
                 // If found > expected, someone else wrote - this is a conflict.
@@ -524,9 +533,7 @@ fn generate_canonical_events(projection: &DiagramProjection) -> Vec<serde_json::
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::document::{
-        ArrowType, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
-    };
+    use crate::models::document::{ArrowType, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
     use crate::models::envelope::{Author as EnvelopeAuthor, DomainOp, EventEnvelope};
     use crate::store;
     use tempfile::TempDir;
@@ -1106,7 +1113,10 @@ mod tests {
         let result = import_diagram_json(&mut conn, input, actor);
 
         // Should fail - null in required field
-        assert!(result.is_err(), "Null in required field should return error");
+        assert!(
+            result.is_err(),
+            "Null in required field should return error"
+        );
     }
 
     #[test]
@@ -1184,14 +1194,8 @@ mod tests {
         );
 
         let json = result.unwrap();
-        assert!(
-            json.contains("node-0"),
-            "JSON should contain first node"
-        );
-        assert!(
-            json.contains("node-999"),
-            "JSON should contain last node"
-        );
+        assert!(json.contains("node-0"), "JSON should contain first node");
+        assert!(json.contains("node-999"), "JSON should contain last node");
     }
 
     #[test]
@@ -1331,9 +1335,9 @@ mod tests {
         let mut projection = DiagramProjection::empty();
 
         let emoji_labels = [
-            "Node with emoji: \u{1F600}",  // grinning face
-            "\u{1F4BB} Laptop",            // laptop
-            "\u{1F30D} World \u{1F31F}",   // world + star
+            "Node with emoji: \u{1F600}", // grinning face
+            "\u{1F4BB} Laptop",           // laptop
+            "\u{1F30D} World \u{1F31F}",  // world + star
         ];
 
         for (i, label) in emoji_labels.iter().enumerate() {
@@ -1376,11 +1380,7 @@ mod tests {
         for (i, expected_label) in emoji_labels.iter().enumerate() {
             let node_id = NodeId::new(format!("emoji-node-{}", i));
             let node = parsed.nodes.get(&node_id);
-            assert!(
-                node.is_some(),
-                "Node {} should exist in parsed export",
-                i
-            );
+            assert!(node.is_some(), "Node {} should exist in parsed export", i);
             assert_eq!(
                 node.unwrap().label,
                 *expected_label,
@@ -1395,7 +1395,7 @@ mod tests {
 
         let rtl_labels = [
             "\u{0627}\u{0644}\u{0639}\u{0631}\u{0628}\u{064A}\u{0629}", // Arabic
-            "\u{05E2}\u{05D1}\u{05E8}\u{05D9}\u{05EA}",                   // Hebrew
+            "\u{05E2}\u{05D1}\u{05E8}\u{05D9}\u{05EA}",                 // Hebrew
         ];
 
         for (i, label) in rtl_labels.iter().enumerate() {
@@ -1430,8 +1430,7 @@ mod tests {
             let node_id = NodeId::new(format!("rtl-node-{}", i));
             let node = parsed.nodes.get(&node_id).unwrap();
             assert_eq!(
-                node.label,
-                *expected_label,
+                node.label, *expected_label,
                 "RTL label should roundtrip correctly"
             );
         }
@@ -1443,9 +1442,9 @@ mod tests {
 
         // Labels with zero-width joiner and other invisible characters
         let zwi_labels = [
-            "a\u{200D}b",          // ZWJ between a and b
-            "x\u{200B}y",          // Zero-width space
-            "\u{FE0F}",            // Variation selector
+            "a\u{200D}b", // ZWJ between a and b
+            "x\u{200B}y", // Zero-width space
+            "\u{FE0F}",   // Variation selector
         ];
 
         for (i, label) in zwi_labels.iter().enumerate() {
@@ -1480,8 +1479,7 @@ mod tests {
             let node_id = NodeId::new(format!("zwi-node-{}", i));
             let node = parsed.nodes.get(&node_id).unwrap();
             assert_eq!(
-                node.label,
-                *expected_label,
+                node.label, *expected_label,
                 "Zero-width char label should roundtrip correctly"
             );
         }
@@ -1528,8 +1526,7 @@ mod tests {
             let node_id = NodeId::new(format!("mixed-node-{}", i));
             let node = parsed.nodes.get(&node_id).unwrap();
             assert_eq!(
-                node.label,
-                *expected_label,
+                node.label, *expected_label,
                 "Mixed script label should roundtrip correctly"
             );
         }
@@ -1620,8 +1617,7 @@ mod tests {
         let parsed: DiagramProjectionExport = serde_json::from_str(&json).unwrap();
         let edge = parsed.edges.get(&EdgeId::new("e1".to_string())).unwrap();
         assert_eq!(
-            edge.label,
-            edge_label,
+            edge.label, edge_label,
             "Unicode edge label should roundtrip correctly"
         );
     }
@@ -1815,10 +1811,7 @@ mod tests {
 
         let result = import_diagram_json(&mut conn, input, actor);
 
-        assert!(
-            result.is_err(),
-            "Future schema version should return error"
-        );
+        assert!(result.is_err(), "Future schema version should return error");
         let err = result.unwrap_err();
         assert!(
             matches!(err, ExportError::InvalidSchema(_)),
@@ -1873,10 +1866,7 @@ mod tests {
         let result = import_diagram_json(&mut conn, input, actor);
 
         // Should fail - missing required field
-        assert!(
-            result.is_err(),
-            "Missing version field should return error"
-        );
+        assert!(result.is_err(), "Missing version field should return error");
     }
 
     #[test]

@@ -86,13 +86,24 @@ pub fn use_global_keyboard() {
                             let _ = apply_copy_selection(doc_signal, clipboard_signal, Some(toast));
                         }
                         (_, "v") => {
-                            let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal, Some(toast));
+                            let _ = apply_paste_selection(
+                                doc_signal,
+                                clipboard_signal,
+                                history_signal,
+                                Some(toast),
+                            );
                         }
                         (_, "d") => {
-                            let _ = apply_duplicate_selection(doc_signal, clipboard_signal, history_signal, Some(toast));
+                            let _ = apply_duplicate_selection(
+                                doc_signal,
+                                clipboard_signal,
+                                history_signal,
+                                Some(toast),
+                            );
                         }
                         (true, "g") => {
-                            let _ = apply_ungroup_selection(doc_signal, history_signal, Some(toast));
+                            let _ =
+                                apply_ungroup_selection(doc_signal, history_signal, Some(toast));
                         }
                         (false, "g") => {
                             let _ = apply_group_selection(doc_signal, history_signal, Some(toast));

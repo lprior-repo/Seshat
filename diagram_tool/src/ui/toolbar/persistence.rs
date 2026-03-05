@@ -25,7 +25,7 @@ fn prepare_import_transition(
         .map_err(ImportTransitionError::Parse)?;
     loaded_doc.revision = Revision::INITIAL;
 
-    run_mutation_with_policy(current, RevisionPolicy::Preserve, ValidationPolicy::default(), |_| Ok(loaded_doc))
+    run_mutation_with_policy(current, RevisionPolicy::Preserve, |_| Ok(loaded_doc))
         .map(|next_doc| (next_doc, History::new().push(current.clone())))
         .map_err(|err| {
             ImportTransitionError::Validation(super::mutation_error_code(&err).to_string())

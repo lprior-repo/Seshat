@@ -1075,10 +1075,7 @@ pub fn apply_group(
 }
 
 /// Apply Ungroup operation - removes the subgraph node and clears parent on all children
-pub fn apply_ungroup(
-    state: DiagramProjection,
-    id: &str,
-) -> Result<DiagramProjection, ReplayError> {
+pub fn apply_ungroup(state: DiagramProjection, id: &str) -> Result<DiagramProjection, ReplayError> {
     let subgraph_id = NodeId::new(id.to_string());
 
     if !state.has_node(&subgraph_id) {

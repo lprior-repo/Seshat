@@ -1073,13 +1073,14 @@ mod proptests {
             pos_x in prop::sample::select(&[f64::MIN, f64::MAX, 0.0, 1.0]),
             pos_y in prop::sample::select(&[f64::MIN, f64::MAX, 0.0, 1.0]),
         ) {
+            let from_node_clone = from_node.clone();
             let mode = InteractionMode::DrawingEdge {
                 from_node: NodeId::new(from_node),
                 current_pos: (pos_x, pos_y),
             };
             // Verify mode was created with the correct from_node
             if let InteractionMode::DrawingEdge { from_node: result_node, .. } = mode {
-                prop_assert_eq!(result_node, NodeId::new(from_node));
+                prop_assert_eq!(result_node, NodeId::new(from_node_clone));
             } else {
                 prop_assert!(false, "Expected DrawingEdge mode");
             }

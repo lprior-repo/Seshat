@@ -89,7 +89,9 @@ pub fn App() -> Element {
                 subject: None,
             })
             .into_iter();
-        schema_issues.chain(validate_document_data(&doc.document)).collect()
+        schema_issues
+            .chain(validate_document_data(&doc.document))
+            .collect()
     });
     let mut last_validated_revision = use_signal(move || doc_signal.read().revision);
     let mut last_validate_trigger = use_signal(move || *validate_trigger.read());
@@ -122,7 +124,11 @@ pub fn App() -> Element {
                     subject: None,
                 })
                 .into_iter();
-            validation_issues.set(schema_issues.chain(validate_document_data(&current_document.document)).collect());
+            validation_issues.set(
+                schema_issues
+                    .chain(validate_document_data(&current_document.document))
+                    .collect(),
+            );
             last_validated_revision.set(doc_signal.read().revision);
             last_validate_trigger.set(current_trigger);
             queued_validation_revision.set(None);
@@ -188,7 +194,11 @@ pub fn App() -> Element {
                     subject: None,
                 })
                 .into_iter();
-            validation_issues.set(schema_issues.chain(validate_document_data(&current_document.document)).collect());
+            validation_issues.set(
+                schema_issues
+                    .chain(validate_document_data(&current_document.document))
+                    .collect(),
+            );
             last_validated_revision.set(current_revision);
             queued_validation_revision.set(None);
         });
