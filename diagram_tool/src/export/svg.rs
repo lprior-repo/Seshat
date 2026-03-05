@@ -10,21 +10,26 @@ use crate::models::document::DiagramDocument;
 use base64::Engine;
 use std::fmt::Write;
 
-/// Escape a string for safe inclusion in XML/SVG content
+/// Escape special XML/SVG characters to prevent XSS attacks.
+/// - `&` → `&amp;`
+/// - `<` → `&lt;`
+/// - `>` → `&gt;`
+/// - `"` → `&quot;`
+/// - `'` → `&#39;`
 #[must_use]
-fn xml_escape(s: &str) -> String {
-    let mut escaped = String::with_capacity(s.len() * 2);
+pub fn escape_xml_string(s: &str) -> String {
+    let mut result = String::with_capacity(s.len() * 2);
     for c in s.chars() {
         match c {
-            '<' => escaped.push_str("&lt;"),
-            '>' => escaped.push_str("&gt;"),
-            '&' => escaped.push_str("&amp;"),
-            '"' => escaped.push_str("&quot;"),
-            '\'' => escaped.push_str("&apos;"),
-            _ => escaped.push(c),
+            '&' => result.push_str("&amp;"),
+            '<' => result.push_str("&lt;"),
+            '>' => result.push_str("&gt;"),
+            '"' => result.push_str("&quot;"),
+            '\'' => result.push_str("&#39;"),
+            _ => result.push(c),
         }
     }
-    escaped
+    result
 }
 
 /// Pure function to generate SVG string from document.
@@ -56,11 +61,7 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             let sy = src.y.0 + src.height.0 / 2.0;
             let tx = tgt.x.0 + tgt.width.0 / 2.0;
             let ty = tgt.y.0 + tgt.height.0 / 2.0;
-            let stroke_color = edge
-                .color
-                .as_deref()
-                .map(xml_escape)
-                .unwrap_or_else(|| "black".to_string());
+            let stroke_color = edge.color.as_deref().unwrap_or("black");
             let _ = write!(
                 &mut svg,
                 "<line x1='{sx}' y1='{sy}' x2='{tx}' y2='{ty}' stroke='{}' stroke-width='{}' />",
@@ -96,7 +97,7 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             );
         }
 
-        let escaped_label = xml_escape(&node.label);
+        let escaped_label = escape_xml_string(&node.label);
         let _ = write!(
             &mut svg,
             "<text x='{}' y='{}' text-anchor='middle' font-family='sans-serif' font-size='10'>{}</text>",
@@ -760,6 +761,175 @@ mod tests {
         // Then - icon should have width and height of 32
         assert!(svg.contains("width='32"), "icon width should be 32");
         assert!(svg.contains("height='32"), "icon height should be 32");
+        Ok(())
+    }
+
+    // ============== XSS escape tests ==============
+
+    #[test]
+    fn given_ampersand_when_escape_xml_string_then_escapes_to_amp_entity() -> Result<()> {
+        // Given
+        let input = "Tom & Jerry";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "Tom &amp; Jerry");
+        Ok(())
+    }
+
+    #[test]
+    fn given_less_than_when_escape_xml_string_then_escapes_to_lt_entity() -> Result<()> {
+        // Given
+        let input = "x < 5";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "x &lt; 5");
+        Ok(())
+    }
+
+    #[test]
+    fn given_greater_than_when_escape_xml_string_then_escapes_to_gt_entity() -> Result<()> {
+        // Given
+        let input = "5 > 3";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "5 &gt; 3");
+        Ok(())
+    }
+
+    #[test]
+    fn given_double_quote_when_escape_xml_string_then_escapes_to_quot_entity() -> Result<()> {
+        // Given
+        let input = "say \"hello\"";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "say &quot;hello&quot;");
+        Ok(())
+    }
+
+    #[test]
+    fn given_single_quote_when_escape_xml_string_then_escapes_to_apos_entity() -> Result<()> {
+        // Given
+        let input = "it's working";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "it&#39;s working");
+        Ok(())
+    }
+
+    #[test]
+    fn given_xss_script_payload_when_escape_xml_string_then_escapes_completely() -> Result<()> {
+        // Given
+        let input = "<script>alert('xss')</script>";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "&lt;script&gt;alert(&#39;xss&#39;)&lt;/script&gt;");
+        assert!(!result.contains("<script>"), "Should not contain raw script tag");
+        assert!(!result.contains("alert("), "Should not contain raw alert");
+        Ok(())
+    }
+
+    #[test]
+    fn given_xss_img_onerror_payload_when_escape_xml_string_then_escapes_completely() -> Result<()> {
+        // Given
+        let input = "<img src=x onerror=alert('xss')>";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "&lt;img src=x onerror=alert(&#39;xss&#39;)&gt;");
+        assert!(!result.contains("<img"), "Should not contain raw img tag");
+        assert!(!result.contains("onerror="), "Should not contain raw onerror");
+        Ok(())
+    }
+
+    #[test]
+    fn given_node_with_xss_label_when_generate_svg_string_then_label_is_escaped() -> Result<()> {
+        // Given
+        let mut doc = create_empty_document();
+        let (id, node) = create_node("n1", 100.0, 100.0, 120.0, 80.0, "<script>alert('xss')</script>");
+        doc.document.nodes.insert(id, node);
+
+        // When
+        let svg = generate_svg_string(&doc);
+
+        // Then
+        assert!(svg.contains("&lt;script&gt;"), "Script tag should be escaped");
+        assert!(svg.contains("&amp;lt;script&amp;gt;"), "Escaped script should appear in SVG");
+        assert!(!svg.contains("<script>"), "Raw script should NOT appear in SVG");
+        Ok(())
+    }
+
+    #[test]
+    fn given_node_with_quote_payload_when_generate_svg_string_then_quotes_escaped() -> Result<()> {
+        // Given
+        let mut doc = create_empty_document();
+        let (id, node) = create_node("n1", 100.0, 100.0, 120.0, 80.0, "Test\"value");
+        doc.document.nodes.insert(id, node);
+
+        // When
+        let svg = generate_svg_string(&doc);
+
+        // Then
+        assert!(svg.contains("&quot;value"), "Double quote should be escaped");
+        assert!(!svg.contains("Test\"value"), "Raw unescaped quote should NOT appear");
+        Ok(())
+    }
+
+    #[test]
+    fn given_normal_text_when_escape_xml_string_then_unchanged() -> Result<()> {
+        // Given
+        let input = "Hello World";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "Hello World");
+        Ok(())
+    }
+
+    #[test]
+    fn given_empty_string_when_escape_xml_string_then_empty() -> Result<()> {
+        // Given
+        let input = "";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "");
+        Ok(())
+    }
+
+    #[test]
+    fn given_mixed_special_chars_when_escape_xml_string_then_all_escaped() -> Result<()> {
+        // Given
+        let input = "A & B < C > D \"E\" F 'G'";
+
+        // When
+        let result = escape_xml_string(input);
+
+        // Then
+        assert_eq!(result, "A &amp; B &lt; C &gt; D &quot;E&quot; F &#39;G&#39;");
         Ok(())
     }
 }
