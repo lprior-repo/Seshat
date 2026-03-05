@@ -74,18 +74,23 @@ pub fn delete_selection(doc_signal: Signal<DiagramDocument>, history_signal: Sig
     let _ = apply_delete_selected(doc_signal, history_signal);
 }
 
-pub fn copy_selection(doc_signal: Signal<DiagramDocument>, clipboard_signal: Signal<Option<Clipboard>>) {
+pub fn copy_selection(
+    doc_signal: Signal<DiagramDocument>,
+    clipboard_signal: Signal<Option<Clipboard>>,
+) {
     let _ = apply_copy_selection(doc_signal, clipboard_signal);
 }
 
-pub fn paste_selection(doc_signal: Signal<DiagramDocument>, clipboard_signal: Signal<Option<Clipboard>>, history_signal: Signal<History>) {
+pub fn paste_selection(
+    doc_signal: Signal<DiagramDocument>,
+    clipboard_signal: Signal<Option<Clipboard>>,
+    history_signal: Signal<History>,
+) {
     let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
 }
 
-pub fn can_paste() -> bool {
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
-    let clipboard = clipboard_signal.read().clone();
-    clipboard_has_content(&clipboard)
+pub fn can_paste(clipboard_signal: Signal<Option<Clipboard>>) -> bool {
+    clipboard_has_content(&clipboard_signal.read())
 }
 
 pub fn bring_forward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {

@@ -129,10 +129,6 @@ pub fn App() -> Element {
         let current_document = doc.document.clone();
         drop(doc);
 
-        let validation_job_signal = validation_job;
-        let mut validation_issues_signal = validation_issues;
-        let mut last_validated_revision_signal = last_validated_revision;
-        let mut queued_validation_revision_signal = queued_validation_revision;
         let mut eval = document::eval(&format!(
             "setTimeout(() => dioxus.send({{ job: {next_job} }}), {VALIDATION_IDLE_MS});"
         ));
@@ -147,11 +143,11 @@ pub fn App() -> Element {
                 return;
             }
 
-            if *validation_job_signal.read() != next_job {
+            if *validation_job.read() != next_job {
                 return;
             }
 
-            let still_queued = queued_validation_revision_signal
+            let still_queued = queued_validation_revision
                 .read()
                 .as_ref()
                 .is_some_and(|queued| *queued == current_revision);
@@ -160,9 +156,9 @@ pub fn App() -> Element {
                 return;
             }
 
-            validation_issues_signal.set(validate_document_data(&current_document));
-            last_validated_revision_signal.set(current_revision);
-            queued_validation_revision_signal.set(None);
+            validation_issues.set(validate_document_data(&current_document));
+            last_validated_revision.set(current_revision);
+            queued_validation_revision.set(None);
         });
     });
 

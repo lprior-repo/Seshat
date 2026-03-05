@@ -182,7 +182,7 @@ pub fn Toolbar() -> Element {
                 "data-testid": "toolbar-paste",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| actions::paste_selection(doc_signal, clipboard_signal, history_signal),
-                disabled: !actions::can_paste(),
+                disabled: !actions::can_paste(clipboard_signal),
                 "Paste"
             }
 

@@ -354,7 +354,8 @@ pub fn Sidebar() -> Element {
                     for bucket in provider_buckets {
                         {
                             let provider = bucket.provider.clone();
-                            let expanded = query_active || expanded_providers.read().contains(&provider);
+                            let provider_ref = &provider;
+                            let expanded = query_active || expanded_providers.read().contains(provider_ref);
                             let visible_count = bucket.visible_count;
                             let total_count = bucket.total_count;
                             let has_more = bucket.has_more;
@@ -423,13 +424,13 @@ pub fn Sidebar() -> Element {
                                                                         div {
                                                                             class: "icon-grid",
                                                                             style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;",
-                                                                            for icon in category.icons {
-                                                                                IconTile {
-                                                                                    key: "{icon.icon_key}",
-                                                                                    icon,
-                                                                                    dragging_icon,
-                                                                                }
-                                                                            }
+                                    for icon in category.icons.iter().cloned() {
+                                        IconTile {
+                                            key: "{icon.icon_key}",
+                                            icon,
+                                            dragging_icon,
+                                        }
+                                    }
                                                                         }
                                                                     }
                                                                 }
