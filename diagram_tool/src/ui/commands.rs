@@ -9,6 +9,7 @@ use crate::history::History;
 use crate::models::document::{
     DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
+use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
 use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
@@ -230,12 +231,20 @@ pub fn paste_contents(mut clipboard: Clipboard, doc: DiagramDocument) -> Option<
 pub fn apply_copy_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
+    toast: Option<ToastApi>,
 ) -> bool {
     let doc = doc_signal.read().clone();
     if let Some(clipboard) = copy_selection(&doc) {
         clipboard_signal.set(Some(clipboard));
         true
     } else {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to copy",
+                Some("Select items first".to_string()),
+            );
+        }
         false
     }
 }
@@ -247,15 +256,30 @@ pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
     let current = doc_signal.read().clone();
     let clipboard = clipboard_signal.read().clone();
 
     let Some(clipboard) = clipboard else {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to paste",
+                None,
+            );
+        }
         return false;
     };
 
     let Some((new_doc, new_clipboard)) = paste_contents(clipboard, current) else {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to paste",
+                None,
+            );
+        }
         return false;
     };
 
@@ -273,9 +297,17 @@ pub fn apply_duplicate_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
     let doc = doc_signal.read().clone();
     let Some(clipboard) = copy_selection_for_duplicate(&doc) else {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to duplicate",
+                Some("Select items first".to_string()),
+            );
+        }
         return false;
     };
 
@@ -466,29 +498,73 @@ fn apply_z_order_operation(
 pub fn apply_bring_forward(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
-    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringForward)
+    let result = apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringForward);
+    if !result {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to move forward",
+                Some("No items can move forward".to_string()),
+            );
+        }
+    }
+    result
 }
 
 pub fn apply_send_backward(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
-    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendBackward)
+    let result = apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendBackward);
+    if !result {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to move backward",
+                Some("No items can move backward".to_string()),
+            );
+        }
+    }
+    result
 }
 
 pub fn apply_bring_to_front(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
-    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringToFront)
+    let result = apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringToFront);
+    if !result {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to bring to front",
+                Some("No items can move to front".to_string()),
+            );
+        }
+    }
+    result
 }
 
 pub fn apply_send_to_back(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
-    apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendToBack)
+    let result = apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendToBack);
+    if !result {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to send to back",
+                Some("No items can move to back".to_string()),
+            );
+        }
+    }
+    result
 }
 
 pub fn apply_select_all(mut doc_signal: Signal<DiagramDocument>) {
@@ -512,9 +588,17 @@ pub fn apply_clear_selection(mut doc_signal: Signal<DiagramDocument>) {
 pub fn apply_delete_selected(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
     let selected = doc_signal.read().editor_state.selected_items.clone();
     if selected.is_empty() {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Nothing to delete",
+                Some("Select items first".to_string()),
+            );
+        }
         return false;
     }
 
@@ -595,6 +679,7 @@ pub fn apply_nudge_selection(
 pub fn apply_group_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
     let selected_nodes = {
         let doc = doc_signal.read();
@@ -609,6 +694,13 @@ pub fn apply_group_selection(
             .collect::<Vec<_>>()
     };
     if selected_nodes.len() < 2 {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Select items first",
+                Some("Need at least 2 items to group".to_string()),
+            );
+        }
         return false;
     }
 
@@ -684,10 +776,18 @@ pub fn apply_group_selection(
 pub fn apply_ungroup_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) -> bool {
     let target_subgraphs = selected_subgraphs_for_ungroup(&doc_signal.read());
 
     if target_subgraphs.is_empty() {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "No groups to ungroup",
+                Some("Select a group container first".to_string()),
+            );
+        }
         return false;
     }
 
@@ -758,6 +858,7 @@ pub fn apply_align_selection(
     history_signal: Signal<History>,
     axis: AlignmentAxis,
     mode: AlignmentMode,
+    toast: Option<ToastApi>,
 ) -> bool {
     let current = doc_signal.read().clone();
 
@@ -775,6 +876,13 @@ pub fn apply_align_selection(
 
     // Need at least 2 nodes to align
     if selected_nodes.len() < 2 {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Select items first",
+                Some("Need at least 2 items to align".to_string()),
+            );
+        }
         return false;
     }
 
@@ -908,6 +1016,7 @@ pub fn apply_distribute_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
     axis: DistributionAxis,
+    toast: Option<ToastApi>,
 ) -> bool {
     let current = doc_signal.read().clone();
 
@@ -925,6 +1034,13 @@ pub fn apply_distribute_selection(
 
     // Need at least 3 nodes to distribute
     if selected_nodes.len() < 3 {
+        if let Some(toast) = toast {
+            let _ = toast.show(
+                crate::ui::toast::ToastIntent::Info,
+                "Select items first",
+                Some("Need at least 3 items to distribute".to_string()),
+            );
+        }
         return false;
     }
 
@@ -1119,21 +1235,51 @@ pub fn apply_zoom_reset(
     true
 }
 
-pub fn apply_undo(mut doc_signal: Signal<DiagramDocument>, mut history_signal: Signal<History>) {
+pub fn apply_undo(
+    mut doc_signal: Signal<DiagramDocument>,
+    mut history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let current = doc_signal.read().clone();
     let history = history_signal.read().clone();
-    if let Some((doc, next_history)) = history.undo(current) {
-        *doc_signal.write() = doc;
-        *history_signal.write() = next_history;
+    match history.undo(current) {
+        Some((doc, next_history)) => {
+            *doc_signal.write() = doc;
+            *history_signal.write() = next_history;
+        }
+        None => {
+            if let Some(toast) = toast {
+                let _ = toast.show(
+                    crate::ui::toast::ToastIntent::Info,
+                    "Nothing to undo",
+                    None,
+                );
+            }
+        }
     }
 }
 
-pub fn apply_redo(mut doc_signal: Signal<DiagramDocument>, mut history_signal: Signal<History>) {
+pub fn apply_redo(
+    mut doc_signal: Signal<DiagramDocument>,
+    mut history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let current = doc_signal.read().clone();
     let history = history_signal.read().clone();
-    if let Some((doc, next_history)) = history.redo(current) {
-        *doc_signal.write() = doc;
-        *history_signal.write() = next_history;
+    match history.redo(current) {
+        Some((doc, next_history)) => {
+            *doc_signal.write() = doc;
+            *history_signal.write() = next_history;
+        }
+        None => {
+            if let Some(toast) = toast {
+                let _ = toast.show(
+                    crate::ui::toast::ToastIntent::Info,
+                    "Nothing to redo",
+                    None,
+                );
+            }
+        }
     }
 }
 

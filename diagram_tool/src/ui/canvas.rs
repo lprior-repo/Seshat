@@ -21,8 +21,9 @@ use crate::models::document::{
 };
 use crate::ui::commands::{
     apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
-    apply_zoom_out, apply_zoom_reset,
+    apply_zoom_out, apply_zoom_reset, Clipboard,
 };
+use crate::ui::toast::use_toast;
 use crate::ui::editor::ToolMode;
 use crate::ui::grid::{snap_point, snap_value, GridSize};
 use crate::ui::interaction::{
@@ -565,9 +566,11 @@ pub fn Canvas() -> Element {
     let mut doc_signal = use_context::<Signal<DiagramDocument>>();
     let mut dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
     let mut history_signal = use_context::<Signal<History>>();
+    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
     let mut tool_signal = use_context::<Signal<ToolMode>>();
     let edge_style_default = use_context::<Signal<EdgeStyle>>();
     let arrow_type_default = use_context::<Signal<ArrowType>>();
+    let toast = use_toast();
 
     let mut interaction_mode = use_signal(|| InteractionMode::Select);
     let mut space_pressed = use_signal(|| false);
@@ -699,7 +702,7 @@ pub fn Canvas() -> Element {
                     }
                     match key {
                         "Delete" | "Backspace" => {
-                            let _ = apply_delete_selected(doc_signal, history_signal);
+                            let _ = apply_delete_selected(doc_signal, history_signal, Some(toast));
                         }
                         "Escape" => {
                             if editing_node.read().is_some() || editing_edge.read().is_some() {
@@ -1345,6 +1348,11 @@ pub fn Canvas() -> Element {
                                     };
 
                                     if !edge_preserves_dag(&doc, &candidate_edge) {
+                                        let _ = toast.show(
+                                            crate::ui::toast::ToastIntent::Warning,
+                                            "Cannot create circular connection",
+                                            None,
+                                        );
                                         if *tool_signal.read() == ToolMode::Edge {
                                             if let Some(target_id) = target {
                                                 *mode = InteractionMode::DrawingEdge {
@@ -1916,6 +1924,11 @@ pub fn Canvas() -> Element {
                                     };
 
                                     if !edge_preserves_dag(&doc, &candidate_edge) {
+                                        let _ = toast.show(
+                                            crate::ui::toast::ToastIntent::Warning,
+                                            "Cannot create circular connection",
+                                            None,
+                                        );
                                         if *tool_signal.read() == ToolMode::Edge {
                                             if let Some(target_id) = target {
                                                 *mode = InteractionMode::DrawingEdge {
@@ -2406,6 +2419,12 @@ pub fn Canvas() -> Element {
                                                     );
                                                     doc.revision = doc.revision.increment();
                                                 });
+                                            } else {
+                                                let _ = toast.show(
+                                                    crate::ui::toast::ToastIntent::Warning,
+                                                    "Cannot create circular connection",
+                                                    None,
+                                                );
                                             }
                                         }
                                         if *tool_signal.read() == ToolMode::Edge {

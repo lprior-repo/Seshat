@@ -6,8 +6,7 @@ use crate::ui::commands::{
     apply_align_selection, apply_bring_forward, apply_bring_to_front, apply_copy_selection,
     apply_delete_selected, apply_distribute_selection, apply_paste_selection, apply_redo,
     apply_send_backward, apply_send_to_back, apply_undo, apply_zoom_in, apply_zoom_out,
-    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, DistributionAxis,
-    Clipboard,
+    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, Clipboard, DistributionAxis,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -35,12 +34,20 @@ pub fn auto_layout(
     }
 }
 
-pub fn undo(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    apply_undo(doc_signal, history_signal);
+pub fn undo(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    apply_undo(doc_signal, history_signal, toast);
 }
 
-pub fn redo(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    apply_redo(doc_signal, history_signal);
+pub fn redo(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    apply_redo(doc_signal, history_signal, toast);
 }
 
 pub fn zoom_in(
@@ -70,43 +77,65 @@ pub fn zoom_reset(
     let _ = apply_zoom_reset(doc_signal, history_signal, viewport_size);
 }
 
-pub fn delete_selection(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_delete_selected(doc_signal, history_signal);
+pub fn delete_selection(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_delete_selected(doc_signal, history_signal, toast);
 }
 
 pub fn copy_selection(
     doc_signal: Signal<DiagramDocument>,
-    clipboard_signal: Signal<Option<Clipboard>>,
+    clipboard_signal: Signal<Option<crate::ui::commands::Clipboard>>,
+    toast: Option<ToastApi>,
 ) {
-    let _ = apply_copy_selection(doc_signal, clipboard_signal);
+    let _ = apply_copy_selection(doc_signal, clipboard_signal, toast);
 }
 
 pub fn paste_selection(
     doc_signal: Signal<DiagramDocument>,
-    clipboard_signal: Signal<Option<Clipboard>>,
+    clipboard_signal: Signal<Option<crate::ui::commands::Clipboard>>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) {
-    let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
+    let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal, toast);
 }
 
 pub fn can_paste(clipboard_signal: Signal<Option<Clipboard>>) -> bool {
     clipboard_has_content(&clipboard_signal.read())
 }
 
-pub fn bring_forward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_bring_forward(doc_signal, history_signal);
+pub fn bring_forward(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_bring_forward(doc_signal, history_signal, toast);
 }
 
-pub fn send_backward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_send_backward(doc_signal, history_signal);
+pub fn send_backward(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_send_backward(doc_signal, history_signal, toast);
 }
 
-pub fn bring_to_front(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_bring_to_front(doc_signal, history_signal);
+pub fn bring_to_front(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_bring_to_front(doc_signal, history_signal, toast);
 }
 
-pub fn send_to_back(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_send_to_back(doc_signal, history_signal);
+pub fn send_to_back(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_send_to_back(doc_signal, history_signal, toast);
 }
 
 pub fn toggle_grid(mut doc_signal: Signal<DiagramDocument>) {
@@ -117,69 +146,104 @@ pub fn toggle_grid(mut doc_signal: Signal<DiagramDocument>) {
 
 // Alignment actions
 
-pub fn align_left(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn align_left(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let _ = apply_align_selection(
         doc_signal,
         history_signal,
         AlignmentAxis::Horizontal,
         AlignmentMode::Start,
+        toast,
     );
 }
 
 pub fn align_center_horizontal(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    toast: Option<ToastApi>,
 ) {
     let _ = apply_align_selection(
         doc_signal,
         history_signal,
         AlignmentAxis::Horizontal,
         AlignmentMode::Center,
+        toast,
     );
 }
 
-pub fn align_right(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn align_right(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let _ = apply_align_selection(
         doc_signal,
         history_signal,
         AlignmentAxis::Horizontal,
         AlignmentMode::End,
+        toast,
     );
 }
 
-pub fn align_top(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn align_top(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let _ = apply_align_selection(
         doc_signal,
         history_signal,
         AlignmentAxis::Vertical,
         AlignmentMode::Start,
+        toast,
     );
 }
 
-pub fn align_middle_vertical(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn align_middle_vertical(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let _ = apply_align_selection(
         doc_signal,
         history_signal,
         AlignmentAxis::Vertical,
         AlignmentMode::Center,
+        toast,
     );
 }
 
-pub fn align_bottom(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn align_bottom(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
     let _ = apply_align_selection(
         doc_signal,
         history_signal,
         AlignmentAxis::Vertical,
         AlignmentMode::End,
+        toast,
     );
 }
 
 // Distribution actions
 
-pub fn distribute_horizontal(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Horizontal);
+pub fn distribute_horizontal(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Horizontal, toast);
 }
 
-pub fn distribute_vertical(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Vertical);
+pub fn distribute_vertical(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    toast: Option<ToastApi>,
+) {
+    let _ = apply_distribute_selection(doc_signal, history_signal, DistributionAxis::Vertical, toast);
 }
