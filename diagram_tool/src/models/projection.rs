@@ -57,6 +57,12 @@ pub enum ReplayError {
     DuplicateEdge(String),
     #[error("policy violation: {0}")]
     PolicyViolation(String),
+    #[error("no nodes specified for z-order operation")]
+    NoNodesSpecified,
+    #[error("all nodes invalid or not found: {0}")]
+    AllNodesInvalid(String),
+    #[error("z-index overflow")]
+    ZIndexOverflow,
 }
 
 /// Event record for replay - contains all information needed to reconstruct state
@@ -705,10 +711,14 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayErro
 }
 
 /// Apply `BringForward` operation (z-order)
-fn apply_bring_forward(
+pub fn apply_bring_forward(
     state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
+    if ids.is_empty() {
+        return Err(ReplayError::NoNodesSpecified);
+    }
+
     let selected: std::collections::BTreeSet<NodeId> = ids
         .iter()
         .map(|s| NodeId::new(s.clone()))
@@ -716,7 +726,8 @@ fn apply_bring_forward(
         .collect();
 
     if selected.is_empty() {
-        return Ok(state);
+        let invalid_ids = ids.join(", ");
+        return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
     let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
@@ -739,6 +750,9 @@ fn apply_bring_forward(
         .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
         .min()
         .unwrap_or(0);
+
+    let max_idx = node_ids.len().saturating_sub(1);
+    let _ = i64::try_from(max_idx).map_err(|_| ReplayError::ZIndexOverflow)?;
 
     let new_nodes = node_ids
         .iter()
@@ -764,10 +778,14 @@ fn apply_bring_forward(
 }
 
 /// Apply `SendBackward` operation (z-order)
-fn apply_send_backward(
-    mut state: DiagramProjection,
+pub fn apply_send_backward(
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
+    if ids.is_empty() {
+        return Err(ReplayError::NoNodesSpecified);
+    }
+
     let selected: std::collections::BTreeSet<NodeId> = ids
         .iter()
         .map(|s| NodeId::new(s.clone()))
@@ -775,7 +793,8 @@ fn apply_send_backward(
         .collect();
 
     if selected.is_empty() {
-        return Ok(state);
+        let invalid_ids = ids.join(", ");
+        return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
     let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
@@ -799,20 +818,41 @@ fn apply_send_backward(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let max_idx = node_ids.len().saturating_sub(1);
+    let _ = i64::try_from(max_idx).map_err(|_| ReplayError::ZIndexOverflow)?;
 
-    Ok(state)
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes, |acc, (idx, id)| {
+            let Some(node) = acc.get(id) else {
+                return acc;
+            };
+            let new_z = min_z.saturating_add(idx as i64);
+            let mut new_node = node.clone();
+            new_node.z_index = new_z;
+            acc.update(id.clone(), new_node)
+        });
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply `BringToFront` operation (z-order)
-fn apply_bring_to_front(
-    mut state: DiagramProjection,
+pub fn apply_bring_to_front(
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
+    if ids.is_empty() {
+        return Err(ReplayError::NoNodesSpecified);
+    }
+
     let selected: std::collections::BTreeSet<NodeId> = ids
         .iter()
         .map(|s| NodeId::new(s.clone()))
@@ -820,7 +860,8 @@ fn apply_bring_to_front(
         .collect();
 
     if selected.is_empty() {
-        return Ok(state);
+        let invalid_ids = ids.join(", ");
+        return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
     let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
@@ -844,20 +885,41 @@ fn apply_bring_to_front(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let max_idx = node_ids.len().saturating_sub(1);
+    let _ = i64::try_from(max_idx).map_err(|_| ReplayError::ZIndexOverflow)?;
 
-    Ok(state)
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes, |acc, (idx, id)| {
+            let Some(node) = acc.get(id) else {
+                return acc;
+            };
+            let new_z = min_z.saturating_add(idx as i64);
+            let mut new_node = node.clone();
+            new_node.z_index = new_z;
+            acc.update(id.clone(), new_node)
+        });
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply `SendToBack` operation (z-order)
-fn apply_send_to_back(
-    mut state: DiagramProjection,
+pub fn apply_send_to_back(
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
+    if ids.is_empty() {
+        return Err(ReplayError::NoNodesSpecified);
+    }
+
     let selected: std::collections::BTreeSet<NodeId> = ids
         .iter()
         .map(|s| NodeId::new(s.clone()))
@@ -865,7 +927,8 @@ fn apply_send_to_back(
         .collect();
 
     if selected.is_empty() {
-        return Ok(state);
+        let invalid_ids = ids.join(", ");
+        return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
     let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
@@ -894,22 +957,39 @@ fn apply_send_to_back(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let max_idx = node_ids.len().saturating_sub(1);
+    let _ = i64::try_from(max_idx).map_err(|_| ReplayError::ZIndexOverflow)?;
 
-    Ok(state)
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes, |acc, (idx, id)| {
+            let Some(node) = acc.get(id) else {
+                return acc;
+            };
+            let new_z = min_z.saturating_add(idx as i64);
+            let mut new_node = node.clone();
+            new_node.z_index = new_z;
+            acc.update(id.clone(), new_node)
+        });
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply Group operation - creates a subgraph and assigns all specified nodes as children
-fn apply_group(
-    mut state: DiagramProjection,
+pub fn apply_group(
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     if ids.is_empty() {
-        return Ok(state);
+        return Err(ReplayError::NoNodesSpecified);
     }
 
     let node_ids: Vec<NodeId> = ids.iter().map(|s| NodeId::new(s.clone())).collect();
@@ -921,7 +1001,8 @@ fn apply_group(
         .collect();
 
     if valid_ids.len() < 2 {
-        return Ok(state);
+        let invalid_ids = ids.join(", ");
+        return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
     let (min_x, min_y, max_x, max_y) = {
@@ -943,7 +1024,9 @@ fn apply_group(
     };
 
     if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
-        return Ok(state);
+        return Err(ReplayError::InvariantViolation(
+            "invalid node coordinates for grouping".to_string(),
+        ));
     }
 
     let group_id = NodeId::new(format!("group-{}", Uuid::new_v4()));
@@ -972,54 +1055,79 @@ fn apply_group(
     let mut new_nodes = state.nodes.clone();
     let _ = new_nodes.insert(group_id.clone(), subgraph);
 
-    for id in &valid_ids {
-        if let Some(node) = new_nodes.get(id) {
+    let new_nodes = valid_ids.iter().fold(new_nodes, |acc, id| {
+        if let Some(node) = acc.get(id) {
             let mut updated_node = node.clone();
             updated_node.parent = Some(group_id.clone());
-            let _ = new_nodes.insert(id.clone(), updated_node);
+            acc.update(id.clone(), updated_node)
+        } else {
+            acc
         }
-    }
+    });
 
-    state.nodes = new_nodes;
-
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply Ungroup operation - removes the subgraph node and clears parent on all children
-fn apply_ungroup(mut state: DiagramProjection, id: &str) -> Result<DiagramProjection, ReplayError> {
+pub fn apply_ungroup(
+    state: DiagramProjection,
+    id: &str,
+) -> Result<DiagramProjection, ReplayError> {
     let subgraph_id = NodeId::new(id.to_string());
 
     if !state.has_node(&subgraph_id) {
-        return Ok(state);
+        return Err(ReplayError::InvariantViolation(format!(
+            "subgraph not found: {}",
+            id
+        )));
     }
 
     let subgraph = state.nodes.get(&subgraph_id).cloned();
     let _subgraph = match subgraph {
         Some(s) if s.kind == crate::models::document::NodeKind::Subgraph => s,
-        _ => return Ok(state),
+        _ => {
+            return Err(ReplayError::InvariantViolation(format!(
+                "node is not a subgraph: {}",
+                id
+            )))
+        }
     };
 
-    let mut new_nodes = state.nodes.clone();
-
-    let children_to_unparent: Vec<NodeId> = new_nodes
+    let children_to_unparent: Vec<NodeId> = state
+        .nodes
         .iter()
         .filter(|(_, node)| node.parent.as_ref() == Some(&subgraph_id))
         .map(|(id, _)| id.clone())
         .collect();
 
-    for child_id in &children_to_unparent {
-        if let Some(child) = new_nodes.get(child_id) {
-            let mut updated_child = child.clone();
-            updated_child.parent = None;
-            let _ = new_nodes.insert(child_id.clone(), updated_child);
-        }
-    }
+    let new_nodes = children_to_unparent
+        .iter()
+        .fold(state.nodes.clone(), |acc, child_id| {
+            if let Some(child) = acc.get(child_id) {
+                let mut updated_child = child.clone();
+                updated_child.parent = None;
+                acc.update(child_id.clone(), updated_child)
+            } else {
+                acc
+            }
+        })
+        .without(&subgraph_id);
 
-    let _ = new_nodes.remove(&subgraph_id);
-
-    state.nodes = new_nodes;
-
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Convert a `DiagramProjection` to a `DiagramDocument`
