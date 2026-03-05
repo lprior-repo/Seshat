@@ -20,6 +20,7 @@ use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
 use crate::ui::toolbar::{auto_save, Toolbar, ToolbarStats};
 
+use crate::ui::commands::Clipboard;
 use crate::ui::ValidationPanel;
 #[allow(unused_imports)]
 use auto_save::AUTO_SAVE_KEY;
@@ -54,6 +55,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
 
     use_global_keyboard();
     use_e2e_reset_hook();
