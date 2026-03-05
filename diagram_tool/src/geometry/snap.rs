@@ -291,10 +291,7 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
         let distance = (point.y - target).abs();
 
         if distance <= threshold {
-            let should_snap = match snapped_y {
-                None => true,
-                Some(current) => distance < (point.y - current).abs(),
-            };
+            let should_snap = snapped_y.is_none_or(|current| distance < (point.y - current).abs());
             if should_snap {
                 snapped_y = Some(target);
             }
@@ -307,10 +304,7 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
         let distance = (point.x - target).abs();
 
         if distance <= threshold {
-            let should_snap = match snapped_x {
-                None => true,
-                Some(current) => distance < (point.x - current).abs(),
-            };
+            let should_snap = snapped_x.is_none_or(|current| distance < (point.x - current).abs());
             if should_snap {
                 snapped_x = Some(target);
             }
@@ -339,6 +333,7 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
 /// # Postconditions
 /// - Returns Some(Point) if snap applied, None otherwise
 /// - Snaps to left, right, center (horizontal) or top, bottom, middle (vertical)
+#[must_use]
 pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<Point> {
     // P2: Validate threshold
     if threshold < 0.0 || !threshold.is_finite() {
@@ -423,6 +418,7 @@ pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) ->
 /// # Postconditions
 /// - All nodes aligned to minimum X
 /// - Node count preserved
+#[must_use]
 pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
@@ -439,15 +435,17 @@ pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {
 }
 
 /// Align nodes to their horizontal centers.
+#[must_use]
 pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
     }
 
     // Calculate average center X
+    #[allow(clippy::cast_precision_loss)]
     let avg_center: f64 = nodes
         .iter()
-        .map(|n| n.center_x())
+        .map(SnapNode::center_x)
         .filter(|x| x.is_finite())
         .sum::<f64>()
         / nodes.len() as f64;
@@ -459,6 +457,7 @@ pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
 }
 
 /// Align nodes to their right edges.
+#[must_use]
 pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
@@ -466,7 +465,7 @@ pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
 
     let max_right = nodes
         .iter()
-        .map(|n| n.right())
+        .map(SnapNode::right)
         .filter(|x| x.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);

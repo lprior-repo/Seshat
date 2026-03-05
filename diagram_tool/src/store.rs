@@ -1851,13 +1851,13 @@ mod tests {
             ))
         });
 
-        // Should get TransactionAborted error
+        // Should get the original error (preserving the variant for deterministic handling)
         assert!(result.is_err());
         match result {
-            Err(StoreError::TransactionAborted(msg)) => {
+            Err(StoreError::ValidationFailed(msg)) => {
                 assert!(msg.contains("intentional failure"));
             }
-            Err(e) => panic!("Expected TransactionAborted, got: {:?}", e),
+            Err(e) => panic!("Expected ValidationFailed, got: {:?}", e),
             Ok(_) => panic!("Expected error, got success"),
         }
 

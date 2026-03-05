@@ -706,7 +706,7 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayErro
 
 /// Apply `BringForward` operation (z-order)
 fn apply_bring_forward(
-    mut state: DiagramProjection,
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     let selected: std::collections::BTreeSet<NodeId> = ids
@@ -740,18 +740,33 @@ fn apply_bring_forward(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes.clone(), |acc, (idx, id)| {
+            let new_z = min_z + i64::try_from(idx).unwrap_or(min_z);
+            if let Some(node) = acc.get(id) {
+                let mut updated = node.clone();
+                updated.z_index = new_z;
+                acc.update(id.clone(), updated)
+            } else {
+                acc
+            }
+        });
 
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply `SendBackward` operation (z-order)
 fn apply_send_backward(
-    mut state: DiagramProjection,
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     let selected: std::collections::BTreeSet<NodeId> = ids
@@ -785,18 +800,33 @@ fn apply_send_backward(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes.clone(), |acc, (idx, id)| {
+            let new_z = min_z + i64::try_from(idx).unwrap_or(min_z);
+            if let Some(node) = acc.get(id) {
+                let mut updated = node.clone();
+                updated.z_index = new_z;
+                acc.update(id.clone(), updated)
+            } else {
+                acc
+            }
+        });
 
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply `BringToFront` operation (z-order)
 fn apply_bring_to_front(
-    mut state: DiagramProjection,
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     let selected: std::collections::BTreeSet<NodeId> = ids
@@ -830,18 +860,33 @@ fn apply_bring_to_front(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes.clone(), |acc, (idx, id)| {
+            let new_z = min_z + i64::try_from(idx).unwrap_or(min_z);
+            if let Some(node) = acc.get(id) {
+                let mut updated = node.clone();
+                updated.z_index = new_z;
+                acc.update(id.clone(), updated)
+            } else {
+                acc
+            }
+        });
 
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply `SendToBack` operation (z-order)
 fn apply_send_to_back(
-    mut state: DiagramProjection,
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     let selected: std::collections::BTreeSet<NodeId> = ids
@@ -880,13 +925,28 @@ fn apply_send_to_back(
         .min()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes.clone(), |acc, (idx, id)| {
+            let new_z = min_z + i64::try_from(idx).unwrap_or(min_z);
+            if let Some(node) = acc.get(id) {
+                let mut updated = node.clone();
+                updated.z_index = new_z;
+                acc.update(id.clone(), updated)
+            } else {
+                acc
+            }
+        });
 
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply Group operation - creates a subgraph and assigns all specified nodes as children
