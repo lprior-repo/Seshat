@@ -218,10 +218,10 @@ pub fn save_workspace_atomic(
         let dir_file = std::fs::OpenOptions::new()
             .read(true)
             .open(parent_dir)
-            .map_err(|e| CliPersistenceError::IoError(e))?;
+            .map_err(CliPersistenceError::IoError)?;
         dir_file
             .sync_all()
-            .map_err(|e| CliPersistenceError::IoError(e))?;
+            .map_err(CliPersistenceError::IoError)?;
     }
 
     // Emit success event
@@ -270,7 +270,7 @@ pub fn load_workspace_with_lkg(path: &Path) -> Result<DiagramDocument, CliPersis
 
             // LKG is stored in `.lkg/` directory next to the original file
             // This matches the save convention in cli.rs
-            let lkg_dir = path.parent().unwrap_or(Path::new(".")).join(".lkg");
+            let lkg_dir = path.parent().unwrap_or_else(|| Path::new(".")).join(".lkg");
             let lkg_filename = format!(
                 "{}.lkg",
                 path.file_name()
@@ -470,8 +470,8 @@ mod tests {
 
         // Verify no temp files left behind
         let entries: Vec<_> = std::fs::read_dir(temp_dir.path())
-            .unwrap()
-            .filter_map(Result::ok)
+            .expect("Failed to read temp directory")
+            .filter_map(|r| r.ok())
             .collect();
 
         let has_temp_files = entries

@@ -47,7 +47,7 @@ pub enum DistributionAxis {
 ///
 /// This replaces the mutable thread_local RefCell-based clipboard with
 /// a pure functional approach where clipboard state is passed explicitly.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Clipboard {
     /// The nodes that were copied to the clipboard
     pub nodes: Vec<(NodeId, Node)>,

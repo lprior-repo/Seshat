@@ -80,7 +80,7 @@ pub struct EventRecord {
 ///
 /// This is a pure data structure representing the complete diagram state
 /// after replaying a sequence of events.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiagramProjection {
     /// Schema version for compatibility checking
     pub version: u32,

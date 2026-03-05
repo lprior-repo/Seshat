@@ -12,6 +12,9 @@ use resvg::usvg;
 use tiny_skia::{Pixmap, Transform};
 
 /// Export document to PNG file.
+///
+/// # Errors
+/// Returns an error if SVG generation or PNG encoding fails.
 pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
     let svg_data = generate_svg_string(doc);
 

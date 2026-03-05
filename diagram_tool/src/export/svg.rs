@@ -59,8 +59,7 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             let stroke_color = edge
                 .color
                 .as_deref()
-                .map(xml_escape)
-                .unwrap_or_else(|| "black".to_string());
+                .map_or_else(|| "black".to_string(), xml_escape);
             let _ = write!(
                 &mut svg,
                 "<line x1='{sx}' y1='{sy}' x2='{tx}' y2='{ty}' stroke='{}' stroke-width='{}' />",

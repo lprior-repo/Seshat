@@ -36,6 +36,7 @@ pub struct DraggedIconPayload {
 }
 
 #[allow(non_snake_case)]
+#[allow(clippy::missing_errors_doc)]
 #[allow(
     clippy::too_many_lines,
     clippy::uninlined_format_args,

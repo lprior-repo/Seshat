@@ -56,7 +56,7 @@ impl fmt::Display for EdgeId {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DiagramDocument {
     pub version: u32,
@@ -88,14 +88,14 @@ impl Revision {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DocumentData {
     pub nodes: HashMap<NodeId, Node>,
     pub edges: HashMap<EdgeId, Edge>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub kind: NodeKind,
@@ -127,11 +127,12 @@ pub struct Node {
     pub collapsed: Option<bool>,
 }
 
-/// Helper to make floats Eq
+/// Helper for floats that only implements PartialEq (not Eq)
+/// to avoid violating the Eq contract with NaN values.
+/// Schema validation rejects NaN/Inf at deserialization boundaries.
+/// Uses bit-hashing for consistent Hash behavior with PartialEq.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, PartialOrd, Default)]
 pub struct OrderedFloat(pub f64);
-
-impl Eq for OrderedFloat {}
 
 impl std::hash::Hash for OrderedFloat {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -207,7 +208,7 @@ pub enum FontWeight {
     Bold,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Edge {
     pub source: NodeId,
@@ -273,14 +274,14 @@ pub enum ArrowType {
     Straight,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Point {
     pub x: OrderedFloat,
     pub y: OrderedFloat,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct EditorState {
     pub camera_x: OrderedFloat,

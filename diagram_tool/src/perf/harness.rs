@@ -3,7 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::path::PathBuf;
-use std::time::{Instant, UNIX_EPOCH};
+use std::time::UNIX_EPOCH;
 
 use super::benchmark::{Benchmark, BenchmarkConfig, BenchmarkResult};
 use super::error::PerfError;
@@ -283,7 +283,7 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     // Simple LCG for deterministic generation
     let mut rng = seed;
     let next_random = |r: &mut u64| -> f64 {
-        *r = r.wrapping_mul(1103515245).wrapping_add(12345);
+        *r = r.wrapping_mul(1_103_515_245).wrapping_add(12345);
         f64::from((*r >> 16) as u16) / 65535.0
     };
 
