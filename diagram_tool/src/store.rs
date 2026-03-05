@@ -620,10 +620,14 @@ pub fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryErro
     let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(RecoveryError::Sqlite)?;
 
-    // Verify we can read from the database
-    let _: i32 = conn
-        .query_row("PRAGMA page_count", [], |row| row.get(0))
-        .map_err(|e| RecoveryError::CorruptDatabase(e.to_string()))?;
+    // Run integrity check to verify database is not corrupt
+    let integrity_result: String = conn
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .map_err(RecoveryError::Sqlite)?;
+
+    if integrity_result != "ok" {
+        return Err(RecoveryError::CorruptDatabase(integrity_result));
+    }
 
     Ok(RecoveryHandle {
         conn,
@@ -1207,8 +1211,10 @@ where
             Ok(value)
         }
         Err(err) => {
-            // Transaction will roll back automatically when dropped
-            Err(StoreError::TransactionAborted(err.to_string()))
+            // Preserve the original error variant rather than wrapping everything in TransactionAborted.
+            // This allows callers to handle specific error types deterministically.
+            // Transaction will roll back automatically when dropped.
+            Err(err)
         }
     }
 }
