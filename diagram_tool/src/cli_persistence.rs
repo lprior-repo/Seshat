@@ -79,21 +79,19 @@ pub fn validate_safe_path(path: &Path, base_dir: &Path) -> Result<PathBuf, CliPe
     };
 
     // Canonicalize to resolve symlinks
-    let canonical = std::fs::canonicalize(&resolved)
-        .unwrap_or_else(|_| {
-            // If file doesn't exist, canonicalize parent and append filename
-            if let Some(parent) = resolved.parent() {
-                std::fs::canonicalize(parent)
-                    .map(|p| p.join(resolved.file_name().unwrap_or_default()))
-                    .unwrap_or(resolved)
-            } else {
-                resolved
-            }
-        });
+    let canonical = std::fs::canonicalize(&resolved).unwrap_or_else(|_| {
+        // If file doesn't exist, canonicalize parent and append filename
+        if let Some(parent) = resolved.parent() {
+            std::fs::canonicalize(parent)
+                .map(|p| p.join(resolved.file_name().unwrap_or_default()))
+                .unwrap_or(resolved)
+        } else {
+            resolved
+        }
+    });
 
     // Canonicalize base_dir for comparison
-    let canonical_base = std::fs::canonicalize(base_dir)
-        .unwrap_or_else(|_| base_dir.to_path_buf());
+    let canonical_base = std::fs::canonicalize(base_dir).unwrap_or_else(|_| base_dir.to_path_buf());
 
     // Check if canonical path starts with canonical base
     let canonical_str = canonical.to_string_lossy();

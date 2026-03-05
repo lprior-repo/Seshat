@@ -36,9 +36,9 @@
 //! ```
 
 use crate::history::History;
-use crate::mutation::pipeline::{mutate_document, mutate_editor_state};
-use crate::mutation::error::MutationError;
 use crate::models::document::DiagramDocument;
+use crate::mutation::error::MutationError;
+use crate::mutation::pipeline::{mutate_document, mutate_editor_state};
 use dioxus::prelude::*;
 
 /// Applies a validated document mutation via a Dioxus Signal.

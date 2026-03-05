@@ -6,8 +6,8 @@
 #![forbid(unsafe_code)]
 
 use crate::cli_persistence::{
-    emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, StageDetails,
-    validate_safe_path,
+    emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, validate_safe_path,
+    StageDetails,
 };
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
@@ -412,7 +412,9 @@ fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Va
         ["revision"] => {
             // Disallow direct revision writes via patch to preserve optimistic locking semantics.
             // Revision must only be set via test operations (which verify the expected value).
-            Err(anyhow!("cannot write to /revision via patch: revision is computed from input document"))
+            Err(anyhow!(
+                "cannot write to /revision via patch: revision is computed from input document"
+            ))
         }
         ["document", "nodes", node_id, "label"] => {
             let node_id = NodeId::new(node_id.to_string());

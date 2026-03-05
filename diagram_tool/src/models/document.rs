@@ -22,6 +22,15 @@ impl NodeId {
         Self(id)
     }
 
+    /// Create a new NodeId, returning error for empty strings
+    pub fn try_new(id: String) -> Result<Self, &'static str> {
+        if id.is_empty() {
+            Err("NodeId cannot be empty")
+        } else {
+            Ok(Self(id))
+        }
+    }
+
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
@@ -42,6 +51,15 @@ impl EdgeId {
     #[must_use]
     pub const fn new(id: String) -> Self {
         Self(id)
+    }
+
+    /// Create a new EdgeId, returning error for empty strings
+    pub fn try_new(id: String) -> Result<Self, &'static str> {
+        if id.is_empty() {
+            Err("EdgeId cannot be empty")
+        } else {
+            Ok(Self(id))
+        }
     }
 
     #[must_use]
@@ -392,6 +410,34 @@ mod tests {
         assert_eq!(edge.as_str(), "edge-1");
         assert_eq!(node.to_string(), "node-1");
         assert_eq!(edge.to_string(), "edge-1");
+    }
+
+    #[test]
+    fn given_node_id_try_new_with_empty_string_then_it_returns_error() {
+        let result = NodeId::try_new(String::new());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "NodeId cannot be empty");
+    }
+
+    #[test]
+    fn given_edge_id_try_new_with_empty_string_then_it_returns_error() {
+        let result = EdgeId::try_new(String::new());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "EdgeId cannot be empty");
+    }
+
+    #[test]
+    fn given_node_id_try_new_with_valid_string_then_it_succeeds() {
+        let result = NodeId::try_new(String::from("valid-id"));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_str(), "valid-id");
+    }
+
+    #[test]
+    fn given_edge_id_try_new_with_valid_string_then_it_succeeds() {
+        let result = EdgeId::try_new(String::from("valid-id"));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_str(), "valid-id");
     }
 
     #[test]

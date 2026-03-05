@@ -62,7 +62,10 @@ where
 /// Returns `Err(MutationError)` if:
 /// - Schema validation fails
 /// - Semantic validation fails
-pub fn mutate_document<F>(current: DiagramDocument, mutation: F) -> Result<DiagramDocument, MutationError>
+pub fn mutate_document<F>(
+    current: DiagramDocument,
+    mutation: F,
+) -> Result<DiagramDocument, MutationError>
 where
     F: FnOnce(&mut DiagramDocument),
 {
