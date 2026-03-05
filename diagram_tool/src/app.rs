@@ -110,7 +110,7 @@ pub fn App() -> Element {
     use_effect(move || {
         let current_trigger = *validate_trigger.read();
         if current_trigger != *last_validate_trigger.read() {
-            let current_document = doc_signal.read().document.clone();
+            let current_document = doc_signal.read().clone();
             // Combine schema validation (stricter) with document validation (UI-friendly)
             let schema_issues = validate_schema(&current_document)
                 .err()
@@ -121,7 +121,7 @@ pub fn App() -> Element {
                     subject: None,
                 })
                 .into_iter();
-            validation_issues.set(schema_issues.chain(validate_document_data(&current_document)).collect());
+            validation_issues.set(schema_issues.chain(validate_document_data(&current_document.document)).collect());
             last_validated_revision.set(doc_signal.read().revision);
             last_validate_trigger.set(current_trigger);
             queued_validation_revision.set(None);
@@ -147,7 +147,7 @@ pub fn App() -> Element {
 
         let next_job = (*validation_job.read()).saturating_add(1);
         validation_job.set(next_job);
-        let current_document = doc.document.clone();
+        let current_document = doc.clone();
         drop(doc);
 
         let mut eval = document::eval(&format!(
@@ -187,7 +187,7 @@ pub fn App() -> Element {
                     subject: None,
                 })
                 .into_iter();
-            validation_issues.set(schema_issues.chain(validate_document_data(&current_document)).collect());
+            validation_issues.set(schema_issues.chain(validate_document_data(&current_document.document)).collect());
             last_validated_revision.set(current_revision);
             queued_validation_revision.set(None);
         });

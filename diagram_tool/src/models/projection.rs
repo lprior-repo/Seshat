@@ -22,7 +22,7 @@ use crate::models::document::{
 use crate::models::envelope::{Author, DomainOp};
 
 /// Current supported schema version
-const SUPPORTED_VERSION: u32 = 1;
+const SUPPORTED_VERSION: u32 = 2;
 
 /// Cycle policy for a diagram
 ///
@@ -706,7 +706,7 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayErro
 
 /// Apply `BringForward` operation (z-order)
 fn apply_bring_forward(
-    mut state: DiagramProjection,
+    state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     let selected: std::collections::BTreeSet<NodeId> = ids
@@ -738,15 +738,30 @@ fn apply_bring_forward(
         .iter()
         .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
         .min()
+        .copied()
         .unwrap_or(0);
 
-    for (idx, id) in node_ids.iter().enumerate() {
-        if let Some(node) = state.nodes.get_mut(id) {
-            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
-        }
-    }
+    let new_nodes = node_ids
+        .iter()
+        .enumerate()
+        .fold(state.nodes, |acc, (idx, id)| {
+            let Some(node) = acc.get(id) else {
+                return acc;
+            };
+            let new_z = min_z.saturating_add(idx as i64);
+            let mut new_node = node.clone();
+            new_node.z_index = new_z;
+            acc.update(id.clone(), new_node)
+        });
 
-    Ok(state)
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 /// Apply `SendBackward` operation (z-order)

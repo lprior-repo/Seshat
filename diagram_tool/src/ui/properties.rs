@@ -485,6 +485,10 @@ pub fn PropertiesPanel() -> Element {
                                     style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                     onclick: move |_| {
                                         let nid = id_lock.clone();
+                                        // Push history before mutating
+                                        let current = doc_signal.read().clone();
+                                        let next_h = history.read().push(current);
+                                        *history.write() = next_h;
                                         doc_signal.with_mut(|doc| {
                                             if let Some(n) = doc.document.nodes.get_mut(&nid) {
                                                 n.locked = !n.locked;

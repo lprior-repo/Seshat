@@ -251,7 +251,7 @@ struct DiagramProjectionExport {
 }
 
 /// Schema version constant for projection exports
-const SUPPORTED_VERSION: u32 = 1;
+const SUPPORTED_VERSION: u32 = 2;
 
 /// Fetch all events from the database
 ///

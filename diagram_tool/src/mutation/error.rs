@@ -40,3 +40,9 @@ impl From<crate::models::sync::SyncError> for MutationError {
         Self::Schema(format!("sync error: {}", err))
     }
 }
+
+impl From<anyhow::Error> for MutationError {
+    fn from(err: anyhow::Error) -> Self {
+        Self::Schema(err.to_string())
+    }
+}
