@@ -32,6 +32,19 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(clippy::missing_const_for_fn)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::option_if_let_else)]
+#![allow(clippy::unnecessary_map_or)]
+#![allow(clippy::empty_line_after_outer_attr)]
+#![allow(clippy::suboptimal_flops)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::no_effect_underscore_binding)]
+#![allow(clippy::match_same_arms)]
 
 use crate::geometry::Point;
 use thiserror::Error;

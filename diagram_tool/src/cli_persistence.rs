@@ -219,9 +219,7 @@ pub fn save_workspace_atomic(
             .read(true)
             .open(parent_dir)
             .map_err(CliPersistenceError::IoError)?;
-        dir_file
-            .sync_all()
-            .map_err(CliPersistenceError::IoError)?;
+        dir_file.sync_all().map_err(CliPersistenceError::IoError)?;
     }
 
     // Emit success event
