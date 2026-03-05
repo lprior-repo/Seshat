@@ -5,22 +5,25 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use crate::app::DraggedIconPayload;
-use crate::icons::ICONS;
-use crate::icons::{icon_index, IconMeta};
-use crate::ui::mobile::{close_sidebar, open_sidebar, SidebarUiState};
-use crate::ui::sidebar_primitives::{
-    Sidebar as SidebarPanel, SidebarCollapsible, SidebarGroup, SidebarHeader, SidebarInset,
-    SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem,
-    SidebarOverlay, SidebarProvider, SidebarRail, SidebarSheet, SidebarSide, SidebarTrigger,
-    SidebarVariant,
-};
-use crate::ui::theme::{
-    BG_BASE, BG_ELEVATED, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED,
-};
+use std::collections::{BTreeMap, BTreeSet};
+
 use base64::{engine::general_purpose, Engine as _};
 use dioxus::prelude::*;
-use std::collections::{BTreeMap, BTreeSet};
+
+use crate::{
+    app::DraggedIconPayload,
+    icons::{icon_index, IconMeta, ICONS},
+    ui::{
+        mobile::{close_sidebar, open_sidebar, SidebarUiState},
+        sidebar_primitives::{
+            Sidebar as SidebarPanel, SidebarCollapsible, SidebarGroup, SidebarHeader, SidebarInset,
+            SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem,
+            SidebarOverlay, SidebarProvider, SidebarRail, SidebarSheet, SidebarSide,
+            SidebarTrigger, SidebarVariant,
+        },
+        theme::{BG_BASE, BG_ELEVATED, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED},
+    },
+};
 
 const INITIAL_PROVIDER_LIMIT: usize = 72;
 const LOAD_MORE_STEP: usize = 48;
@@ -226,7 +229,6 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
                     image_data_url: data_url_for_drag_start.clone(),
                 }));
             },
-            ondragend: move |_| dragging_icon.set(None),
             style: "cursor: grab; border: 1px solid {BORDER}; border-radius: 6px; padding: 5px; display: flex; justify-content: center; align-items: center; background: linear-gradient(180deg, {BG_BASE} 0%, {BG_ELEVATED} 100%); aspect-ratio: 1/1; box-shadow: inset 0 0 0 1px color-mix(in oklch, {BORDER} 60%, transparent);",
 
             if let Some(src) = data_url {
