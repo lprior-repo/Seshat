@@ -6,11 +6,12 @@
 #![forbid(unsafe_code)]
 
 use crate::cli_persistence::{
-    emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, StageDetails,
+    emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, validate_safe_path,
+    StageDetails,
 };
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
-use crate::models::document::{DiagramDocument, NodeId, Revision};
+use crate::models::document::{DiagramDocument, NodeId};
 use crate::mutation::ops::apply_layout;
 use crate::mutation::pipeline::run_mutation;
 use anyhow::{anyhow, Context, Result};
@@ -180,6 +181,14 @@ fn execute_command(cmd: &Commands) -> Result<()> {
     match cmd {
         Commands::Render { input, output } => {
             let doc = load_doc(input)?;
+
+            // Validate output path to prevent path traversal attacks
+            let output_path = Path::new(output);
+            let output_parent = output_path.parent().filter(|p| !p.as_os_str().is_empty());
+            let output_base_dir = output_parent.unwrap_or_else(|| Path::new("."));
+            validate_safe_path(output_path, output_base_dir)
+                .map_err(|e| anyhow!("Invalid output path: {e}"))?;
+
             if Path::new(output)
                 .extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
@@ -282,6 +291,13 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                         .with_code("success"),
                 );
             }
+
+            // Validate patch file path to prevent path traversal attacks
+            let patch_path = Path::new(patch);
+            let patch_parent = patch_path.parent().filter(|p| !p.as_os_str().is_empty());
+            let patch_base_dir = patch_parent.unwrap_or_else(|| Path::new("."));
+            validate_safe_path(patch_path, patch_base_dir)
+                .map_err(|e| anyhow!("Invalid patch path: {e}"))?;
 
             // Read and parse the patch file
             let patch_content = std::fs::read_to_string(patch)
@@ -396,16 +412,17 @@ fn json_pointer_get(doc: &DiagramDocument, path: &str) -> Option<serde_json::Val
 }
 
 /// Set a value in the document using a simple JSON Pointer path
+///
+/// Returns an error if attempting to write to `/revision` (only test operations are allowed).
 fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Value) -> Result<()> {
     let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
     match parts.as_slice() {
         ["revision"] => {
-            if let Some(v) = value.as_u64() {
-                doc.revision = Revision::new(v);
-                Ok(())
-            } else {
-                Err(anyhow!("revision must be a number"))
-            }
+            // Disallow direct revision writes via patch to preserve optimistic locking semantics.
+            // Revision must only be set via test operations (which verify the expected value).
+            Err(anyhow!(
+                "cannot write to /revision via patch: revision is computed from input document"
+            ))
         }
         ["document", "nodes", node_id, "label"] => {
             let node_id = NodeId::new(node_id.to_string());

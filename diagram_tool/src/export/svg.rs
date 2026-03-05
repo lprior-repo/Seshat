@@ -10,6 +10,8 @@ use crate::models::document::DiagramDocument;
 use base64::Engine;
 use std::fmt::Write;
 
+/// Escape a string for safe inclusion in XML/SVG content
+#[must_use]
 fn xml_escape(s: &str) -> String {
     let mut escaped = String::with_capacity(s.len() * 2);
     for c in s.chars() {
@@ -17,8 +19,8 @@ fn xml_escape(s: &str) -> String {
             '<' => escaped.push_str("&lt;"),
             '>' => escaped.push_str("&gt;"),
             '&' => escaped.push_str("&amp;"),
-            '\'' => escaped.push_str("&apos;"),
             '"' => escaped.push_str("&quot;"),
+            '\'' => escaped.push_str("&apos;"),
             _ => escaped.push(c),
         }
     }
@@ -54,7 +56,10 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             let sy = src.y.0 + src.height.0 / 2.0;
             let tx = tgt.x.0 + tgt.width.0 / 2.0;
             let ty = tgt.y.0 + tgt.height.0 / 2.0;
-            let stroke_color = xml_escape(edge.color.as_deref().unwrap_or("black"));
+            let stroke_color = edge
+                .color
+                .as_deref()
+                .map_or_else(|| "black".to_string(), xml_escape);
             let _ = write!(
                 &mut svg,
                 "<line x1='{sx}' y1='{sy}' x2='{tx}' y2='{ty}' stroke='{}' stroke-width='{}' />",
@@ -90,13 +95,13 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             );
         }
 
-        let label = xml_escape(&node.label);
+        let escaped_label = xml_escape(&node.label);
         let _ = write!(
             &mut svg,
             "<text x='{}' y='{}' text-anchor='middle' font-family='sans-serif' font-size='10'>{}</text>",
             node.width.0 / 2.0,
             node.height.0 - 5.0,
-            label
+            escaped_label
         );
         let _ = write!(&mut svg, "</g>");
     }

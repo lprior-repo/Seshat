@@ -646,10 +646,14 @@ pub fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryErro
     let conn = Connection::open_with_flags(db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
         .map_err(RecoveryError::Sqlite)?;
 
-    // Verify we can read from the database
-    let _: i32 = conn
-        .query_row("PRAGMA page_count", [], |row| row.get(0))
-        .map_err(|e| RecoveryError::CorruptDatabase(e.to_string()))?;
+    // Run integrity check to verify database is not corrupt
+    let integrity_result: String = conn
+        .query_row("PRAGMA integrity_check", [], |row| row.get(0))
+        .map_err(RecoveryError::Sqlite)?;
+
+    if integrity_result != "ok" {
+        return Err(RecoveryError::CorruptDatabase(integrity_result));
+    }
 
     Ok(RecoveryHandle {
         conn,
@@ -711,8 +715,8 @@ impl RecoveryHandle {
                 }))
             })
             .map_err(RecoveryError::Sqlite)?
-            .filter_map(Result::ok)
-            .collect();
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| RecoveryError::Sqlite(e))?;
 
         // Write to JSON file
         let json_content = serde_json::to_string_pretty(&events)
@@ -1048,12 +1052,17 @@ pub fn classify_duplicate(
 /// This function implements idempotent append semantics:
 /// - If the op_id is new, appends the event and returns the new outcome
 /// - If the op_id exists with an identical payload, returns the existing outcome (no-op)
-/// - If the op_id exists with a different payload, returns `DuplicateWithConflict` error
+/// - If the op_id exists with a different payload, returns a conflict error
+///
+/// This function is race-safe: it uses a single transaction with INSERT-first
+/// approach, catching unique constraint violations and classifying them properly.
+/// This eliminates the race window between lookup and insert that exists in
+/// naive check-then-insert patterns.
 ///
 /// # Errors
-/// Returns `StoreError::DuplicateWithConflict` if the op_id exists with a different payload
-/// Returns `StoreError::Serialization` if encoding the envelope fails
+/// Returns `StoreError::DuplicateWithConflict` if the op_id exists with different payload
 /// Returns `StoreError::Sqlite` if database operations fail
+/// Returns `StoreError::Serialization` if encoding the envelope fails
 ///
 /// # Example
 /// ```ignore
@@ -1064,32 +1073,78 @@ pub fn append_idempotent(
     conn: &mut Connection,
     op: EventEnvelope,
 ) -> Result<AppendOutcome, StoreError> {
-    // Check if operation already exists
-    let existing = lookup_existing_op(conn, &op.op_id)?;
+    // Single transaction approach: try insert first, handle conflict if needed
+    // This eliminates the race window between lookup and insert
+    let tx = conn.transaction().map_err(StoreError::Sqlite)?;
 
-    match existing {
-        None => {
-            // New operation - delegate to standard append
-            let result = append_event(conn, op, None)?;
-            Ok(AppendOutcome::from(result))
+    // Read current latest revision within transaction
+    let current_revision: i64 = tx
+        .query_row("SELECT COALESCE(MAX(revision), 0) FROM events", [], |row| {
+            row.get(0)
+        })
+        .map_err(StoreError::Sqlite)?;
+
+    // Encode the envelope to JSON
+    let payload =
+        encode_event_envelope(&op).map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+    // Try to insert - this will fail with unique constraint if op_id already exists
+    let new_revision = current_revision + 1;
+    let insert_result = tx.execute(
+        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+        rusqlite::params![op.op_id, new_revision, payload, op.timestamp.to_string()],
+    );
+
+    match insert_result {
+        Ok(_) => {
+            // Insert succeeded - new operation
+            tx.commit().map_err(StoreError::Sqlite)?;
+            Ok(AppendOutcome {
+                revision: new_revision,
+                op_id: op.op_id,
+                timestamp: op.timestamp,
+            })
         }
-        Some(record) => {
-            // Duplicate op_id - classify and handle
-            let kind = classify_duplicate(&record, &op)?;
+        Err(e) => {
+            // Check if it's a unique constraint violation
+            // SQLITE_CONSTRAINT (error code 19) - UNIQUE constraint failed
+            let is_unique_constraint = e.to_string().contains("UNIQUE constraint failed")
+                || e.to_string().contains("constraint failed");
 
-            match kind {
-                DuplicateKind::Exact => {
-                    // Exact duplicate - return existing outcome (no-op success)
-                    Ok(AppendOutcome {
-                        revision: record.revision,
-                        op_id: record.op_id,
-                        timestamp: record.timestamp,
-                    })
+            if is_unique_constraint {
+                // Unique constraint violation - lookup existing record and classify
+                let existing = lookup_existing_op(&tx, &op.op_id)?;
+
+                match existing {
+                    Some(record) => {
+                        // Classify the duplicate
+                        let kind = classify_duplicate(&record, &op)?;
+
+                        match kind {
+                            DuplicateKind::Exact => {
+                                // Exact duplicate - return existing outcome (no-op success)
+                                // Note: we don't need to commit since we're just reading
+                                Ok(AppendOutcome {
+                                    revision: record.revision,
+                                    op_id: record.op_id,
+                                    timestamp: record.timestamp,
+                                })
+                            }
+                            DuplicateKind::Conflict => {
+                                // Conflicting duplicate - return error
+                                Err(StoreError::DuplicateWithConflict(op.op_id))
+                            }
+                        }
+                    }
+                    // This shouldn't happen - unique constraint means record exists
+                    None => {
+                        // This is a very unlikely race - retry or fail
+                        Err(StoreError::Sqlite(e))
+                    }
                 }
-                DuplicateKind::Conflict => {
-                    // Conflicting duplicate - return error
-                    Err(StoreError::DuplicateWithConflict(op.op_id))
-                }
+            } else {
+                // Some other error - propagate it
+                Err(StoreError::Sqlite(e))
             }
         }
     }
@@ -1182,8 +1237,10 @@ where
             Ok(value)
         }
         Err(err) => {
-            // Transaction will roll back automatically when dropped
-            Err(StoreError::TransactionAborted(err.to_string()))
+            // Preserve the original error variant rather than wrapping everything in TransactionAborted.
+            // This allows callers to handle specific error types deterministically.
+            // Transaction will roll back automatically when dropped.
+            Err(err)
         }
     }
 }
@@ -1820,13 +1877,13 @@ mod tests {
             ))
         });
 
-        // Should get TransactionAborted error
+        // Should get the original error (preserving the variant for deterministic handling)
         assert!(result.is_err());
         match result {
-            Err(StoreError::TransactionAborted(msg)) => {
+            Err(StoreError::ValidationFailed(msg)) => {
                 assert!(msg.contains("intentional failure"));
             }
-            Err(e) => panic!("Expected TransactionAborted, got: {:?}", e),
+            Err(e) => panic!("Expected ValidationFailed, got: {:?}", e),
             Ok(_) => panic!("Expected error, got success"),
         }
 

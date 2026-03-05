@@ -48,7 +48,7 @@ pub enum DistributionAxis {
 ///
 /// This replaces the mutable thread_local RefCell-based clipboard with
 /// a pure functional approach where clipboard state is passed explicitly.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Clipboard {
     /// The nodes that were copied to the clipboard
     pub nodes: Vec<(NodeId, Node)>,
@@ -568,9 +568,7 @@ pub fn apply_nudge_selection(
         return false;
     }
 
-    if push_undo {
-        push_history(history_signal, doc_signal.read().clone());
-    }
+    let mut any_moved = false;
     doc_signal.with_mut(|doc| {
         for node_id in selected_nodes {
             if let Some(node) = doc.document.nodes.get_mut(&node_id) {
@@ -579,11 +577,19 @@ pub fn apply_nudge_selection(
                 }
                 node.x = OrderedFloat(node.x.0 + dx);
                 node.y = OrderedFloat(node.y.0 + dy);
+                any_moved = true;
             }
         }
-        doc.revision = doc.revision.increment();
+        if any_moved {
+            doc.revision = doc.revision.increment();
+        }
     });
-    true
+
+    if any_moved && push_undo {
+        push_history(history_signal, doc_signal.read().clone());
+    }
+
+    any_moved
 }
 
 pub fn apply_group_selection(

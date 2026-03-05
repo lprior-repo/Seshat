@@ -22,6 +22,15 @@ impl NodeId {
         Self(id)
     }
 
+    /// Create a new NodeId, returning error for empty strings
+    pub fn try_new(id: String) -> Result<Self, &'static str> {
+        if id.is_empty() {
+            Err("NodeId cannot be empty")
+        } else {
+            Ok(Self(id))
+        }
+    }
+
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
@@ -44,6 +53,15 @@ impl EdgeId {
         Self(id)
     }
 
+    /// Create a new EdgeId, returning error for empty strings
+    pub fn try_new(id: String) -> Result<Self, &'static str> {
+        if id.is_empty() {
+            Err("EdgeId cannot be empty")
+        } else {
+            Ok(Self(id))
+        }
+    }
+
     #[must_use]
     pub fn as_str(&self) -> &str {
         &self.0
@@ -56,7 +74,7 @@ impl fmt::Display for EdgeId {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DiagramDocument {
     pub version: u32,
@@ -88,23 +106,14 @@ impl Revision {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct DocumentData {
     pub nodes: HashMap<NodeId, Node>,
     pub edges: HashMap<EdgeId, Edge>,
 }
 
-/// Diagram node representing a visual element in the diagram
-///
-/// All fields are public to support serde deserialization.
-/// For construction, use the `Default` trait or manual field assignment.
-///
-/// # Invariants
-/// - Width and height must be >= 24.0 (enforced by schema validation)
-/// - x and y coordinates must be finite
-/// - parent, if set, must reference a Node with NodeKind::Subgraph
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub kind: NodeKind,
@@ -136,11 +145,12 @@ pub struct Node {
     pub collapsed: Option<bool>,
 }
 
-/// Helper to make floats Eq
+/// Helper for floats that only implements PartialEq (not Eq)
+/// to avoid violating the Eq contract with NaN values.
+/// Schema validation rejects NaN/Inf at deserialization boundaries.
+/// Uses bit-hashing for consistent Hash behavior with PartialEq.
 #[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, PartialOrd, Default)]
 pub struct OrderedFloat(pub f64);
-
-impl Eq for OrderedFloat {}
 
 impl std::hash::Hash for OrderedFloat {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -216,13 +226,7 @@ pub enum FontWeight {
     Bold,
 }
 
-/// Represents a directed edge between two nodes in the diagram.
-///
-/// # Invariants
-/// - source and target must reference valid NodeIds in the document
-/// - bend_points, if present, define intermediate routing points
-/// - label_offset_t must be in range [0.0, 1.0] for positioning along the edge
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Edge {
     pub source: NodeId,
@@ -288,14 +292,14 @@ pub enum ArrowType {
     Straight,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct Point {
     pub x: OrderedFloat,
     pub y: OrderedFloat,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[serde(deny_unknown_fields)]
 pub struct EditorState {
     pub camera_x: OrderedFloat,
@@ -406,6 +410,34 @@ mod tests {
         assert_eq!(edge.as_str(), "edge-1");
         assert_eq!(node.to_string(), "node-1");
         assert_eq!(edge.to_string(), "edge-1");
+    }
+
+    #[test]
+    fn given_node_id_try_new_with_empty_string_then_it_returns_error() {
+        let result = NodeId::try_new(String::new());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "NodeId cannot be empty");
+    }
+
+    #[test]
+    fn given_edge_id_try_new_with_empty_string_then_it_returns_error() {
+        let result = EdgeId::try_new(String::new());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "EdgeId cannot be empty");
+    }
+
+    #[test]
+    fn given_node_id_try_new_with_valid_string_then_it_succeeds() {
+        let result = NodeId::try_new(String::from("valid-id"));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_str(), "valid-id");
+    }
+
+    #[test]
+    fn given_edge_id_try_new_with_valid_string_then_it_succeeds() {
+        let result = EdgeId::try_new(String::from("valid-id"));
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().as_str(), "valid-id");
     }
 
     #[test]

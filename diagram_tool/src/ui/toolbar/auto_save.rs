@@ -29,7 +29,7 @@ pub const AUTO_SAVE_KEY: &str = "diagram_tool.autosave";
 pub const AUTO_SAVE_VERSION: u32 = 1;
 
 /// The data structure saved to localStorage
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
 #[allow(dead_code)]
 pub struct AutoSavedDiagram {
     pub version: u32,

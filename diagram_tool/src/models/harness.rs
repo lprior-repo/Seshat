@@ -840,8 +840,8 @@ fn test_append_only_invariant(_db_path: &Path) -> Result<TestReport, VerifyError
     let retrieved_ids: Vec<(String, i64)> = stmt
         .query_map([], |row| Ok((row.get(0)?, row.get(1)?)))
         .map_err(|e| VerifyError::Sqlite(e.to_string()))?
-        .filter_map(Result::ok)
-        .collect();
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| VerifyError::Sqlite(e.to_string()))?;
 
     // Verify all IDs are present
     let all_present = op_ids
@@ -1012,8 +1012,8 @@ fn test_crash_after_append_before_memory_apply() -> Result<TestReport, VerifyErr
             })
         })
         .map_err(|e| VerifyError::Sqlite(e.to_string()))?
-        .filter_map(Result::ok)
-        .collect();
+        .collect::<Result<Vec<_>, _>>()
+        .map_err(|e| VerifyError::Sqlite(e.to_string()))?;
 
     // Replay events from revision 0
     let adjusted_events: Vec<EventRecord> = event_records

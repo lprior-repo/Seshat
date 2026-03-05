@@ -19,7 +19,7 @@ use crate::models::schema::validate_schema;
 use serde::Serialize;
 use std::fs::{self, File};
 use std::io::{BufReader, BufWriter, Write};
-use std::path::Path;
+use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 /// Errors that can occur during CLI persistence operations.
@@ -42,6 +42,68 @@ pub enum CliPersistenceError {
 
     #[error("Both primary and LKG files failed to load: {0}")]
     NoValidDocument(String),
+
+    #[error("Path traversal denied: path '{path}' escapes allowed directory")]
+    PathTraversalDenied { path: String },
+}
+
+/// Validates that a path stays within the allowed base directory.
+///
+/// This function prevents path traversal attacks by:
+/// 1. Canonicalizing the input path (resolves `..`, symlinks, relative paths)
+/// 2. Canonicalizing the base directory
+/// 3. Ensuring the canonicalized path starts with the base directory
+///
+/// # Errors
+///
+/// Returns `CliPersistenceError::PathTraversalDenied` if:
+/// - The path resolves to a location outside the base directory
+/// - The path is an absolute path outside the cwd
+/// - Canonicalization fails for any reason
+pub fn validate_safe_path(path: &Path, base_dir: &Path) -> Result<PathBuf, CliPersistenceError> {
+    // Reject paths with parent directory references that could escape
+    // This is a defense-in-depth measure before any canonicalization
+    let path_str = path.to_string_lossy();
+    if path_str.contains("..") {
+        return Err(CliPersistenceError::PathTraversalDenied {
+            path: path.to_string_lossy().to_string(),
+        });
+    }
+
+    // For relative paths, resolve against base_dir
+    // For absolute paths, check directly
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_dir.join(path)
+    };
+
+    // Canonicalize to resolve symlinks
+    let canonical = std::fs::canonicalize(&resolved).unwrap_or_else(|_| {
+        // If file doesn't exist, canonicalize parent and append filename
+        if let Some(parent) = resolved.parent() {
+            std::fs::canonicalize(parent)
+                .map(|p| p.join(resolved.file_name().unwrap_or_default()))
+                .unwrap_or(resolved)
+        } else {
+            resolved
+        }
+    });
+
+    // Canonicalize base_dir for comparison
+    let canonical_base = std::fs::canonicalize(base_dir).unwrap_or_else(|_| base_dir.to_path_buf());
+
+    // Check if canonical path starts with canonical base
+    let canonical_str = canonical.to_string_lossy();
+    let base_str = canonical_base.to_string_lossy();
+
+    if !canonical_str.starts_with(base_str.as_ref()) && canonical_str != base_str {
+        return Err(CliPersistenceError::PathTraversalDenied {
+            path: path.to_string_lossy().to_string(),
+        });
+    }
+
+    Ok(canonical)
 }
 
 /// Details for stage event emissions.
@@ -211,13 +273,15 @@ pub fn save_workspace_atomic(
         to: path.display().to_string(),
     })?;
 
-    // fsync parent directory to make rename durable across crash/power loss
-    if let Some(parent) = path.parent() {
-        let parent_dir = fs::OpenOptions::new()
+    // Sync parent directory to ensure rename is durable
+    // This is required for true atomic semantics - without it, the renamed
+    // file may be lost after a system crash
+    if let Some(parent_dir) = path.parent() {
+        let dir_file = std::fs::OpenOptions::new()
             .read(true)
-            .open(parent)
-            .map_err(|e| CliPersistenceError::IoError(e.into()))?;
-        parent_dir.sync_all().map_err(|e| CliPersistenceError::IoError(e.into()))?;
+            .open(parent_dir)
+            .map_err(CliPersistenceError::IoError)?;
+        dir_file.sync_all().map_err(CliPersistenceError::IoError)?;
     }
 
     // Emit success event
@@ -235,7 +299,7 @@ pub fn save_workspace_atomic(
 ///
 /// This function:
 /// 1. Attempts to load and validate the primary file
-/// 2. On failure, attempts to load `<path>.lkg` as fallback
+/// 2. On failure, attempts to load from `.lkg/<filename>.lkg` as fallback
 /// 3. Returns the first successfully loaded and validated document
 ///
 /// # Errors
@@ -264,43 +328,17 @@ pub fn load_workspace_with_lkg(path: &Path) -> Result<DiagramDocument, CliPersis
                     .with_message(&primary_err.to_string()),
             );
 
-            // Try LKG fallback - check multiple possible locations
-            // 1. .lkg/<file>.lkg (new style with subdirectory)
-            let lkg_dir = path.parent().unwrap_or(Path::new(".")).join(".lkg");
-            let lkg_path_new = lkg_dir.join(format!(
+            // LKG is stored in `.lkg/` directory next to the original file
+            // This matches the save convention in cli.rs
+            let lkg_dir = path.parent().unwrap_or_else(|| Path::new(".")).join(".lkg");
+            let lkg_filename = format!(
                 "{}.lkg",
                 path.file_name()
                     .map(|n| n.to_string_lossy())
                     .unwrap_or_default()
-            ));
+            );
+            let lkg_path = lkg_dir.join(&lkg_filename);
 
-            // 2. <file>.lkg (old style - extension replaced)
-            let lkg_path = path.with_extension(format!(
-                "{}.lkg",
-                path.extension()
-                    .map(|e| e.to_string_lossy())
-                    .unwrap_or_default()
-            ));
-
-            // 3. <file>.lkg (old style - just append .lkg)
-            let lkg_path_alt = {
-                let mut p = path.as_os_str().to_os_string();
-                p.push(".lkg");
-                Path::new(&p).to_path_buf()
-            };
-
-            // Try new LKG path first (.lkg subdirectory)
-            if let Ok(doc) = load_and_validate(&lkg_path_new) {
-                emit_stage_event(
-                    "loaded",
-                    &StageDetails::new()
-                        .with_path(&lkg_path_new)
-                        .with_fallback_used(true),
-                );
-                return Ok(doc);
-            }
-
-            // Try first LKG path
             if let Ok(doc) = load_and_validate(&lkg_path) {
                 emit_stage_event(
                     "loaded",
@@ -309,19 +347,6 @@ pub fn load_workspace_with_lkg(path: &Path) -> Result<DiagramDocument, CliPersis
                         .with_fallback_used(true),
                 );
                 return Ok(doc);
-            }
-
-            // Try alternative LKG path
-            if lkg_path_alt != lkg_path {
-                if let Ok(doc) = load_and_validate(&lkg_path_alt) {
-                    emit_stage_event(
-                        "loaded",
-                        &StageDetails::new()
-                            .with_path(&lkg_path_alt)
-                            .with_fallback_used(true),
-                    );
-                    return Ok(doc);
-                }
             }
 
             // Both failed
@@ -442,12 +467,14 @@ mod tests {
     fn given_lkg_fallback_file_when_primary_fails_then_uses_lkg() {
         let temp_dir = TempDir::new().unwrap();
         let primary_path = temp_dir.path().join("doc.json");
-        let lkg_path = temp_dir.path().join("doc.json.lkg");
+        let lkg_dir = temp_dir.path().join(".lkg");
+        let lkg_path = lkg_dir.join("doc.json.lkg");
 
         // Write invalid primary
         std::fs::write(&primary_path, b"invalid").unwrap();
 
-        // Write valid LKG
+        // Create LKG directory and write valid LKG file
+        std::fs::create_dir_all(&lkg_dir).unwrap();
         let doc = create_test_document();
         let json = serde_json::to_string_pretty(&doc).unwrap();
         std::fs::write(&lkg_path, &json).unwrap();
@@ -503,8 +530,8 @@ mod tests {
 
         // Verify no temp files left behind
         let entries: Vec<_> = std::fs::read_dir(temp_dir.path())
-            .unwrap()
-            .filter_map(Result::ok)
+            .expect("Failed to read temp directory")
+            .filter_map(|r| r.ok())
             .collect();
 
         let has_temp_files = entries
@@ -515,5 +542,91 @@ mod tests {
             !has_temp_files,
             "Temp files should be cleaned up after atomic save"
         );
+    }
+
+    // === Path Traversal Prevention Tests ===
+
+    #[test]
+    fn given_simple_filename_when_validated_then_allowed() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        let path = Path::new("diagram.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_ok(), "Simple filename should be allowed");
+    }
+
+    #[test]
+    fn given_path_traversal_when_validated_then_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // This tries to escape the base directory
+        let path = Path::new("../../etc/passwd");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err(),
+            Some(CliPersistenceError::PathTraversalDenied { .. })
+        ));
+    }
+
+    #[test]
+    fn given_absolute_path_outside_cwd_when_validated_then_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // Absolute path outside the base directory
+        let path = Path::new("/etc/shadow");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err(),
+            Some(CliPersistenceError::PathTraversalDenied { .. })
+        ));
+    }
+
+    #[test]
+    fn given_sibling_escape_when_validated_then_rejected() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // Path that tries to escape via .. after canonicalization
+        let path = Path::new("diagram/../sibling.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        // This should be rejected because canonicalization resolves ../
+        assert!(result.is_err());
+        assert!(matches!(
+            result.err(),
+            Some(CliPersistenceError::PathTraversalDenied { .. })
+        ));
+    }
+
+    #[test]
+    fn given_valid_subpath_when_validated_then_allowed() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // Valid path inside the base directory
+        let path = Path::new("subdir/diagram.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_ok(), "Valid subdirectory path should be allowed");
+    }
+
+    #[test]
+    fn given_relative_path_with_dot_prefix_when_validated_then_allowed() {
+        let temp_dir = TempDir::new().unwrap();
+        let base_dir = temp_dir.path();
+        // ./diagram.json is equivalent to diagram.json
+        let path = Path::new("./diagram.json");
+
+        let result = validate_safe_path(path, base_dir);
+
+        assert!(result.is_ok(), "Path with ./ prefix should be allowed");
     }
 }

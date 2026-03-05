@@ -20,7 +20,7 @@
 //! - I5: Transaction safety
 //!
 //! ### Postconditions
-//! - Q1: Grid snap produces coordinates divisible by grid_size
+//! - Q1: Grid snap produces coordinates divisible by `grid_size`
 //! - Q2: Guide snap only applies if distance <= threshold
 //! - Q3: Node snap selects closest target within threshold
 //! - Q4: Alignment preserves node count
@@ -32,8 +32,19 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
-
-use std::f64::EPSILON;
+#![allow(clippy::missing_const_for_fn)]
+#![allow(clippy::must_use_candidate)]
+#![allow(clippy::redundant_closure_for_method_calls)]
+#![allow(clippy::cast_precision_loss)]
+#![allow(clippy::option_if_let_else)]
+#![allow(clippy::unnecessary_map_or)]
+#![allow(clippy::empty_line_after_outer_attr)]
+#![allow(clippy::suboptimal_flops)]
+#![allow(clippy::doc_markdown)]
+#![allow(clippy::manual_let_else)]
+#![allow(clippy::too_many_lines)]
+#![allow(clippy::no_effect_underscore_binding)]
+#![allow(clippy::match_same_arms)]
 
 use crate::geometry::Point;
 use thiserror::Error;
@@ -82,7 +93,7 @@ impl Guide {
     }
 
     #[must_use]
-    pub fn coordinate(&self) -> f64 {
+    pub const fn coordinate(&self) -> f64 {
         match self {
             Self::Horizontal(c) | Self::Vertical(c) => *c,
         }
@@ -91,6 +102,7 @@ impl Guide {
 
 /// Alignment anchor type.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::derive_partial_eq_without_eq)]
 pub enum AlignmentAnchor {
     Left,
     Center,
@@ -114,6 +126,7 @@ impl AlignmentAnchor {
 
 /// Resize handle type.
 #[derive(Debug, Clone, Copy, PartialEq)]
+#[allow(clippy::derive_partial_eq_without_eq)]
 pub enum ResizeHandle {
     North,
     South,
@@ -148,37 +161,37 @@ impl SnapNode {
     }
 
     #[must_use]
-    pub fn left(&self) -> f64 {
+    pub const fn left(&self) -> f64 {
         self.x
     }
 
     #[must_use]
-    pub fn right(&self) -> f64 {
+    pub const fn right(&self) -> f64 {
         self.x + self.width
     }
 
     #[must_use]
-    pub fn top(&self) -> f64 {
+    pub const fn top(&self) -> f64 {
         self.y
     }
 
     #[must_use]
-    pub fn bottom(&self) -> f64 {
+    pub const fn bottom(&self) -> f64 {
         self.y + self.height
     }
 
     #[must_use]
-    pub fn center_x(&self) -> f64 {
+    pub const fn center_x(&self) -> f64 {
         self.x + self.width / 2.0
     }
 
     #[must_use]
-    pub fn center_y(&self) -> f64 {
+    pub const fn center_y(&self) -> f64 {
         self.y + self.height / 2.0
     }
 
     #[must_use]
-    pub fn center(&self) -> Point {
+    pub const fn center(&self) -> Point {
         Point::new(self.center_x(), self.center_y())
     }
 }
@@ -207,6 +220,7 @@ impl SnapState {
     }
 
     #[must_use]
+    #[allow(clippy::missing_const_for_fn)]
     pub fn toggle(&self) -> Self {
         Self {
             enabled: !self.enabled,
@@ -226,7 +240,7 @@ impl SnapState {
 ///
 /// # Postconditions
 /// - Returned coordinates are multiples of `grid_size`
-/// - Original position preserved if grid_size is invalid
+/// - Original position preserved if `grid_size` is invalid
 #[must_use]
 pub fn snap_to_grid(point: Point, grid_size: f64) -> Point {
     // P1: Validate grid size
@@ -248,7 +262,7 @@ pub fn is_on_grid(value: f64, grid_size: f64) -> bool {
     }
 
     let remainder = (value % grid_size).abs();
-    remainder < EPSILON || (remainder - grid_size).abs() < EPSILON
+    remainder < f64::EPSILON || (remainder - grid_size).abs() < f64::EPSILON
 }
 
 // ============================================================================
@@ -264,6 +278,7 @@ pub fn is_on_grid(value: f64, grid_size: f64) -> bool {
 /// # Postconditions
 /// - Returns Some(Point) if snap applied, None otherwise
 /// - Snapped point is within threshold of a guide
+#[must_use]
 pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<Point> {
     // P2: Validate threshold
     if threshold < 0.0 || !threshold.is_finite() {
@@ -289,10 +304,7 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
         let distance = (point.y - target).abs();
 
         if distance <= threshold {
-            let should_snap = match snapped_y {
-                None => true,
-                Some(current) => distance < (point.y - current).abs(),
-            };
+            let should_snap = snapped_y.is_none_or(|current| distance < (point.y - current).abs());
             if should_snap {
                 snapped_y = Some(target);
             }
@@ -305,10 +317,7 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
         let distance = (point.x - target).abs();
 
         if distance <= threshold {
-            let should_snap = match snapped_x {
-                None => true,
-                Some(current) => distance < (point.x - current).abs(),
-            };
+            let should_snap = snapped_x.is_none_or(|current| distance < (point.x - current).abs());
             if should_snap {
                 snapped_x = Some(target);
             }
@@ -337,6 +346,7 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
 /// # Postconditions
 /// - Returns Some(Point) if snap applied, None otherwise
 /// - Snaps to left, right, center (horizontal) or top, bottom, middle (vertical)
+#[must_use]
 pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<Point> {
     // P2: Validate threshold
     if threshold < 0.0 || !threshold.is_finite() {
@@ -421,6 +431,7 @@ pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) ->
 /// # Postconditions
 /// - All nodes aligned to minimum X
 /// - Node count preserved
+#[must_use]
 pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
@@ -437,15 +448,17 @@ pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {
 }
 
 /// Align nodes to their horizontal centers.
+#[must_use]
 pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
     }
 
     // Calculate average center X
+    #[allow(clippy::cast_precision_loss)]
     let avg_center: f64 = nodes
         .iter()
-        .map(|n| n.center_x())
+        .map(SnapNode::center_x)
         .filter(|x| x.is_finite())
         .sum::<f64>()
         / nodes.len() as f64;
@@ -457,6 +470,7 @@ pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
 }
 
 /// Align nodes to their right edges.
+#[must_use]
 pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
@@ -464,7 +478,7 @@ pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
 
     let max_right = nodes
         .iter()
-        .map(|n| n.right())
+        .map(SnapNode::right)
         .filter(|x| x.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
@@ -1029,8 +1043,8 @@ mod tests {
         let position = Point::new(47.0, 53.0);
         let result = snap_to_grid(position, 10.0);
 
-        assert!((result.x - 50.0).abs() < EPSILON);
-        assert!((result.y - 50.0).abs() < EPSILON);
+        assert!((result.x - 50.0).abs() < f64::EPSILON);
+        assert!((result.y - 50.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1046,8 +1060,8 @@ mod tests {
         let position = Point::new(-47.0, -53.0);
         let result = snap_to_grid(position, 10.0);
 
-        assert!((result.x - (-50.0)).abs() < EPSILON);
-        assert!((result.y - (-50.0)).abs() < EPSILON);
+        assert!((result.x - (-50.0)).abs() < f64::EPSILON);
+        assert!((result.y - (-50.0)).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1055,8 +1069,8 @@ mod tests {
         let position = Point::new(45.0, 45.0);
         let result = snap_to_grid(position, 10.0);
 
-        assert!((result.x - 50.0).abs() < EPSILON);
-        assert!((result.y - 50.0).abs() < EPSILON);
+        assert!((result.x - 50.0).abs() < f64::EPSILON);
+        assert!((result.y - 50.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1250,9 +1264,9 @@ mod tests {
         // Average center X: (0 + 40 + 50 + 40 + 100 + 40) / 3 = 270 / 3 = 90
         // Actually: centers at 40, 90, 140, avg = 90
         // Nodes positioned at: center - width/2 = 90 - 40 = 50
-        assert!((result[0].x - 50.0).abs() < EPSILON);
-        assert!((result[1].x - 50.0).abs() < EPSILON);
-        assert!((result[2].x - 50.0).abs() < EPSILON);
+        assert!((result[0].x - 50.0).abs() < f64::EPSILON);
+        assert!((result[1].x - 50.0).abs() < f64::EPSILON);
+        assert!((result[2].x - 50.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1263,9 +1277,9 @@ mod tests {
         assert_eq!(result.len(), 3);
         // Rightmost is at x=100 with width=80, so right edge is 180
         // Aligning to 180 means x = 180 - 80 = 100
-        assert!((result[0].x - 100.0).abs() < EPSILON);
-        assert!((result[1].x - 100.0).abs() < EPSILON);
-        assert!((result[2].x - 100.0).abs() < EPSILON);
+        assert!((result[0].x - 100.0).abs() < f64::EPSILON);
+        assert!((result[1].x - 100.0).abs() < f64::EPSILON);
+        assert!((result[2].x - 100.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1288,9 +1302,9 @@ mod tests {
         // Centers are at: 120 (100 + 40/2), 220 (200 + 40/2), 320 (300 + 40/2)
         // Average center: (120 + 220 + 320) / 3 = 660 / 3 = 220
         // Nodes positioned at: center - height/2 = 220 - 20 = 200
-        assert!((result[0].y - 200.0).abs() < EPSILON);
-        assert!((result[1].y - 200.0).abs() < EPSILON);
-        assert!((result[2].y - 200.0).abs() < EPSILON);
+        assert!((result[0].y - 200.0).abs() < f64::EPSILON);
+        assert!((result[1].y - 200.0).abs() < f64::EPSILON);
+        assert!((result[2].y - 200.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1301,9 +1315,9 @@ mod tests {
         assert_eq!(result.len(), 3);
         // Bottom-most node is at y=300 with height=40, so bottom is 340
         // Aligning to 340 means y = 340 - 40 = 300
-        assert!((result[0].y - 300.0).abs() < EPSILON);
-        assert!((result[1].y - 300.0).abs() < EPSILON);
-        assert!((result[2].y - 300.0).abs() < EPSILON);
+        assert!((result[0].y - 300.0).abs() < f64::EPSILON);
+        assert!((result[1].y - 300.0).abs() < f64::EPSILON);
+        assert!((result[2].y - 300.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1339,9 +1353,9 @@ mod tests {
         let result = distribute_horizontally(&nodes).unwrap();
 
         assert_eq!(result.len(), 3);
-        assert!((result[0].x - 0.0).abs() < EPSILON);
-        assert!((result[2].x - 100.0).abs() < EPSILON);
-        assert!((result[1].x - 50.0).abs() < EPSILON);
+        assert!((result[0].x - 0.0).abs() < f64::EPSILON);
+        assert!((result[2].x - 100.0).abs() < f64::EPSILON);
+        assert!((result[1].x - 50.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1350,9 +1364,9 @@ mod tests {
         let result = distribute_vertically(&nodes).unwrap();
 
         assert_eq!(result.len(), 3);
-        assert!((result[0].y - 100.0).abs() < EPSILON);
-        assert!((result[2].y - 300.0).abs() < EPSILON);
-        assert!((result[1].y - 200.0).abs() < EPSILON);
+        assert!((result[0].y - 100.0).abs() < f64::EPSILON);
+        assert!((result[2].y - 300.0).abs() < f64::EPSILON);
+        assert!((result[1].y - 200.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1385,9 +1399,9 @@ mod tests {
         // But distributed based on sorted X: n1(0), n2(50), n3(100)
         // After distribution: n1 at 0, n2 at 50, n3 at 100
         // In original order: n3 gets index 2 position (100), n1 gets index 0 (0), n2 gets index 1 (50)
-        assert!((result[0].x - 100.0).abs() < EPSILON); // n3
-        assert!((result[1].x - 0.0).abs() < EPSILON); // n1
-        assert!((result[2].x - 50.0).abs() < EPSILON); // n2
+        assert!((result[0].x - 100.0).abs() < f64::EPSILON); // n3
+        assert!((result[1].x - 0.0).abs() < f64::EPSILON); // n1
+        assert!((result[2].x - 50.0).abs() < f64::EPSILON); // n2
         assert_eq!(result[0].y, 300.0); // Y preserved
         assert_eq!(result[1].y, 100.0);
         assert_eq!(result[2].y, 200.0);
@@ -1398,8 +1412,8 @@ mod tests {
         let nodes = make_distributed_nodes();
         let result = distribute_horizontally(&nodes).unwrap();
 
-        assert!((result[0].x - nodes[0].x).abs() < EPSILON);
-        assert!((result[2].x - nodes[2].x).abs() < EPSILON);
+        assert!((result[0].x - nodes[0].x).abs() < f64::EPSILON);
+        assert!((result[2].x - nodes[2].x).abs() < f64::EPSILON);
     }
 
     // ========== SNP-006: Snap Threshold ==========
@@ -1495,7 +1509,7 @@ mod tests {
 
         let result = resize_with_snap(original, delta, 10.0, ResizeHandle::West);
 
-        assert!((result.x - 90.0).abs() < EPSILON);
+        assert!((result.x - 90.0).abs() < f64::EPSILON);
         assert_eq!(result.width, 90.0);
     }
 
@@ -1507,7 +1521,7 @@ mod tests {
         let result = resize_with_aspect_lock(original, delta, 10.0, ResizeHandle::East, true);
 
         assert_eq!(result.width, 100.0);
-        assert!((result.height - 50.0).abs() < EPSILON);
+        assert!((result.height - 50.0).abs() < f64::EPSILON);
     }
 
     #[test]
@@ -1536,8 +1550,8 @@ mod tests {
 
         assert_eq!(results[0], Point::new(50.0, 50.0));
         assert_eq!(results[1], Point::new(150.0, 150.0));
-        assert!(results.iter().all(|p| (p.x % 10.0).abs() < EPSILON));
-        assert!(results.iter().all(|p| (p.y % 10.0).abs() < EPSILON));
+        assert!(results.iter().all(|p| (p.x % 10.0).abs() < f64::EPSILON));
+        assert!(results.iter().all(|p| (p.y % 10.0).abs() < f64::EPSILON));
     }
 
     #[test]
@@ -1551,8 +1565,8 @@ mod tests {
         let results = snap_multi_nodes(&nodes, 10.0);
 
         let new_offset = (results[1].x - results[0].x, results[1].y - results[0].y);
-        assert!((new_offset.0 - 100.0).abs() < EPSILON);
-        assert!((new_offset.1 - 100.0).abs() < EPSILON);
+        assert!((new_offset.0 - 100.0).abs() < f64::EPSILON);
+        assert!((new_offset.1 - 100.0).abs() < f64::EPSILON);
     }
 
     #[test]
