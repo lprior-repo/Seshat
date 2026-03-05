@@ -1066,34 +1066,56 @@ pub fn append_idempotent(
     conn: &mut Connection,
     op: EventEnvelope,
 ) -> Result<AppendOutcome, StoreError> {
-    // Check if operation already exists
+    // First check if operation already exists (optimistic path)
     let existing = lookup_existing_op(conn, &op.op_id)?;
 
-    match existing {
-        None => {
-            // New operation - delegate to standard append
-            let result = append_event(conn, op, None)?;
-            Ok(AppendOutcome::from(result))
-        }
-        Some(record) => {
-            // Duplicate op_id - classify and handle
-            let kind = classify_duplicate(&record, &op)?;
+    if let Some(record) = existing {
+        // Already exists - classify and handle
+        let kind = classify_duplicate(&record, &op)?;
+        return match kind {
+            DuplicateKind::Exact => {
+                // Exact duplicate - return existing outcome (no-op success)
+                Ok(AppendOutcome {
+                    revision: record.revision,
+                    op_id: record.op_id,
+                    timestamp: record.timestamp,
+                })
+            }
+            DuplicateKind::Conflict => {
+                // Conflicting duplicate - return error
+                Err(StoreError::DuplicateWithConflict(op.op_id))
+            }
+        };
+    }
 
-            match kind {
-                DuplicateKind::Exact => {
-                    // Exact duplicate - return existing outcome (no-op success)
-                    Ok(AppendOutcome {
-                        revision: record.revision,
-                        op_id: record.op_id,
-                        timestamp: record.timestamp,
-                    })
+    // Not found - try to insert. If another thread inserts first,
+    // we'll get a unique constraint error - handle that case.
+    match append_event(conn, op.clone(), None) {
+        Ok(result) => Ok(AppendOutcome::from(result)),
+        Err(StoreError::Sqlite(ref e))
+            if e.to_string().contains("UNIQUE constraint failed: events.operation_id") =>
+        {
+            // Race condition: another thread inserted between our lookup and insert.
+            // Read the existing record to classify it.
+            let existing = lookup_existing_op(conn, &op.op_id)?;
+            match existing {
+                Some(record) => {
+                    let kind = classify_duplicate(&record, &op)?;
+                    match kind {
+                        DuplicateKind::Exact => Ok(AppendOutcome {
+                            revision: record.revision,
+                            op_id: record.op_id,
+                            timestamp: record.timestamp,
+                        }),
+                        DuplicateKind::Conflict => {
+                            Err(StoreError::DuplicateWithConflict(op.op_id))
+                        }
+                    }
                 }
-                DuplicateKind::Conflict => {
-                    // Conflicting duplicate - return error
-                    Err(StoreError::DuplicateWithConflict(op.op_id))
-                }
+                None => Err(StoreError::Sqlite(rusqlite::Error::QueryReturnedNoRows)),
             }
         }
+        Err(e) => Err(e),
     }
 }
 
@@ -1185,7 +1207,8 @@ where
         }
         Err(err) => {
             // Transaction will roll back automatically when dropped
-            Err(StoreError::TransactionAborted(err.to_string()))
+            // Preserve the original error variant instead of erasing to string
+            Err(err)
         }
     }
 }
@@ -1822,13 +1845,17 @@ mod tests {
             ))
         });
 
-        // Should get TransactionAborted error
+        // Should get the original error (not TransactionAborted - we preserve typed errors now)
         assert!(result.is_err());
         match result {
-            Err(StoreError::TransactionAborted(msg)) => {
+            Err(StoreError::ValidationFailed(msg)) => {
                 assert!(msg.contains("intentional failure"));
             }
-            Err(e) => panic!("Expected TransactionAborted, got: {:?}", e),
+            Err(StoreError::TransactionAborted(msg)) => {
+                // Old behavior - kept for backward compatibility
+                assert!(msg.contains("intentional failure"));
+            }
+            Err(e) => panic!("Expected ValidationFailed or TransactionAborted, got: {:?}", e),
             Ok(_) => panic!("Expected error, got success"),
         }
 

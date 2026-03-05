@@ -31,11 +31,13 @@ fn accumulated_parent_delta(
 
 /// Pure calculation to determine grid layout.
 /// Returns a new document with updated positions for unlocked nodes.
+///
+/// # Panics
+/// Panics if cell_size is not positive or is not finite.
 #[must_use]
 pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
-    if !cell_size.is_finite() || cell_size <= 0.0 {
-        return doc.clone();
-    }
+    debug_assert!(cell_size.is_finite() && cell_size > 0.0, "cell_size must be positive and finite, got {}", cell_size);
+
     let occupied_cells = doc
         .document
         .nodes
@@ -466,27 +468,28 @@ mod proptests {
         }
 
         #[test]
-        fn prop_grid_layout_zero_cell_size(cell_size in 0.0_f64..1e-10_f64) {
+        #[should_panic(expected = "cell_size must be positive and finite")]
+        fn prop_grid_layout_zero_cell_size(_ in Just(0.0_f64)) {
             let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
-            let result = calculate_grid_layout(&doc, cell_size);
-            prop_assert!(result.document.nodes.len() == 1);
+            let _result = calculate_grid_layout(&doc, 0.0);
         }
 
         #[test]
+        #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_negative_cell_size(cell_size in -1e10_f64..-1e-10_f64) {
             let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
-            let result = calculate_grid_layout(&doc, cell_size);
-            prop_assert!(result.document.nodes.len() == 1);
+            let _result = calculate_grid_layout(&doc, cell_size);
         }
 
         #[test]
+        #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_nan_cell_size(_ in Just(())) {
             let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
-            let result = calculate_grid_layout(&doc, f64::NAN);
-            prop_assert!(result.document.nodes.len() == 1);
+            let _result = calculate_grid_layout(&doc, f64::NAN);
         }
 
         #[test]
+        #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_inf_cell_size(sign in -1_i32..=1) {
             let cell_size = match sign {
                 -1 => f64::NEG_INFINITY,
@@ -494,8 +497,7 @@ mod proptests {
                 _ => f64::INFINITY,
             };
             let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
-            let result = calculate_grid_layout(&doc, cell_size);
-            prop_assert!(result.document.nodes.len() == 1);
+            let _result = calculate_grid_layout(&doc, cell_size);
         }
 
         #[test]

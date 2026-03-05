@@ -59,20 +59,20 @@ mod tests {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
         #[test]
+        #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_apply_layout_zero_cell_size(_ in Just(())) {
             let doc = make_doc_with_nodes(vec![
                 ("a".into(), 100.0, 100.0, false),
                 ("b".into(), 200.0, 200.0, false),
             ]);
-            let result = apply_layout(&doc, 0.0);
-            prop_assert!(result.document.nodes.len() == 2);
+            let _result = apply_layout(&doc, 0.0);
         }
 
         #[test]
+        #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_apply_layout_negative_cell_size(cell_size in -1e10_f64..-0.001) {
             let doc = make_doc_with_nodes(vec![("a".into(), 100.0, 100.0, false)]);
-            let result = apply_layout(&doc, cell_size);
-            prop_assert!(result.document.nodes.len() == 1);
+            let _result = apply_layout(&doc, cell_size);
         }
 
         #[test]
@@ -119,11 +119,11 @@ mod tests {
         }
 
         #[test]
+        #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_apply_layout_inf_cell_size(sign in -1_i32..=1) {
             let cell_size = if sign < 0 { f64::NEG_INFINITY } else { f64::INFINITY };
             let doc = make_doc_with_nodes(vec![("a".into(), 100.0, 100.0, false)]);
-            let result = apply_layout(&doc, cell_size);
-            prop_assert!(result.document.nodes.len() == 1);
+            let _result = apply_layout(&doc, cell_size);
         }
 
         #[test]

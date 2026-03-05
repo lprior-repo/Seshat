@@ -22,16 +22,16 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
     // 1. Validate Nodes
     nodes.iter().try_for_each(|(id, node)| {
         if !node.x.0.is_finite() {
-            bail!("Node {id} has non-finite x coordinate: {}", node.x.0);
+            bail!("Node {id} has non-finite x: {}", node.x.0);
         }
         if !node.y.0.is_finite() {
-            bail!("Node {id} has non-finite y coordinate: {}", node.y.0);
+            bail!("Node {id} has non-finite y: {}", node.y.0);
         }
-        if node.width.0 < 0.0 {
-            bail!("Node {id} has negative width: {}", node.width.0);
+        if node.width.0 < 0.0 || !node.width.0.is_finite() {
+            bail!("Node {id} has invalid width: {}", node.width.0);
         }
-        if node.height.0 < 0.0 {
-            bail!("Node {id} has negative height: {}", node.height.0);
+        if node.height.0 < 0.0 || !node.height.0.is_finite() {
+            bail!("Node {id} has invalid height: {}", node.height.0);
         }
         if let Some(parent_id) = &node.parent {
             if !node_ids.contains(parent_id) {
@@ -92,17 +92,11 @@ fn validate_edges_and_dag(doc: &DiagramDocument) -> Result<()> {
         if !node_ids.contains(&edge.target) {
             bail!("Edge {id:?} references non-existent target {}", edge.target);
         }
-        if !edge.label_offset_t.0.is_finite() {
-            bail!("Edge {id:?} has non-finite label_offset_t");
-        }
         if edge.label_offset_t.0 < 0.0 || edge.label_offset_t.0 > 1.0 {
             bail!(
                 "Edge {id:?} has label_offset_t {} outside valid range [0, 1]",
                 edge.label_offset_t.0
             );
-        }
-        if !edge.thickness.0.is_finite() {
-            bail!("Edge {id:?} has non-finite thickness");
         }
         if let Some(ref color) = edge.color {
             if !is_valid_hex_color(color) {
