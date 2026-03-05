@@ -14,6 +14,7 @@ mod persistence_compat;
 use crate::history::History;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use crate::mutation::error::MutationError;
+use crate::ui::commands::Clipboard;
 use crate::ui::editor::ToolMode;
 use crate::ui::panels::PanelVisibility;
 use crate::ui::theme::{
@@ -31,14 +32,10 @@ pub struct ToolbarStats {
     pub edge_count: usize,
 }
 
-use crate::ui::commands::Clipboard;
-
 #[component]
-
 pub fn Toolbar() -> Element {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
     let mut tool_signal = use_context::<Signal<ToolMode>>();
     let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
     let mut theme_mode_signal = use_context::<Signal<ThemeMode>>();
@@ -49,6 +46,7 @@ pub fn Toolbar() -> Element {
     let arrow_type_signal = use_context::<Signal<ArrowType>>();
     let mut validate_trigger = use_context::<Signal<u64>>();
     let toolbar_stats = use_context::<Signal<ToolbarStats>>();
+    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
     let stats = *toolbar_stats.read();
 
     let save_label = if cfg!(target_arch = "wasm32") {
@@ -184,7 +182,7 @@ pub fn Toolbar() -> Element {
                 "data-testid": "toolbar-paste",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                 onclick: move |_| actions::paste_selection(doc_signal, clipboard_signal, history_signal),
-                disabled: !actions::can_paste(&clipboard_signal.read()),
+                disabled: !actions::can_paste(clipboard_signal),
                 "Paste"
             }
 

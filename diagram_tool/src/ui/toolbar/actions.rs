@@ -89,8 +89,8 @@ pub fn paste_selection(
     let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
 }
 
-pub fn can_paste(clipboard: &Option<Clipboard>) -> bool {
-    clipboard_has_content(clipboard)
+pub fn can_paste(clipboard_signal: Signal<Option<Clipboard>>) -> bool {
+    clipboard_has_content(&clipboard_signal.read())
 }
 
 pub fn bring_forward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {

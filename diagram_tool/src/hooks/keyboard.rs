@@ -84,15 +84,10 @@ pub fn use_global_keyboard() {
                             let _ = apply_copy_selection(doc_signal, clipboard_signal);
                         }
                         (_, "v") => {
-                            let _ =
-                                apply_paste_selection(doc_signal, clipboard_signal, history_signal);
+                            let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
                         }
                         (_, "d") => {
-                            let _ = apply_duplicate_selection(
-                                doc_signal,
-                                clipboard_signal,
-                                history_signal,
-                            );
+                            let _ = apply_duplicate_selection(doc_signal, clipboard_signal, history_signal);
                         }
                         (true, "g") => {
                             let _ = apply_ungroup_selection(doc_signal, history_signal);

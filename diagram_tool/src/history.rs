@@ -1,3 +1,39 @@
+//! History module for undo/redo operations
+//!
+//! Provides persistent undo/redo history using immutable data structures (rpds).
+//! All history operations are pure transitions that return new state.
+//!
+//! ## Design by Contract
+//!
+//! ### Preconditions
+//! - P1: `undo` requires a valid current `DiagramDocument` state
+//! - P2: `redo` requires a valid current `DiagramDocument` state
+//! - P3: `push` requires a valid `DiagramDocument` to store in history
+//! - P4: History maintains stacks of `DiagramDocument` values
+//!
+//! ### Postconditions
+//! - Q1: `push` returns new history with document added to undo stack
+//! - Q2: `push` clears redo stack (new action invalidates redo history)
+//! - Q3: `undo` returns `Some` with (previous_doc, new_history) if undo available
+//! - Q4: `undo` returns `None` if undo stack is empty
+//! - Q5: `redo` returns `Some` with (next_doc, new_history) if redo available
+//! - Q6: `redo` returns `None` if redo stack is empty
+//! - Q7: History stacks are capped at MAX_HISTORY (100 entries)
+//! - Q8: `can_undo` returns true iff undo stack is non-empty
+//! - Q9: `can_redo` returns true iff redo stack is non-empty
+//!
+//! ### Invariants
+//! - I1: undo_stack and redo_stack never exceed MAX_HISTORY (100)
+//! - I2: After `undo`: undo_stack loses first element, redo_stack gains current
+//! - I3: After `redo`: redo_stack loses first element, undo_stack gains current
+//! - I4: After `push`: redo_stack is always empty (new path)
+//! - I5: All operations are pure/immutable (self is not modified)
+//! - I6: History returns documents in FIFO order (oldest at back, newest at front)
+//!
+//! ## Constants
+//!
+//! - `MAX_HISTORY: usize = 100` - Maximum entries in undo/redo stacks
+
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
