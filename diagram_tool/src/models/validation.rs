@@ -9,7 +9,7 @@ use crate::models::dag::validate_dag;
 use crate::models::document::{DiagramDocument, DocumentData, NodeKind};
 
 /// Severity of a validation issue.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
 pub enum ValidationSeverity {
     Error,
     #[allow(dead_code)]

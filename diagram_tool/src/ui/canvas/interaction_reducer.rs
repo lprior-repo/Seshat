@@ -1037,8 +1037,12 @@ mod proptests {
                 start: (start_x, start_y),
                 current: (start_x, start_y),
             };
-            let _ = mode;
-            prop_assert!(true);
+            // Verify zero-area rubberband (start == current)
+            if let InteractionMode::RubberBand { start, current } = mode {
+                prop_assert_eq!(start, current);
+            } else {
+                prop_assert!(false, "Expected RubberBand mode");
+            }
         }
     }
 
@@ -1051,8 +1055,12 @@ mod proptests {
                 start: (start_x, start_y),
                 current: (start_x - delta_x.abs(), start_y - delta_y.abs()),
             };
-            let _ = mode;
-            prop_assert!(true);
+            // Verify the rubberband mode was created
+            if let InteractionMode::RubberBand { .. } = mode {
+                prop_assert!(true);
+            } else {
+                prop_assert!(false, "Expected RubberBand mode");
+            }
         }
     }
 
