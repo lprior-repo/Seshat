@@ -50,6 +50,44 @@ where
     )
 }
 
+/// Applies an in-place mutation to a document with full validation.
+///
+/// This is a convenience wrapper around `run_mutation` that accepts a
+/// `FnMut(&mut DiagramDocument)` instead of `FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>`.
+///
+/// The mutation function receives a mutable reference to a cloned document,
+/// performs its changes, and the result is validated before being returned.
+///
+/// # Errors
+/// Returns `Err(MutationError)` if:
+/// - Schema validation fails
+/// - Semantic validation fails
+pub fn mutate_document<F>(current: DiagramDocument, mutation: F) -> Result<DiagramDocument, MutationError>
+where
+    F: FnOnce(&mut DiagramDocument),
+{
+    // Clone current to get a separate mutable document
+    let mut next = current.clone();
+    mutation(&mut next);
+    // Run mutation with validation - pass current as reference, return mutated next
+    let current_ref = &current;
+    run_mutation(current_ref, move |_| Ok(next))
+}
+
+/// Applies an in-place mutation without validation.
+///
+/// Use this for editor state changes that don't need schema/semantic validation
+/// (e.g., camera position, zoom, selection).
+pub fn mutate_editor_state<F>(current: DiagramDocument, mutation: F) -> DiagramDocument
+where
+    F: FnOnce(&mut DiagramDocument),
+{
+    let mut next = current;
+    mutation(&mut next);
+    next.revision = next.revision.increment();
+    next
+}
+
 #[cfg(test)]
 mod tests {
     use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
