@@ -1,6 +1,34 @@
 //! `SQLite` storage module
 //!
 //! Provides SQLite-based storage with WAL mode and full synchronous durability.
+//!
+//! ## Design by Contract
+//!
+//! ### Preconditions
+//! - P1: Database path must be accessible (parent directory exists or creatable)
+//! - P2: For `open_store`: database must already exist with valid schema
+//! - P3: For `bootstrap_store`: path must be writable (creates/overwrites database)
+//! - P4: Connection pragmas must be enforceable (WAL mode, FULL synchronous)
+//! - P5: `append_event` requires valid `EventEnvelope` with non-empty `op_id` and `author.id`
+//! - P6: `expected_revision` in OCC operations must match current revision or be `None`
+//! - P7: Batch operations require non-empty vector of events
+//!
+//! ### Postconditions
+//! - Q1: After `bootstrap_store`: database has schema_version=1, events, and snapshots tables
+//! - Q2: After `open_store`: connection has WAL journal mode and FULL synchronous
+//! - Q3: After successful `append_event`: new revision is exactly current + 1
+//! - Q4: After successful `append_batch`: revisions are sequential from start to end
+//! - Q5: Transactions are atomic: on failure, no partial mutations occur
+//! - Q6: `append_idempotent` returns existing outcome for exact duplicate (no-op)
+//! - Q7: `startup_integrity_check` returns valid `is_valid` status for existing database
+//!
+//! ### Invariants
+//! - I1: Schema version is always 1 (no migrations beyond v1)
+//! - I2: Revision numbers are monotonically increasing (1, 2, 3, ...)
+//! - I3: Each `operation_id` is unique in the events table
+//! - I4: All timestamps are positive integers
+//! - I5: Pragma values: journal_mode="wal", synchronous=2 (FULL)
+//! - I6: Recovery mode connection is read-only (no writes possible)
 
 #![allow(dead_code)]
 #![allow(clippy::pedantic)]
