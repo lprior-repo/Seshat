@@ -2,7 +2,7 @@ use crate::history::History;
 #[cfg(not(target_arch = "wasm32"))]
 use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
-use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
+use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
 use crate::ui::editor::ToolMode;
 use crate::ui::toast::{ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue, ToastUpdate};
 use dioxus::prelude::*;
@@ -25,7 +25,7 @@ fn prepare_import_transition(
         .map_err(ImportTransitionError::Parse)?;
     loaded_doc.revision = Revision::INITIAL;
 
-    run_mutation_with_policy(current, RevisionPolicy::Preserve, |_| Ok(loaded_doc))
+    run_mutation_with_policy(current, RevisionPolicy::Preserve, ValidationPolicy::default(), |_| Ok(loaded_doc))
         .map(|next_doc| (next_doc, History::new().push(current.clone())))
         .map_err(|err| {
             ImportTransitionError::Validation(super::mutation_error_code(&err).to_string())

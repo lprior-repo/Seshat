@@ -1057,7 +1057,7 @@ mod proptests {
             };
             // Verify the rubberband mode was created
             if let InteractionMode::RubberBand { .. } = mode {
-                prop_assert!(true);
+                // Mode was successfully created
             } else {
                 prop_assert!(false, "Expected RubberBand mode");
             }
@@ -1077,8 +1077,12 @@ mod proptests {
                 from_node: NodeId::new(from_node),
                 current_pos: (pos_x, pos_y),
             };
-            let _ = mode;
-            prop_assert!(true);
+            // Verify mode was created with the correct from_node
+            if let InteractionMode::DrawingEdge { from_node: result_node, .. } = mode {
+                prop_assert_eq!(result_node, NodeId::new(from_node));
+            } else {
+                prop_assert!(false, "Expected DrawingEdge mode");
+            }
         }
     }
 
