@@ -91,7 +91,7 @@ impl Default for Clipboard {
 
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]
-pub const fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
+pub fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
     clipboard.as_ref().is_some_and(Clipboard::has_content)
 }
 

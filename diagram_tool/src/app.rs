@@ -11,6 +11,7 @@ use crate::hooks::keyboard::use_global_keyboard;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::validation::validate_document_data;
 use crate::ui::canvas::Canvas;
+use crate::ui::commands::Clipboard;
 use crate::ui::editor::ToolMode;
 use crate::ui::minimap::Minimap;
 use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
@@ -44,6 +45,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(DiagramDocument::default()));
     let _dragging_icon = use_context_provider(|| Signal::new(Option::<DraggedIconPayload>::None));
     use_context_provider(|| Signal::new(History::new()));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     use_context_provider(|| Signal::new(ToolMode::Select));
     use_context_provider(|| Signal::new(EdgeStyle::Solid));
     use_context_provider(|| Signal::new(ArrowType::Default));
