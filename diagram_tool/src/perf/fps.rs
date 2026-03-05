@@ -1,10 +1,13 @@
 //! FPS measurement utilities.
 
-use serde::{Deserialize, Serialize};
 use std::time::{Duration, Instant};
 
-use super::error::PerfError;
-use super::metrics::{FrameSample, Statistics};
+use serde::{Deserialize, Serialize};
+
+use super::{
+    error::PerfError,
+    metrics::{FrameSample, Statistics},
+};
 
 /// FPS measurement result.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]

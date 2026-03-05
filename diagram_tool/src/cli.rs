@@ -5,21 +5,21 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::cli_persistence::{
-    emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, validate_safe_path,
-    StageDetails,
-};
-use crate::export::png::export_png;
-use crate::export::svg::generate_svg_string;
-use crate::models::document::{DiagramDocument, NodeId};
-use crate::mutation::ops::apply_layout;
-use crate::mutation::pipeline::run_mutation;
+use std::{fs::File, io::Write, path::Path};
+
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
 use serde::{Deserialize, Serialize};
-use std::fs::File;
-use std::io::Write;
-use std::path::Path;
+
+use crate::{
+    cli_persistence::{
+        emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, validate_safe_path,
+        StageDetails,
+    },
+    export::{png::export_png, svg::generate_svg_string},
+    models::document::{DiagramDocument, NodeId},
+    mutation::{ops::apply_layout, pipeline::run_mutation},
+};
 
 #[derive(Parser, Debug, Clone)]
 #[command(name = "diagram_tool")]
@@ -53,6 +53,14 @@ pub enum Commands {
         input: String,
         #[arg(long)]
         patch: String,
+        #[arg(long)]
+        output: String,
+    },
+    GenerateScene {
+        #[arg(long, default_value_t = 3000)]
+        nodes: u32,
+        #[arg(long, default_value_t = 42)]
+        seed: u64,
         #[arg(long)]
         output: String,
     },
@@ -133,6 +141,7 @@ fn command_name(cmd: &Commands) -> String {
         Commands::Layout { .. } => String::from("layout"),
         Commands::Validate { .. } => String::from("validate"),
         Commands::Patch { .. } => String::from("patch"),
+        Commands::GenerateScene { .. } => String::from("generate_scene"),
     }
 }
 
@@ -383,6 +392,30 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 
             emit_stage_event(
                 "patched",
+                &StageDetails::new()
+                    .with_path(Path::new(output))
+                    .with_code("success"),
+            );
+        }
+        Commands::GenerateScene {
+            nodes,
+            seed,
+            output,
+        } => {
+            emit_stage_event(
+                "generating_scene",
+                &StageDetails::new()
+                    .with_path(Path::new(output))
+                    .with_code("started"),
+            );
+
+            let doc = crate::perf::generate_test_scene(*nodes, *seed);
+
+            save_workspace_atomic(&doc, Path::new(output))
+                .map_err(|e| anyhow!("Failed to save generated scene: {e}"))?;
+
+            emit_stage_event(
+                "generated_scene",
                 &StageDetails::new()
                     .with_path(Path::new(output))
                     .with_code("success"),

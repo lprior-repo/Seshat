@@ -5,16 +5,21 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use super::interaction_reducer::{start_resize_interaction, InteractionMode, ResizeHandle};
-use super::selection_geometry::{selected_node_ids, selection_bounds};
-use crate::models::document::{ArrowType, DiagramDocument, Edge, EdgeId, Point};
-use crate::ui::theme::{
-    ACCENT, BG_BASE, SELECTION_BOUNDS_STROKE, SELECTION_RECT_FILL, SELECTION_RECT_STROKE,
-    SUBGRAPH_PREVIEW_FILL, SUBGRAPH_PREVIEW_STROKE,
-};
-use dioxus::html::input_data::MouseButton;
-use dioxus::prelude::*;
 use std::fmt::Write as _;
+
+use dioxus::{html::input_data::MouseButton, prelude::*};
+
+use super::{
+    interaction_reducer::{start_resize_interaction, InteractionMode, ResizeHandle},
+    selection_geometry::{selected_node_ids, selection_bounds},
+};
+use crate::{
+    models::document::{ArrowType, DiagramDocument, Edge, EdgeId, Point},
+    ui::theme::{
+        ACCENT, BG_BASE, SELECTION_BOUNDS_STROKE, SELECTION_RECT_FILL, SELECTION_RECT_STROKE,
+        SUBGRAPH_PREVIEW_FILL, SUBGRAPH_PREVIEW_STROKE,
+    },
+};
 
 #[must_use]
 pub(super) fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
@@ -474,12 +479,13 @@ pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<Edge
 
 #[cfg(test)]
 mod tests {
+    use im::HashMap;
+
     use super::find_edge_at;
     use crate::models::document::{
         ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
         NodeStyle, OrderedFloat,
     };
-    use im::HashMap;
 
     fn node_at(x: f64, y: f64) -> Node {
         Node {
@@ -657,8 +663,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     fn finite_f64() -> impl Strategy<Value = f64> {
         -1000.0_f64..=1000.0_f64

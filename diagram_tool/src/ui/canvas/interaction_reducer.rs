@@ -5,12 +5,16 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use super::selection_geometry::{selected_node_ids, selection_bounds};
-use crate::history::History;
-use crate::models::document::{DiagramDocument, EdgeId, NodeId, NodeKind};
+use std::collections::HashSet;
+
 use dioxus::prelude::*;
 use im::HashMap;
-use std::collections::HashSet;
+
+use super::selection_geometry::{selected_node_ids, selection_bounds};
+use crate::{
+    history::History,
+    models::document::{DiagramDocument, EdgeId, NodeId, NodeKind},
+};
 
 fn safe_zoom(zoom: f64) -> Option<f64> {
     (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
@@ -217,11 +221,12 @@ pub(super) fn finalize_motion_release(
 
 #[cfg(test)]
 mod tests {
+    use im::HashMap;
+
     use super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
-    use im::HashMap;
 
     fn node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
         Node {
@@ -588,7 +593,8 @@ mod tests {
     // ============== MUL-003: Resize selection with 2-point line ==============
     // Note: Lines in this diagram tool are represented as edges, not nodes.
     // Edges don't have bounding boxes in the same way nodes do.
-    // This test verifies that a selection with thin/narrow nodes (representing lines) scales correctly.
+    // This test verifies that a selection with thin/narrow nodes (representing lines) scales
+    // correctly.
 
     #[test]
     fn given_selection_with_line_like_node_when_resize_computed_then_scales_proportionally() {
@@ -821,6 +827,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
+    use im::HashMap;
+    use proptest::prelude::*;
+
     use super::{
         finalize_motion_release, resize_target_ids, safe_zoom, within, InteractionMode,
         ResizeHandle,
@@ -828,8 +837,6 @@ mod proptests {
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
-    use im::HashMap;
-    use proptest::prelude::*;
 
     fn node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
         Node {
@@ -1522,11 +1529,12 @@ mod proptests {
 /// - Parent-child relationship preservation
 #[cfg(test)]
 mod subgraph_tests {
+    use im::HashMap;
+
     use super::{resize_target_ids, within, InteractionMode};
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
-    use im::HashMap;
 
     fn make_subgraph_node(
         id: &str,
@@ -2125,7 +2133,8 @@ mod subgraph_tests {
         );
     }
 
-    // ============== SUB-005: Parent-child relationship preservation during selection ==============
+    // ============== SUB-005: Parent-child relationship preservation during selection
+    // ==============
 
     /// Given a container with children,
     /// when the container is selected and resized,
@@ -2344,7 +2353,8 @@ mod subgraph_tests {
         assert_eq!(pos2.map(|p| p.1), Some(150.0), "Node2 y position");
     }
 
-    // ============== SUB-007 (bd-321): Drag container into another container (nesting) ==============
+    // ============== SUB-007 (bd-321): Drag container into another container (nesting)
+    // ==============
 
     /// Given two containers where one can be nested inside the other,
     /// when the inner container is positioned within outer bounds,
@@ -2454,7 +2464,8 @@ mod subgraph_tests {
         );
     }
 
-    // ============== SUB-009 (bd-321): Container auto-expand when child crosses boundary ==============
+    // ============== SUB-009 (bd-321): Container auto-expand when child crosses boundary
+    // ==============
 
     /// Given a container with a child near the edge,
     /// when calculating resize targets,
@@ -2586,9 +2597,10 @@ mod subgraph_tests {
 
 #[cfg(test)]
 mod inp_mobile_touch_tests {
+    use im::HashMap;
+
     use super::{InteractionMode, ResizeHandle};
     use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
-    use im::HashMap;
 
     fn make_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
         (

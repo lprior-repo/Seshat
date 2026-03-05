@@ -211,8 +211,9 @@ impl Statistics {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use alloc::vec;
+
+    use super::*;
 
     #[test]
     fn test_frame_sample_fps() {

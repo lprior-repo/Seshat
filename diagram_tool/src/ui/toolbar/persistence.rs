@@ -1,15 +1,21 @@
-use crate::history::History;
 #[cfg(not(target_arch = "wasm32"))]
-use crate::models::canonical_json::to_canonical_pretty_json;
-use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
-use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
-use crate::ui::editor::ToolMode;
-use crate::ui::toast::{ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue, ToastUpdate};
+use std::fs;
+
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
+
 #[cfg(not(target_arch = "wasm32"))]
-use std::fs;
+use crate::models::canonical_json::to_canonical_pretty_json;
+use crate::{
+    history::History,
+    models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision},
+    mutation::pipeline::{run_mutation_with_policy, RevisionPolicy},
+    ui::{
+        editor::ToolMode,
+        toast::{ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue, ToastUpdate},
+    },
+};
 
 #[derive(Debug)]
 enum ImportTransitionError {
@@ -25,11 +31,14 @@ fn prepare_import_transition(
         .map_err(ImportTransitionError::Parse)?;
     loaded_doc.revision = Revision::INITIAL;
 
-    run_mutation_with_policy(current, RevisionPolicy::Preserve, |_| Ok(loaded_doc))
-        .map(|next_doc| (next_doc, History::new().push(current.clone())))
-        .map_err(|err| {
-            ImportTransitionError::Validation(super::mutation_error_code(&err).to_string())
-        })
+    run_mutation_with_policy(
+        current,
+        RevisionPolicy::Preserve,
+        crate::mutation::pipeline::ValidationPolicy::Validate,
+        |_| Ok(loaded_doc),
+    )
+    .map(|next_doc| (next_doc, History::new().push(current.clone())))
+    .map_err(|err| ImportTransitionError::Validation(super::mutation_error_code(&err).to_string()))
 }
 
 fn apply_import_contents(
@@ -294,12 +303,13 @@ fn update_load_save_error(toast_handle: ToastHandle, title: &str, detail: String
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::{apply_import_contents, prepare_import_transition, ImportTransitionError};
-    use crate::history::History;
-    use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
-    };
     use im::{HashMap, HashSet};
+
+    use super::{apply_import_contents, prepare_import_transition, ImportTransitionError};
+    use crate::{
+        history::History,
+        models::document::{DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat},
+    };
 
     fn sample_doc_with_node(id: &str, x: f64) -> DiagramDocument {
         let mut doc = DiagramDocument::default();
@@ -466,8 +476,10 @@ mod tests {
     /// Then: All geometry values are exactly preserved
     #[test]
     fn given_document_with_fractional_coords_when_round_trip_then_geometry_preserved() {
-        use crate::models::canonical_json::to_canonical_pretty_json;
-        use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
+        use crate::{
+            models::canonical_json::to_canonical_pretty_json,
+            ui::toolbar::persistence_compat::parse_diagram_document_with_compat,
+        };
 
         // Given - document with precise fractional coordinates
         let mut doc = DiagramDocument::default();
@@ -532,8 +544,10 @@ mod tests {
     /// IO-TEST-3b: Multiple nodes with various precision levels
     #[test]
     fn given_document_with_various_precision_coords_when_round_trip_then_all_preserved() {
-        use crate::models::canonical_json::to_canonical_pretty_json;
-        use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
+        use crate::{
+            models::canonical_json::to_canonical_pretty_json,
+            ui::toolbar::persistence_compat::parse_diagram_document_with_compat,
+        };
 
         // Given
         let mut doc = DiagramDocument::default();

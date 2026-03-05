@@ -1,14 +1,15 @@
 //! Benchmark harness for diagram operations.
 
-use serde::{Deserialize, Serialize};
-use std::collections::HashMap;
-use std::path::PathBuf;
-use std::time::UNIX_EPOCH;
+use std::{collections::HashMap, path::PathBuf, time::UNIX_EPOCH};
 
-use super::benchmark::{Benchmark, BenchmarkConfig, BenchmarkResult};
-use super::error::PerfError;
-use super::fps::FpsReport;
-use super::{BASELINE_NODE_COUNT, TARGET_FPS};
+use serde::{Deserialize, Serialize};
+
+use super::{
+    benchmark::{Benchmark, BenchmarkConfig, BenchmarkResult},
+    error::PerfError,
+    fps::FpsReport,
+    BASELINE_NODE_COUNT, TARGET_FPS,
+};
 
 /// Diagram operations that can be benchmarked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -272,10 +273,11 @@ impl BenchmarkHarness {
 /// Generates a test scene with the specified number of nodes.
 #[must_use]
 pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::document::DiagramDocument {
+    use im::HashMap as ImHashMap;
+
     use crate::models::document::{
         DiagramDocument, DocumentData, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
     };
-    use im::HashMap as ImHashMap;
 
     let mut nodes = ImHashMap::new();
     let mut edges = ImHashMap::new();

@@ -11,37 +11,15 @@ mod interaction_reducer;
 mod perf;
 mod selection_geometry;
 
-use crate::app::DraggedIconPayload;
-use crate::history::History;
-use crate::icons::{icon_index, ICONS};
-use crate::models::dag::validate_dag;
-use crate::models::document::{
-    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
-    OrderedFloat, Revision,
-};
-use crate::ui::commands::{
-    apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
-    apply_zoom_out, apply_zoom_reset, Clipboard,
-};
-use crate::ui::editor::ToolMode;
-use crate::ui::grid::{snap_point, snap_value, GridSize};
-use crate::ui::interaction::{
-    drag_original_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
-    select_single, toggle_selection, with_auto_selected_edges,
-};
-use crate::ui::theme::{
-    ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT, EDGE_SELECTED,
-    GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG,
-};
-use crate::ui::toast::use_toast;
 use base64::{engine::general_purpose, Engine as _};
 use canvas_view::{
     edge_label_position, edge_marker_ref, edge_path, edge_preview_overlay, find_edge_at,
     rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay,
 };
-use dioxus::html::geometry::WheelDelta;
-use dioxus::html::input_data::MouseButton;
-use dioxus::prelude::*;
+use dioxus::{
+    html::{geometry::WheelDelta, input_data::MouseButton},
+    prelude::*,
+};
 use im::HashMap;
 use interaction_reducer::{
     commit_inline_edit, finalize_motion_release, InteractionMode, ResizeHandle,
@@ -53,6 +31,36 @@ use perf::{
 use selection_geometry::{selected_node_ids, selection_bounds};
 use serde_json::Value;
 use uuid::Uuid;
+
+use crate::{
+    app::DraggedIconPayload,
+    history::History,
+    icons::{icon_index, ICONS},
+    models::{
+        dag::validate_dag,
+        document::{
+            ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
+            OrderedFloat, Revision,
+        },
+    },
+    ui::{
+        commands::{
+            apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
+            apply_zoom_out, apply_zoom_reset, Clipboard,
+        },
+        editor::ToolMode,
+        grid::{snap_point, snap_value, GridSize},
+        interaction::{
+            drag_original_positions, dragged_positions_with_snap, has_drag_threshold,
+            node_ids_in_rect, select_single, toggle_selection, with_auto_selected_edges,
+        },
+        theme::{
+            ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT, EDGE_SELECTED,
+            GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG,
+        },
+        toast::use_toast,
+    },
+};
 
 fn provider_color(provider: &str) -> &'static str {
     match provider {
@@ -566,7 +574,6 @@ pub fn Canvas() -> Element {
     let mut doc_signal = use_context::<Signal<DiagramDocument>>();
     let mut dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
     let mut history_signal = use_context::<Signal<History>>();
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
     let mut tool_signal = use_context::<Signal<ToolMode>>();
     let edge_style_default = use_context::<Signal<EdgeStyle>>();
     let arrow_type_default = use_context::<Signal<ArrowType>>();
@@ -1262,7 +1269,8 @@ pub fn Canvas() -> Element {
 
                 let client_x = json["x"].as_f64().map_or(0.0, |v| v);
                 let client_y = json["y"].as_f64().map_or(0.0, |v| v);
-                // Use origin from the message (synchronously fetched from DOM) instead of cached signal
+                // Use origin from the message (synchronously fetched from DOM) instead of cached
+                // signal
                 let origin_x = json["originX"].as_f64().map_or(0.0, |v| v);
                 let origin_y = json["originY"].as_f64().map_or(0.0, |v| v);
                 let local_x = client_x - origin_x;
@@ -2870,12 +2878,13 @@ pub fn Canvas() -> Element {
 
 #[cfg(test)]
 mod tests {
-    use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};
-    use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
-    };
-    use crate::ui::grid::GridSize;
     use im::HashMap;
+
+    use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};
+    use crate::{
+        models::document::{DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat},
+        ui::grid::GridSize,
+    };
 
     fn node_at(x: f64, y: f64) -> Node {
         Node {

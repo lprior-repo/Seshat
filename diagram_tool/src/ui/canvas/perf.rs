@@ -375,8 +375,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     prop_compose! {
         fn arb_finite_f64()(x in -1e6_f64..1e6_f64) -> f64 { x }
@@ -764,8 +765,9 @@ mod inp_mobile_touch_tests {
 
 #[cfg(test)]
 mod inp_mobile_touch_proptests {
-    use super::*;
     use proptest::prelude::*;
+
+    use super::*;
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]

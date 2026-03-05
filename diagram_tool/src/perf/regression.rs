@@ -1,12 +1,15 @@
 //! Performance regression testing infrastructure.
 
-use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-use super::benchmark::BenchmarkResult;
-use super::error::PerfError;
-use super::harness::{Baseline, Operation};
-use super::MIN_ACCEPTABLE_FPS;
+use serde::{Deserialize, Serialize};
+
+use super::{
+    benchmark::BenchmarkResult,
+    error::PerfError,
+    harness::{Baseline, Operation},
+    MIN_ACCEPTABLE_FPS,
+};
 
 /// Result of a regression test.
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -332,9 +335,11 @@ impl PerformanceReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::perf::benchmark::{BenchmarkConfig, NodeCount};
-    use crate::perf::fps::FpsReport;
-    use crate::perf::metrics::FrameSample;
+    use crate::perf::{
+        benchmark::{BenchmarkConfig, NodeCount},
+        fps::FpsReport,
+        metrics::FrameSample,
+    };
 
     fn make_test_result(operation: &str, fps: f64) -> BenchmarkResult {
         let config = BenchmarkConfig::new(operation)

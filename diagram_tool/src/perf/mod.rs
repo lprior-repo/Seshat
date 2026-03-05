@@ -38,7 +38,7 @@ mod regression;
 pub use benchmark::{Benchmark, BenchmarkConfig, BenchmarkResult, NodeCount};
 pub use error::PerfError;
 pub use fps::{FpsMeasurement, FpsReport};
-pub use harness::{Baseline, BenchmarkHarness, Operation};
+pub use harness::{generate_test_scene, Baseline, BenchmarkHarness, Operation};
 pub use metrics::{FrameSample, Percentiles, Statistics};
 pub use regression::{RegressionResult, RegressionTest};
 

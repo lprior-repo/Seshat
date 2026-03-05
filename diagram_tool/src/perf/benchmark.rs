@@ -1,13 +1,12 @@
 //! Benchmark configuration and execution.
 
-use serde::{Deserialize, Serialize};
 use std::time::Duration;
 
-use super::error::PerfError;
-use super::fps::FpsReport;
+use serde::{Deserialize, Serialize};
+
 use super::{
-    DEFAULT_BENCHMARK_DURATION_MS, DEFAULT_WARMUP_ITERATIONS, MAX_NODE_COUNT, MIN_DURATION_MS,
-    MIN_NODE_COUNT, TARGET_FPS,
+    error::PerfError, fps::FpsReport, DEFAULT_BENCHMARK_DURATION_MS, DEFAULT_WARMUP_ITERATIONS,
+    MAX_NODE_COUNT, MIN_DURATION_MS, MIN_NODE_COUNT, TARGET_FPS,
 };
 
 /// Validated node count (P1: 1-10000).
@@ -297,8 +296,9 @@ impl Benchmark {
             ));
         }
 
-        use super::fps::FpsMeasurement;
         use std::time::{Instant, UNIX_EPOCH};
+
+        use super::fps::FpsMeasurement;
 
         let mut measurement = FpsMeasurement::new();
 
