@@ -50,14 +50,13 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(EdgeStyle::Solid));
     use_context_provider(|| Signal::new(ArrowType::Default));
     use_context_provider(|| Signal::new(ToastQueue::default()));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     use_context_provider(|| Signal::new(PanelVisibility::default()));
     use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
-    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
-    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
 
     use_global_keyboard();
     use_e2e_reset_hook();
