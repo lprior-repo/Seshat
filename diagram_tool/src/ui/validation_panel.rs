@@ -107,8 +107,8 @@ mod tests {
 
     #[test]
     fn validation_severity_ordering() {
-        // Error has higher priority than Warning
-        assert_ne!(ValidationSeverity::Error, ValidationSeverity::Warning);
+        // Error > Warning (custom Ord impl)
+        assert!(ValidationSeverity::Error > ValidationSeverity::Warning);
     }
 
     #[test]
@@ -129,6 +129,6 @@ mod tests {
             severity: ValidationSeverity::Warning,
             subject: Some("node-1".to_string()),
         };
-        assert_eq!(issue.subject, Some("node-1".to_string()));
+        assert_eq!(issue.subject.as_deref(), Some("node-1"));
     }
 }

@@ -145,12 +145,57 @@ pub struct Node {
     pub collapsed: Option<bool>,
 }
 
-/// Helper for floats that only implements PartialEq (not Eq)
-/// to avoid violating the Eq contract with NaN values.
-/// Schema validation rejects NaN/Inf at deserialization boundaries.
-/// Uses bit-hashing for consistent Hash behavior with PartialEq.
-#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, PartialOrd, Default)]
+/// Error type for OrderedFloat construction
+#[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum OrderedFloatError {
+    #[error("NaN is not a valid value for OrderedFloat")]
+    NaN,
+    #[error("Infinity is not a valid value for OrderedFloat")]
+    Infinite,
+}
+
+/// Helper to make floats Eq
+#[derive(Clone, Copy, Debug, PartialEq, PartialOrd, Default)]
 pub struct OrderedFloat(pub f64);
+
+impl<'de> Deserialize<'de> for OrderedFloat {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: serde::Deserializer<'de>,
+    {
+        let value = f64::deserialize(deserializer)?;
+        Ok(Self::new_unchecked(value))
+    }
+}
+
+impl Serialize for OrderedFloat {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: serde::Serializer,
+    {
+        self.0.serialize(serializer)
+    }
+}
+
+impl OrderedFloat {
+    #[must_use]
+    pub const fn new(value: f64) -> Result<Self, OrderedFloatError> {
+        if value.is_nan() {
+            Err(OrderedFloatError::NaN)
+        } else if value.is_infinite() {
+            Err(OrderedFloatError::Infinite)
+        } else {
+            Ok(Self(value))
+        }
+    }
+
+    #[must_use]
+    pub const fn new_unchecked(value: f64) -> Self {
+        Self(value)
+    }
+}
+
+impl Eq for OrderedFloat {}
 
 impl std::hash::Hash for OrderedFloat {
     fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
@@ -169,35 +214,35 @@ impl fmt::Display for OrderedFloat {
 impl Add for OrderedFloat {
     type Output = Self;
     fn add(self, rhs: Self) -> Self::Output {
-        Self(self.0 + rhs.0)
+        Self::new_unchecked(self.0 + rhs.0)
     }
 }
 
 impl Sub for OrderedFloat {
     type Output = Self;
     fn sub(self, rhs: Self) -> Self::Output {
-        Self(self.0 - rhs.0)
+        Self::new_unchecked(self.0 - rhs.0)
     }
 }
 
 impl Sub<f64> for OrderedFloat {
     type Output = Self;
     fn sub(self, rhs: f64) -> Self::Output {
-        Self(self.0 - rhs)
+        Self::new_unchecked(self.0 - rhs)
     }
 }
 
 impl Mul<f64> for OrderedFloat {
     type Output = Self;
     fn mul(self, rhs: f64) -> Self::Output {
-        Self(self.0 * rhs)
+        Self::new_unchecked(self.0 * rhs)
     }
 }
 
 impl Div<f64> for OrderedFloat {
     type Output = Self;
     fn div(self, rhs: f64) -> Self::Output {
-        Self(self.0 / rhs)
+        Self::new_unchecked(self.0 / rhs)
     }
 }
 
@@ -261,11 +306,11 @@ pub struct Edge {
 }
 
 const fn default_label_offset() -> OrderedFloat {
-    OrderedFloat(0.5)
+    OrderedFloat::new_unchecked(0.5)
 }
 
 const fn default_thickness() -> OrderedFloat {
-    OrderedFloat(1.5)
+    OrderedFloat::new_unchecked(1.5)
 }
 
 const fn default_directed() -> bool {
@@ -324,9 +369,9 @@ pub struct EditorState {
 impl Default for EditorState {
     fn default() -> Self {
         Self {
-            camera_x: OrderedFloat(0.0),
-            camera_y: OrderedFloat(0.0),
-            zoom: OrderedFloat(1.0),
+            camera_x: OrderedFloat::new_unchecked(0.0),
+            camera_y: OrderedFloat::new_unchecked(0.0),
+            zoom: OrderedFloat::new_unchecked(1.0),
             grid_size: GridSize::default(),
             snap_to_grid: true,
             selected_items: im::HashSet::new(),

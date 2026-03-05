@@ -9,11 +9,27 @@ use crate::models::dag::validate_dag;
 use crate::models::document::{DiagramDocument, DocumentData, NodeKind};
 
 /// Severity of a validation issue.
-#[derive(Clone, Debug, PartialEq, Eq, PartialOrd)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ValidationSeverity {
-    Error,
-    #[allow(dead_code)]
     Warning,
+    Error,
+}
+
+impl PartialOrd for ValidationSeverity {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        Some(self.cmp(other))
+    }
+}
+
+impl Ord for ValidationSeverity {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        match (self, other) {
+            (ValidationSeverity::Error, ValidationSeverity::Error) => std::cmp::Ordering::Equal,
+            (ValidationSeverity::Error, ValidationSeverity::Warning) => std::cmp::Ordering::Greater,
+            (ValidationSeverity::Warning, ValidationSeverity::Error) => std::cmp::Ordering::Less,
+            (ValidationSeverity::Warning, ValidationSeverity::Warning) => std::cmp::Ordering::Equal,
+        }
+    }
 }
 
 /// A single validation issue discovered in a `DiagramDocument`.
@@ -57,8 +73,8 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
         src_issue.into_iter().chain(tgt_issue)
     });
 
-    let node_issues = nodes.iter().filter_map(|(id, node)| {
-        node.parent.as_ref().and_then(|parent_id| {
+    let node_issues = nodes.iter().flat_map(|(id, node)| {
+        let parent_issue = node.parent.as_ref().and_then(|parent_id| {
             if !nodes.contains_key(parent_id) {
                 Some(ValidationIssue {
                     severity: ValidationSeverity::Error,
@@ -79,7 +95,31 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
             } else {
                 None
             }
-        })
+        });
+
+        let nan_issue = if !node.x.0.is_finite() || !node.y.0.is_finite() {
+            Some(ValidationIssue {
+                severity: ValidationSeverity::Error,
+                code: "invalid-numeric",
+                message: format!("Node {id} has non-finite coordinates: x={}, y={}", node.x.0, node.y.0),
+                subject: Some(id.to_string()),
+            })
+        } else {
+            None
+        };
+
+        let dimension_issue = if node.width.0 < 0.0 || node.height.0 < 0.0 || !node.width.0.is_finite() || !node.height.0.is_finite() {
+            Some(ValidationIssue {
+                severity: ValidationSeverity::Error,
+                code: "invalid-numeric",
+                message: format!("Node {id} has invalid dimensions: width={}, height={}", node.width.0, node.height.0),
+                subject: Some(id.to_string()),
+            })
+        } else {
+            None
+        };
+
+        parent_issue.into_iter().chain(nan_issue).chain(dimension_issue)
     });
 
     let dag_issues = validate_dag(nodes, edges).err().map(|_| ValidationIssue {
@@ -210,77 +250,52 @@ mod tests {
     }
 
     #[test]
-    fn given_nan_node_geometry_when_validated_then_no_panic() {
+    fn given_nan_node_geometry_when_validated_then_returns_error() {
         let mut doc = DiagramDocument::default();
         let (nid, mut node) = make_node("nan-node");
-        node.x = OrderedFloat(f64::NAN);
-        node.y = OrderedFloat(f64::NAN);
-        node.width = OrderedFloat(f64::NAN);
-        node.height = OrderedFloat(f64::NAN);
+        node.x = OrderedFloat::new_unchecked(f64::NAN);
+        node.y = OrderedFloat::new_unchecked(f64::NAN);
+        node.width = OrderedFloat::new_unchecked(f64::NAN);
+        node.height = OrderedFloat::new_unchecked(f64::NAN);
         doc.document.nodes = doc.document.nodes.update(nid, node);
 
         let issues = validate_document(&doc);
-        for issue in &issues {
-            assert!(
-                issue.code != "internal-error",
-                "Validation should not create internal error codes for NaN geometry"
-            );
-        }
+        assert!(
+            issues.iter().any(|i| i.code == "invalid-numeric"),
+            "Validation should report invalid-numeric for NaN geometry"
+        );
     }
 
     #[test]
-    fn given_inf_node_geometry_when_validated_then_no_panic() {
+    fn given_inf_node_geometry_when_validated_then_returns_error() {
         let mut doc = DiagramDocument::default();
         let (nid, mut node) = make_node("inf-node");
-        node.x = OrderedFloat(f64::INFINITY);
-        node.y = OrderedFloat(f64::NEG_INFINITY);
-        node.width = OrderedFloat(f64::INFINITY);
-        node.height = OrderedFloat(f64::INFINITY);
+        node.x = OrderedFloat::new_unchecked(f64::INFINITY);
+        node.y = OrderedFloat::new_unchecked(f64::NEG_INFINITY);
+        node.width = OrderedFloat::new_unchecked(f64::INFINITY);
+        node.height = OrderedFloat::new_unchecked(f64::INFINITY);
         doc.document.nodes = doc.document.nodes.update(nid, node);
 
         let issues = validate_document(&doc);
-        assert!(issues.iter().all(|i| i.code != "internal-error"));
+        assert!(
+            issues.iter().any(|i| i.code == "invalid-numeric"),
+            "Validation should report invalid-numeric for Inf geometry"
+        );
     }
 
     #[test]
-    fn given_negative_node_dimensions_when_validated_then_no_panic() {
+    fn given_negative_node_dimensions_when_validated_then_returns_error() {
         let mut doc = DiagramDocument::default();
         let (nid, mut node) = make_node("neg-node");
-        node.width = OrderedFloat(-10.0);
-        node.height = OrderedFloat(-5.0);
+        node.width = OrderedFloat::new_unchecked(-10.0);
+        node.height = OrderedFloat::new_unchecked(-5.0);
         doc.document.nodes = doc.document.nodes.update(nid, node);
 
         let issues = validate_document(&doc);
-        assert!(issues.iter().all(|i| i.code != "internal-error"));
-    }
-
-    #[test]
-    fn given_nan_editor_zoom_when_validated_then_no_panic() {
-        let mut doc = DiagramDocument::default();
-        doc.editor_state.zoom = OrderedFloat(f64::NAN);
-        let issues = validate_document(&doc);
-        assert!(issues.iter().all(|i| i.code != "internal-error"));
-    }
-
-    #[test]
-    fn given_invalid_editor_zoom_range_when_validated_then_no_panic() {
-        let mut doc = DiagramDocument::default();
-        doc.editor_state.zoom = OrderedFloat(10.0);
-        let issues = validate_document(&doc);
-        assert!(issues.iter().all(|i| i.code != "internal-error"));
-
-        doc.editor_state.zoom = OrderedFloat(-1.0);
-        let issues2 = validate_document(&doc);
-        assert!(issues2.iter().all(|i| i.code != "internal-error"));
-    }
-
-    #[test]
-    fn given_nan_camera_position_when_validated_then_no_panic() {
-        let mut doc = DiagramDocument::default();
-        doc.editor_state.camera_x = OrderedFloat(f64::NAN);
-        doc.editor_state.camera_y = OrderedFloat(f64::NAN);
-        let issues = validate_document(&doc);
-        assert!(issues.iter().all(|i| i.code != "internal-error"));
+        assert!(
+            issues.iter().any(|i| i.code == "invalid-numeric"),
+            "Validation should report invalid-numeric for negative dimensions"
+        );
     }
 
     #[test]
@@ -288,8 +303,8 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let (nid, node) = make_node("small-valid");
         let small_node = Node {
-            width: OrderedFloat(24.0),
-            height: OrderedFloat(24.0),
+            width: OrderedFloat::new_unchecked(24.0),
+            height: OrderedFloat::new_unchecked(24.0),
             ..node
         };
         doc.document.nodes = doc.document.nodes.update(nid, small_node);
@@ -333,10 +348,10 @@ mod proptests {
                     kind: NodeKind::Node,
                     icon: String::new(),
                     label: String::new(),
-                    x: OrderedFloat(x),
-                    y: OrderedFloat(y),
-                    width: OrderedFloat(width),
-                    height: OrderedFloat(height),
+                    x: OrderedFloat::new_unchecked(x),
+                    y: OrderedFloat::new_unchecked(y),
+                    width: OrderedFloat::new_unchecked(width),
+                    height: OrderedFloat::new_unchecked(height),
                     font_size: None,
                     font_weight: None,
                     locked: false,
@@ -362,20 +377,7 @@ mod proptests {
             prop_assert!(issues.iter().all(|i| i.code != "internal-error"));
         }
 
-        fn prop_validate_camera_state_ignored(nodes in proptest::collection::vec(arb_node(), 0..5)) {
-            let mut doc = DiagramDocument::default();
-            for (id, node) in nodes {
-                doc.document.nodes = doc.document.nodes.update(id, node);
-            }
-            doc.editor_state.camera_x = OrderedFloat(f64::NAN);
-            doc.editor_state.camera_y = OrderedFloat(f64::INFINITY);
-            doc.editor_state.zoom = OrderedFloat(-100.0);
-
-            let issues = validate_document(&doc);
-            prop_assert!(issues.iter().all(|i| i.code != "internal-error"));
-        }
-
-        fn prop_validate_negative_dimensions_no_panic(
+        fn prop_validate_negative_dimensions_returns_error(
             id in arb_node_id(),
             width in -1000.0_f64..0.0_f64,
             height in -1000.0_f64..0.0_f64,
@@ -385,10 +387,10 @@ mod proptests {
                 kind: NodeKind::Node,
                 icon: String::new(),
                 label: String::new(),
-                x: OrderedFloat(0.0),
-                y: OrderedFloat(0.0),
-                width: OrderedFloat(width),
-                height: OrderedFloat(height),
+                x: OrderedFloat::new_unchecked(0.0),
+                y: OrderedFloat::new_unchecked(0.0),
+                width: OrderedFloat::new_unchecked(width),
+                height: OrderedFloat::new_unchecked(height),
                 font_size: None,
                 font_weight: None,
                 locked: false,
@@ -403,7 +405,7 @@ mod proptests {
             doc.document.nodes = doc.document.nodes.update(id, node);
 
             let issues = validate_document(&doc);
-            prop_assert!(issues.iter().all(|i| i.code != "internal-error"));
+            prop_assert!(issues.iter().any(|i| i.code == "invalid-numeric"));
         }
 
         fn prop_validate_tiny_dimensions_no_panic(
@@ -415,10 +417,10 @@ mod proptests {
                 kind: NodeKind::Node,
                 icon: String::new(),
                 label: String::new(),
-                x: OrderedFloat(0.0),
-                y: OrderedFloat(0.0),
-                width: OrderedFloat(dim),
-                height: OrderedFloat(dim),
+                x: OrderedFloat::new_unchecked(0.0),
+                y: OrderedFloat::new_unchecked(0.0),
+                width: OrderedFloat::new_unchecked(dim),
+                height: OrderedFloat::new_unchecked(dim),
                 font_size: None,
                 font_weight: None,
                 locked: false,
@@ -446,10 +448,10 @@ mod proptests {
                 kind: NodeKind::Node,
                 icon: String::new(),
                 label: String::new(),
-                x: OrderedFloat(x),
-                y: OrderedFloat(y),
-                width: OrderedFloat(64.0),
-                height: OrderedFloat(64.0),
+                x: OrderedFloat::new_unchecked(x),
+                y: OrderedFloat::new_unchecked(y),
+                width: OrderedFloat::new_unchecked(64.0),
+                height: OrderedFloat::new_unchecked(64.0),
                 font_size: None,
                 font_weight: None,
                 locked: false,

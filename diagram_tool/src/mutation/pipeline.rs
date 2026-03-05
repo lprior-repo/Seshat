@@ -10,6 +10,13 @@ use crate::models::schema::validate_schema;
 use crate::models::validation::validate_document;
 use crate::mutation::error::MutationError;
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum ValidationPolicy {
+    #[default]
+    Validate,
+    SkipValidation,
+}
+
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum RevisionPolicy {
     Increment,
@@ -23,12 +30,13 @@ pub fn run_mutation<F>(
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
-    run_mutation_with_policy(current, RevisionPolicy::Increment, transform)
+    run_mutation_with_policy(current, RevisionPolicy::Increment, ValidationPolicy::default(), transform)
 }
 
 pub fn run_mutation_with_policy<F>(
     current: &DiagramDocument,
     revision_policy: RevisionPolicy,
+    validation_policy: ValidationPolicy,
     transform: F,
 ) -> Result<DiagramDocument, MutationError>
 where
@@ -36,7 +44,9 @@ where
 {
     let next = transform(current)?;
     // Use From implementation to preserve error type information
-    validate_schema(&next).map_err(MutationError::from)?;
+    if validation_policy == ValidationPolicy::Validate {
+        validate_schema(&next).map_err(MutationError::from)?;
+    }
 
     let issues = validate_document(&next);
     issues.first().map_or_else(
@@ -94,7 +104,7 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
+    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
     use crate::models::document::{
         ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, EditorState, Node, NodeId, NodeKind,
         NodeStyle, OrderedFloat,
@@ -225,7 +235,7 @@ mod tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod proptests {
-    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
+    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
     use crate::models::document::{
         ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, EditorState, Node,
         NodeId, NodeKind, NodeStyle, OrderedFloat, Point, Revision,

@@ -1075,7 +1075,7 @@ mod proptests {
         ) {
             let from_node_clone = from_node.clone();
             let mode = InteractionMode::DrawingEdge {
-                from_node: NodeId::new(from_node),
+                from_node: NodeId::new(from_node.clone()),
                 current_pos: (pos_x, pos_y),
             };
             // Verify mode was created with the correct from_node

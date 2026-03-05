@@ -104,10 +104,22 @@ fn validate_edges_and_dag(doc: &DiagramDocument) -> Result<()> {
         if !node_ids.contains(&edge.target) {
             bail!("Edge {id:?} references non-existent target {}", edge.target);
         }
+        if !edge.label_offset_t.0.is_finite() {
+            bail!(
+                "Edge {id:?} has non-finite label_offset_t: {}",
+                edge.label_offset_t.0
+            );
+        }
         if edge.label_offset_t.0 < 0.0 || edge.label_offset_t.0 > 1.0 {
             bail!(
                 "Edge {id:?} has label_offset_t {} outside valid range [0, 1]",
                 edge.label_offset_t.0
+            );
+        }
+        if !edge.thickness.0.is_finite() {
+            bail!(
+                "Edge {id:?} has non-finite thickness: {}",
+                edge.thickness.0
             );
         }
         if let Some(ref color) = edge.color {
@@ -115,10 +127,27 @@ fn validate_edges_and_dag(doc: &DiagramDocument) -> Result<()> {
                 bail!("Edge {id:?} has invalid color format: {color}");
             }
         }
+        if let Some(ref font_size) = edge.font_size {
+            if !font_size.0.is_finite() {
+                bail!("Edge {id:?} has non-finite font_size: {}", font_size.0);
+            }
+        }
         Ok(())
     })?;
 
-    // 3. Validate DAG property
+    // 3. Validate Editor State
+    let es = &doc.editor_state;
+    if !es.camera_x.0.is_finite() {
+        bail!("Editor state has non-finite camera_x: {}", es.camera_x.0);
+    }
+    if !es.camera_y.0.is_finite() {
+        bail!("Editor state has non-finite camera_y: {}", es.camera_y.0);
+    }
+    if !es.zoom.0.is_finite() {
+        bail!("Editor state has non-finite zoom: {}", es.zoom.0);
+    }
+
+    // 4. Validate DAG property
     validate_dag(nodes, &doc.document.edges).map_err(|e| anyhow!("DAG Validation Failed: {e}"))?;
 
     Ok(())
@@ -160,10 +189,10 @@ mod tests {
             kind,
             icon: String::new(),
             label: String::new(),
-            x: OrderedFloat(0.0),
-            y: OrderedFloat(0.0),
-            width: OrderedFloat(100.0),
-            height: OrderedFloat(60.0),
+            x: OrderedFloat::new_unchecked(0.0),
+            y: OrderedFloat::new_unchecked(0.0),
+            width: OrderedFloat::new_unchecked(100.0),
+            height: OrderedFloat::new_unchecked(60.0),
             font_size: None,
             font_weight: None,
             locked: false,
@@ -184,9 +213,9 @@ mod tests {
             label: String::new(),
             style: crate::models::document::EdgeStyle::Solid,
             arrow_type: ArrowType::Default,
-            label_offset_t: OrderedFloat(0.5),
+            label_offset_t: OrderedFloat::new_unchecked(0.5),
             color: None,
-            thickness: OrderedFloat(1.5),
+            thickness: OrderedFloat::new_unchecked(1.5),
             directed: true,
             bend_points: vec![],
             tags: vec![],
@@ -361,13 +390,13 @@ mod proptests {
 
     fn arb_ordered_float_with_specials() -> impl Strategy<Value = OrderedFloat> {
         prop_oneof![
-            any::<f64>().prop_map(OrderedFloat),
-            Just(OrderedFloat(f64::NAN)),
-            Just(OrderedFloat(f64::INFINITY)),
-            Just(OrderedFloat(f64::NEG_INFINITY)),
-            Just(OrderedFloat(0.0)),
-            Just(OrderedFloat(f64::MIN)),
-            Just(OrderedFloat(f64::MAX)),
+            any::<f64>().prop_map(OrderedFloat::new_unchecked),
+            Just(OrderedFloat::new_unchecked(f64::NAN)),
+            Just(OrderedFloat::new_unchecked(f64::INFINITY)),
+            Just(OrderedFloat::new_unchecked(f64::NEG_INFINITY)),
+            Just(OrderedFloat::new_unchecked(0.0)),
+            Just(OrderedFloat::new_unchecked(f64::MIN)),
+            Just(OrderedFloat::new_unchecked(f64::MAX)),
         ]
     }
 
@@ -376,10 +405,10 @@ mod proptests {
             kind,
             icon: String::new(),
             label: String::new(),
-            x: OrderedFloat(x),
-            y: OrderedFloat(y),
-            width: OrderedFloat(100.0),
-            height: OrderedFloat(60.0),
+            x: OrderedFloat::new_unchecked(x),
+            y: OrderedFloat::new_unchecked(y),
+            width: OrderedFloat::new_unchecked(100.0),
+            height: OrderedFloat::new_unchecked(60.0),
             font_size: None,
             font_weight: None,
             locked: false,
@@ -400,9 +429,9 @@ mod proptests {
             label: String::new(),
             style: crate::models::document::EdgeStyle::Solid,
             arrow_type: ArrowType::Default,
-            label_offset_t: OrderedFloat(0.5),
+            label_offset_t: OrderedFloat::new_unchecked(0.5),
             color: None,
-            thickness: OrderedFloat(1.5),
+            thickness: OrderedFloat::new_unchecked(1.5),
             directed: true,
             bend_points: vec![],
             tags: vec![],
@@ -662,10 +691,10 @@ mod proptests {
             height in any::<f64>(),
         ) {
             let mut node = make_node(NodeKind::Node, None, 0.0, 0.0);
-            node.x = OrderedFloat(x);
-            node.y = OrderedFloat(y);
-            node.width = OrderedFloat(width);
-            node.height = OrderedFloat(height);
+            node.x = OrderedFloat::new_unchecked(x);
+            node.y = OrderedFloat::new_unchecked(y);
+            node.width = OrderedFloat::new_unchecked(width);
+            node.height = OrderedFloat::new_unchecked(height);
             let doc = DiagramDocument {
                 version: 2,
                 revision: Revision::INITIAL,
