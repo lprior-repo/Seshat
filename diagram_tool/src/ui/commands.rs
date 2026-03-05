@@ -10,7 +10,6 @@ use crate::models::document::{
     DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
 use dioxus::prelude::*;
-use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 
@@ -228,7 +227,7 @@ pub fn paste_contents(mut clipboard: Clipboard, doc: DiagramDocument) -> Option<
 /// This function maintains backward compatibility with the existing API
 /// by using a Dioxus signal for clipboard state management.
 pub fn apply_copy_selection(
-    mut doc_signal: Signal<DiagramDocument>,
+    doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
 ) -> bool {
     let doc = doc_signal.read().clone();

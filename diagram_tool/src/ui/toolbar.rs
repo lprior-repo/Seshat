@@ -36,6 +36,7 @@ pub struct ToolbarStats {
 pub fn Toolbar() -> Element {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
+    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
     let mut tool_signal = use_context::<Signal<ToolMode>>();
     let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
     let mut theme_mode_signal = use_context::<Signal<ThemeMode>>();

@@ -62,8 +62,11 @@ pub enum StoreError {
     ValidationFailed(String),
     #[error("Serialization error: {0}")]
     Serialization(String),
-    #[error("Transaction aborted: {0}")]
-    TransactionAborted(String),
+    #[error("Transaction aborted: {source}")]
+    TransactionAborted {
+        #[source]
+        source: Box<dyn std::error::Error + Send + Sync>,
+    },
     #[error(
         "Revision gap detected: expected sequential revision {expected}, but found gap at {found}"
     )]
@@ -120,7 +123,7 @@ pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
         StoreError::SchemaVersionMismatch { .. } => CliErrorCode::Unknown,
         StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
         StoreError::Serialization(_) => CliErrorCode::Unknown,
-        StoreError::TransactionAborted(_) => CliErrorCode::Unknown,
+        StoreError::TransactionAborted { .. } => CliErrorCode::Unknown,
         StoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
         StoreError::EmptyBatch => CliErrorCode::ValidationFailed,
     }
@@ -698,21 +701,29 @@ impl RecoveryHandle {
             .prepare("SELECT id, operation_id, revision, payload, timestamp FROM events ORDER BY revision")
             .map_err(RecoveryError::Sqlite)?;
 
-        let events: Vec<serde_json::Value> = stmt
+        let raw_events: Vec<(i64, String, i64, String, String)> = stmt
             .query_map([], |row| {
                 let id: i64 = row.get(0)?;
                 let operation_id: String = row.get(1)?;
                 let revision: i64 = row.get(2)?;
                 let payload: String = row.get(3)?;
                 let timestamp: String = row.get(4)?;
+                Ok((id, operation_id, revision, payload, timestamp))
+            })
+            .map_err(RecoveryError::Sqlite)?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(RecoveryError::Sqlite)?;
 
-                Ok(serde_json::json!({
+        let events: Vec<serde_json::Value> = raw_events
+            .into_iter()
+            .map(|(id, operation_id, revision, payload, timestamp)| {
+                serde_json::json!({
                     "id": id,
                     "operation_id": operation_id,
                     "revision": revision,
                     "payload": payload,
                     "timestamp": timestamp
-                }))
+                })
             })
             .map_err(RecoveryError::Sqlite)?
             .collect::<Result<Vec<_>, _>>()
@@ -1901,7 +1912,9 @@ mod tests {
 
     #[test]
     fn test_transaction_aborted_error_display() {
-        let err = StoreError::TransactionAborted("test error".to_string());
+        let err = StoreError::TransactionAborted {
+            source: Box::new(std::io::Error::other("test error")),
+        };
         let msg = err.to_string();
         assert!(msg.contains("Transaction aborted"));
         assert!(msg.contains("test error"));
@@ -1909,7 +1922,9 @@ mod tests {
 
     #[test]
     fn test_map_error_code_transaction_aborted() {
-        let err = StoreError::TransactionAborted("test".to_string());
+        let err = StoreError::TransactionAborted {
+            source: Box::new(std::io::Error::other("test")),
+        };
         let code = map_error_code(&err);
         assert_eq!(code, CliErrorCode::Unknown);
     }

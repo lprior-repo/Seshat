@@ -47,6 +47,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(DiagramDocument::default()));
     let _dragging_icon = use_context_provider(|| Signal::new(Option::<DraggedIconPayload>::None));
     use_context_provider(|| Signal::new(History::new()));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     use_context_provider(|| Signal::new(ToolMode::Select));
     use_context_provider(|| Signal::new(EdgeStyle::Solid));
     use_context_provider(|| Signal::new(ArrowType::Default));
