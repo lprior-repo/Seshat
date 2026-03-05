@@ -26,7 +26,6 @@ pub mod conflict;
 pub mod dag;
 pub mod document;
 pub mod envelope;
-pub mod events;
 pub mod export;
 pub mod harness;
 pub mod projection;

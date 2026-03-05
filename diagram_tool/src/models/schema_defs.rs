@@ -1,7 +1,6 @@
 //! Schema definitions for SQLite database - single source of truth
 //!
-//! This module provides centralized schema definitions to avoid duplication
-//! between store.rs and models/events.rs
+//! This module provides centralized schema definitions used by store.rs
 
 /// Events table schema - consolidated definition
 pub const SCHEMA_EVENTS_TABLE: &str = r#"
