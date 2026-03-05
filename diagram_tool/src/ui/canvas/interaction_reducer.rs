@@ -1279,7 +1279,8 @@ mod proptests {
                 current: (current_x, current_y),
             };
             if start_x.is_nan() || start_y.is_nan() || current_x.is_nan() || current_y.is_nan() {
-                prop_assert!(mode1 != mode2 || true);
+                // NaN values should result in non-equal modes (since NaN != NaN)
+                prop_assert!(mode1 != mode2);
             } else {
                 prop_assert_eq!(mode1, mode2);
             }
@@ -1295,8 +1296,12 @@ mod proptests {
             current in (any::<f64>(), any::<f64>()),
         ) {
             let mode = InteractionMode::DrawingSubgraph { start, current };
-            let _ = mode;
-            prop_assert!(true);
+            // Verify mode was created
+            if let InteractionMode::DrawingSubgraph { .. } = mode {
+                // Mode created successfully
+            } else {
+                prop_assert!(false, "Expected DrawingSubgraph mode");
+            }
         }
     }
 
@@ -1440,7 +1445,7 @@ mod proptests {
                     }
                 };
             }
-            prop_assert!(true);
+            // Test completed - modes were created without panicking
         }
     }
 

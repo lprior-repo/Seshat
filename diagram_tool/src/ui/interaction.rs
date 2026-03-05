@@ -506,7 +506,8 @@ mod proptests {
         #[test]
         fn prop_snap_value_nan_returns_nan(grid in arb_positive_f64()) {
             let result = snap_value(f64::NAN, true, grid);
-            prop_assert!(result.is_nan() || !result.is_nan());
+            // NaN input should produce NaN output
+            prop_assert!(result.is_nan());
         }
 
         #[test]

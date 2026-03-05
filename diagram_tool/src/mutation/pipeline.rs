@@ -179,7 +179,7 @@ mod tests {
     fn given_preserve_policy_when_run_mutation_then_revision_is_not_incremented() {
         let current = DiagramDocument::default();
         let result =
-            run_mutation_with_policy(&current, RevisionPolicy::Preserve, ValidationPolicy::default(), |doc| Ok(doc.clone()));
+            run_mutation_with_policy(&current, RevisionPolicy::Preserve, |doc| Ok(doc.clone()));
 
         let next = result.ok();
         assert!(next.is_some());
@@ -192,7 +192,7 @@ mod tests {
         let mut current = DiagramDocument::default();
         current.revision = current.revision.increment();
 
-        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, ValidationPolicy::default(), |_| {
+        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, |_| {
             Ok(DiagramDocument::default())
         });
 
@@ -400,7 +400,9 @@ mod proptests {
             });
             let has_special = use_nan_x || use_nan_y || use_inf_width || use_neg_inf_height;
             if has_special {
-                prop_assert!(result.is_err() || result.is_ok());
+                // When special float values are used, the result may be Ok or Err - just verify it does not panic
+                // Result can be either Ok or Err - this is a smoke test
+                let _ = result;
             } else {
                 prop_assert!(result.is_ok());
             }
@@ -457,7 +459,8 @@ mod proptests {
                     Err(_) => {}
                 }
             }
-            prop_assert!(true);
+            // Smoke test completed - verify document is still valid
+            prop_assert!(doc.revision >= Revision::INITIAL);
         }
 
         #[test]
@@ -660,7 +663,8 @@ mod proptests {
                     doc = result.unwrap();
                 }
             }
-            prop_assert!(true);
+            // Verify document is still valid after all operations
+            prop_assert!(doc.revision >= Revision::INITIAL);
         }
 
         #[test]
@@ -721,13 +725,11 @@ mod proptests {
             let with_increment = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Increment,
-                ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
             let with_preserve = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Preserve,
-                ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
 

@@ -462,7 +462,8 @@ mod proptests {
                 },
             };
             let result = validate_schema(&doc);
-            prop_assert!(result.is_ok() || result.is_err());
+            // Smoke test - just verify no panic with extreme float values
+            let _ = result;
         }
 
         #[test]
