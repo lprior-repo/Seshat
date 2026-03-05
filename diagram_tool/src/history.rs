@@ -1,38 +1,25 @@
 //! History module for undo/redo operations
 //!
-//! Provides persistent undo/redo history using immutable data structures (rpds).
-//! All history operations are pure transitions that return new state.
+//! Provides persistent undo/redo history using immutable data structures.
 //!
 //! ## Design by Contract
 //!
 //! ### Preconditions
-//! - P1: `undo` requires a valid current `DiagramDocument` state
-//! - P2: `redo` requires a valid current `DiagramDocument` state
-//! - P3: `push` requires a valid `DiagramDocument` to store in history
-//! - P4: History maintains stacks of `DiagramDocument` values
+//! - P1: Documents pushed to history must be valid
+//! - P2: Undo requires non-empty undo stack
+//! - P3: Redo requires non-empty redo stack
 //!
 //! ### Postconditions
-//! - Q1: `push` returns new history with document added to undo stack
-//! - Q2: `push` clears redo stack (new action invalidates redo history)
-//! - Q3: `undo` returns `Some` with (previous_doc, new_history) if undo available
-//! - Q4: `undo` returns `None` if undo stack is empty
-//! - Q5: `redo` returns `Some` with (next_doc, new_history) if redo available
-//! - Q6: `redo` returns `None` if redo stack is empty
-//! - Q7: History stacks are capped at MAX_HISTORY (100 entries)
-//! - Q8: `can_undo` returns true iff undo stack is non-empty
-//! - Q9: `can_redo` returns true iff redo stack is non-empty
+//! - Q1: Push clears redo stack (new timeline branch)
+//! - Q2: Undo returns previous state and moves current to redo
+//! - Q3: Redo returns next state and moves current to undo
+//! - Q4: All operations return new History (immutable)
+//! - Q5: History capped at MAX_HISTORY entries (100)
 //!
 //! ### Invariants
-//! - I1: undo_stack and redo_stack never exceed MAX_HISTORY (100)
-//! - I2: After `undo`: undo_stack loses first element, redo_stack gains current
-//! - I3: After `redo`: redo_stack loses first element, undo_stack gains current
-//! - I4: After `push`: redo_stack is always empty (new path)
-//! - I5: All operations are pure/immutable (self is not modified)
-//! - I6: History returns documents in FIFO order (oldest at back, newest at front)
-//!
-//! ## Constants
-//!
-//! - `MAX_HISTORY: usize = 100` - Maximum entries in undo/redo stacks
+//! - I1: Undo stack contains documents in reverse chronological order
+//! - I2: Redo stack contains documents in chronological order
+//! - I3: After push: redo stack is empty
 
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]

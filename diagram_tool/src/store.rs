@@ -5,30 +5,24 @@
 //! ## Design by Contract
 //!
 //! ### Preconditions
-//! - P1: Database path must be accessible (parent directory exists or creatable)
-//! - P2: For `open_store`: database must already exist with valid schema
-//! - P3: For `bootstrap_store`: path must be writable (creates/overwrites database)
-//! - P4: Connection pragmas must be enforceable (WAL mode, FULL synchronous)
-//! - P5: `append_event` requires valid `EventEnvelope` with non-empty `op_id` and `author.id`
-//! - P6: `expected_revision` in OCC operations must match current revision or be `None`
-//! - P7: Batch operations require non-empty vector of events
+//! - P1: Database path must be valid and accessible (parent directory exists)
+//! - P2: Schema version must be non-negative
+//! - P3: Events must have sequential revisions (no gaps)
+//! - P4: Batch operations must contain at least one event
+//! - P5: Revision argument must match or exceed current stored revision
 //!
 //! ### Postconditions
-//! - Q1: After `bootstrap_store`: database has schema_version=1, events, and snapshots tables
-//! - Q2: After `open_store`: connection has WAL journal mode and FULL synchronous
-//! - Q3: After successful `append_event`: new revision is exactly current + 1
-//! - Q4: After successful `append_batch`: revisions are sequential from start to end
-//! - Q5: Transactions are atomic: on failure, no partial mutations occur
-//! - Q6: `append_idempotent` returns existing outcome for exact duplicate (no-op)
-//! - Q7: `startup_integrity_check` returns valid `is_valid` status for existing database
+//! - Q1: After successful write: events are durable (fsynced)
+//! - Q2: After read: returned document has highest stored revision
+//! - Q3: After migration: schema version is updated atomically
+//! - Q4: Transaction commits only if all operations succeed
+//! - Q5: Failed operations leave store state unchanged (rollback)
 //!
 //! ### Invariants
-//! - I1: Schema version is always 1 (no migrations beyond v1)
-//! - I2: Revision numbers are monotonically increasing (1, 2, 3, ...)
-//! - I3: Each `operation_id` is unique in the events table
-//! - I4: All timestamps are positive integers
-//! - I5: Pragma values: journal_mode="wal", synchronous=2 (FULL)
-//! - I6: Recovery mode connection is read-only (no writes possible)
+//! - I1: Revision numbers are monotonically increasing
+//! - I2: Each op_id is unique within the document
+//! - I3: Schema version matches current migration state
+//! - I4: WAL mode is always enabled for concurrent readers
 
 #![allow(dead_code)]
 #![allow(clippy::pedantic)]
@@ -1066,56 +1060,34 @@ pub fn append_idempotent(
     conn: &mut Connection,
     op: EventEnvelope,
 ) -> Result<AppendOutcome, StoreError> {
-    // First check if operation already exists (optimistic path)
+    // Check if operation already exists
     let existing = lookup_existing_op(conn, &op.op_id)?;
 
-    if let Some(record) = existing {
-        // Already exists - classify and handle
-        let kind = classify_duplicate(&record, &op)?;
-        return match kind {
-            DuplicateKind::Exact => {
-                // Exact duplicate - return existing outcome (no-op success)
-                Ok(AppendOutcome {
-                    revision: record.revision,
-                    op_id: record.op_id,
-                    timestamp: record.timestamp,
-                })
-            }
-            DuplicateKind::Conflict => {
-                // Conflicting duplicate - return error
-                Err(StoreError::DuplicateWithConflict(op.op_id))
-            }
-        };
-    }
+    match existing {
+        None => {
+            // New operation - delegate to standard append
+            let result = append_event(conn, op, None)?;
+            Ok(AppendOutcome::from(result))
+        }
+        Some(record) => {
+            // Duplicate op_id - classify and handle
+            let kind = classify_duplicate(&record, &op)?;
 
-    // Not found - try to insert. If another thread inserts first,
-    // we'll get a unique constraint error - handle that case.
-    match append_event(conn, op.clone(), None) {
-        Ok(result) => Ok(AppendOutcome::from(result)),
-        Err(StoreError::Sqlite(ref e))
-            if e.to_string().contains("UNIQUE constraint failed: events.operation_id") =>
-        {
-            // Race condition: another thread inserted between our lookup and insert.
-            // Read the existing record to classify it.
-            let existing = lookup_existing_op(conn, &op.op_id)?;
-            match existing {
-                Some(record) => {
-                    let kind = classify_duplicate(&record, &op)?;
-                    match kind {
-                        DuplicateKind::Exact => Ok(AppendOutcome {
-                            revision: record.revision,
-                            op_id: record.op_id,
-                            timestamp: record.timestamp,
-                        }),
-                        DuplicateKind::Conflict => {
-                            Err(StoreError::DuplicateWithConflict(op.op_id))
-                        }
-                    }
+            match kind {
+                DuplicateKind::Exact => {
+                    // Exact duplicate - return existing outcome (no-op success)
+                    Ok(AppendOutcome {
+                        revision: record.revision,
+                        op_id: record.op_id,
+                        timestamp: record.timestamp,
+                    })
                 }
-                None => Err(StoreError::Sqlite(rusqlite::Error::QueryReturnedNoRows)),
+                DuplicateKind::Conflict => {
+                    // Conflicting duplicate - return error
+                    Err(StoreError::DuplicateWithConflict(op.op_id))
+                }
             }
         }
-        Err(e) => Err(e),
     }
 }
 
@@ -1207,8 +1179,7 @@ where
         }
         Err(err) => {
             // Transaction will roll back automatically when dropped
-            // Preserve the original error variant instead of erasing to string
-            Err(err)
+            Err(StoreError::TransactionAborted(err.to_string()))
         }
     }
 }
@@ -1845,17 +1816,13 @@ mod tests {
             ))
         });
 
-        // Should get the original error (not TransactionAborted - we preserve typed errors now)
+        // Should get TransactionAborted error
         assert!(result.is_err());
         match result {
-            Err(StoreError::ValidationFailed(msg)) => {
-                assert!(msg.contains("intentional failure"));
-            }
             Err(StoreError::TransactionAborted(msg)) => {
-                // Old behavior - kept for backward compatibility
                 assert!(msg.contains("intentional failure"));
             }
-            Err(e) => panic!("Expected ValidationFailed or TransactionAborted, got: {:?}", e),
+            Err(e) => panic!("Expected TransactionAborted, got: {:?}", e),
             Ok(_) => panic!("Expected error, got success"),
         }
 
@@ -3667,9 +3634,11 @@ mod tests {
         let _ = bootstrap_store(&db_path).expect("Failed to bootstrap store");
 
         // Open in read-only mode
-        let conn =
-            Connection::open_with_flags(&db_path, rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY)
-                .expect("Failed to open read-only");
+        let conn = Connection::open_with_flags(
+            &db_path,
+            rusqlite::OpenFlags::SQLITE_OPEN_READ_ONLY,
+        )
+        .expect("Failed to open read-only");
 
         // Try to set WAL - should fail or be ignored in read-only mode
         let result: std::result::Result<(), rusqlite::Error> =

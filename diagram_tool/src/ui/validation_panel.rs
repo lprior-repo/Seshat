@@ -86,3 +86,52 @@ pub fn ValidationPanel(issues: ReadSignal<Vec<ValidationIssue>>) -> Element {
         }
     }
 }
+
+// Tests for validation_panel.rs - bd-test-2
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::validation::{ValidationIssue, ValidationSeverity};
+
+    #[test]
+    fn validation_issue_creation() {
+        let issue = ValidationIssue {
+            code: "TEST001".to_string(),
+            message: "Test validation message".to_string(),
+            severity: ValidationSeverity::Error,
+            node_ids: vec![],
+            edge_ids: vec![],
+        };
+        assert_eq!(issue.code, "TEST001");
+        assert_eq!(issue.severity, ValidationSeverity::Error);
+    }
+
+    #[test]
+    fn validation_severity_ordering() {
+        // Error > Warning > Info
+        assert!(ValidationSeverity::Error > ValidationSeverity::Warning);
+        assert!(ValidationSeverity::Warning > ValidationSeverity::Info);
+    }
+
+    #[test]
+    fn empty_validation_list_has_no_errors() {
+        let issues: Vec<ValidationIssue> = vec![];
+        let error_count = issues
+            .iter()
+            .filter(|i| i.severity == ValidationSeverity::Error)
+            .count();
+        assert_eq!(error_count, 0);
+    }
+
+    #[test]
+    fn validation_issue_with_node_ids() {
+        let issue = ValidationIssue {
+            code: "NODE001".to_string(),
+            message: "Invalid node".to_string(),
+            severity: ValidationSeverity::Warning,
+            node_ids: vec!["node-1".to_string(), "node-2".to_string()],
+            edge_ids: vec![],
+        };
+        assert_eq!(issue.node_ids.len(), 2);
+    }
+}

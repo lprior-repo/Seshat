@@ -1,3 +1,26 @@
+//! Models module for diagram data structures
+//!
+//! Provides domain models for nodes, edges, documents, and related structures.
+//!
+//! ## Design by Contract
+//!
+//! ### Preconditions
+//! - P1: Node positions must be finite (not NaN/Infinite)
+//! - P2: Node dimensions must be positive (width > 0, height > 0)
+//! - P3: Edge references must point to valid NodeIds
+//! - P4: Document revision must be non-negative
+//!
+//! ### Postconditions
+//! - Q1: NodeId/EdgeId newtypes wrap non-empty strings
+//! - Q2: OrderedFloat maintains total ordering for collections
+//! - Q3: Serialization roundtrips preserve document equality
+//!
+//! ### Invariants
+//! - I1: Each Node has unique NodeId
+//! - I2: Each Edge has unique EdgeId
+//! - I3: Node positions in world coordinates (independent of viewport)
+//! - I4: Document revision monotonically increases
+
 pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
