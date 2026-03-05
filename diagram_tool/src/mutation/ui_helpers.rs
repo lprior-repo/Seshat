@@ -17,9 +17,7 @@ use dioxus::prelude::{ReadableExt, Signal, WritableExt};
 use crate::history::History;
 use crate::models::document::DiagramDocument;
 use crate::mutation::error::MutationError;
-use crate::mutation::pipeline::{
-    run_mutation, run_mutation_with_policy, RevisionPolicy, ValidationPolicy,
-};
+use crate::mutation::pipeline::run_mutation;
 
 pub type MutationResult<T> = Result<T, MutationError>;
 
@@ -63,28 +61,6 @@ where
     }
 }
 
-pub fn mutate_doc_signal_no_validate<F>(
-    doc_signal: &mut Signal<DiagramDocument>,
-    transform: F,
-) -> UiMutationResult<()>
-where
-    F: FnOnce(DiagramDocument) -> MutationResult<DiagramDocument>,
-{
-    let current = doc_signal.read().clone();
-    match run_mutation_with_policy(
-        &current,
-        RevisionPolicy::Increment,
-        ValidationPolicy::Skip,
-        |_| transform(current.clone()),
-    ) {
-        Ok(new_doc) => {
-            *doc_signal.write() = new_doc;
-            Ok(())
-        }
-        Err(e) => Err(e.into()),
-    }
-}
-
 pub fn mutate_doc_with_history(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
@@ -100,6 +76,30 @@ pub fn mutate_doc_with_history(
         }
         Err(e) => Err(e.into()),
     }
+}
+
+pub fn mutate_doc_with_history_and_result<T, F>(
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
+    transform: F,
+) -> UiMutationResult<T>
+where
+    F: FnOnce(DiagramDocument) -> MutationResult<(DiagramDocument, T)>,
+{
+    let current = doc_signal.read().clone();
+    let next = transform(current.clone()).map_err(MutationError::from)?;
+    
+    crate::models::schema::validate_schema(&next.0).map_err(MutationError::from)?;
+    
+    let issues = crate::models::validation::validate_document(&next.0);
+    if let Some(issue) = issues.first() {
+        return Err(MutationError::from_issue(issue).into());
+    }
+    
+    let new_history = history_signal.read().push(current.clone());
+    *history_signal.write() = new_history;
+    *doc_signal.write() = next.0;
+    Ok(next.1)
 }
 
 pub fn mutate_editor_signal<T, F>(signal: &mut Signal<T>, transform: F) -> UiMutationResult<()>

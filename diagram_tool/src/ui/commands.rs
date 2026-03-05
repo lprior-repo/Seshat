@@ -7,11 +7,12 @@
 
 use crate::history::History;
 use crate::models::document::{
-    DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
+use crate::mutation::ui_helpers::{mutate_doc_signal, mutate_doc_with_history_and_result};
 use dioxus::prelude::*;
-use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap};
+use im::{HashMap, HashSet};
+use std::collections::BTreeSet;
 use uuid::Uuid;
 
 #[derive(Clone, Copy)]
@@ -511,51 +512,68 @@ pub fn apply_clear_selection(mut doc_signal: Signal<DiagramDocument>) {
 
 pub fn apply_delete_selected(
     mut doc_signal: Signal<DiagramDocument>,
-    history_signal: Signal<History>,
+    mut history_signal: Signal<History>,
 ) -> bool {
     let selected = doc_signal.read().editor_state.selected_items.clone();
     if selected.is_empty() {
         return false;
     }
 
-    push_history(history_signal, doc_signal.read().clone());
-    doc_signal.with_mut(|doc| {
-        let deleted_node_ids =
-            selected_nodes_from_selection(&doc.editor_state.selected_items, &doc.document.nodes);
-        doc.document.nodes = doc
-            .document
-            .nodes
-            .iter()
-            .filter(|(id, _)| !selected.contains(&id.to_string()))
-            .map(|(id, node)| {
-                let mut next = node.clone();
-                next.parent = reparent_if_deleted(next.parent, &deleted_node_ids);
-                (id.clone(), next)
-            })
-            .collect();
+    let result = mutate_doc_with_history_and_result(
+        &mut doc_signal,
+        &mut history_signal,
+        |doc| {
+            let deleted_node_ids =
+                selected_nodes_from_selection(&doc.editor_state.selected_items, &doc.document.nodes);
+            let new_nodes: im::HashMap<NodeId, Node> = doc
+                .document
+                .nodes
+                .iter()
+                .filter(|(id, _)| !selected.contains(&id.to_string()))
+                .map(|(id, node)| {
+                    let mut next = node.clone();
+                    next.parent = reparent_if_deleted(next.parent, &deleted_node_ids);
+                    (id.clone(), next)
+                })
+                .collect();
 
-        let node_ids: im::HashSet<NodeId> = doc.document.nodes.keys().cloned().collect();
-        doc.document.edges = doc
-            .document
-            .edges
-            .iter()
-            .filter(|(id, edge)| {
-                node_ids.contains(&edge.source)
-                    && node_ids.contains(&edge.target)
-                    && !selected.contains(&id.to_string())
-            })
-            .map(|(id, edge)| (id.clone(), edge.clone()))
-            .collect();
+            let node_ids: im::HashSet<NodeId> = new_nodes.keys().cloned().collect();
+            let new_edges: im::HashMap<EdgeId, Edge> = doc
+                .document
+                .edges
+                .iter()
+                .filter(|(id, edge)| {
+                    node_ids.contains(&edge.source)
+                        && node_ids.contains(&edge.target)
+                        && !selected.contains(&id.to_string())
+                })
+                .map(|(id, edge)| (id.clone(), edge.clone()))
+                .collect();
 
-        doc.editor_state.selected_items.clear();
-        doc.revision = doc.revision.increment();
-    });
-    true
+            let new_selected: im::HashSet<String> = im::HashSet::new();
+
+            let new_doc = DiagramDocument {
+                version: doc.version,
+                revision: doc.revision.increment(),
+                document: crate::models::document::DocumentData {
+                    nodes: new_nodes,
+                    edges: new_edges,
+                },
+                editor_state: crate::models::document::EditorState {
+                    selected_items: new_selected,
+                    ..doc.editor_state
+                },
+            };
+            Ok((new_doc, true))
+        },
+    );
+
+    result.is_ok()
 }
 
 pub fn apply_nudge_selection(
     mut doc_signal: Signal<DiagramDocument>,
-    history_signal: Signal<History>,
+    mut history_signal: Signal<History>,
     dx: f64,
     dy: f64,
     push_undo: bool,
@@ -568,27 +586,89 @@ pub fn apply_nudge_selection(
         return false;
     }
 
-    if push_undo {
-        push_history(history_signal, doc_signal.read().clone());
-    }
-    doc_signal.with_mut(|doc| {
-        for node_id in selected_nodes {
-            if let Some(node) = doc.document.nodes.get_mut(&node_id) {
-                if node.locked && node.kind != NodeKind::Subgraph {
-                    continue;
-                }
-                node.x = OrderedFloat(node.x.0 + dx);
-                node.y = OrderedFloat(node.y.0 + dy);
-            }
-        }
-        doc.revision = doc.revision.increment();
-    });
-    true
+    let result = if push_undo {
+        mutate_doc_with_history_and_result(
+            &mut doc_signal,
+            &mut history_signal,
+            |doc| {
+                let new_nodes: HashMap<NodeId, Node> = doc
+                    .document
+                    .nodes
+                    .iter()
+                    .map(|(id, node)| {
+                        if selected_nodes.contains(id)
+                            && (!node.locked || node.kind == NodeKind::Subgraph)
+                        {
+                            (
+                                id.clone(),
+                                Node {
+                                    x: OrderedFloat(node.x.0 + dx),
+                                    y: OrderedFloat(node.y.0 + dy),
+                                    ..node.clone()
+                                },
+                            )
+                        } else {
+                            (id.clone(), node.clone())
+                        }
+                    })
+                    .collect();
+
+                let new_doc = DiagramDocument {
+                    version: doc.version,
+                    revision: doc.revision.increment(),
+                    document: crate::models::document::DocumentData {
+                        nodes: new_nodes,
+                        edges: doc.document.edges.clone(),
+                    },
+                    editor_state: doc.editor_state,
+                };
+                Ok((new_doc, true))
+            },
+        )
+    } else {
+        mutate_doc_signal(&mut doc_signal, |doc| {
+            let new_nodes: HashMap<NodeId, Node> = doc
+                .document
+                .nodes
+                .iter()
+                .map(|(id, node)| {
+                    if selected_nodes.contains(id)
+                        && (!node.locked || node.kind == NodeKind::Subgraph)
+                    {
+                        (
+                            id.clone(),
+                            Node {
+                                x: OrderedFloat(node.x.0 + dx),
+                                y: OrderedFloat(node.y.0 + dy),
+                                ..node.clone()
+                            },
+                        )
+                    } else {
+                        (id.clone(), node.clone())
+                    }
+                })
+                .collect();
+
+            let new_doc = DiagramDocument {
+                version: doc.version,
+                revision: doc.revision.increment(),
+                document: crate::models::document::DocumentData {
+                    nodes: new_nodes,
+                    edges: doc.document.edges.clone(),
+                },
+                editor_state: doc.editor_state,
+            };
+            Ok(new_doc)
+        })
+        .map(|()| true)
+    };
+
+    result.is_ok()
 }
 
 pub fn apply_group_selection(
     mut doc_signal: Signal<DiagramDocument>,
-    history_signal: Signal<History>,
+    mut history_signal: Signal<History>,
 ) -> bool {
     let selected_nodes = {
         let doc = doc_signal.read();
@@ -635,20 +715,28 @@ pub fn apply_group_selection(
         return false;
     }
 
-    push_history(history_signal, doc_signal.read().clone());
     let group_id = NodeId::new(Uuid::new_v4().to_string());
     let member_ids = selected_nodes;
-    doc_signal.with_mut(|doc| {
-        for node_id in &member_ids {
-            if let Some(node) = doc.document.nodes.get_mut(node_id) {
-                node.parent = Some(group_id.clone());
-            }
-        }
+    let padding = 24.0;
 
-        let padding = 24.0;
-        let _ = doc.document.nodes.insert(
-            group_id.clone(),
-            Node {
+    let result = mutate_doc_with_history_and_result(
+        &mut doc_signal,
+        &mut history_signal,
+        |doc| {
+            let new_nodes: HashMap<NodeId, Node> = doc
+                .document
+                .nodes
+                .iter()
+                .map(|(id, node)| {
+                    if member_ids.contains(id) {
+                        (id.clone(), Node { parent: Some(group_id.clone()), ..node.clone() })
+                    } else {
+                        (id.clone(), node.clone())
+                    }
+                })
+                .collect();
+
+            let group_node = Node {
                 kind: NodeKind::Subgraph,
                 icon: String::new(),
                 label: String::from("Group"),
@@ -662,17 +750,34 @@ pub fn apply_group_selection(
                 parent: None,
                 dag_rank: None,
                 tags: Vec::new(),
-                metadata: im::HashMap::new(),
+                metadata: HashMap::new(),
                 z_index: -1,
                 style: Some(NodeStyle::Box),
                 collapsed: Some(false),
-            },
-        );
-        doc.editor_state.selected_items.clear();
-        let _ = doc.editor_state.selected_items.insert(group_id.to_string());
-        doc.revision = doc.revision.increment();
-    });
-    true
+            };
+
+            let mut new_nodes_with_group = new_nodes;
+            let _ = new_nodes_with_group.insert(group_id.clone(), group_node);
+
+            let new_selected: HashSet<String> = HashSet::from_iter([group_id.to_string()]);
+
+            let new_doc = DiagramDocument {
+                version: doc.version,
+                revision: doc.revision.increment(),
+                document: crate::models::document::DocumentData {
+                    nodes: new_nodes_with_group,
+                    edges: doc.document.edges.clone(),
+                },
+                editor_state: crate::models::document::EditorState {
+                    selected_items: new_selected,
+                    ..doc.editor_state
+                },
+            };
+            Ok((new_doc, true))
+        },
+    );
+
+    result.is_ok()
 }
 
 pub fn apply_ungroup_selection(

@@ -7,7 +7,8 @@
 
 use super::selection_geometry::{selected_node_ids, selection_bounds};
 use crate::history::History;
-use crate::models::document::{DiagramDocument, EdgeId, NodeId, NodeKind};
+use crate::models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind};
+use crate::mutation::ui_helpers::mutate_doc_with_history;
 use dioxus::prelude::*;
 use im::HashMap;
 use std::collections::HashSet;
@@ -120,15 +121,35 @@ pub(super) fn commit_inline_edit(
             .get(&target)
             .map_or_else(String::new, |n| n.label.clone());
         if current_label != new_label {
-            let current = doc_signal.read().clone();
-            let history = history_signal.read().clone();
-            *history_signal.write() = history.push(current);
-            doc_signal.with_mut(|doc| {
-                if let Some(n) = doc.document.nodes.get_mut(&target) {
-                    n.label = new_label;
-                    doc.revision = doc.revision.increment();
-                }
-            });
+            let _ = mutate_doc_with_history(
+                &mut doc_signal,
+                &mut history_signal,
+                |doc| {
+                    let new_nodes: HashMap<NodeId, Node> = doc
+                        .document
+                        .nodes
+                        .iter()
+                        .map(|(id, node)| {
+                            if *id == target {
+                                (id.clone(), Node { label: new_label.clone(), ..node.clone() })
+                            } else {
+                                (id.clone(), node.clone())
+                            }
+                        })
+                        .collect();
+
+                    let new_doc = DiagramDocument {
+                        version: doc.version,
+                        revision: doc.revision.increment(),
+                        document: crate::models::document::DocumentData {
+                            nodes: new_nodes,
+                            edges: doc.document.edges.clone(),
+                        },
+                        editor_state: doc.editor_state,
+                    };
+                    Ok(new_doc)
+                },
+            );
         }
         editing_node.set(None);
         return;
@@ -145,15 +166,35 @@ pub(super) fn commit_inline_edit(
             .get(&target)
             .map_or_else(String::new, |e| e.label.clone());
         if current_label != new_label {
-            let current = doc_signal.read().clone();
-            let history = history_signal.read().clone();
-            *history_signal.write() = history.push(current);
-            doc_signal.with_mut(|doc| {
-                if let Some(e) = doc.document.edges.get_mut(&target) {
-                    e.label = new_label;
-                    doc.revision = doc.revision.increment();
-                }
-            });
+            let _ = mutate_doc_with_history(
+                &mut doc_signal,
+                &mut history_signal,
+                |doc| {
+                    let new_edges: HashMap<EdgeId, Edge> = doc
+                        .document
+                        .edges
+                        .iter()
+                        .map(|(id, edge)| {
+                            if *id == target {
+                                (id.clone(), Edge { label: new_label.clone(), ..edge.clone() })
+                            } else {
+                                (id.clone(), edge.clone())
+                            }
+                        })
+                        .collect();
+
+                    let new_doc = DiagramDocument {
+                        version: doc.version,
+                        revision: doc.revision.increment(),
+                        document: crate::models::document::DocumentData {
+                            nodes: doc.document.nodes.clone(),
+                            edges: new_edges,
+                        },
+                        editor_state: doc.editor_state,
+                    };
+                    Ok(new_doc)
+                },
+            );
         }
         editing_edge.set(None);
     }
