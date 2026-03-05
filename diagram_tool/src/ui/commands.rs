@@ -92,7 +92,7 @@ impl Default for Clipboard {
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]
 pub fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
-    clipboard.as_ref().map_or(false, |c| c.has_content())
+    clipboard.as_ref().is_some_and(Clipboard::has_content)
 }
 
 /// Pure function: Creates a clipboard with the selected nodes and edges from the document.

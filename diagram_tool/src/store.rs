@@ -250,6 +250,8 @@ pub struct StorePragmas {
     pub journal_mode: String,
     pub synchronous: i32,
     pub wal_autocheckpoint: i32,
+    pub foreign_keys: bool,
+    pub busy_timeout: i32,
 }
 
 /// Result of bootstrapping a new store
@@ -338,7 +340,9 @@ pub fn open_store(db_path: &Path) -> Result<StoreConnection, StoreError> {
     conn.execute_batch(
         "PRAGMA journal_mode=WAL;
          PRAGMA synchronous=FULL;
-         PRAGMA wal_autocheckpoint=1000;",
+         PRAGMA wal_autocheckpoint=1000;
+         PRAGMA foreign_keys=ON;
+         PRAGMA busy_timeout=5000;",
     )?;
 
     let pragmas = read_store_pragmas(&conn)?;
@@ -367,10 +371,16 @@ pub fn read_store_pragmas(conn: &Connection) -> Result<StorePragmas, StoreError>
     let wal_autocheckpoint: i32 =
         conn.query_row("PRAGMA wal_autocheckpoint", [], |row| row.get(0))?;
 
+    let foreign_keys: i32 = conn.query_row("PRAGMA foreign_keys", [], |row| row.get(0))?;
+
+    let busy_timeout: i32 = conn.query_row("PRAGMA busy_timeout", [], |row| row.get(0))?;
+
     Ok(StorePragmas {
         journal_mode,
         synchronous,
         wal_autocheckpoint,
+        foreign_keys: foreign_keys != 0,
+        busy_timeout,
     })
 }
 
@@ -389,7 +399,9 @@ pub fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreError> {
     conn.execute_batch(
         "PRAGMA journal_mode=WAL;
          PRAGMA synchronous=FULL;
-         PRAGMA wal_autocheckpoint=1000;",
+         PRAGMA wal_autocheckpoint=1000;
+         PRAGMA foreign_keys=ON;
+         PRAGMA busy_timeout=5000;",
     )?;
 
     // Verify pragmas were set correctly
