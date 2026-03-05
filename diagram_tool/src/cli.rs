@@ -7,6 +7,7 @@
 
 use crate::cli_persistence::{
     emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, StageDetails,
+    validate_safe_path,
 };
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
@@ -180,6 +181,14 @@ fn execute_command(cmd: &Commands) -> Result<()> {
     match cmd {
         Commands::Render { input, output } => {
             let doc = load_doc(input)?;
+
+            // Validate output path to prevent path traversal attacks
+            let output_path = Path::new(output);
+            let output_parent = output_path.parent().filter(|p| !p.as_os_str().is_empty());
+            let output_base_dir = output_parent.unwrap_or_else(|| Path::new("."));
+            validate_safe_path(output_path, output_base_dir)
+                .map_err(|e| anyhow!("Invalid output path: {e}"))?;
+
             if Path::new(output)
                 .extension()
                 .is_some_and(|ext| ext.eq_ignore_ascii_case("png"))
@@ -274,6 +283,13 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                         .with_code("success"),
                 );
             }
+
+            // Validate patch file path to prevent path traversal attacks
+            let patch_path = Path::new(patch);
+            let patch_parent = patch_path.parent().filter(|p| !p.as_os_str().is_empty());
+            let patch_base_dir = patch_parent.unwrap_or_else(|| Path::new("."));
+            validate_safe_path(patch_path, patch_base_dir)
+                .map_err(|e| anyhow!("Invalid patch path: {e}"))?;
 
             // Read and parse the patch file
             let patch_content = std::fs::read_to_string(patch)
