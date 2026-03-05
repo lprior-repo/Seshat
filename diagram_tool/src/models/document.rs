@@ -134,7 +134,7 @@ pub struct Node {
     #[serde(default)]
     pub dag_rank: Option<i64>,
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub tags: im::Vector<String>,
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
     #[serde(default)]
@@ -296,9 +296,9 @@ pub struct Edge {
     #[serde(default = "default_directed")]
     pub directed: bool,
     #[serde(default)]
-    pub bend_points: Vec<Point>,
+    pub bend_points: im::Vector<Point>,
     #[serde(default)]
-    pub tags: Vec<String>,
+    pub tags: im::Vector<String>,
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
     #[serde(default, rename = "fontSize")]
@@ -600,7 +600,7 @@ mod proptests {
                 locked: false,
                 parent: None,
                 dag_rank: None,
-                tags: vec![],
+                tags: im::vector![],
                 metadata: im::HashMap::new(),
                 z_index: 0,
                 style: None,
@@ -647,7 +647,7 @@ mod proptests {
                 locked: false,
                 parent: None,
                 dag_rank: None,
-                tags: vec![],
+                tags: im::vector![],
                 metadata: im::HashMap::new(),
                 z_index: 0,
                 style: None,
@@ -672,8 +672,8 @@ mod proptests {
                 color: None,
                 thickness: OrderedFloat(1.5),
                 directed: true,
-                bend_points: vec![],
-                tags: vec![],
+                bend_points: im::vector![],
+                tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
             };
@@ -754,7 +754,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: vec![],
+                    tags: im::vector![],
                     metadata: im::HashMap::new(),
                     z_index: 0,
                     style: None,
@@ -786,8 +786,8 @@ mod proptests {
                 color: None,
                 thickness: OrderedFloat(1.5),
                 directed: true,
-                bend_points: vec![],
-                tags: vec![],
+                bend_points: im::vector![],
+                tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
             };

@@ -85,8 +85,8 @@ impl MinimapSnapshot {
 
             let provider = node
                 .tags
-                .first()
-                .map_or_else(|| String::from("generic"), std::clone::Clone::clone);
+                .get(0)
+                .map_or_else(|| String::from("generic"), |s| s.clone());
             node_rects.push((
                 node.kind == NodeKind::Subgraph,
                 node.x.0,
@@ -366,7 +366,7 @@ mod tests {
                 locked: false,
                 parent: None,
                 dag_rank: None,
-                tags: Vec::new(),
+                tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 z_index: 0,
                 style: Some(NodeStyle::default()),
@@ -540,8 +540,8 @@ mod tests {
             color: None,
             thickness: OrderedFloat(1.5),
             directed: true,
-            bend_points: Vec::new(),
-            tags: Vec::new(),
+            bend_points: im::Vector::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
         };

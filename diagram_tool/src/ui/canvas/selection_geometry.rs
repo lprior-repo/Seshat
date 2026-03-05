@@ -63,7 +63,7 @@ mod tests {
             locked: false,
             parent: None,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: im::HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),

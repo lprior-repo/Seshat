@@ -103,7 +103,7 @@ fn routed_polyline_points(
     tx: f64,
     ty: f64,
     semantics: EdgePathSemantics,
-    bend_points: &[Point],
+    bend_points: &im::Vector<Point>,
 ) -> Vec<(f64, f64)> {
     if !bend_points.is_empty() {
         let mut points = Vec::with_capacity(bend_points.len() + 2);
@@ -495,7 +495,7 @@ mod tests {
             locked: false,
             parent: None,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),
@@ -514,8 +514,8 @@ mod tests {
             color: None,
             thickness: OrderedFloat(1.5),
             directed: true,
-            bend_points: Vec::new(),
-            tags: Vec::new(),
+            bend_points: im::Vector::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
         }

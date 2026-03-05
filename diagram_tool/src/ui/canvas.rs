@@ -1239,7 +1239,7 @@ pub fn Canvas() -> Element {
                                     locked: false,
                                     parent: None,
                                     dag_rank: None,
-                                    tags: Vec::new(),
+                                    tags: im::Vector::new(),
                                     metadata: HashMap::new(),
                                     z_index: 0,
                                     style: Some(NodeStyle::default()),
@@ -1341,8 +1341,8 @@ pub fn Canvas() -> Element {
                                         color: None,
                                         thickness: OrderedFloat(1.5),
                                         directed: true,
-                                        bend_points: Vec::new(),
-                                        tags: Vec::new(),
+                                        bend_points: im::Vector::new(),
+                                        tags: im::Vector::new(),
                                         metadata: HashMap::new(),
                                         font_size: None,
                                     };
@@ -1429,7 +1429,7 @@ pub fn Canvas() -> Element {
                                             locked: true,
                                             parent: None,
                                             dag_rank: None,
-                                            tags: Vec::new(),
+                                            tags: im::Vector::new(),
                                             metadata: HashMap::new(),
                                             z_index: -1,
                                             style: Some(NodeStyle::Box),
@@ -1514,7 +1514,7 @@ pub fn Canvas() -> Element {
                             locked: false,
                             parent: None,
                             dag_rank: None,
-                            tags,
+                            tags: tags.into(),
                             metadata,
                             z_index: 0,
                             style: Some(NodeStyle::default()),
@@ -1662,7 +1662,7 @@ pub fn Canvas() -> Element {
                                 locked: false,
                                 parent: None,
                                 dag_rank: None,
-                                tags: Vec::new(),
+                                tags: im::Vector::new(),
                                 metadata: HashMap::new(),
                                 z_index: 0,
                                 style: Some(NodeStyle::default()),
@@ -1795,7 +1795,7 @@ pub fn Canvas() -> Element {
                                     locked: false,
                                     parent: None,
                                     dag_rank: None,
-                                    tags: Vec::new(),
+                                    tags: im::Vector::new(),
                                     metadata: HashMap::new(),
                                     z_index: 0,
                                     style: Some(NodeStyle::default()),
@@ -1917,8 +1917,8 @@ pub fn Canvas() -> Element {
                                         color: None,
                                         thickness: OrderedFloat(1.5),
                                         directed: true,
-                                        bend_points: Vec::new(),
-                                        tags: Vec::new(),
+                                        bend_points: im::Vector::new(),
+                                        tags: im::Vector::new(),
                                         metadata: HashMap::new(),
                                         font_size: None,
                                     };
@@ -2003,7 +2003,7 @@ pub fn Canvas() -> Element {
                                             locked: true,
                                             parent: None,
                                             dag_rank: None,
-                                            tags: Vec::new(),
+                                            tags: im::Vector::new(),
                                             metadata: HashMap::new(),
                                             z_index: -1,
                                             style: Some(NodeStyle::Box),
@@ -2287,7 +2287,7 @@ pub fn Canvas() -> Element {
                     let is_editing_node = editing_node.read().as_ref() == Some(&id);
                     let font_px = node.font_size.map_or(11.0, |f| f.0) * zoom;
                     let fallback_provider = node.icon.split('/').next().map_or("generic", |p| p);
-                    let provider = node.tags.first().map_or(fallback_provider, |p| p.as_str());
+                    let provider = node.tags.front().map_or(fallback_provider, |p| p.as_str());
                     let provider_top = provider_color(provider);
                     let node_initials = initials(&node.label);
 
@@ -2403,8 +2403,8 @@ pub fn Canvas() -> Element {
                                                 color: None,
                                                 thickness: OrderedFloat(1.5),
                                                 directed: true,
-                                                bend_points: Vec::new(),
-                                                tags: Vec::new(),
+                                                bend_points: im::Vector::new(),
+                                                tags: im::Vector::new(),
                                                 metadata: HashMap::new(),
                                                 font_size: None,
                                             };
@@ -2891,7 +2891,7 @@ mod tests {
             locked: true,
             parent: None,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),

@@ -41,7 +41,7 @@ fn make_node(
         locked: is_subgraph,
         parent,
         dag_rank: None,
-        tags: Vec::new(),
+        tags: im::Vector::new(),
         metadata: HashMap::new(),
         z_index: if is_subgraph { -1 } else { 1000 },
         style: Some(NodeStyle::Box),

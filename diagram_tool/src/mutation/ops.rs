@@ -36,7 +36,7 @@ mod tests {
             locked,
             parent,
             dag_rank: None,
-            tags: vec![],
+            tags: im::vector![],
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),

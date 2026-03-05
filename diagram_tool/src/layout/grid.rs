@@ -128,15 +128,16 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
             None => node.parent.as_ref().map_or_else(
                 || (id.clone(), node.clone()),
                 |pid| {
-                    accumulated_parent_delta(pid, &deltas, &doc.document.nodes).map_or_else(
-                        || (id.clone(), node.clone()),
-                        |(dx, dy)| {
-                            let mut next_node = node.clone();
-                            next_node.x = OrderedFloat(node.x.0 + dx);
-                            next_node.y = OrderedFloat(node.y.0 + dy);
-                            (id.clone(), next_node)
-                        },
-                    )
+                    if let Some((dx, dy)) =
+                        accumulated_parent_delta(pid, &deltas, &doc.document.nodes)
+                    {
+                        let mut next_node = node.clone();
+                        next_node.x = OrderedFloat(node.x.0 + dx);
+                        next_node.y = OrderedFloat(node.y.0 + dy);
+                        (id.clone(), next_node)
+                    } else {
+                        (id.clone(), node.clone())
+                    }
                 },
             ),
         })
@@ -169,7 +170,7 @@ mod tests {
             locked,
             parent,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),
@@ -439,7 +440,7 @@ mod proptests {
             locked,
             parent,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),
