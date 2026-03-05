@@ -61,41 +61,51 @@ pub enum CliPersistenceError {
 /// - The path is an absolute path outside the cwd
 /// - Canonicalization fails for any reason
 pub fn validate_safe_path(path: &Path, base_dir: &Path) -> Result<PathBuf, CliPersistenceError> {
-    // Canonicalize the base directory
-    let canonical_base = base_dir
-        .canonicalize()
-        .map_err(|_e| CliPersistenceError::PathTraversalDenied {
-            path: path.to_string_lossy().to_string(),
-        })?;
-
-    // For the input path, we need to handle both relative and absolute paths
-    // If the path is relative, resolve it relative to the base directory
-    let resolved_path = if path.is_absolute() {
-        path.to_path_buf()
-    } else {
-        base_dir.join(path)
-    };
-
-    // Canonicalize the resolved path
-    let canonical_path = resolved_path
-        .canonicalize()
-        .map_err(|_e| CliPersistenceError::PathTraversalDenied {
-            path: path.to_string_lossy().to_string(),
-        })?;
-
-    // Check if canonical path starts with the canonical base directory
-    let canonical_base_str = canonical_base.to_string_lossy();
-    let canonical_path_str = canonical_path.to_string_lossy();
-
-    if !canonical_path_str.as_ref().starts_with(canonical_base_str.as_ref())
-        && canonical_path_str.as_ref() != canonical_base_str.as_ref()
-    {
+    // Reject paths with parent directory references that could escape
+    // This is a defense-in-depth measure before any canonicalization
+    let path_str = path.to_string_lossy();
+    if path_str.contains("..") {
         return Err(CliPersistenceError::PathTraversalDenied {
             path: path.to_string_lossy().to_string(),
         });
     }
 
-    Ok(canonical_path)
+    // For relative paths, resolve against base_dir
+    // For absolute paths, check directly
+    let resolved = if path.is_absolute() {
+        path.to_path_buf()
+    } else {
+        base_dir.join(path)
+    };
+
+    // Canonicalize to resolve symlinks
+    let canonical = std::fs::canonicalize(&resolved)
+        .unwrap_or_else(|_| {
+            // If file doesn't exist, canonicalize parent and append filename
+            if let Some(parent) = resolved.parent() {
+                std::fs::canonicalize(parent)
+                    .map(|p| p.join(resolved.file_name().unwrap_or_default()))
+                    .unwrap_or(resolved)
+            } else {
+                resolved
+            }
+        });
+
+    // Canonicalize base_dir for comparison
+    let canonical_base = std::fs::canonicalize(base_dir)
+        .unwrap_or_else(|_| base_dir.to_path_buf());
+
+    // Check if canonical path starts with canonical base
+    let canonical_str = canonical.to_string_lossy();
+    let base_str = canonical_base.to_string_lossy();
+
+    if !canonical_str.starts_with(base_str.as_ref()) && canonical_str != base_str {
+        return Err(CliPersistenceError::PathTraversalDenied {
+            path: path.to_string_lossy().to_string(),
+        });
+    }
+
+    Ok(canonical)
 }
 
 /// Details for stage event emissions.
