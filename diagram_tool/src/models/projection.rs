@@ -738,7 +738,6 @@ fn apply_bring_forward(
         .iter()
         .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
         .min()
-        .copied()
         .unwrap_or(0);
 
     let new_nodes = node_ids
