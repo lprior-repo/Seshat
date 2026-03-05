@@ -33,6 +33,18 @@ pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
         if node.height.0 < 0.0 || !node.height.0.is_finite() {
             bail!("Node {id} has invalid height: {}", node.height.0);
         }
+        if !node.width.0.is_finite() {
+            bail!("Node {id} has non-finite width: {}", node.width.0);
+        }
+        if !node.height.0.is_finite() {
+            bail!("Node {id} has non-finite height: {}", node.height.0);
+        }
+        if !node.x.0.is_finite() {
+            bail!("Node {id} has non-finite x coordinate: {}", node.x.0);
+        }
+        if !node.y.0.is_finite() {
+            bail!("Node {id} has non-finite y coordinate: {}", node.y.0);
+        }
         if let Some(parent_id) = &node.parent {
             if !node_ids.contains(parent_id) {
                 bail!("Node {id} references non-existent parent {parent_id}");

@@ -11,7 +11,6 @@ use crate::models::document::{
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
-use std::cell::RefCell;
 use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 
@@ -229,7 +228,7 @@ pub fn paste_contents(mut clipboard: Clipboard, doc: DiagramDocument) -> Option<
 /// This function maintains backward compatibility with the existing API
 /// by using a Dioxus signal for clipboard state management.
 pub fn apply_copy_selection(
-    mut doc_signal: Signal<DiagramDocument>,
+    doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
     toast: Option<ToastApi>,
 ) -> bool {

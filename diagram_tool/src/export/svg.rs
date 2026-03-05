@@ -63,7 +63,7 @@ pub fn generate_svg_string(doc: &DiagramDocument) -> String {
             let _ = write!(
                 &mut svg,
                 "<line x1='{sx}' y1='{sy}' x2='{tx}' y2='{ty}' stroke='{}' stroke-width='{}' />",
-                stroke_color, edge.thickness.0
+                escaped_stroke, edge.thickness.0
             );
         }
     });

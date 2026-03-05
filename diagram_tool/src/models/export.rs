@@ -396,15 +396,11 @@ pub fn import_diagram_json(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Get current latest revision
-    let current_revision =
-        store::fetch_latest_revision(conn).map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
-
     // Convert author to envelope author
     let envelope_author = actor.to_envelope_author();
 
-    // Append each event to the store
-    let mut events_generated: u64 = 0;
+    // Append each event to the store using idempotent append
+    let mut events_imported: u64 = 0;
 
     for event_record in &event_records {
         // Create envelope from event record
@@ -415,11 +411,10 @@ pub fn import_diagram_json(
             timestamp: event_record.timestamp,
         };
 
-        // Append event with OCC - expect current revision
-        let expected = current_revision + events_generated;
-        match store::append_event(conn, envelope, Some(expected as i64)) {
-            Ok(_result) => {
-                events_generated += 1;
+        // Append event idempotently - checks by op_id, not revision
+        match store::append_idempotent(conn, envelope) {
+            Ok(_outcome) => {
+                events_imported += 1;
             }
             Err(store::StoreError::RevisionMismatch { expected: exp, found }) => {
                 // RevisionMismatch means the DB revision is different than expected.
@@ -448,7 +443,7 @@ pub fn import_diagram_json(
         store::fetch_latest_revision(conn).map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
 
     Ok(ImportResult {
-        events_generated,
+        events_generated: events_imported,
         final_revision,
     })
 }
