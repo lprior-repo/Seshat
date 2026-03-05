@@ -10,7 +10,7 @@ use crate::cli_persistence::{
 };
 use crate::export::png::export_png;
 use crate::export::svg::generate_svg_string;
-use crate::models::document::{DiagramDocument, NodeId, Revision};
+use crate::models::document::{DiagramDocument, NodeId};
 use crate::mutation::ops::apply_layout;
 use crate::mutation::pipeline::run_mutation;
 use anyhow::{anyhow, Context, Result};
@@ -388,16 +388,15 @@ fn json_pointer_get(doc: &DiagramDocument, path: &str) -> Option<serde_json::Val
 }
 
 /// Set a value in the document using a simple JSON Pointer path
+///
+/// Returns an error if attempting to write to `/revision` (only test operations are allowed).
 fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Value) -> Result<()> {
     let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
     match parts.as_slice() {
         ["revision"] => {
-            if let Some(v) = value.as_u64() {
-                doc.revision = Revision::new(v);
-                Ok(())
-            } else {
-                Err(anyhow!("revision must be a number"))
-            }
+            // Disallow direct revision writes via patch to preserve optimistic locking semantics.
+            // Revision must only be set via test operations (which verify the expected value).
+            Err(anyhow!("cannot write to /revision via patch: revision is computed from input document"))
         }
         ["document", "nodes", node_id, "label"] => {
             let node_id = NodeId::new(node_id.to_string());
