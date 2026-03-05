@@ -92,7 +92,7 @@ impl Default for Clipboard {
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]
 pub fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
-    clipboard.as_ref().is_some_and(Clipboard::has_content)
+    clipboard.as_ref().map_or(false, |c| c.has_content())
 }
 
 /// Pure function: Creates a clipboard with the selected nodes and edges from the document.
@@ -1135,6 +1135,40 @@ pub fn apply_redo(mut doc_signal: Signal<DiagramDocument>, mut history_signal: S
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    thread_local! {
+        static TEST_CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
+    }
+
+    fn clear_clipboard() {
+        TEST_CLIPBOARD.with(|c| *c.borrow_mut() = None);
+    }
+
+    fn copy_selection_to_clipboard(doc: &DiagramDocument) -> bool {
+        let result = copy_selection(doc);
+        if result.is_some() {
+            TEST_CLIPBOARD.with(|c| *c.borrow_mut() = result);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn paste_from_clipboard(doc: &mut DiagramDocument) -> bool {
+        let clipboard = TEST_CLIPBOARD.with(|c| c.borrow().clone());
+        if let Some(clipboard) = clipboard {
+            if let Some((new_doc, new_clipboard)) = paste_contents(clipboard, doc.clone()) {
+                *doc = new_doc;
+                TEST_CLIPBOARD.with(|c| *c.borrow_mut() = Some(new_clipboard));
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
 
     fn make_doc_with_zoom(zoom: f64) -> DiagramDocument {
         let mut doc = DiagramDocument::default();
@@ -1407,6 +1441,385 @@ mod tests {
         }
     }
 
+    // =============================================================================
+    // Additional copy/paste tests (bd-2b4)
+    // =============================================================================
+
+    #[test]
+    fn given_selection_with_nonexistent_ids_when_copy_then_returns_false() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        // Add a node but select a different (non-existent) ID
+        let real_id = NodeId::new("real-node".to_string());
+        let _ = doc
+            .document
+            .nodes
+            .insert(real_id, make_node("real-node", 0.0, 0.0));
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("ghost-id".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(!result);
+        TEST_CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
+    }
+
+    #[test]
+    fn given_three_nodes_selected_when_copy_then_copies_all() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        TEST_CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            if let Some(c) = clip.as_ref() {
+                assert_eq!(c.nodes.len(), 3);
+            } else {
+                panic!("clipboard should have content");
+            }
+        });
+    }
+
+    #[test]
+    fn given_partial_edge_selection_when_copy_then_excludes_edge() {
+        clear_clipboard();
+        let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
+        // Only select source node, not target
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        TEST_CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            if let Some(c) = clip.as_ref() {
+                assert_eq!(c.nodes.len(), 1, "should copy one node");
+                assert!(
+                    c.edges.is_empty(),
+                    "edge should be excluded when target not selected"
+                );
+            } else {
+                panic!("clipboard should have content");
+            }
+        });
+    }
+
+    fn make_doc_with_parent_child(
+        parent_id: &str,
+        child_id: &str,
+    ) -> (DiagramDocument, NodeId, NodeId) {
+        let mut doc = DiagramDocument::default();
+        let parent_node_id = NodeId::new(parent_id.to_string());
+        let child_node_id = NodeId::new(child_id.to_string());
+
+        let _ = doc
+            .document
+            .nodes
+            .insert(parent_node_id.clone(), make_node(parent_id, 0.0, 0.0));
+
+        let mut child_node = make_node(child_id, 50.0, 50.0);
+        child_node.parent = Some(parent_node_id.clone());
+        let _ = doc.document.nodes.insert(child_node_id.clone(), child_node);
+
+        (doc, parent_node_id, child_node_id)
+    }
+
+    #[test]
+    fn given_nested_nodes_selected_when_copy_then_preserves_parent_reference() {
+        clear_clipboard();
+        let (mut doc, parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
+        let _ = doc.editor_state.selected_items.insert("parent".to_string());
+        let _ = doc.editor_state.selected_items.insert("child".to_string());
+
+        let result = copy_selection_to_clipboard(&doc);
+
+        assert!(result);
+        TEST_CLIPBOARD.with(|s| {
+            let clip = s.borrow();
+            if let Some(c) = clip.as_ref() {
+                assert_eq!(c.nodes.len(), 2);
+                // Find the child node in clipboard
+                let child_in_clipboard = c.nodes.iter().find(|(id, _)| id.to_string() == "child");
+                if let Some((_, node)) = child_in_clipboard {
+                    assert_eq!(
+                        node.parent,
+                        Some(parent_id),
+                        "parent reference preserved during copy"
+                    );
+                } else {
+                    panic!("child should be in clipboard");
+                }
+            } else {
+                panic!("clipboard should have content");
+            }
+        });
+    }
+
+    #[test]
+    fn given_clipboard_with_empty_nodes_when_paste_then_returns_false() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_count_before = doc.document.nodes.len();
+
+        // Set clipboard with empty nodes vector
+        TEST_CLIPBOARD.with(|s| {
+            *s.borrow_mut() = Some(Clipboard {
+                nodes: vec![],
+                edges: vec![],
+                paste_serial: 0,
+            });
+        });
+
+        let result = paste_from_clipboard(&mut doc);
+
+        assert!(!result);
+        assert_eq!(doc.document.nodes.len(), node_count_before);
+    }
+
+    #[test]
+    fn given_second_paste_when_paste_then_applies_double_offset() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+
+        // First paste
+        let _ = paste_from_clipboard(&mut doc);
+        // Second paste
+        let _ = paste_from_clipboard(&mut doc);
+
+        let original_id = NodeId::new("original-node".to_string());
+        // Find the second pasted node (there should be 2 pasted nodes now)
+        let pasted_nodes: Vec<_> = doc
+            .document
+            .nodes
+            .iter()
+            .filter(|(id, _)| *id != &original_id)
+            .collect();
+
+        assert_eq!(pasted_nodes.len(), 2);
+
+        // Second paste should have offset of 40.0 (20.0 * 2)
+        let second_paste_node = pasted_nodes
+            .iter()
+            .find(|(_, node)| node.x.0 == 140.0 && node.y.0 == 90.0);
+        assert!(
+            second_paste_node.is_some(),
+            "second paste should have offset of 40.0 (position 140.0, 90.0)"
+        );
+    }
+
+    #[test]
+    fn given_multiple_nodes_when_paste_then_all_ids_unique() {
+        clear_clipboard();
+        let mut doc = DiagramDocument::default();
+        let node_a = NodeId::new("node-a".to_string());
+        let node_b = NodeId::new("node-b".to_string());
+        let node_c = NodeId::new("node-c".to_string());
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_a.clone(), make_node("node-a", 0.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_b.clone(), make_node("node-b", 100.0, 0.0));
+        let _ = doc
+            .document
+            .nodes
+            .insert(node_c.clone(), make_node("node-c", 200.0, 0.0));
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-c".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Should have 6 nodes now (3 original + 3 pasted)
+        assert_eq!(doc.document.nodes.len(), 6);
+
+        // All IDs should be unique
+        let ids: std::collections::HashSet<_> = doc.document.nodes.keys().collect();
+        assert_eq!(ids.len(), 6, "all node IDs should be unique");
+    }
+
+    #[test]
+    fn given_edge_in_clipboard_when_paste_then_remapped_to_new_ids() {
+        clear_clipboard();
+        let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
+        let _ = doc.editor_state.selected_items.insert("node-a".to_string());
+        let _ = doc.editor_state.selected_items.insert("node-b".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Should have 2 edges now
+        assert_eq!(doc.document.edges.len(), 2);
+
+        // Find the pasted edge (the one whose source/target are not the originals)
+        let original_a = NodeId::new("node-a".to_string());
+        let original_b = NodeId::new("node-b".to_string());
+        let pasted_edge = doc
+            .document
+            .edges
+            .iter()
+            .find(|(_, edge)| edge.source != original_a && edge.target != original_b);
+
+        assert!(
+            pasted_edge.is_some(),
+            "should have a pasted edge with remapped IDs"
+        );
+        if let Some((_, edge)) = pasted_edge {
+            // Verify the pasted edge's source and target are NOT the original IDs
+            assert_ne!(edge.source, original_a);
+            assert_ne!(edge.target, original_b);
+            // And they should be actual node IDs in the document
+            assert!(doc.document.nodes.contains_key(&edge.source));
+            assert!(doc.document.nodes.contains_key(&edge.target));
+        }
+    }
+
+    #[test]
+    fn given_parent_also_pasted_when_paste_then_remapped() {
+        clear_clipboard();
+        let (mut doc, _parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
+        let _ = doc.editor_state.selected_items.insert("parent".to_string());
+        let _ = doc.editor_state.selected_items.insert("child".to_string());
+
+        let original_parent_id = NodeId::new("parent".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Find the pasted child node
+        let pasted_child = doc
+            .document
+            .nodes
+            .iter()
+            .find(|(id, node)| id.to_string() != "child" && node.label == "child");
+
+        assert!(pasted_child.is_some());
+        if let Some((_, child_node)) = pasted_child {
+            // Parent should be remapped to the new parent ID, not the original
+            if let Some(ref parent_ref) = child_node.parent {
+                assert_ne!(
+                    *parent_ref, original_parent_id,
+                    "parent should be remapped to new pasted parent ID"
+                );
+                // The new parent should exist in the document
+                assert!(
+                    doc.document.nodes.contains_key(parent_ref),
+                    "remapped parent should exist in document"
+                );
+            } else {
+                panic!("pasted child should have a parent");
+            }
+        }
+    }
+
+    #[test]
+    fn given_parent_not_pasted_when_paste_then_preserved() {
+        clear_clipboard();
+        let (mut doc, parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
+        // Only select and copy the child, not the parent
+        let _ = doc.editor_state.selected_items.insert("child".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Find the pasted child node
+        let pasted_child = doc
+            .document
+            .nodes
+            .iter()
+            .find(|(id, node)| id.to_string() != "child" && node.label == "child");
+
+        assert!(pasted_child.is_some());
+        if let Some((_, child_node)) = pasted_child {
+            // Parent should still point to the original parent (not remapped)
+            assert_eq!(
+                child_node.parent,
+                Some(parent_id),
+                "parent reference should be preserved when parent not pasted"
+            );
+        }
+    }
+
+    #[test]
+    fn given_paste_successful_when_paste_then_selection_updated() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+
+        // Clear selection before paste to test that paste updates it
+        doc.editor_state.selected_items.clear();
+        let _ = paste_from_clipboard(&mut doc);
+
+        // Selection should contain only the new pasted node
+        assert_eq!(doc.editor_state.selected_items.len(), 1);
+
+        // The selected item should NOT be the original node
+        let selected_id = doc.editor_state.selected_items.iter().next();
+        assert!(selected_id.is_some());
+        if let Some(id) = selected_id {
+            assert_ne!(
+                id, "original-node",
+                "selection should be the new pasted node, not original"
+            );
+        }
+    }
+
+    #[test]
+    fn given_paste_successful_when_paste_then_revision_incremented() {
+        clear_clipboard();
+        let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert("original-node".to_string());
+
+        let _ = copy_selection_to_clipboard(&doc);
+
+        let revision_before = doc.revision;
+        let _ = paste_from_clipboard(&mut doc);
+
+        assert_eq!(
+            doc.revision,
+            revision_before.increment(),
+            "revision should be incremented after successful paste"
+        );
+    }
 
     #[test]
     fn given_clipboard_when_has_content_then_returns_true() {

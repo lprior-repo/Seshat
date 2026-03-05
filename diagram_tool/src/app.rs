@@ -21,7 +21,6 @@ use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
 use crate::ui::toolbar::{auto_save, Toolbar, ToolbarStats};
 
-use crate::ui::commands::Clipboard;
 use crate::ui::ValidationPanel;
 #[allow(unused_imports)]
 use auto_save::AUTO_SAVE_KEY;
