@@ -15,6 +15,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
+use crate::config::DatabaseConfig;
 use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
 /// Current schema version for the store
@@ -350,40 +351,40 @@ pub fn read_store_pragmas(conn: &Connection) -> Result<StorePragmas, StoreError>
 ///
 /// This function:
 /// 1. Opens/creates the database at the given path
-/// 2. Enforces WAL journal mode and FULL synchronous
+/// 2. Enforces configured journal mode and synchronous settings
 /// 3. Creates the schema tables if they don't exist
 /// 4. Returns the bootstrap result with connection and metadata
-pub fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreError> {
-    // Open or create the database
+pub fn bootstrap_store_with_config(
+    db_path: &Path,
+    config: &DatabaseConfig,
+) -> Result<StoreBootstrap, StoreError> {
     let conn = Connection::open(db_path)?;
 
-    // Set WAL mode and synchronous FULL
-    conn.execute_batch(
-        "PRAGMA journal_mode=WAL;
-         PRAGMA synchronous=FULL;
-         PRAGMA wal_autocheckpoint=1000;",
-    )?;
+    let pragma_sql = format!(
+        "PRAGMA journal_mode={};
+         PRAGMA synchronous={};
+         PRAGMA wal_autocheckpoint={};",
+        config.journal_mode, config.synchronous, config.wal_autocheckpoint
+    );
+    conn.execute_batch(&pragma_sql)?;
 
-    // Verify pragmas were set correctly
     let pragmas = read_store_pragmas(&conn)?;
-    if pragmas.journal_mode != "wal" {
+    if pragmas.journal_mode.to_lowercase() != config.journal_mode.to_lowercase() {
         return Err(StoreError::InvalidPragma(format!(
-            "Expected WAL journal mode, got {}",
-            pragmas.journal_mode
+            "Expected {} journal mode, got {}",
+            config.journal_mode, pragmas.journal_mode
         )));
     }
 
-    if pragmas.synchronous != 2 {
+    if pragmas.synchronous != config.synchronous {
         return Err(StoreError::InvalidPragma(format!(
-            "Expected FULL synchronous mode (2), got {}",
-            pragmas.synchronous
+            "Expected synchronous mode ({}), got {}",
+            config.synchronous, pragmas.synchronous
         )));
     }
 
-    // Run deterministic schema migration v1
     run_schema_migration(&conn)?;
 
-    // Get the current schema version
     let schema_version = conn
         .query_row("SELECT version FROM schema_version", [], |row| row.get(0))
         .unwrap_or(0);
@@ -393,6 +394,18 @@ pub fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreError> {
         db_path: db_path.to_path_buf(),
         schema_version,
     })
+}
+
+/// Bootstrap a new store with schema initialization using default configuration
+///
+/// This function:
+/// 1. Opens/creates the database at the given path
+/// 2. Enforces WAL journal mode and FULL synchronous
+/// 3. Creates the schema tables if they don't exist
+/// 4. Returns the bootstrap result with connection and metadata
+pub fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreError> {
+    let default_config = DatabaseConfig::default();
+    bootstrap_store_with_config(db_path, &default_config)
 }
 
 /// Run deterministic schema migration v1
