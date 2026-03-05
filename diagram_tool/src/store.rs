@@ -1,6 +1,28 @@
 //! `SQLite` storage module
 //!
 //! Provides SQLite-based storage with WAL mode and full synchronous durability.
+//!
+//! ## Design by Contract
+//!
+//! ### Preconditions
+//! - P1: Database path must be valid and accessible (parent directory exists)
+//! - P2: Schema version must be non-negative
+//! - P3: Events must have sequential revisions (no gaps)
+//! - P4: Batch operations must contain at least one event
+//! - P5: Revision argument must match or exceed current stored revision
+//!
+//! ### Postconditions
+//! - Q1: After successful write: events are durable (fsynced)
+//! - Q2: After read: returned document has highest stored revision
+//! - Q3: After migration: schema version is updated atomically
+//! - Q4: Transaction commits only if all operations succeed
+//! - Q5: Failed operations leave store state unchanged (rollback)
+//!
+//! ### Invariants
+//! - I1: Revision numbers are monotonically increasing
+//! - I2: Each op_id is unique within the document
+//! - I3: Schema version matches current migration state
+//! - I4: WAL mode is always enabled for concurrent readers
 
 #![allow(dead_code)]
 #![allow(clippy::pedantic)]

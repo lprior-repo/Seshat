@@ -1,3 +1,26 @@
+//! History module for undo/redo operations
+//!
+//! Provides persistent undo/redo history using immutable data structures.
+//!
+//! ## Design by Contract
+//!
+//! ### Preconditions
+//! - P1: Documents pushed to history must be valid
+//! - P2: Undo requires non-empty undo stack
+//! - P3: Redo requires non-empty redo stack
+//!
+//! ### Postconditions
+//! - Q1: Push clears redo stack (new timeline branch)
+//! - Q2: Undo returns previous state and moves current to redo
+//! - Q3: Redo returns next state and moves current to undo
+//! - Q4: All operations return new History (immutable)
+//! - Q5: History capped at MAX_HISTORY entries (100)
+//!
+//! ### Invariants
+//! - I1: Undo stack contains documents in reverse chronological order
+//! - I2: Redo stack contains documents in chronological order
+//! - I3: After push: redo stack is empty
+
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]

@@ -95,6 +95,10 @@ pub struct DocumentData {
     pub edges: HashMap<EdgeId, Edge>,
 }
 
+/// Diagram node representing a visual element in the diagram
+///
+/// All fields are public to support serde deserialization.
+/// For construction, use the `Default` trait or manual field assignment.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
