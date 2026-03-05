@@ -19,6 +19,9 @@ pub enum LockError {
 
     #[error("Mutation error: {0}")]
     MutationError(String),
+
+    #[error("Invalid diagram ID: {0}")]
+    InvalidDiagramId(#[from] crate::locking::manager::DiagramIdError),
 }
 
 impl From<crate::mutation::error::MutationError> for LockError {

@@ -9,7 +9,8 @@ use crate::history::History;
 use crate::hooks::e2e_reset::use_e2e_reset_hook;
 use crate::hooks::keyboard::use_global_keyboard;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
-use crate::models::validation::validate_document_data;
+use crate::models::schema::validate_schema;
+use crate::models::validation::{validate_document, validate_document_data};
 use crate::ui::canvas::Canvas;
 use crate::ui::commands::Clipboard;
 use crate::ui::editor::ToolMode;
@@ -77,7 +78,17 @@ pub fn App() -> Element {
 
     let mut validation_issues = use_signal(move || {
         let doc = doc_signal.read();
-        validate_document_data(&doc.document)
+        // Combine schema validation (stricter) with document validation (UI-friendly)
+        let schema_issues = validate_schema(&doc.document)
+            .err()
+            .map(|e| crate::models::validation::ValidationIssue {
+                severity: crate::models::validation::ValidationSeverity::Error,
+                code: "schema",
+                message: e.to_string(),
+                subject: None,
+            })
+            .into_iter();
+        schema_issues.chain(validate_document_data(&doc.document)).collect()
     });
     let mut last_validated_revision = use_signal(move || doc_signal.read().revision);
     let mut last_validate_trigger = use_signal(move || *validate_trigger.read());
@@ -100,7 +111,17 @@ pub fn App() -> Element {
         let current_trigger = *validate_trigger.read();
         if current_trigger != *last_validate_trigger.read() {
             let current_document = doc_signal.read().document.clone();
-            validation_issues.set(validate_document_data(&current_document));
+            // Combine schema validation (stricter) with document validation (UI-friendly)
+            let schema_issues = validate_schema(&current_document)
+                .err()
+                .map(|e| crate::models::validation::ValidationIssue {
+                    severity: crate::models::validation::ValidationSeverity::Error,
+                    code: "schema",
+                    message: e.to_string(),
+                    subject: None,
+                })
+                .into_iter();
+            validation_issues.set(schema_issues.chain(validate_document_data(&current_document)).collect());
             last_validated_revision.set(doc_signal.read().revision);
             last_validate_trigger.set(current_trigger);
             queued_validation_revision.set(None);
@@ -129,10 +150,6 @@ pub fn App() -> Element {
         let current_document = doc.document.clone();
         drop(doc);
 
-        let validation_job_signal = validation_job;
-        let mut validation_issues_signal = validation_issues;
-        let mut last_validated_revision_signal = last_validated_revision;
-        let mut queued_validation_revision_signal = queued_validation_revision;
         let mut eval = document::eval(&format!(
             "setTimeout(() => dioxus.send({{ job: {next_job} }}), {VALIDATION_IDLE_MS});"
         ));
@@ -147,11 +164,11 @@ pub fn App() -> Element {
                 return;
             }
 
-            if *validation_job_signal.read() != next_job {
+            if *validation_job.read() != next_job {
                 return;
             }
 
-            let still_queued = queued_validation_revision_signal
+            let still_queued = queued_validation_revision
                 .read()
                 .as_ref()
                 .is_some_and(|queued| *queued == current_revision);
@@ -160,9 +177,9 @@ pub fn App() -> Element {
                 return;
             }
 
-            validation_issues_signal.set(validate_document_data(&current_document));
-            last_validated_revision_signal.set(current_revision);
-            queued_validation_revision_signal.set(None);
+            validation_issues.set(validate_document_data(&current_document));
+            last_validated_revision.set(current_revision);
+            queued_validation_revision.set(None);
         });
     });
 

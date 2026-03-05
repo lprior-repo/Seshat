@@ -248,7 +248,15 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             // This ensures we have a recovery point regardless of how the patch fails
             let input_path = Path::new(input);
             let lkg_dir = input_path.parent().unwrap_or(Path::new(".")).join(".lkg");
-            std::fs::create_dir_all(&lkg_dir).ok();
+            if let Err(e) = std::fs::create_dir_all(&lkg_dir) {
+                emit_stage_event(
+                    "lkg_dir_create_failed",
+                    &StageDetails::new()
+                        .with_path(&lkg_dir)
+                        .with_code("lkg_dir_create_failed")
+                        .with_message(&e.to_string()),
+                );
+            }
             let lkg_filename = format!(
                 "{}.lkg",
                 input_path

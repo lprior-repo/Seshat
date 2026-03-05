@@ -99,6 +99,11 @@ pub struct DocumentData {
 ///
 /// All fields are public to support serde deserialization.
 /// For construction, use the `Default` trait or manual field assignment.
+///
+/// # Invariants
+/// - Width and height must be >= 24.0 (enforced by schema validation)
+/// - x and y coordinates must be finite
+/// - parent, if set, must reference a Node with NodeKind::Subgraph
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
@@ -211,6 +216,12 @@ pub enum FontWeight {
     Bold,
 }
 
+/// Represents a directed edge between two nodes in the diagram.
+///
+/// # Invariants
+/// - source and target must reference valid NodeIds in the document
+/// - bend_points, if present, define intermediate routing points
+/// - label_offset_t must be in range [0.0, 1.0] for positioning along the edge
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Edge {

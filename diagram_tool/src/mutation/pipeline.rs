@@ -35,7 +35,8 @@ where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
     let next = transform(current)?;
-    validate_schema(&next).map_err(|err| MutationError::Schema(err.to_string()))?;
+    // Use From implementation to preserve error type information
+    validate_schema(&next).map_err(MutationError::from)?;
 
     let issues = validate_document(&next);
     issues.first().map_or_else(

@@ -454,6 +454,10 @@ fn run_schema_migration(conn: &Connection) -> Result<(), StoreError> {
 
     if events_table_exists == 0 {
         // Create events table for append-only event log
+        // NOTE: This schema differs from models/events.rs which uses a different
+        // schema (text ID, event_type, metadata). See models/schema_defs.rs
+        // for consolidated schema definitions. The two schemas serve different
+        // purposes: store.rs for low-level persistence, events.rs for event sourcing.
         conn.execute_batch(
             "CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

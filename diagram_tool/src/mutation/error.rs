@@ -22,3 +22,21 @@ impl MutationError {
         Self::Semantic(format!("{}: {}", issue.code, issue.message))
     }
 }
+
+impl From<crate::models::dag::CycleError> for MutationError {
+    fn from(err: crate::models::dag::CycleError) -> Self {
+        Self::Schema(format!("cycle error: {}", err))
+    }
+}
+
+impl From<crate::models::conflict::ConflictError> for MutationError {
+    fn from(err: crate::models::conflict::ConflictError) -> Self {
+        Self::Semantic(format!("conflict: {}", err))
+    }
+}
+
+impl From<crate::models::sync::SyncError> for MutationError {
+    fn from(err: crate::models::sync::SyncError) -> Self {
+        Self::Schema(format!("sync error: {}", err))
+    }
+}

@@ -92,9 +92,7 @@ impl Default for Clipboard {
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]
 pub fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
-    clipboard
-        .as_ref()
-        .map_or(false, |c| c.has_content())
+    clipboard.as_ref().is_some_and(Clipboard::has_content)
 }
 
 /// Pure function: Creates a clipboard with the selected nodes and edges from the document.
@@ -1137,6 +1135,40 @@ pub fn apply_redo(mut doc_signal: Signal<DiagramDocument>, mut history_signal: S
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
+    use std::cell::RefCell;
+
+    thread_local! {
+        static TEST_CLIPBOARD: RefCell<Option<Clipboard>> = const { RefCell::new(None) };
+    }
+
+    fn clear_clipboard() {
+        TEST_CLIPBOARD.with(|c| *c.borrow_mut() = None);
+    }
+
+    fn copy_selection_to_clipboard(doc: &DiagramDocument) -> bool {
+        let result = copy_selection(doc);
+        if result.is_some() {
+            TEST_CLIPBOARD.with(|c| *c.borrow_mut() = result);
+            true
+        } else {
+            false
+        }
+    }
+
+    fn paste_from_clipboard(doc: &mut DiagramDocument) -> bool {
+        let clipboard = TEST_CLIPBOARD.with(|c| c.borrow().clone());
+        if let Some(clipboard) = clipboard {
+            if let Some((new_doc, new_clipboard)) = paste_contents(clipboard, doc.clone()) {
+                *doc = new_doc;
+                TEST_CLIPBOARD.with(|c| *c.borrow_mut() = Some(new_clipboard));
+                true
+            } else {
+                false
+            }
+        } else {
+            false
+        }
+    }
 
     fn make_doc_with_zoom(zoom: f64) -> DiagramDocument {
         let mut doc = DiagramDocument::default();
@@ -1344,14 +1376,10 @@ mod tests {
     fn given_empty_clipboard_when_paste_then_returns_none() {
         let clipboard = Clipboard::new();
         let doc = DiagramDocument::default();
-        let node_count_before = doc.document.nodes.len();
 
         let result = paste_contents(clipboard, doc);
 
         assert!(result.is_none());
-        // Document should not be modified
-        let (_, returned_doc) = result.unwrap_or_default();
-        assert_eq!(returned_doc.document.nodes.len(), node_count_before);
     }
 
     #[test]
@@ -1435,7 +1463,7 @@ mod tests {
         let result = copy_selection_to_clipboard(&doc);
 
         assert!(!result);
-        CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
+        TEST_CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
     }
 
     #[test]
@@ -1464,7 +1492,7 @@ mod tests {
         let result = copy_selection_to_clipboard(&doc);
 
         assert!(result);
-        CLIPBOARD.with(|s| {
+        TEST_CLIPBOARD.with(|s| {
             let clip = s.borrow();
             if let Some(c) = clip.as_ref() {
                 assert_eq!(c.nodes.len(), 3);
@@ -1484,7 +1512,7 @@ mod tests {
         let result = copy_selection_to_clipboard(&doc);
 
         assert!(result);
-        CLIPBOARD.with(|s| {
+        TEST_CLIPBOARD.with(|s| {
             let clip = s.borrow();
             if let Some(c) = clip.as_ref() {
                 assert_eq!(c.nodes.len(), 1, "should copy one node");
@@ -1528,7 +1556,7 @@ mod tests {
         let result = copy_selection_to_clipboard(&doc);
 
         assert!(result);
-        CLIPBOARD.with(|s| {
+        TEST_CLIPBOARD.with(|s| {
             let clip = s.borrow();
             if let Some(c) = clip.as_ref() {
                 assert_eq!(c.nodes.len(), 2);
@@ -1556,8 +1584,8 @@ mod tests {
         let node_count_before = doc.document.nodes.len();
 
         // Set clipboard with empty nodes vector
-        CLIPBOARD.with(|s| {
-            *s.borrow_mut() = Some(ClipboardState {
+        TEST_CLIPBOARD.with(|s| {
+            *s.borrow_mut() = Some(Clipboard {
                 nodes: vec![],
                 edges: vec![],
                 paste_serial: 0,
@@ -2993,7 +3021,7 @@ mod proptests {
             let mut doc = make_doc_for_prop(f64::NAN, 0.0, 0.0);
             let _ = zoom_to_center(&mut doc, factor, viewport);
 
-            prop_assert!(doc.editor_state.zoom.0.is_finite);
+            prop_assert!(doc.editor_state.zoom.0.is_finite());
             prop_assert!(doc.editor_state.zoom.0 >= 0.1);
             prop_assert!(doc.editor_state.zoom.0 <= 4.0);
         }
@@ -3006,7 +3034,7 @@ mod proptests {
             let mut doc = make_doc_for_prop(f64::INFINITY, 0.0, 0.0);
             let _ = zoom_to_center(&mut doc, factor, viewport);
 
-            prop_assert!(doc.editor_state.zoom.0.is_finite);
+            prop_assert!(doc.editor_state.zoom.0.is_finite());
         }
 
         #[test]

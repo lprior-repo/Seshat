@@ -20,9 +20,33 @@ use super::file_lock::FileLock;
 #[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct DiagramId(String);
 
+/// Error type for invalid diagram IDs
+#[derive(Debug, Clone, thiserror::Error)]
+#[error("invalid diagram ID: {0}")]
+pub struct DiagramIdError(String);
+
 impl DiagramId {
+    /// Create a new DiagramId with validation.
+    ///
+    /// # Errors
+    /// Returns `DiagramIdError` if the ID contains path traversal characters
+    /// like `..`, `/`, or `\`, or is empty.
+    pub fn new(id: String) -> Result<Self, DiagramIdError> {
+        if id.is_empty() {
+            return Err(DiagramIdError("ID cannot be empty".to_string()));
+        }
+        if id.contains("..") || id.contains('/') || id.contains('\\') {
+            return Err(DiagramIdError(format!(
+                "ID '{}' contains invalid characters (../  \\)",
+                id
+            )));
+        }
+        Ok(Self(id))
+    }
+
+    /// Create a new DiagramId without validation (for trusted sources).
     #[must_use]
-    pub const fn new(id: String) -> Self {
+    pub const fn new_unchecked(id: String) -> Self {
         Self(id)
     }
 
@@ -40,13 +64,25 @@ impl std::fmt::Display for DiagramId {
 
 impl From<String> for DiagramId {
     fn from(s: String) -> Self {
-        Self::new(s)
+        // NOTE: Uses unchecked for backwards compatibility
+        // In production code, prefer DiagramId::new() which validates
+        Self::new_unchecked(s)
     }
 }
 
 impl From<&str> for DiagramId {
     fn from(s: &str) -> Self {
-        Self::new(s.to_string())
+        // NOTE: Uses unchecked for backwards compatibility
+        // In production code, prefer DiagramId::new() which validates
+        Self::new_unchecked(s.to_string())
+    }
+}
+
+impl TryFrom<String> for DiagramId {
+    type Error = DiagramIdError;
+
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        DiagramId::new(s)
     }
 }
 
