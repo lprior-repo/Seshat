@@ -16,6 +16,18 @@ pub enum RevisionPolicy {
     Preserve,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ValidationPolicy {
+    Validate,
+    Skip,
+}
+
+impl Default for ValidationPolicy {
+    fn default() -> Self {
+        Self::Validate
+    }
+}
+
 pub fn run_mutation<F>(
     current: &DiagramDocument,
     transform: F,
@@ -23,12 +35,13 @@ pub fn run_mutation<F>(
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
-    run_mutation_with_policy(current, RevisionPolicy::Increment, transform)
+    run_mutation_with_policy(current, RevisionPolicy::Increment, ValidationPolicy::default(), transform)
 }
 
 pub fn run_mutation_with_policy<F>(
     current: &DiagramDocument,
     revision_policy: RevisionPolicy,
+    validation_policy: ValidationPolicy,
     transform: F,
 ) -> Result<DiagramDocument, MutationError>
 where
@@ -36,6 +49,14 @@ where
 {
     let next = transform(current)?;
     validate_schema(&next).map_err(|err| MutationError::Schema(err.to_string()))?;
+
+    if validation_policy == ValidationPolicy::Skip {
+        let revision = match revision_policy {
+            RevisionPolicy::Increment => current.revision.increment(),
+            RevisionPolicy::Preserve => current.revision,
+        };
+        return Ok(DiagramDocument { revision, ..next });
+    }
 
     let issues = validate_document(&next);
     issues.first().map_or_else(
@@ -50,9 +71,19 @@ where
     )
 }
 
+pub fn run_mutation_unchecked<F>(
+    current: &DiagramDocument,
+    transform: F,
+) -> Result<DiagramDocument, MutationError>
+where
+    F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
+{
+    run_mutation_with_policy(current, RevisionPolicy::Increment, ValidationPolicy::Skip, transform)
+}
+
 #[cfg(test)]
 mod tests {
-    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
+    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
     use crate::models::document::{
         ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, EditorState, Node, NodeId, NodeKind,
         NodeStyle, OrderedFloat,
@@ -137,7 +168,7 @@ mod tests {
     fn given_preserve_policy_when_run_mutation_then_revision_is_not_incremented() {
         let current = DiagramDocument::default();
         let result =
-            run_mutation_with_policy(&current, RevisionPolicy::Preserve, |doc| Ok(doc.clone()));
+            run_mutation_with_policy(&current, RevisionPolicy::Preserve, ValidationPolicy::default(), |doc| Ok(doc.clone()));
 
         let next = result.ok();
         assert!(next.is_some());
@@ -150,7 +181,7 @@ mod tests {
         let mut current = DiagramDocument::default();
         current.revision = current.revision.increment();
 
-        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, |_| {
+        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, ValidationPolicy::default(), |_| {
             Ok(DiagramDocument::default())
         });
 
@@ -679,11 +710,13 @@ mod proptests {
             let with_increment = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Increment,
+                ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
             let with_preserve = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Preserve,
+                ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
 

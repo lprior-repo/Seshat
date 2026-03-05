@@ -11,6 +11,7 @@ use crate::hooks::keyboard::use_global_keyboard;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::validation::validate_document_data;
 use crate::ui::canvas::Canvas;
+use crate::ui::commands::Clipboard;
 use crate::ui::editor::ToolMode;
 use crate::ui::minimap::Minimap;
 use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
@@ -52,6 +53,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
 

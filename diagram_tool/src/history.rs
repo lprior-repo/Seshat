@@ -17,22 +17,19 @@ pub struct History {
 
 const MAX_HISTORY: usize = 100;
 
-#[allow(clippy::needless_collect)]
 fn truncate_stack(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    let capped = stack.iter().take(MAX_HISTORY).cloned().collect::<Vec<_>>();
-    capped
-        .into_iter()
-        .rev()
-        .fold(List::new(), |acc, entry| acc.push_front(entry))
+    let len = stack.len();
+    if len <= MAX_HISTORY {
+        return stack.clone();
+    }
+    stack.iter().take(MAX_HISTORY).cloned().collect()
 }
 
-#[allow(clippy::needless_collect)]
 fn drop_first(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    let remainder = stack.iter().skip(1).cloned().collect::<Vec<_>>();
-    remainder
-        .into_iter()
-        .rev()
-        .fold(List::new(), |acc, entry| acc.push_front(entry))
+    if stack.len() <= 1 {
+        return List::new();
+    }
+    stack.iter().skip(1).cloned().collect()
 }
 
 impl History {
