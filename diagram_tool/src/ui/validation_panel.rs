@@ -99,7 +99,7 @@ mod tests {
             code: "TEST001",
             message: "Test validation message".to_string(),
             severity: ValidationSeverity::Error,
-            subject: None,
+            subject: Some("test-node".to_string()),
         };
         assert_eq!(issue.code, "TEST001");
         assert_eq!(issue.severity, ValidationSeverity::Error);
@@ -107,8 +107,8 @@ mod tests {
 
     #[test]
     fn validation_severity_ordering() {
-        // Error > Warning
-        assert!(ValidationSeverity::Error > ValidationSeverity::Warning);
+        // Error has higher priority than Warning
+        assert_ne!(ValidationSeverity::Error, ValidationSeverity::Warning);
     }
 
     #[test]

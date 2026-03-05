@@ -24,7 +24,6 @@
 //! - I3: Schema version matches current migration state
 //! - I4: WAL mode is always enabled for concurrent readers
 
-#![allow(dead_code)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]

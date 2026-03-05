@@ -49,7 +49,6 @@
 //! - `app`, `backend`, `cli`, `cli_persistence`, `hooks`, `icons`, `layout`,
 //!   `mutation`, `perf`, `store`, `ui`
 
-#![allow(dead_code)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]

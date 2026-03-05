@@ -3,7 +3,6 @@
 //! This module provides deterministic replay of events to produce a consistent `DiagramProjection`.
 //! The replay is deterministic: given the same input events, it always produces the same output.
 
-#![allow(dead_code)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]
