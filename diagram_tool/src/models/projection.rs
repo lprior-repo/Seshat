@@ -85,7 +85,7 @@ pub struct EventRecord {
 ///
 /// This is a pure data structure representing the complete diagram state
 /// after replaying a sequence of events.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
 pub struct DiagramProjection {
     /// Schema version for compatibility checking
     pub version: u32,
@@ -246,8 +246,8 @@ pub fn apply_event(
     state: DiagramProjection,
     event: &EventRecord,
 ) -> Result<DiagramProjection, ReplayError> {
-    // Validate schema version
-    if event.revision != state.revision {
+    // Validate: event revision should be state revision + 1 (1-based: empty=0 expects first event=1)
+    if event.revision != state.revision + 1 {
         return Err(ReplayError::InvariantViolation(format!(
             "revision mismatch: state has {}, event has {}",
             state.revision, event.revision
