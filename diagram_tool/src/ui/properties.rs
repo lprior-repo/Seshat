@@ -283,16 +283,23 @@ pub fn PropertiesPanel() -> Element {
                                     "data-testid": "node-label-input",
                                     style: "width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                     value: "{node.label}",
-                                    onfocus: move |_| {
-                                        let current = doc_signal.read().clone();
-                                        let next_h = history.read().push(current);
-                                        *history.write() = next_h;
-                                    },
-                                    oninput: move |evt| {
+                                    onchange: move |evt| {
+                                        let new_label = evt.value();
                                         let nid = id_label.clone();
+                                        // Only push history and update if value actually changed
+                                        let has_changes = doc_signal.read()
+                                            .document
+                                            .nodes
+                                            .get(&nid)
+                                            .is_some_and(|n| n.label != new_label);
+                                        if has_changes {
+                                            let current = doc_signal.read().clone();
+                                            let next_h = history.read().push(current);
+                                            *history.write() = next_h;
+                                        }
                                         doc_signal.with_mut(|doc| {
                                             if let Some(n) = doc.document.nodes.get_mut(&nid) {
-                                                n.label = evt.value();
+                                                n.label = new_label;
                                                 doc.revision = doc.revision.increment();
                                             }
                                         });
@@ -325,9 +332,20 @@ pub fn PropertiesPanel() -> Element {
                                         style: "width: 50%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                         r#type: "number",
                                         value: "{node.x}",
-                                        oninput: move |evt| {
+                                        onchange: move |evt| {
                                             let nid = id_x.clone();
                                             if let Ok(val) = evt.value().parse::<f64>() {
+                                                // Only push history if value actually changed
+                                                let has_changes = doc_signal.read()
+                                                    .document
+                                                    .nodes
+                                                    .get(&nid)
+                                                    .is_some_and(|n| n.x.0 != val);
+                                                if has_changes {
+                                                    let current = doc_signal.read().clone();
+                                                    let next_h = history.read().push(current);
+                                                    *history.write() = next_h;
+                                                }
                                                 doc_signal.with_mut(|doc| {
                                                     if let Some(n) = doc.document.nodes.get_mut(&nid) {
                                                         n.x = OrderedFloat(val);
@@ -341,9 +359,20 @@ pub fn PropertiesPanel() -> Element {
                                         style: "width: 50%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                         r#type: "number",
                                         value: "{node.y}",
-                                        oninput: move |evt| {
+                                        onchange: move |evt| {
                                             let nid = id_y.clone();
                                             if let Ok(val) = evt.value().parse::<f64>() {
+                                                // Only push history if value actually changed
+                                                let has_changes = doc_signal.read()
+                                                    .document
+                                                    .nodes
+                                                    .get(&nid)
+                                                    .is_some_and(|n| n.y.0 != val);
+                                                if has_changes {
+                                                    let current = doc_signal.read().clone();
+                                                    let next_h = history.read().push(current);
+                                                    *history.write() = next_h;
+                                                }
                                                 doc_signal.with_mut(|doc| {
                                                     if let Some(n) = doc.document.nodes.get_mut(&nid) {
                                                         n.y = OrderedFloat(val);
@@ -363,12 +392,24 @@ pub fn PropertiesPanel() -> Element {
                                         style: "width: 50%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                         r#type: "number",
                                         value: "{node.width}",
-                                        oninput: move |evt| {
+                                        onchange: move |evt| {
                                             let nid = id_w.clone();
                                             if let Ok(val) = evt.value().parse::<f64>() {
+                                                let clamped_val = val.max(24.0);
+                                                // Only push history if value actually changed
+                                                let has_changes = doc_signal.read()
+                                                    .document
+                                                    .nodes
+                                                    .get(&nid)
+                                                    .is_some_and(|n| n.width.0 != clamped_val);
+                                                if has_changes {
+                                                    let current = doc_signal.read().clone();
+                                                    let next_h = history.read().push(current);
+                                                    *history.write() = next_h;
+                                                }
                                                 doc_signal.with_mut(|doc| {
                                                     if let Some(n) = doc.document.nodes.get_mut(&nid) {
-                                                        n.width = OrderedFloat(val.max(24.0));
+                                                        n.width = OrderedFloat(clamped_val);
                                                         doc.revision = doc.revision.increment();
                                                     }
                                                 });
@@ -379,12 +420,24 @@ pub fn PropertiesPanel() -> Element {
                                         style: "width: 50%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                         r#type: "number",
                                         value: "{node.height}",
-                                        oninput: move |evt| {
+                                        onchange: move |evt| {
                                             let nid = id_h.clone();
                                             if let Ok(val) = evt.value().parse::<f64>() {
+                                                let clamped_val = val.max(24.0);
+                                                // Only push history if value actually changed
+                                                let has_changes = doc_signal.read()
+                                                    .document
+                                                    .nodes
+                                                    .get(&nid)
+                                                    .is_some_and(|n| n.height.0 != clamped_val);
+                                                if has_changes {
+                                                    let current = doc_signal.read().clone();
+                                                    let next_h = history.read().push(current);
+                                                    *history.write() = next_h;
+                                                }
                                                 doc_signal.with_mut(|doc| {
                                                     if let Some(n) = doc.document.nodes.get_mut(&nid) {
-                                                        n.height = OrderedFloat(val.max(24.0));
+                                                        n.height = OrderedFloat(clamped_val);
                                                         doc.revision = doc.revision.increment();
                                                     }
                                                 });
@@ -400,12 +453,24 @@ pub fn PropertiesPanel() -> Element {
                                     style: "width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
                                     r#type: "number",
                                     value: "{node.font_size.map_or(11.0, |v| v.0)}",
-                                    oninput: move |evt| {
+                                    onchange: move |evt| {
                                         let nid = id_font.clone();
                                         if let Ok(val) = evt.value().parse::<f64>() {
+                                            let clamped_val = val.clamp(8.0, 72.0);
+                                            // Only push history if value actually changed
+                                            let has_changes = doc_signal.read()
+                                                .document
+                                                .nodes
+                                                .get(&nid)
+                                                .is_some_and(|n| n.font_size.map_or(11.0, |fs| fs.0) != clamped_val);
+                                            if has_changes {
+                                                let current = doc_signal.read().clone();
+                                                let next_h = history.read().push(current);
+                                                *history.write() = next_h;
+                                            }
                                             doc_signal.with_mut(|doc| {
                                                 if let Some(n) = doc.document.nodes.get_mut(&nid) {
-                                                    n.font_size = Some(OrderedFloat(val.clamp(8.0, 72.0)));
+                                                    n.font_size = Some(OrderedFloat(clamped_val));
                                                     doc.revision = doc.revision.increment();
                                                 }
                                             });

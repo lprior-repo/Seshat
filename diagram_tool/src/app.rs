@@ -79,7 +79,7 @@ pub fn App() -> Element {
     let mut validation_issues = use_signal(move || {
         let doc = doc_signal.read();
         // Combine schema validation (stricter) with document validation (UI-friendly)
-        let schema_issues = validate_schema(&doc.document)
+        let schema_issues = validate_schema(&doc)
             .err()
             .map(|e| crate::models::validation::ValidationIssue {
                 severity: crate::models::validation::ValidationSeverity::Error,
@@ -177,7 +177,17 @@ pub fn App() -> Element {
                 return;
             }
 
-            validation_issues.set(validate_document_data(&current_document));
+            // Combine schema validation (stricter) with document validation (UI-friendly)
+            let schema_issues = validate_schema(&current_document)
+                .err()
+                .map(|e| crate::models::validation::ValidationIssue {
+                    severity: crate::models::validation::ValidationSeverity::Error,
+                    code: "schema",
+                    message: e.to_string(),
+                    subject: None,
+                })
+                .into_iter();
+            validation_issues.set(schema_issues.chain(validate_document_data(&current_document)).collect());
             last_validated_revision.set(current_revision);
             queued_validation_revision.set(None);
         });
