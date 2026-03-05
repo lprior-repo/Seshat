@@ -7,6 +7,7 @@ use crate::ui::commands::{
     apply_delete_selected, apply_distribute_selection, apply_paste_selection, apply_redo,
     apply_send_backward, apply_send_to_back, apply_undo, apply_zoom_in, apply_zoom_out,
     apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, DistributionAxis,
+    Clipboard,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -73,16 +74,16 @@ pub fn delete_selection(doc_signal: Signal<DiagramDocument>, history_signal: Sig
     let _ = apply_delete_selected(doc_signal, history_signal);
 }
 
-pub fn copy_selection(doc_signal: Signal<DiagramDocument>) {
-    let _ = apply_copy_selection(doc_signal);
+pub fn copy_selection(doc_signal: Signal<DiagramDocument>, clipboard_signal: Signal<Option<Clipboard>>) {
+    let _ = apply_copy_selection(doc_signal, clipboard_signal);
 }
 
-pub fn paste_selection(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let _ = apply_paste_selection(doc_signal, history_signal);
+pub fn paste_selection(doc_signal: Signal<DiagramDocument>, clipboard_signal: Signal<Option<Clipboard>>, history_signal: Signal<History>) {
+    let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
 }
 
-pub fn can_paste() -> bool {
-    clipboard_has_content()
+pub fn can_paste(clipboard: &Option<Clipboard>) -> bool {
+    clipboard_has_content(clipboard)
 }
 
 pub fn bring_forward(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {

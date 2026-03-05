@@ -261,7 +261,7 @@ fn fetch_all_events(conn: &Connection) -> Result<Vec<EventRecord>, ExportError> 
         .prepare("SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision")
         .map_err(|e| ExportError::Sqlite(e.to_string()))?;
 
-    let events: Vec<EventRecord> = stmt
+    let rows = stmt
         .query_map([], |row| {
             let operation_id: String = row.get(0)?;
             let revision: i64 = row.get(1)?;
@@ -269,20 +269,51 @@ fn fetch_all_events(conn: &Connection) -> Result<Vec<EventRecord>, ExportError> 
             let timestamp: String = row.get(3)?;
             Ok((operation_id, revision, payload, timestamp))
         })
-        .map_err(|e| ExportError::Sqlite(e.to_string()))?
-        .filter_map(Result::ok)
-        .filter_map(|(_operation_id, revision, payload, timestamp)| {
-            let envelope = parse_event_envelope(&payload).ok()?;
-            let timestamp = timestamp.parse().ok()?;
-            Some(EventRecord {
-                op_id: envelope.op_id,
-                revision: revision as u64,
-                operation: envelope.operation,
-                author: envelope.author,
-                timestamp,
-            })
-        })
-        .collect();
+        .map_err(|e| ExportError::Sqlite(e.to_string()))?;
+
+    let mut events = Vec::new();
+    let mut first_error: Option<String> = None;
+
+    for row in rows {
+        match row {
+            Ok((operation_id, revision, payload, timestamp)) => {
+                match parse_event_envelope(&payload) {
+                    Ok(envelope) => {
+                        match timestamp.parse::<i64>() {
+                            Ok(ts) => {
+                                events.push(EventRecord {
+                                    op_id: envelope.op_id,
+                                    revision: revision as u64,
+                                    operation: envelope.operation,
+                                    author: envelope.author,
+                                    timestamp: ts,
+                                });
+                            }
+                            Err(e) => {
+                                first_error.get_or_insert(format!(
+                                    "Failed to parse timestamp '{}' for operation '{}': {}",
+                                    timestamp, operation_id, e
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        first_error.get_or_insert(format!(
+                            "Failed to parse event envelope for operation '{}': {}",
+                            operation_id, e
+                        ));
+                    }
+                }
+            }
+            Err(e) => {
+                first_error.get_or_insert(format!("Failed to read row: {}", e));
+            }
+        }
+    }
+
+    if let Some(err) = first_error {
+        return Err(ExportError::Serialization(err));
+    }
 
     Ok(events)
 }
@@ -365,10 +396,6 @@ pub fn import_diagram_json(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Get current latest revision
-    let current_revision =
-        store::fetch_latest_revision(conn).map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
-
     // Convert author to envelope author
     let envelope_author = actor.to_envelope_author();
 
@@ -384,15 +411,19 @@ pub fn import_diagram_json(
             timestamp: event_record.timestamp,
         };
 
-        // Append event with OCC - expect current revision
-        let expected = current_revision + events_generated;
-        match store::append_event(conn, envelope, Some(expected as i64)) {
+        // Append event using idempotent append - handles duplicate op_id correctly
+        // This ensures we don't skip events if there are concurrent modifications
+        match store::append_idempotent(conn, envelope) {
             Ok(_result) => {
                 events_generated += 1;
             }
-            Err(store::StoreError::RevisionMismatch { .. }) => {
-                // Event already exists (idempotent) - skip but count as processed
-                events_generated += 1;
+            Err(store::StoreError::DuplicateWithConflict(_)) => {
+                // This shouldn't happen in import since we generate unique op_ids
+                // But handle it as an error to be safe
+                return Err(ExportError::Serialization(format!(
+                    "Conflict detected for operation {} during import",
+                    event_record.op_id
+                )));
             }
             Err(e) => {
                 return Err(ExportError::Sqlite(e.to_string()));

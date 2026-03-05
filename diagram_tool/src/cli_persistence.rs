@@ -211,6 +211,17 @@ pub fn save_workspace_atomic(
         to: path.display().to_string(),
     })?;
 
+    // Sync parent directory to ensure rename is durable
+    // This is required for true atomic semantics - without it, the renamed
+    // file may be lost after a system crash
+    if let Some(parent_dir) = path.parent() {
+        let dir_file = std::fs::OpenOptions::new()
+            .read(true)
+            .open(parent_dir)
+            .map_err(|e| CliPersistenceError::IoError(e))?;
+        dir_file.sync_all().map_err(|e| CliPersistenceError::IoError(e))?;
+    }
+
     // Emit success event
     emit_stage_event(
         "persisted",
@@ -226,7 +237,7 @@ pub fn save_workspace_atomic(
 ///
 /// This function:
 /// 1. Attempts to load and validate the primary file
-/// 2. On failure, attempts to load `<path>.lkg` as fallback
+/// 2. On failure, attempts to load from `.lkg/<filename>.lkg` as fallback
 /// 3. Returns the first successfully loaded and validated document
 ///
 /// # Errors
@@ -255,22 +266,17 @@ pub fn load_workspace_with_lkg(path: &Path) -> Result<DiagramDocument, CliPersis
                     .with_message(&primary_err.to_string()),
             );
 
-            // Try LKG fallback
-            let lkg_path = path.with_extension(format!(
+            // LKG is stored in `.lkg/` directory next to the original file
+            // This matches the save convention in cli.rs
+            let lkg_dir = path.parent().unwrap_or(Path::new(".")).join(".lkg");
+            let lkg_filename = format!(
                 "{}.lkg",
-                path.extension()
-                    .map(|e| e.to_string_lossy())
+                path.file_name()
+                    .map(|n| n.to_string_lossy())
                     .unwrap_or_default()
-            ));
+            );
+            let lkg_path = lkg_dir.join(&lkg_filename);
 
-            // Alternative LKG naming: just append .lkg
-            let lkg_path_alt = {
-                let mut p = path.as_os_str().to_os_string();
-                p.push(".lkg");
-                Path::new(&p).to_path_buf()
-            };
-
-            // Try first LKG path
             if let Ok(doc) = load_and_validate(&lkg_path) {
                 emit_stage_event(
                     "loaded",
@@ -279,19 +285,6 @@ pub fn load_workspace_with_lkg(path: &Path) -> Result<DiagramDocument, CliPersis
                         .with_fallback_used(true),
                 );
                 return Ok(doc);
-            }
-
-            // Try alternative LKG path
-            if lkg_path_alt != lkg_path {
-                if let Ok(doc) = load_and_validate(&lkg_path_alt) {
-                    emit_stage_event(
-                        "loaded",
-                        &StageDetails::new()
-                            .with_path(&lkg_path_alt)
-                            .with_fallback_used(true),
-                    );
-                    return Ok(doc);
-                }
             }
 
             // Both failed
@@ -412,12 +405,14 @@ mod tests {
     fn given_lkg_fallback_file_when_primary_fails_then_uses_lkg() {
         let temp_dir = TempDir::new().unwrap();
         let primary_path = temp_dir.path().join("doc.json");
-        let lkg_path = temp_dir.path().join("doc.json.lkg");
+        let lkg_dir = temp_dir.path().join(".lkg");
+        let lkg_path = lkg_dir.join("doc.json.lkg");
 
         // Write invalid primary
         std::fs::write(&primary_path, b"invalid").unwrap();
 
-        // Write valid LKG
+        // Create LKG directory and write valid LKG file
+        std::fs::create_dir_all(&lkg_dir).unwrap();
         let doc = create_test_document();
         let json = serde_json::to_string_pretty(&doc).unwrap();
         std::fs::write(&lkg_path, &json).unwrap();

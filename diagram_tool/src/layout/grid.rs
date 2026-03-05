@@ -33,6 +33,9 @@ fn accumulated_parent_delta(
 /// Returns a new document with updated positions for unlocked nodes.
 #[must_use]
 pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
+    if !cell_size.is_finite() || cell_size <= 0.0 {
+        return doc.clone();
+    }
     let occupied_cells = doc
         .document
         .nodes

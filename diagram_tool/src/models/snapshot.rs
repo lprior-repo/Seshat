@@ -286,7 +286,7 @@ fn fetch_events_after(
         )
         .map_err(|e| SnapshotError::Sqlite(e.to_string()))?;
 
-    let events: Vec<EventRecord> = stmt
+    let rows = stmt
         .query_map([after_revision as i64], |row| {
             let operation_id: String = row.get(0)?;
             let revision: i64 = row.get(1)?;
@@ -294,21 +294,51 @@ fn fetch_events_after(
             let timestamp: String = row.get(3)?;
             Ok((operation_id, revision, payload, timestamp))
         })
-        .map_err(|e| SnapshotError::Sqlite(e.to_string()))?
-        .filter_map(Result::ok)
-        .filter_map(|(_operation_id, revision, payload, timestamp)| {
-            // Parse the envelope to get the operation
-            let envelope = parse_event_envelope(&payload).ok()?;
-            let timestamp = timestamp.parse().ok()?;
-            Some(EventRecord {
-                op_id: envelope.op_id,
-                revision: revision as u64,
-                operation: envelope.operation,
-                author: envelope.author,
-                timestamp,
-            })
-        })
-        .collect();
+        .map_err(|e| SnapshotError::Sqlite(e.to_string()))?;
+
+    let mut events = Vec::new();
+    let mut first_error: Option<String> = None;
+
+    for row in rows {
+        match row {
+            Ok((operation_id, revision, payload, timestamp)) => {
+                match parse_event_envelope(&payload) {
+                    Ok(envelope) => {
+                        match timestamp.parse::<i64>() {
+                            Ok(ts) => {
+                                events.push(EventRecord {
+                                    op_id: envelope.op_id,
+                                    revision: revision as u64,
+                                    operation: envelope.operation,
+                                    author: envelope.author,
+                                    timestamp: ts,
+                                });
+                            }
+                            Err(e) => {
+                                first_error.get_or_insert(format!(
+                                    "Failed to parse timestamp '{}' for operation '{}': {}",
+                                    timestamp, operation_id, e
+                                ));
+                            }
+                        }
+                    }
+                    Err(e) => {
+                        first_error.get_or_insert(format!(
+                            "Failed to parse event envelope for operation '{}': {}",
+                            operation_id, e
+                        ));
+                    }
+                }
+            }
+            Err(e) => {
+                first_error.get_or_insert(format!("Failed to read row: {}", e));
+            }
+        }
+    }
+
+    if let Some(err) = first_error {
+        return Err(SnapshotError::Serialization(err));
+    }
 
     Ok(events)
 }

@@ -14,6 +14,7 @@
 use im::HashMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
+use uuid::Uuid;
 
 use crate::models::document::{
     DiagramDocument, DocumentData, Edge, EdgeId, Node, NodeId, OrderedFloat,
@@ -433,19 +434,21 @@ fn apply_node_delete(state: DiagramProjection, id: &str) -> Result<DiagramProjec
     })
 }
 
-/// Apply `NodeRestore` operation (currently same as `NodeAdd` but validates no duplicate)
+/// Apply `NodeRestore` operation
+///
+/// Note: This is currently a no-op because the projection model doesn't track deleted nodes.
+/// A proper implementation would require maintaining a "deleted nodes" set to restore from.
+/// Currently returns an error if the node doesn't exist (can't restore what was never added),
+/// and returns the state unchanged if the node already exists.
 fn apply_node_restore(
     state: DiagramProjection,
     id: &str,
 ) -> Result<DiagramProjection, ReplayError> {
-    // NodeRestore is essentially a no-op in this implementation
-    // since deleted nodes are permanently removed
-    // In a more complex implementation, we might have a "deleted" set
     let node_id = NodeId::new(id.to_string());
 
-    if state.has_node(&node_id) {
+    if !state.has_node(&node_id) {
         return Err(ReplayError::InvariantViolation(format!(
-            "node already exists: {id}"
+            "node not found for restore: {id}"
         )));
     }
 
@@ -702,60 +705,307 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayErro
 }
 
 /// Apply `BringForward` operation (z-order)
-const fn apply_bring_forward(
-    state: DiagramProjection,
+fn apply_bring_forward(
+    mut state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
-    // For now, z-order operations are no-ops
-    // A full implementation would adjust z_index values
-    let _ = ids;
+    let selected: std::collections::BTreeSet<NodeId> = ids
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .filter(|id| state.has_node(id))
+        .collect();
+
+    if selected.is_empty() {
+        return Ok(state);
+    }
+
+    let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
+    node_ids.sort_by(|a, b| {
+        let z_a = state.nodes.get(a).map_or(0, |n| n.z_index);
+        let z_b = state.nodes.get(b).map_or(0, |n| n.z_index);
+        z_a.cmp(&z_b)
+    });
+
+    for idx in (0..node_ids.len() - 1).rev() {
+        let current_selected = selected.contains(&node_ids[idx]);
+        let next_selected = selected.contains(&node_ids[idx + 1]);
+        if current_selected && !next_selected {
+            node_ids.swap(idx, idx + 1);
+        }
+    }
+
+    let min_z = node_ids
+        .iter()
+        .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
+        .min()
+        .unwrap_or(0);
+
+    for (idx, id) in node_ids.iter().enumerate() {
+        if let Some(node) = state.nodes.get_mut(id) {
+            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
+        }
+    }
+
     Ok(state)
 }
 
 /// Apply `SendBackward` operation (z-order)
-const fn apply_send_backward(
-    state: DiagramProjection,
+fn apply_send_backward(
+    mut state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
-    let _ = ids;
+    let selected: std::collections::BTreeSet<NodeId> = ids
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .filter(|id| state.has_node(id))
+        .collect();
+
+    if selected.is_empty() {
+        return Ok(state);
+    }
+
+    let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
+    node_ids.sort_by(|a, b| {
+        let z_a = state.nodes.get(a).map_or(0, |n| n.z_index);
+        let z_b = state.nodes.get(b).map_or(0, |n| n.z_index);
+        z_a.cmp(&z_b)
+    });
+
+    for idx in 1..node_ids.len() {
+        let current_selected = selected.contains(&node_ids[idx]);
+        let previous_selected = selected.contains(&node_ids[idx - 1]);
+        if current_selected && !previous_selected {
+            node_ids.swap(idx - 1, idx);
+        }
+    }
+
+    let min_z = node_ids
+        .iter()
+        .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
+        .min()
+        .unwrap_or(0);
+
+    for (idx, id) in node_ids.iter().enumerate() {
+        if let Some(node) = state.nodes.get_mut(id) {
+            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
+        }
+    }
+
     Ok(state)
 }
 
 /// Apply `BringToFront` operation (z-order)
-const fn apply_bring_to_front(
-    state: DiagramProjection,
+fn apply_bring_to_front(
+    mut state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
-    let _ = ids;
+    let selected: std::collections::BTreeSet<NodeId> = ids
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .filter(|id| state.has_node(id))
+        .collect();
+
+    if selected.is_empty() {
+        return Ok(state);
+    }
+
+    let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
+    node_ids.sort_by(|a, b| {
+        let z_a = state.nodes.get(a).map_or(0, |n| n.z_index);
+        let z_b = state.nodes.get(b).map_or(0, |n| n.z_index);
+        z_a.cmp(&z_b)
+    });
+
+    let mut reordered: Vec<NodeId> = node_ids
+        .iter()
+        .filter(|id| !selected.contains(*id))
+        .cloned()
+        .collect();
+    reordered.extend(node_ids.iter().filter(|id| selected.contains(*id)).cloned());
+    node_ids = reordered;
+
+    let min_z = node_ids
+        .iter()
+        .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
+        .min()
+        .unwrap_or(0);
+
+    for (idx, id) in node_ids.iter().enumerate() {
+        if let Some(node) = state.nodes.get_mut(id) {
+            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
+        }
+    }
+
     Ok(state)
 }
 
 /// Apply `SendToBack` operation (z-order)
-const fn apply_send_to_back(
-    state: DiagramProjection,
+fn apply_send_to_back(
+    mut state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
-    let _ = ids;
+    let selected: std::collections::BTreeSet<NodeId> = ids
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .filter(|id| state.has_node(id))
+        .collect();
+
+    if selected.is_empty() {
+        return Ok(state);
+    }
+
+    let mut node_ids: Vec<NodeId> = state.nodes.keys().cloned().collect();
+    node_ids.sort_by(|a, b| {
+        let z_a = state.nodes.get(a).map_or(0, |n| n.z_index);
+        let z_b = state.nodes.get(b).map_or(0, |n| n.z_index);
+        z_a.cmp(&z_b)
+    });
+
+    let mut reordered: Vec<NodeId> = node_ids
+        .iter()
+        .filter(|id| selected.contains(*id))
+        .cloned()
+        .collect();
+    reordered.extend(node_ids.iter().filter(|id| !selected.contains(*id)).cloned());
+    node_ids = reordered;
+
+    let min_z = node_ids
+        .iter()
+        .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
+        .min()
+        .unwrap_or(0);
+
+    for (idx, id) in node_ids.iter().enumerate() {
+        if let Some(node) = state.nodes.get_mut(id) {
+            node.z_index = min_z + i64::try_from(idx).unwrap_or(min_z);
+        }
+    }
+
     Ok(state)
 }
 
-/// Apply Group operation
-const fn apply_group(
-    state: DiagramProjection,
+/// Apply Group operation - creates a subgraph and assigns all specified nodes as children
+fn apply_group(
+    mut state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
-    // Group operations are no-ops in this basic implementation
-    let _ = ids;
+    if ids.is_empty() {
+        return Ok(state);
+    }
+
+    let node_ids: Vec<NodeId> = ids
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .collect();
+
+    let valid_ids: Vec<NodeId> = node_ids
+        .iter()
+        .filter(|id| state.has_node(id))
+        .cloned()
+        .collect();
+
+    if valid_ids.len() < 2 {
+        return Ok(state);
+    }
+
+    let (min_x, min_y, max_x, max_y) = {
+        let mut min_x = f64::INFINITY;
+        let mut min_y = f64::INFINITY;
+        let mut max_x = f64::NEG_INFINITY;
+        let mut max_y = f64::NEG_INFINITY;
+
+        for id in &valid_ids {
+            if let Some(node) = state.nodes.get(id) {
+                min_x = min_x.min(node.x.0);
+                min_y = min_y.min(node.y.0);
+                max_x = max_x.max(node.x.0 + node.width.0);
+                max_y = max_y.max(node.y.0 + node.height.0);
+            }
+        }
+
+        (min_x, min_y, max_x, max_y)
+    };
+
+    if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
+        return Ok(state);
+    }
+
+    let group_id = NodeId::new(format!("group-{}", Uuid::new_v4()));
+    let padding = 24.0;
+
+    let subgraph = Node {
+        kind: crate::models::document::NodeKind::Subgraph,
+        icon: String::new(),
+        label: "Group".to_string(),
+        x: OrderedFloat(min_x - padding),
+        y: OrderedFloat(min_y - padding),
+        width: OrderedFloat((max_x - min_x) + (padding * 2.0)),
+        height: OrderedFloat((max_y - min_y) + (padding * 2.0)),
+        font_size: None,
+        font_weight: None,
+        locked: true,
+        parent: None,
+        dag_rank: None,
+        tags: vec![],
+        metadata: HashMap::new(),
+        z_index: -1,
+        style: Some(crate::models::document::NodeStyle::Box),
+        collapsed: Some(false),
+    };
+
+    let mut new_nodes = state.nodes.clone();
+    let _ = new_nodes.insert(group_id.clone(), subgraph);
+
+    for id in &valid_ids {
+        if let Some(node) = new_nodes.get(id) {
+            let mut updated_node = node.clone();
+            updated_node.parent = Some(group_id.clone());
+            let _ = new_nodes.insert(id.clone(), updated_node);
+        }
+    }
+
+    state.nodes = new_nodes;
+
     Ok(state)
 }
 
-/// Apply Ungroup operation
-const fn apply_ungroup(
-    state: DiagramProjection,
+/// Apply Ungroup operation - removes the subgraph node and clears parent on all children
+fn apply_ungroup(
+    mut state: DiagramProjection,
     id: &str,
 ) -> Result<DiagramProjection, ReplayError> {
-    // Ungroup operations are no-ops in this basic implementation
-    let _ = id;
+    let subgraph_id = NodeId::new(id.to_string());
+
+    if !state.has_node(&subgraph_id) {
+        return Ok(state);
+    }
+
+    let subgraph = state.nodes.get(&subgraph_id).cloned();
+    let subgraph = match subgraph {
+        Some(s) if s.kind == crate::models::document::NodeKind::Subgraph => s,
+        _ => return Ok(state),
+    };
+
+    let mut new_nodes = state.nodes.clone();
+
+    let children_to_unparent: Vec<NodeId> = new_nodes
+        .iter()
+        .filter(|(_, node)| node.parent.as_ref() == Some(&subgraph_id))
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    for child_id in &children_to_unparent {
+        if let Some(child) = new_nodes.get(child_id) {
+            let mut updated_child = child.clone();
+            updated_child.parent = None;
+            let _ = new_nodes.insert(child_id.clone(), updated_child);
+        }
+    }
+
+    let _ = new_nodes.remove(&subgraph_id);
+
+    state.nodes = new_nodes;
+
     Ok(state)
 }
 

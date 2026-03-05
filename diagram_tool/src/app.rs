@@ -5,6 +5,7 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
+use crate::ui::commands::Clipboard;
 use crate::history::History;
 use crate::hooks::e2e_reset::use_e2e_reset_hook;
 use crate::hooks::keyboard::use_global_keyboard;
@@ -52,6 +53,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
 
