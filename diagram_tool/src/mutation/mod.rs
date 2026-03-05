@@ -8,3 +8,4 @@
 pub mod error;
 pub mod ops;
 pub mod pipeline;
+pub mod ui_helpers;
