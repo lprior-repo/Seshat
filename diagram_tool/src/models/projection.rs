@@ -216,8 +216,8 @@ pub fn replay_events_from(
     initial_state: DiagramProjection,
     events: &[EventRecord],
 ) -> Result<DiagramProjection, ReplayError> {
-    // Validate revision sequence starts from initial state's next revision
-    let mut expected_revision = initial_state.revision + 1;
+    // Validate revision sequence starts from initial state's revision
+    let mut expected_revision = initial_state.revision;
     for event in events {
         if event.revision != expected_revision {
             return Err(ReplayError::InvariantViolation(format!(
@@ -246,8 +246,8 @@ pub fn apply_event(
     state: DiagramProjection,
     event: &EventRecord,
 ) -> Result<DiagramProjection, ReplayError> {
-    // Validate: event revision should be state revision + 1 (1-based: empty=0 expects first event=1)
-    if event.revision != state.revision + 1 {
+    // Validate: event revision should match current state revision
+    if event.revision != state.revision {
         return Err(ReplayError::InvariantViolation(format!(
             "revision mismatch: state has {}, event has {}",
             state.revision, event.revision
