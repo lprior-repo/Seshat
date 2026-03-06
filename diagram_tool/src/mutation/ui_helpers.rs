@@ -52,7 +52,7 @@ use dioxus::prelude::*;
 /// Returns `Ok(true)` on success, `Err(MutationError)` on validation failure.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use crate::mutation::ui_helpers::mutate_doc_signal;
 ///
 /// fn delete_selected(mut doc_signal: Signal<DiagramDocument>) {
@@ -87,7 +87,7 @@ pub fn mutate_doc_signal(
 /// This is faster than `mutate_doc_signal` because it skips validation.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use crate::mutation::ui_helpers::mutate_editor_signal;
 ///
 /// fn pan_canvas(mut doc_signal: Signal<DiagramDocument>, dx: f64, dy: f64) {
@@ -114,7 +114,7 @@ pub fn mutate_editor_signal(
 /// Returns `Ok(true)` on success, `Err(MutationError)` on validation failure.
 ///
 /// # Example
-/// ```
+/// ```ignore
 /// use crate::mutation::ui_helpers::mutate_doc_with_history;
 ///
 /// fn move_node(

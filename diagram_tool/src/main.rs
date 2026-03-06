@@ -22,6 +22,7 @@ mod layout;
 mod models;
 mod mutation;
 mod perf;
+#[cfg(not(target_arch = "wasm32"))]
 mod store;
 mod test_harness;
 mod ui;

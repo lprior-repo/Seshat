@@ -92,7 +92,7 @@ async function sampleFrameJank(page: Page, totalFrames: number): Promise<number[
   );
 }
 
-test.describe("diagram editor 3000 node baseline", () => {
+test.describe("diagram editor 3000 node baseline @baseline", () => {
   test("measure FPS during panning with 3000 nodes", async ({ page }, testInfo) => {
     // Extend timeout for heavy test
     test.setTimeout(120_000);

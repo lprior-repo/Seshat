@@ -435,7 +435,7 @@ mod revision_feedback_tests {
             &doc,
             RevisionPolicy::Preserve,
             ValidationPolicy::default(),
-            |d: &DiagramDocument| Ok(d.clone()),
+            |d| Ok(d.clone()),
         );
 
         assert!(result.is_ok(), "Mutation should succeed");

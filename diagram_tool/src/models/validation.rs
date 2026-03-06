@@ -101,25 +101,38 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
             Some(ValidationIssue {
                 severity: ValidationSeverity::Error,
                 code: "invalid-numeric",
-                message: format!("Node {id} has non-finite coordinates: x={}, y={}", node.x.0, node.y.0),
+                message: format!(
+                    "Node {id} has non-finite coordinates: x={}, y={}",
+                    node.x.0, node.y.0
+                ),
                 subject: Some(id.to_string()),
             })
         } else {
             None
         };
 
-        let dimension_issue = if node.width.0 < 0.0 || node.height.0 < 0.0 || !node.width.0.is_finite() || !node.height.0.is_finite() {
+        let dimension_issue = if node.width.0 < 0.0
+            || node.height.0 < 0.0
+            || !node.width.0.is_finite()
+            || !node.height.0.is_finite()
+        {
             Some(ValidationIssue {
                 severity: ValidationSeverity::Error,
                 code: "invalid-numeric",
-                message: format!("Node {id} has invalid dimensions: width={}, height={}", node.width.0, node.height.0),
+                message: format!(
+                    "Node {id} has invalid dimensions: width={}, height={}",
+                    node.width.0, node.height.0
+                ),
                 subject: Some(id.to_string()),
             })
         } else {
             None
         };
 
-        parent_issue.into_iter().chain(nan_issue).chain(dimension_issue)
+        parent_issue
+            .into_iter()
+            .chain(nan_issue)
+            .chain(dimension_issue)
     });
 
     let dag_issues = validate_dag(nodes, edges).err().map(|_| ValidationIssue {

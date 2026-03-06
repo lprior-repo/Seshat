@@ -26,8 +26,17 @@ use crate::ui::ValidationPanel;
 #[allow(unused_imports)]
 use auto_save::AUTO_SAVE_KEY;
 use dioxus::prelude::*;
+use std::collections::HashMap;
 
 const VALIDATION_IDLE_MS: u64 = 220;
+
+#[derive(Clone)]
+pub struct DiagramTab {
+    pub id: String,
+    pub name: String,
+    pub doc: DiagramDocument,
+    pub history: History,
+}
 
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct DraggedIconPayload {
@@ -63,11 +72,101 @@ pub fn App() -> Element {
     use_global_keyboard();
     use_e2e_reset_hook();
 
-    let doc_signal = use_context::<Signal<DiagramDocument>>();
+    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
+    let mut history_signal = use_context::<Signal<History>>();
     let validate_trigger = use_context::<Signal<u64>>();
     let sidebar_ui = use_context::<Signal<SidebarUiState>>();
     let panels = use_context::<Signal<PanelVisibility>>();
     let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
+
+    // Multi-Diagram State
+    let mut active_tab_id = use_signal(|| "default".to_string());
+    let mut background_tabs = use_signal(|| HashMap::<String, DiagramTab>::new());
+    let mut tab_names = use_signal(|| vec![("default".to_string(), "Diagram 1".to_string())]);
+
+    let mut switch_tab = move |target_id: String| {
+        if target_id == *active_tab_id.read() {
+            return;
+        }
+
+        // Save current to background_tabs
+        let current_id = active_tab_id.read().clone();
+        let current_name = tab_names
+            .read()
+            .iter()
+            .find(|(id, _)| id == &current_id)
+            .map_or_else(|| "Unknown".to_string(), |(_, name)| name.clone());
+        
+        background_tabs.write().insert(
+            current_id.clone(),
+            DiagramTab {
+                id: current_id,
+                name: current_name,
+                doc: doc_signal.read().clone(),
+                history: history_signal.read().clone(),
+            },
+        );
+
+        // Load target from background_tabs
+        if let Some(target_tab) = background_tabs.write().remove(&target_id) {
+            *doc_signal.write() = target_tab.doc;
+            *history_signal.write() = target_tab.history;
+        } else {
+            // Target not found, create fresh
+            *doc_signal.write() = DiagramDocument::default();
+            *history_signal.write() = History::new();
+        }
+
+        active_tab_id.set(target_id);
+    };
+
+    let mut add_tab = move |_| {
+        let new_id = uuid::Uuid::new_v4().to_string();
+        let new_index = tab_names.read().len() + 1;
+        let new_name = format!("Diagram {new_index}");
+        tab_names.write().push((new_id.clone(), new_name.clone()));
+        
+        // Initialize fresh state in background tabs
+        background_tabs.write().insert(
+            new_id.clone(),
+            DiagramTab {
+                id: new_id.clone(),
+                name: new_name,
+                doc: DiagramDocument::default(),
+                history: History::new(),
+            },
+        );
+
+        switch_tab(new_id);
+    };
+
+    let mut close_tab = move |close_id: String| {
+        let is_active = close_id == *active_tab_id.read();
+        
+        // Remove from list
+        tab_names.write().retain(|(id, _)| id != &close_id);
+        background_tabs.write().remove(&close_id);
+
+        if tab_names.read().is_empty() {
+            // Must have at least one tab
+            let default_id = "default".to_string();
+            tab_names.write().push((default_id.clone(), "Diagram 1".to_string()));
+            *doc_signal.write() = DiagramDocument::default();
+            *history_signal.write() = History::new();
+            active_tab_id.set(default_id);
+            return;
+        }
+
+        if is_active {
+            // Switch to the first available tab
+            let next_id = tab_names.read()[0].0.clone();
+            if let Some(target_tab) = background_tabs.write().remove(&next_id) {
+                *doc_signal.write() = target_tab.doc;
+                *history_signal.write() = target_tab.history;
+            }
+            active_tab_id.set(next_id);
+        }
+    };
 
     use_sidebar_mobile_bridge(sidebar_ui, panels);
 
@@ -304,6 +403,46 @@ pub fn App() -> Element {
 
     rsx! {
         ThemeProvider {
+            // Tab Bar
+            div {
+                style: "display: flex; flex-direction: row; background: var(--bg-surface); border-bottom: 1px solid var(--border); overflow-x: auto; padding: 4px 8px 0 8px; gap: 4px;",
+                for (id, name) in tab_names.read().iter() {
+                    {
+                        let is_active = *id == *active_tab_id.read();
+                        let bg = if is_active { "var(--bg-base)" } else { "var(--bg-surface)" };
+                        let fg = if is_active { "var(--text-main)" } else { "var(--text-muted)" };
+                        rsx! {
+                            div {
+                                key: "{id}",
+                                style: "display: flex; align-items: center; padding: 6px 12px; border-radius: 6px 6px 0 0; cursor: pointer; border: 1px solid var(--border); border-bottom: none; background: {bg}; color: {fg}; min-width: max-content;",
+                                onclick: {
+                                    let target_id = id.clone();
+                                    move |_| switch_tab(target_id.clone())
+                                },
+                                span { "{name}" }
+                                if tab_names.read().len() > 1 {
+                                    button {
+                                        style: "margin-left: 8px; padding: 2px 4px; background: transparent; border: none; cursor: pointer; color: var(--text-muted); font-size: 14px; line-height: 1;",
+                                        onclick: {
+                                            let close_id = id.clone();
+                                            move |evt| {
+                                                evt.stop_propagation();
+                                                close_tab(close_id.clone());
+                                            }
+                                        },
+                                        "×"
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+                button {
+                    style: "margin-left: 4px; padding: 4px 12px; background: transparent; border: 1px dashed var(--border); border-radius: 6px 6px 0 0; border-bottom: none; cursor: pointer; color: var(--text-muted); font-size: 16px;",
+                    onclick: add_tab,
+                    "+"
+                }
+            }
             Toolbar {}
             Toaster {}
 

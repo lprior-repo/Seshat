@@ -9,7 +9,7 @@ tasks:
 
   serve-e2e:
     script: |
-      dx serve --platform web --port 8082 --open false --watch false --hot-reload false --interactive false
+      dx serve --platform web --port 8084 --open false --watch false --hot-reload false --interactive false
     options:
       cache: false
 

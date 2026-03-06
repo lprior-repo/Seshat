@@ -117,10 +117,7 @@ fn validate_edges_and_dag(doc: &DiagramDocument) -> Result<()> {
             );
         }
         if !edge.thickness.0.is_finite() {
-            bail!(
-                "Edge {id:?} has non-finite thickness: {}",
-                edge.thickness.0
-            );
+            bail!("Edge {id:?} has non-finite thickness: {}", edge.thickness.0);
         }
         if let Some(ref color) = edge.color {
             if !is_valid_hex_color(color) {
