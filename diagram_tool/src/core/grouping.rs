@@ -1,4 +1,3 @@
-use crate::geometry::AABB;
 use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind};
 use thiserror::Error;
 

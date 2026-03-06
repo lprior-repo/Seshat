@@ -33,7 +33,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Result<Clipboard, ClipboardError
     }
 
     let mut edges = Vec::new();
-    for (id, edge) in &doc.document.edges {
+    for (_id, edge) in &doc.document.edges {
         // Only include edges where both endpoints are in the selection
         if selected.contains(edge.source.as_str()) && selected.contains(edge.target.as_str()) {
             edges.push(edge.clone());

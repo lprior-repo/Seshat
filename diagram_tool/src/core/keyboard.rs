@@ -1,4 +1,3 @@
-use crate::models::document::DiagramDocument;
 
 pub enum KeyAction {
     Undo,

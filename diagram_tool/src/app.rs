@@ -120,7 +120,7 @@ pub fn App() -> Element {
         active_tab_id.set(target_id);
     };
 
-    let mut add_tab = move |_| {
+    let add_tab = move |_| {
         let new_id = uuid::Uuid::new_v4().to_string();
         let new_index = tab_names.read().len() + 1;
         let new_name = format!("Diagram {new_index}");

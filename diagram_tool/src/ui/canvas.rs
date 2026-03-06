@@ -8,6 +8,8 @@
 
 mod canvas_view;
 mod interaction_reducer;
+pub mod math;
+pub mod drag_math;
 mod perf;
 mod selection_geometry;
 
@@ -55,11 +57,11 @@ use crate::{
             with_auto_selected_edges,
         },
         theme::{
-            ThemeMode, ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT,
+            ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT,
             EDGE_SELECTED, GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED,
             TOOLBAR_BG,
         },
-        toast::{use_toast, ToastQueue},
+        toast::use_toast,
     },
 };
 
@@ -71,7 +73,6 @@ pub fn sync_canvas_origin() -> Option<(f64, f64)> {
     let document = window.document()?;
     let el = document.query_selector(".canvas-container").ok().flatten()?;
     let rect = el.get_bounding_client_rect();
-    log::info!("sync_canvas_origin returning: {}, {}", rect.left(), rect.top());
     Some((rect.left(), rect.top()))
 }
 
