@@ -2128,12 +2128,42 @@ pub fn Canvas() -> Element {
                     let camera_x = s.camera_x.0;
                     let camera_y = s.camera_y.0;
                     let zoom = s.zoom.0;
+                    let (viewport_w, viewport_h) = *viewport_size.read();
+                    let margin_x = (viewport_w / zoom).max(100.0) * 0.5;
+                    let margin_y = (viewport_h / zoom).max(100.0) * 0.5;
+                    let culling_min_x = camera_x - margin_x;
+                    let culling_min_y = camera_y - margin_y;
+                    let culling_max_x = camera_x + (viewport_w / zoom) + margin_x;
+                    let culling_max_y = camera_y + (viewport_h / zoom) + margin_y;
+
                     #[allow(clippy::needless_collect)]
                     let edge_rows = doc.document.edges.iter().filter_map(|(id, edge)| {
                         doc.document.nodes
                             .get(&edge.source)
                             .zip(doc.document.nodes.get(&edge.target))
-                            .map(|(src, tgt)| (id.clone(), edge.clone(), src.clone(), tgt.clone()))
+                            .and_then(|(src, tgt)| {
+                                let src_min_x = src.x.0;
+                                let src_min_y = src.y.0;
+                                let src_max_x = src.x.0 + src.width.0;
+                                let src_max_y = src.y.0 + src.height.0;
+
+                                let tgt_min_x = tgt.x.0;
+                                let tgt_min_y = tgt.y.0;
+                                let tgt_max_x = tgt.x.0 + tgt.width.0;
+                                let tgt_max_y = tgt.y.0 + tgt.height.0;
+
+                                let min_x = src_min_x.min(tgt_min_x);
+                                let min_y = src_min_y.min(tgt_min_y);
+                                let max_x = src_max_x.max(tgt_max_x);
+                                let max_y = src_max_y.max(tgt_max_y);
+
+                                let visible = max_x >= culling_min_x
+                                    && min_x <= culling_max_x
+                                    && max_y >= culling_min_y
+                                    && min_y <= culling_max_y;
+
+                                visible.then(|| (id.clone(), edge.clone(), src.clone(), tgt.clone()))
+                            })
                     }).collect::<Vec<_>>();
                     edge_rows.into_iter().map(move |(id, edge, src, tgt)| {
                                 let (sx, sy) = to_screen_coords(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0, camera_x, camera_y, zoom);
@@ -2202,7 +2232,7 @@ pub fn Canvas() -> Element {
                                                 }
                                             }
                                         }
-                                    } else if !edge.label.is_empty() {
+                                    } else if !edge.label.is_empty() && zoom >= 0.3 {
                                         text {
                                             x: "{mid_x}",
                                             y: "{mid_y - 6.0}",
@@ -2210,7 +2240,7 @@ pub fn Canvas() -> Element {
                                             style: "fill:{TEXT_MUTED}; font-size:{font_size}px;",
                                             "{edge.label}"
                                         }
-                                    } else if is_selected {
+                                    } else if is_selected && zoom >= 0.3 {
                                         text {
                                             x: "{mid_x}",
                                             y: "{mid_y - 6.0}",
@@ -2249,6 +2279,14 @@ pub fn Canvas() -> Element {
                 let camera_x = editor_for_nodes.camera_x.0;
                 let camera_y = editor_for_nodes.camera_y.0;
                 let zoom = editor_for_nodes.zoom.0;
+                let (viewport_w, viewport_h) = *viewport_size.read();
+                let margin_x = (viewport_w / zoom).max(100.0) * 0.5;
+                let margin_y = (viewport_h / zoom).max(100.0) * 0.5;
+                let culling_min_x = camera_x - margin_x;
+                let culling_min_y = camera_y - margin_y;
+                let culling_max_x = camera_x + (viewport_w / zoom) + margin_x;
+                let culling_max_y = camera_y + (viewport_h / zoom) + margin_y;
+
                 #[allow(clippy::needless_collect)]
                 let node_rows = ordered_node_cache
                     .read()
@@ -2258,7 +2296,19 @@ pub fn Canvas() -> Element {
                             .document
                             .nodes
                             .get(id)
-                            .map(|node| (id.clone(), node.clone()))
+                            .and_then(|node| {
+                                let node_min_x = node.x.0;
+                                let node_min_y = node.y.0;
+                                let node_max_x = node.x.0 + node.width.0;
+                                let node_max_y = node.y.0 + node.height.0;
+
+                                let visible = node_max_x >= culling_min_x
+                                    && node_min_x <= culling_max_x
+                                    && node_max_y >= culling_min_y
+                                    && node_min_y <= culling_max_y;
+
+                                visible.then(|| (id.clone(), node.clone()))
+                            })
                     })
                     .collect::<Vec<_>>();
                 node_rows.into_iter().map(move |(id, node)| {
@@ -2632,28 +2682,32 @@ pub fn Canvas() -> Element {
                                 }
 
                                 {
-                                    let icon_w = fit_icon_side(width);
-                                    let icon_h = fit_icon_side(height);
-                                    node_image_data_url(&node).map_or_else(
-                                        || {
-                                            rsx! {
-                                                span {
-                                                    style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
-                                                    "{node_initials}"
+                                    if zoom >= 0.3 {
+                                        let icon_w = fit_icon_side(width);
+                                        let icon_h = fit_icon_side(height);
+                                        node_image_data_url(&node).map_or_else(
+                                            || {
+                                                rsx! {
+                                                    span {
+                                                        style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
+                                                        "{node_initials}"
+                                                    }
                                                 }
-                                            }
-                                        },
-                                        |icon_src| {
-                                            rsx! {
-                                                img {
-                                                    src: "{icon_src}",
-                                                    width: "{icon_w}px",
-                                                    height: "{icon_h}px",
-                                                    style: "object-fit: contain; pointer-events: none; user-select: none;"
+                                            },
+                                            |icon_src| {
+                                                rsx! {
+                                                    img {
+                                                        src: "{icon_src}",
+                                                        width: "{icon_w}px",
+                                                        height: "{icon_h}px",
+                                                        style: "object-fit: contain; pointer-events: none; user-select: none;"
+                                                    }
                                                 }
-                                            }
-                                        },
-                                    )
+                                            },
+                                        )
+                                    } else {
+                                        rsx! { "" }
+                                    }
                                 }
                                 if is_editing_node {
                                     input {
@@ -2684,7 +2738,7 @@ pub fn Canvas() -> Element {
                                             }
                                         }
                                     }
-                                } else {
+                                } else if zoom >= 0.3 {
                                     span {
                                         "data-testid": "node-label",
                                         style: "position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:{font_px}px; color:{TEXT_MAIN};",
