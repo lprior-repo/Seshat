@@ -7,7 +7,7 @@ export default defineConfig({
   timeout: 45_000,
   reporter: [["list"], ["html", { open: "never", outputFolder: "/tmp/seshat-playwright/report" }]],
   use: {
-    baseURL: "http://127.0.0.1:8082",
+    baseURL: "http://127.0.0.1:8084",
     headless: true,
     viewport: { width: 1600, height: 980 },
     timezoneId: "UTC",
@@ -36,57 +36,12 @@ export default defineConfig({
       use: {
         browserName: "chromium",
       },
-    },
-    {
-      name: "redqueen-wave1",
-      retries: 1,
-      workers: 6,
-      grep: /(?=.*@rq)(?=.*@rq-wave1)/,
-      use: {
-        browserName: "chromium",
-      },
-    },
-    {
-      name: "redqueen-wave2",
-      retries: 2,
-      workers: 6,
-      grep: /(?=.*@rq)(?=.*@rq-wave2)/,
-      use: {
-        browserName: "chromium",
-      },
-    },
-    {
-      name: "redqueen-wave3",
-      retries: 1,
-      workers: 4,
-      grep: /(?=.*@rq)(?=.*@rq-wave3)/,
-      use: {
-        browserName: "chromium",
-      },
-    },
-    {
-      name: "redqueen-seeded",
-      retries: 1,
-      workers: 6,
-      grep: /(?=.*@rq)(?=.*@seeded)/,
-      use: {
-        browserName: "chromium",
-      },
-    },
-    {
-      name: "redqueen-stress",
-      retries: 1,
-      workers: 4,
-      grep: /(?=.*@rq)(?=.*@stress)/,
-      use: {
-        browserName: "chromium",
-      },
-    },
+    }
   ],
   webServer: {
     command:
-      "moon run :serve-e2e",
-    url: "http://127.0.0.1:8082",
+      "cd diagram_tool && dx serve --platform web --port 8084 --open false --watch false --hot-reload false --interactive false",
+    url: "http://127.0.0.1:8084",
     reuseExistingServer: !process.env.CI,
     timeout: 300_000,
   },

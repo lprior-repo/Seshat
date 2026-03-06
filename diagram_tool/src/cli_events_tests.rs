@@ -426,10 +426,17 @@ mod revision_feedback_tests {
     /// Test: Revision policy preserve should not increment
     #[test]
     fn given_preserve_policy_when_mutation_runs_then_revision_unchanged() {
-        use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy};
+        use crate::mutation::pipeline::{
+            run_mutation_with_policy, RevisionPolicy, ValidationPolicy,
+        };
 
         let doc = DiagramDocument::default();
-        let result = run_mutation_with_policy(&doc, RevisionPolicy::Preserve, |d| Ok(d.clone()));
+        let result = run_mutation_with_policy(
+            &doc,
+            RevisionPolicy::Preserve,
+            ValidationPolicy::default(),
+            |d: &DiagramDocument| Ok(d.clone()),
+        );
 
         assert!(result.is_ok(), "Mutation should succeed");
         let mutated = result.expect("Should have result");
