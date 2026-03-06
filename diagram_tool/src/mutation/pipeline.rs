@@ -30,7 +30,12 @@ pub fn run_mutation<F>(
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
-    run_mutation_with_policy(current, RevisionPolicy::Increment, ValidationPolicy::default(), transform)
+    run_mutation_with_policy(
+        current,
+        RevisionPolicy::Increment,
+        ValidationPolicy::default(),
+        transform,
+    )
 }
 
 pub fn run_mutation_with_policy<F>(
@@ -188,8 +193,12 @@ mod tests {
     #[test]
     fn given_preserve_policy_when_run_mutation_then_revision_is_not_incremented() {
         let current = DiagramDocument::default();
-        let result =
-            run_mutation_with_policy(&current, RevisionPolicy::Preserve, |doc| Ok(doc.clone()));
+        let result = run_mutation_with_policy(
+            &current,
+            RevisionPolicy::Preserve,
+            ValidationPolicy::default(),
+            |doc| Ok(doc.clone()),
+        );
 
         let next = result.ok();
         assert!(next.is_some());
@@ -202,9 +211,12 @@ mod tests {
         let mut current = DiagramDocument::default();
         current.revision = current.revision.increment();
 
-        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, |_| {
-            Ok(DiagramDocument::default())
-        });
+        let result = run_mutation_with_policy(
+            &current,
+            RevisionPolicy::Preserve,
+            ValidationPolicy::default(),
+            |_| Ok(DiagramDocument::default()),
+        );
 
         assert!(result.is_ok());
         assert_eq!(result.ok().map(|doc| doc.revision), Some(current.revision));
@@ -735,11 +747,13 @@ mod proptests {
             let with_increment = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Increment,
+                ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
             let with_preserve = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Preserve,
+                ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
 
