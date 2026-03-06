@@ -22,6 +22,7 @@ export default defineConfig({
       retries: 2,
       workers: 12,
       grep: /@baseline/,
+      grepInvert: /@rq/,
       use: {
         browserName: "chromium",
       },
@@ -31,10 +32,58 @@ export default defineConfig({
       retries: 2,
       workers: 12,
       grep: /@baseline/,
+      grepInvert: /@rq/,
       use: {
         browserName: "chromium",
       },
     }
+    /*
+    {
+      name: "redqueen-wave1",
+      retries: 1,
+      workers: 6,
+      grep: /(?=.*@rq)(?=.*@rq-wave1)/,
+      use: {
+        browserName: "chromium",
+      },
+    },
+    {
+      name: "redqueen-wave2",
+      retries: 2,
+      workers: 6,
+      grep: /(?=.*@rq)(?=.*@rq-wave2)/,
+      use: {
+        browserName: "chromium",
+      },
+    },
+    {
+      name: "redqueen-wave3",
+      retries: 1,
+      workers: 4,
+      grep: /(?=.*@rq)(?=.*@rq-wave3)/,
+      use: {
+        browserName: "chromium",
+      },
+    },
+    {
+      name: "redqueen-seeded",
+      retries: 1,
+      workers: 6,
+      grep: /(?=.*@rq)(?=.*@seeded)/,
+      use: {
+        browserName: "chromium",
+      },
+    },
+    {
+      name: "redqueen-stress",
+      retries: 1,
+      workers: 4,
+      grep: /(?=.*@rq)(?=.*@stress)/,
+      use: {
+        browserName: "chromium",
+      },
+    },
+    */
   ],
   webServer: {
     command:
