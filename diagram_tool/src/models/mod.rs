@@ -26,13 +26,18 @@ pub mod conflict;
 pub mod dag;
 pub mod document;
 pub mod envelope;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod events;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod export;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod harness;
 pub mod projection;
 pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas
+#[cfg(not(target_arch = "wasm32"))]
 pub mod snapshot;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod sync;
 pub mod validation;
 
