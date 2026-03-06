@@ -364,11 +364,14 @@ export async function createTextNode(
 ) {
   await runEffectsSequential([
     () => waitForNoRebuildOverlay(page),
-    () => page.locator('[data-testid="tool-text"]').first().click(),
-    // Wait for tool mode switch deterministically: ensure the text tool
-    // button is clickable again (indicating signal propagation completed).
-    () => page.locator('[data-testid="tool-text"]').first().waitFor({ state: "visible" }),
+    // Use dispatchEvent to prevent Playwright from automatically scrolling the 
+    // toolbar into view, which breaks scroll offset tests
+    () => page.locator('[data-testid="tool-text"]').first().dispatchEvent('click'),
   ]);
+  
+  // Wait a tiny bit for Dioxus to process the click and change the ToolMode state
+  await page.waitForTimeout(100);
+
   const box = await runEffect(() => canvas.boundingBox());
   if (!box) {
     throw new Error("canvas bounding box not available");

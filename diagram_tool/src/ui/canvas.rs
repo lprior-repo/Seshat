@@ -46,22 +46,41 @@ use crate::{
     ui::{
         commands::{
             apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
-            apply_zoom_out, apply_zoom_reset, Clipboard,
+            apply_zoom_out, apply_zoom_reset,
         },
         editor::ToolMode,
-        grid::{snap_point, snap_value, GridSize},
         interaction::{
             drag_original_positions, dragged_positions_with_snap, has_drag_threshold,
-            node_ids_in_rect, select_single, toggle_selection, with_auto_selected_edges,
+            node_ids_in_rect, select_single, toggle_selection,
+            with_auto_selected_edges,
         },
         theme::{
-            ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT, EDGE_SELECTED,
-            GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG,
+            ThemeMode, ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT,
+            EDGE_SELECTED, GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED,
+            TOOLBAR_BG,
         },
-        toast::use_toast,
+        toast::{use_toast, ToastQueue},
     },
 };
 
+use crate::ui::grid::{snap_point, snap_value, GridSize};
+
+#[cfg(target_arch = "wasm32")]
+pub fn sync_canvas_origin() -> Option<(f64, f64)> {
+    let window = web_sys::window()?;
+    let document = window.document()?;
+    let el = document.query_selector(".canvas-container").ok().flatten()?;
+    let rect = el.get_bounding_client_rect();
+    log::info!("sync_canvas_origin returning: {}, {}", rect.left(), rect.top());
+    Some((rect.left(), rect.top()))
+}
+
+#[cfg(not(target_arch = "wasm32"))]
+pub fn sync_canvas_origin() -> Option<(f64, f64)> {
+    None
+}
+
+/// Fallback for provider color mapping
 fn provider_color(provider: &str) -> &'static str {
     match provider {
         "aws" => "#FF9900",
@@ -776,8 +795,6 @@ pub fn Canvas() -> Element {
                         "t" | "T" if !modifier => tool_signal.set(ToolMode::Text),
                         _ => {}
                     }
-                } else if event_type == "keyup" && is_arrow_key {
-                    nudge_batch_active.set(false);
                 }
             }
         });
@@ -994,22 +1011,24 @@ pub fn Canvas() -> Element {
                         const rect = target.getBoundingClientRect();
                         dioxus.send({ type: 'resize', left: rect.left, top: rect.top, width: rect.width, height: rect.height });
                     };
-                    window.addEventListener('scroll', onScroll, { passive: true });
-                    document.addEventListener('scroll', onScroll, { passive: true });
+                    window.addEventListener('scroll', onScroll, { passive: true, capture: true });
+                    document.addEventListener('scroll', onScroll, { passive: true, capture: true });
 
                     window.addEventListener('resize', scheduleNotify, { passive: true });
-                    // Listen in bubble phase (capture: false) to catch scroll events from
-                    // nested scrollable containers. Also listen on document for better coverage.
-                    window.addEventListener('scroll', scheduleNotify, { passive: true });
-                    document.addEventListener('scroll', scheduleNotify, { passive: true });
+                    // Listen in capture phase to catch scroll events from nested scrollable containers
+                    // since scroll events do not bubble.
+                    window.addEventListener('scroll', scheduleNotify, { passive: true, capture: true });
+                    document.addEventListener('scroll', scheduleNotify, { passive: true, capture: true });
                     window.__seshat_canvas_resize_cleanup = () => {
                         ro.disconnect();
                         if (rafId !== 0) {
                             window.cancelAnimationFrame(rafId);
                         }
+                        window.removeEventListener('scroll', onScroll, true);
+                        document.removeEventListener('scroll', onScroll, true);
                         window.removeEventListener('resize', scheduleNotify);
-                        window.removeEventListener('scroll', scheduleNotify);
-                        document.removeEventListener('scroll', scheduleNotify);
+                        window.removeEventListener('scroll', scheduleNotify, true);
+                        document.removeEventListener('scroll', scheduleNotify, true);
                     };
 
                     scheduleNotify();
@@ -1098,9 +1117,11 @@ pub fn Canvas() -> Element {
                 const onMouseDownCapture = (event) => {
                     if (window.__seshat_pointerdown_handled) {
                         window.__seshat_pointerdown_handled = false;
-                        event.preventDefault();
-                        event.stopPropagation();
-                        event.stopImmediatePropagation();
+                        // DO NOT stop propagation here! Dioxus relies on onmousedown
+                        // for elements like nodes and resize handles.
+                        // event.preventDefault();
+                        // event.stopPropagation();
+                        // event.stopImmediatePropagation();
                     }
                 };
 
@@ -1488,7 +1509,7 @@ pub fn Canvas() -> Element {
 
                 doc_signal.with_mut(|doc| {
                     let coords = evt.data.coordinates().client();
-                    let origin = *canvas_origin.read();
+                    let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                     let local_x = coords.x - origin.0;
                     let local_y = coords.y - origin.1;
                     let (x, y) = to_canvas_coords(
@@ -1593,7 +1614,7 @@ pub fn Canvas() -> Element {
             },
             ondoubleclick: move |evt| {
                 let coords = evt.data.coordinates().client();
-                let origin = *canvas_origin.read();
+                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 let doc = doc_signal.read().clone();
@@ -1698,7 +1719,7 @@ pub fn Canvas() -> Element {
                     WheelDelta::Pages(v) => (v.x, v.y, false),
                 };
                 let coords = evt.data.coordinates().client();
-                let origin = *canvas_origin.read();
+                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 pending_wheel_sample.set(Some(WheelSample {
@@ -1728,7 +1749,7 @@ pub fn Canvas() -> Element {
                 let coords = evt.data.coordinates().client();
                 // Use origin from the signal - it should be fresh now because the JS pointerdown
                 // handler sends a 'resize' message first to update it
-                let origin = *canvas_origin.read();
+                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
@@ -1849,7 +1870,7 @@ pub fn Canvas() -> Element {
 
             onmousemove: move |evt| {
                 let coords = evt.data.coordinates().client();
-                let origin = *canvas_origin.read();
+                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 interaction_mode.with_mut(|mode| {
@@ -1901,7 +1922,7 @@ pub fn Canvas() -> Element {
                     match mode {
                         InteractionMode::DrawingEdge { from_node, .. } => {
                             let coords = evt.data.coordinates().client();
-                            let origin = *canvas_origin.read();
+                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                             let local_x = coords.x - origin.0;
                             let local_y = coords.y - origin.1;
                             let doc = doc_signal.read().clone();
@@ -2382,7 +2403,7 @@ pub fn Canvas() -> Element {
                                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                                 let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
                                 let coords = evt.data.coordinates().client();
-                                let origin = *canvas_origin.read();
+                                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                                 let local_x = coords.x - origin.0;
                                 let local_y = coords.y - origin.1;
                                 let pos = to_canvas_coords(
@@ -2488,7 +2509,7 @@ pub fn Canvas() -> Element {
                                         if *tool_signal.read() == ToolMode::Edge {
                                             let doc_now = doc_signal.read().clone();
                                             let coords = evt.data.coordinates().client();
-                                            let origin = *canvas_origin.read();
+                                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                                             let local_x = coords.x - origin.0;
                                             let local_y = coords.y - origin.1;
                                             let pos = to_canvas_coords(
@@ -2653,7 +2674,7 @@ pub fn Canvas() -> Element {
                                                             }
                                                             evt.stop_propagation();
                                                             let coords = evt.data.coordinates().client();
-                                                            let origin = *canvas_origin.read();
+                                                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
                                                             let local_x = coords.x - origin.0;
                                                             let local_y = coords.y - origin.1;
                                                             let doc = doc_signal.read().clone();

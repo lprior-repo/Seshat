@@ -73,3 +73,8 @@ pub mod perf;
 pub mod store;
 pub mod ui;
 pub mod viewport;
+
+#[cfg(test)]
+mod tests {
+    mod contracts;
+}

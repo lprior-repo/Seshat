@@ -1333,6 +1333,7 @@ dependencies = [
  "image",
  "include_dir",
  "itertools",
+ "js-sys",
  "notify",
  "num_cpus",
  "petgraph",
@@ -1348,6 +1349,7 @@ dependencies = [
  "thiserror 2.0.18",
  "tiny-skia",
  "uuid",
+ "web-sys",
 ]
 
 [[package]]
