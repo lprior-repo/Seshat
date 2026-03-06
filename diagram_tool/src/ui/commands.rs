@@ -101,36 +101,7 @@ pub fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
 /// selected content.
 #[must_use]
 pub fn copy_selection(doc: &DiagramDocument) -> Option<Clipboard> {
-    let selected_nodes = selected_node_ids(doc);
-    if selected_nodes.is_empty() {
-        return None;
-    }
-
-    let nodes = selected_nodes
-        .iter()
-        .filter_map(|id| {
-            doc.document
-                .nodes
-                .get(id)
-                .map(|node| (id.clone(), node.clone()))
-        })
-        .collect();
-
-    let edges = doc
-        .document
-        .edges
-        .iter()
-        .filter(|(_, edge)| {
-            selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
-        })
-        .map(|(_, edge)| edge.clone())
-        .collect();
-
-    Some(Clipboard {
-        nodes,
-        edges,
-        paste_serial: 0,
-    })
+    crate::core::clipboard::copy_selection(doc).ok()
 }
 
 /// Pure function: Creates a clipboard for duplicate operations.
@@ -139,36 +110,12 @@ pub fn copy_selection(doc: &DiagramDocument) -> Option<Clipboard> {
 /// the content should be pasted with an offset.
 #[must_use]
 pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> {
-    let selected_nodes = selected_node_ids(doc);
-    if selected_nodes.is_empty() {
-        return None;
-    }
-
-    let nodes = selected_nodes
-        .iter()
-        .filter_map(|id| {
-            doc.document
-                .nodes
-                .get(id)
-                .map(|node| (id.clone(), node.clone()))
+    crate::core::clipboard::copy_selection(doc)
+        .ok()
+        .map(|mut clipboard| {
+            clipboard.paste_serial = 1;
+            clipboard
         })
-        .collect();
-
-    let edges = doc
-        .document
-        .edges
-        .iter()
-        .filter(|(_, edge)| {
-            selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
-        })
-        .map(|(_, edge)| edge.clone())
-        .collect();
-
-    Some(Clipboard {
-        nodes,
-        edges,
-        paste_serial: 1,
-    })
 }
 
 /// Pure function: Pastes clipboard content into the document.
@@ -260,7 +207,6 @@ pub fn apply_paste_selection(
     history_signal: Signal<History>,
     toast: Option<ToastApi>,
 ) -> bool {
-    let current = doc_signal.read().clone();
     let clipboard = clipboard_signal.read().clone();
 
     let Some(clipboard) = clipboard else {
@@ -274,7 +220,17 @@ pub fn apply_paste_selection(
         return false;
     };
 
-    let Some((new_doc, new_clipboard)) = paste_contents(clipboard, current) else {
+    push_history(history_signal, doc_signal.read().clone());
+    let mut any_pasted = false;
+    doc_signal.with_mut(|doc| {
+        if let Ok(new_clipboard) = crate::core::clipboard::paste_contents(clipboard, doc) {
+            doc.revision = doc.revision.increment();
+            clipboard_signal.set(Some(new_clipboard));
+            any_pasted = true;
+        }
+    });
+
+    if !any_pasted {
         if let Some(toast) = toast {
             let _ = toast.show(
                 crate::ui::toast::ToastIntent::Info,
@@ -282,13 +238,9 @@ pub fn apply_paste_selection(
                 None,
             );
         }
-        return false;
-    };
+    }
 
-    push_history(history_signal, doc_signal.read().clone());
-    doc_signal.set(new_doc);
-    clipboard_signal.set(Some(new_clipboard));
-    true
+    any_pasted
 }
 
 /// Public API: Applies duplicate operation.
@@ -606,35 +558,9 @@ pub fn apply_delete_selected(
 
     push_history(history_signal, doc_signal.read().clone());
     doc_signal.with_mut(|doc| {
-        let deleted_node_ids =
-            selected_nodes_from_selection(&doc.editor_state.selected_items, &doc.document.nodes);
-        doc.document.nodes = doc
-            .document
-            .nodes
-            .iter()
-            .filter(|(id, _)| !selected.contains(&id.to_string()))
-            .map(|(id, node)| {
-                let mut next = node.clone();
-                next.parent = reparent_if_deleted(next.parent, &deleted_node_ids);
-                (id.clone(), next)
-            })
-            .collect();
-
-        let node_ids: im::HashSet<NodeId> = doc.document.nodes.keys().cloned().collect();
-        doc.document.edges = doc
-            .document
-            .edges
-            .iter()
-            .filter(|(id, edge)| {
-                node_ids.contains(&edge.source)
-                    && node_ids.contains(&edge.target)
-                    && !selected.contains(&id.to_string())
-            })
-            .map(|(id, edge)| (id.clone(), edge.clone()))
-            .collect();
-
-        doc.editor_state.selected_items.clear();
-        doc.revision = doc.revision.increment();
+        if crate::core::delete::delete_selected(doc) {
+            doc.revision = doc.revision.increment();
+        }
     });
     true
 }
@@ -683,19 +609,8 @@ pub fn apply_group_selection(
     history_signal: Signal<History>,
     toast: Option<ToastApi>,
 ) -> bool {
-    let selected_nodes = {
-        let doc = doc_signal.read();
-        selected_node_ids(&doc)
-            .into_iter()
-            .filter(|id| {
-                doc.document
-                    .nodes
-                    .get(id)
-                    .is_some_and(|node| node.kind != NodeKind::Subgraph)
-            })
-            .collect::<Vec<_>>()
-    };
-    if selected_nodes.len() < 2 {
+    let selected_count = doc_signal.read().editor_state.selected_items.len();
+    if selected_count < 2 {
         if let Some(toast) = toast {
             let _ = toast.show(
                 crate::ui::toast::ToastIntent::Info,
@@ -706,73 +621,24 @@ pub fn apply_group_selection(
         return false;
     }
 
-    let (min_x, min_y, max_x, max_y) = {
-        let doc = doc_signal.read();
-        selected_nodes.iter().fold(
-            (
-                f64::INFINITY,
-                f64::INFINITY,
-                f64::NEG_INFINITY,
-                f64::NEG_INFINITY,
-            ),
-            |(min_x, min_y, max_x, max_y), node_id| {
-                doc.document
-                    .nodes
-                    .get(node_id)
-                    .map_or((min_x, min_y, max_x, max_y), |node| {
-                        (
-                            min_x.min(node.x.0),
-                            min_y.min(node.y.0),
-                            max_x.max(node.x.0 + node.width.0),
-                            max_y.max(node.y.0 + node.height.0),
-                        )
-                    })
-            },
-        )
-    };
-
-    if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
-        return false;
-    }
-
     push_history(history_signal, doc_signal.read().clone());
     let group_id = NodeId::new(Uuid::new_v4().to_string());
-    let member_ids = selected_nodes;
+
+    let mut success = false;
     doc_signal.with_mut(|doc| {
-        for node_id in &member_ids {
-            if let Some(node) = doc.document.nodes.get_mut(node_id) {
-                node.parent = Some(group_id.clone());
+        match crate::core::grouping::group_selection(doc, group_id) {
+            Ok(_) => {
+                doc.revision = doc.revision.increment();
+                success = true;
+            }
+            Err(e) => {
+                // We could log or show a toast for specific grouping errors
+                success = false;
             }
         }
-
-        let padding = 24.0;
-        let _ = doc.document.nodes.insert(
-            group_id.clone(),
-            Node {
-                kind: NodeKind::Subgraph,
-                icon: String::new(),
-                label: String::from("Group"),
-                x: OrderedFloat(min_x - padding),
-                y: OrderedFloat(min_y - padding),
-                width: OrderedFloat((max_x - min_x) + (padding * 2.0)),
-                height: OrderedFloat((max_y - min_y) + (padding * 2.0)),
-                font_size: None,
-                font_weight: None,
-                locked: true,
-                parent: None,
-                dag_rank: None,
-                tags: im::Vector::new(),
-                metadata: im::HashMap::new(),
-                z_index: -1,
-                style: Some(NodeStyle::Box),
-                collapsed: Some(false),
-            },
-        );
-        doc.editor_state.selected_items.clear();
-        let _ = doc.editor_state.selected_items.insert(group_id.to_string());
-        doc.revision = doc.revision.increment();
     });
-    true
+
+    success
 }
 
 pub fn apply_ungroup_selection(
@@ -862,138 +728,43 @@ pub fn apply_align_selection(
     mode: AlignmentMode,
     toast: Option<ToastApi>,
 ) -> bool {
-    let current = doc_signal.read().clone();
+    let mut success = false;
 
-    // Get selected nodes that are movable (not locked, or are subgraphs)
-    let selected_nodes: Vec<NodeId> = selected_node_ids(&current)
-        .into_iter()
-        .filter(|id| {
-            current.document.nodes.get(id).is_some_and(|node| {
-                let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
-                let movable = !node.locked || node.kind == NodeKind::Subgraph;
-                coords_finite && movable
-            })
-        })
-        .collect();
-
-    // Need at least 2 nodes to align
-    if selected_nodes.len() < 2 {
-        if let Some(toast) = toast {
-            let _ = toast.show(
-                crate::ui::toast::ToastIntent::Info,
-                "Select items first",
-                Some("Need at least 2 items to align".to_string()),
-            );
-        }
-        return false;
-    }
-
-    // Calculate bounding box
-    let (min_pos, max_pos, max_extent) = match axis {
-        AlignmentAxis::Horizontal => {
-            let positions: Vec<(f64, f64)> = selected_nodes
-                .iter()
-                .filter_map(|id| current.document.nodes.get(id))
-                .map(|node| (node.x.0, node.x.0 + node.width.0))
-                .collect();
-
-            if positions
-                .iter()
-                .any(|(p, e)| !p.is_finite() || !e.is_finite())
-            {
-                return false;
-            }
-
-            let min_x = positions
-                .iter()
-                .map(|(p, _)| *p)
-                .fold(f64::INFINITY, f64::min);
-            let max_right = positions
-                .iter()
-                .map(|(_, e)| *e)
-                .fold(f64::NEG_INFINITY, f64::max);
-
-            if !min_x.is_finite() || !max_right.is_finite() {
-                return false;
-            }
-
-            (min_x, max_right, max_right - min_x)
-        }
-        AlignmentAxis::Vertical => {
-            let positions: Vec<(f64, f64)> = selected_nodes
-                .iter()
-                .filter_map(|id| current.document.nodes.get(id))
-                .map(|node| (node.y.0, node.y.0 + node.height.0))
-                .collect();
-
-            if positions
-                .iter()
-                .any(|(p, e)| !p.is_finite() || !e.is_finite())
-            {
-                return false;
-            }
-
-            let min_y = positions
-                .iter()
-                .map(|(p, _)| *p)
-                .fold(f64::INFINITY, f64::min);
-            let max_bottom = positions
-                .iter()
-                .map(|(_, e)| *e)
-                .fold(f64::NEG_INFINITY, f64::max);
-
-            if !min_y.is_finite() || !max_bottom.is_finite() {
-                return false;
-            }
-
-            (min_y, max_bottom, max_bottom - min_y)
-        }
+    // Map UI enums to Core enums
+    let core_axis = match axis {
+        AlignmentAxis::Horizontal => crate::core::transform::AlignmentAxis::Horizontal,
+        AlignmentAxis::Vertical => crate::core::transform::AlignmentAxis::Vertical,
     };
 
-    push_history(history_signal, current);
+    let core_mode = match mode {
+        AlignmentMode::Start => crate::core::transform::AlignmentMode::Start,
+        AlignmentMode::Center => crate::core::transform::AlignmentMode::Center,
+        AlignmentMode::End => crate::core::transform::AlignmentMode::End,
+    };
 
     doc_signal.with_mut(|doc| {
-        for node_id in &selected_nodes {
-            if let Some(node) = doc.document.nodes.get_mut(node_id) {
-                // Double-check movability (should be redundant but defensive)
-                if node.locked && node.kind != NodeKind::Subgraph {
-                    continue;
-                }
-
-                match (axis, mode) {
-                    (AlignmentAxis::Horizontal, AlignmentMode::Start) => {
-                        // Align Left: set x to min_x
-                        node.x = OrderedFloat(min_pos);
-                    }
-                    (AlignmentAxis::Horizontal, AlignmentMode::Center) => {
-                        // Align Center H: center the node within the bounding box
-                        let center_x = min_pos + max_extent / 2.0;
-                        node.x = OrderedFloat(center_x - node.width.0 / 2.0);
-                    }
-                    (AlignmentAxis::Horizontal, AlignmentMode::End) => {
-                        // Align Right: set x so right edge aligns with max_right
-                        node.x = OrderedFloat(max_pos - node.width.0);
-                    }
-                    (AlignmentAxis::Vertical, AlignmentMode::Start) => {
-                        // Align Top: set y to min_y
-                        node.y = OrderedFloat(min_pos);
-                    }
-                    (AlignmentAxis::Vertical, AlignmentMode::Center) => {
-                        // Align Middle V: center the node within the bounding box
-                        let center_y = min_pos + max_extent / 2.0;
-                        node.y = OrderedFloat(center_y - node.height.0 / 2.0);
-                    }
-                    (AlignmentAxis::Vertical, AlignmentMode::End) => {
-                        // Align Bottom: set y so bottom edge aligns with max_bottom
-                        node.y = OrderedFloat(max_pos - node.height.0);
-                    }
-                }
+        match crate::core::transform::align_selection(doc, core_axis, core_mode) {
+            Ok(_) => {
+                doc.revision = doc.revision.increment();
+                success = true;
+            }
+            Err(e) => {
+                // If it fails (e.g. empty selection), we handle it below
+                success = false;
             }
         }
-        doc.revision = doc.revision.increment();
     });
 
-    true
+    if success {
+        push_history(history_signal, doc_signal.read().clone());
+    } else if let Some(toast) = toast {
+        let _ = toast.show(
+            crate::ui::toast::ToastIntent::Info,
+            "Select items first",
+            Some("Need at least 2 items to align".to_string()),
+        );
+    }
+    success
 }
 
 /// Distribute selected nodes evenly along the specified axis.
@@ -1020,120 +791,37 @@ pub fn apply_distribute_selection(
     axis: DistributionAxis,
     toast: Option<ToastApi>,
 ) -> bool {
-    let current = doc_signal.read().clone();
+    let mut success = false;
 
-    // Get selected nodes that are movable (not locked, or are subgraphs)
-    let selected_nodes: Vec<NodeId> = selected_node_ids(&current)
-        .into_iter()
-        .filter(|id| {
-            current.document.nodes.get(id).is_some_and(|node| {
-                let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
-                let movable = !node.locked || node.kind == NodeKind::Subgraph;
-                coords_finite && movable
-            })
-        })
-        .collect();
-
-    // Need at least 3 nodes to distribute
-    if selected_nodes.len() < 3 {
-        if let Some(toast) = toast {
-            let _ = toast.show(
-                crate::ui::toast::ToastIntent::Info,
-                "Select items first",
-                Some("Need at least 3 items to distribute".to_string()),
-            );
-        }
-        return false;
-    }
-
-    // Collect node data: (id, position, size) sorted by position along axis
-    let mut node_data: Vec<(NodeId, f64, f64)> = selected_nodes
-        .iter()
-        .filter_map(|id| {
-            current.document.nodes.get(id).map(|node| {
-                let (pos, size) = match axis {
-                    DistributionAxis::Horizontal => (node.x.0, node.width.0),
-                    DistributionAxis::Vertical => (node.y.0, node.height.0),
-                };
-                (id.clone(), pos, size)
-            })
-        })
-        .collect();
-
-    // Check all positions and sizes are finite
-    if node_data
-        .iter()
-        .any(|(_, pos, size)| !pos.is_finite() || !size.is_finite())
-    {
-        return false;
-    }
-
-    // Sort by position
-    node_data.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
-
-    // Calculate bounds from outermost nodes
-    let first_pos = node_data.first().map(|(_, p, _)| *p);
-
-    let Some(first_pos) = first_pos else {
-        return false;
-    };
-    let Some(last_node_end) = node_data.last().map(|(_, p, s)| p + s) else {
-        return false;
+    // Map UI enums to Core enums
+    let core_axis = match axis {
+        DistributionAxis::Horizontal => crate::core::transform::AlignmentAxis::Horizontal,
+        DistributionAxis::Vertical => crate::core::transform::AlignmentAxis::Vertical,
     };
 
-    if !first_pos.is_finite() || !last_node_end.is_finite() {
-        return false;
-    }
-
-    // Calculate total size of all nodes and available space
-    let total_node_size: f64 = node_data.iter().map(|(_, _, s)| *s).sum();
-    let total_extent = last_node_end - first_pos;
-
-    if total_extent <= f64::EPSILON {
-        return false; // Nodes are stacked, no room to distribute
-    }
-
-    // Calculate equal spacing between nodes
-    let node_count = node_data.len();
-    let gap_count = node_count.saturating_sub(1);
-    let available_space = total_extent - total_node_size;
-    let spacing = if gap_count > 0 {
-        available_space / f64::from(u32::try_from(gap_count).unwrap_or(1))
-    } else {
-        0.0
-    };
-
-    if !spacing.is_finite() {
-        return false;
-    }
-
-    push_history(history_signal, current);
-
-    doc_signal.with_mut(|doc| {
-        // Position each node: first stays at first_pos, others distributed
-        let mut current_pos = first_pos;
-        for (node_id, _, node_size) in &node_data {
-            if let Some(node) = doc.document.nodes.get_mut(node_id) {
-                // Double-check movability
-                if node.locked && node.kind != NodeKind::Subgraph {
-                    continue;
-                }
-
-                match axis {
-                    DistributionAxis::Horizontal => {
-                        node.x = OrderedFloat(current_pos);
-                    }
-                    DistributionAxis::Vertical => {
-                        node.y = OrderedFloat(current_pos);
-                    }
-                }
-                current_pos += node_size + spacing;
+    doc_signal.with_mut(
+        |doc| match crate::core::transform::distribute_selection(doc, core_axis) {
+            Ok(_) => {
+                doc.revision = doc.revision.increment();
+                success = true;
             }
-        }
-        doc.revision = doc.revision.increment();
-    });
+            Err(_) => {
+                success = false;
+            }
+        },
+    );
 
-    true
+    if success {
+        push_history(history_signal, doc_signal.read().clone());
+    } else if let Some(toast) = toast {
+        let _ = toast.show(
+            crate::ui::toast::ToastIntent::Info,
+            "Select items first",
+            Some("Need at least 3 items to distribute".to_string()),
+        );
+    }
+
+    success
 }
 
 fn set_zoom_centered(
@@ -1242,18 +930,14 @@ pub fn apply_undo(
     mut history_signal: Signal<History>,
     toast: Option<ToastApi>,
 ) {
-    let current = doc_signal.read().clone();
-    let history = history_signal.read().clone();
-    match history.undo(current) {
-        Some((doc, next_history)) => {
-            *doc_signal.write() = doc;
-            *history_signal.write() = next_history;
-        }
-        None => {
-            if let Some(toast) = toast {
-                let _ = toast.show(crate::ui::toast::ToastIntent::Info, "Nothing to undo", None);
-            }
-        }
+    let mut doc = doc_signal.read().clone();
+    let mut history = history_signal.read().clone();
+
+    if crate::core::history::apply_undo(&mut doc, &mut history).is_ok() {
+        doc_signal.set(doc);
+        history_signal.set(history);
+    } else if let Some(toast) = toast {
+        let _ = toast.show(crate::ui::toast::ToastIntent::Info, "Nothing to undo", None);
     }
 }
 
@@ -1262,18 +946,14 @@ pub fn apply_redo(
     mut history_signal: Signal<History>,
     toast: Option<ToastApi>,
 ) {
-    let current = doc_signal.read().clone();
-    let history = history_signal.read().clone();
-    match history.redo(current) {
-        Some((doc, next_history)) => {
-            *doc_signal.write() = doc;
-            *history_signal.write() = next_history;
-        }
-        None => {
-            if let Some(toast) = toast {
-                let _ = toast.show(crate::ui::toast::ToastIntent::Info, "Nothing to redo", None);
-            }
-        }
+    let mut doc = doc_signal.read().clone();
+    let mut history = history_signal.read().clone();
+
+    if crate::core::history::apply_redo(&mut doc, &mut history).is_ok() {
+        doc_signal.set(doc);
+        history_signal.set(history);
+    } else if let Some(toast) = toast {
+        let _ = toast.show(crate::ui::toast::ToastIntent::Info, "Nothing to redo", None);
     }
 }
 

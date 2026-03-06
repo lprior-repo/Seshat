@@ -13,6 +13,7 @@ mod backend;
 mod cli;
 mod cli_events_tests;
 mod cli_persistence;
+mod core;
 mod export;
 mod geometry;
 mod history;

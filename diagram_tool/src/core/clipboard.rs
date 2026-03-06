@@ -1,6 +1,9 @@
+use crate::models::document::OrderedFloat;
 use crate::models::document::{DiagramDocument, EdgeId, NodeId};
 use crate::ui::commands::Clipboard;
+use im::HashMap;
 use thiserror::Error;
+use uuid::Uuid;
 
 #[derive(Debug, Error, PartialEq)]
 pub enum ClipboardError {
@@ -42,6 +45,57 @@ pub fn copy_selection(doc: &DiagramDocument) -> Result<Clipboard, ClipboardError
         edges,
         paste_serial: 0,
     })
+}
+
+fn remap_pasted_parent(parent: Option<NodeId>, id_map: &HashMap<NodeId, NodeId>) -> Option<NodeId> {
+    parent.and_then(|parent_id| id_map.get(&parent_id).cloned().or(Some(parent_id)))
+}
+
+pub fn paste_contents(
+    mut clipboard: Clipboard,
+    doc: &mut DiagramDocument,
+) -> Result<Clipboard, ClipboardError> {
+    if clipboard.nodes.is_empty() {
+        return Err(ClipboardError::EmptyClipboard);
+    }
+
+    clipboard.paste_serial = clipboard.paste_serial.saturating_add(1);
+    let serial = clipboard.paste_serial;
+
+    let offset = 20.0 * f64::from(serial.max(1));
+    let id_map = clipboard
+        .nodes
+        .iter()
+        .map(|(old_id, _)| (old_id.clone(), NodeId::new(Uuid::new_v4().to_string())))
+        .collect::<HashMap<_, _>>();
+    let mut selected = im::HashSet::new();
+
+    for (old_id, node) in &clipboard.nodes {
+        let Some(new_id) = id_map.get(old_id).cloned() else {
+            continue;
+        };
+        let mut next = node.clone();
+        next.x = OrderedFloat(next.x.0 + offset);
+        next.y = OrderedFloat(next.y.0 + offset);
+        next.parent = remap_pasted_parent(next.parent, &id_map);
+        let _ = selected.insert(new_id.to_string());
+        let _ = doc.document.nodes.insert(new_id, next);
+    }
+
+    for edge in &clipboard.edges {
+        if let (Some(new_source), Some(new_target)) =
+            (id_map.get(&edge.source), id_map.get(&edge.target))
+        {
+            let mut next = edge.clone();
+            next.source = new_source.clone();
+            next.target = new_target.clone();
+            let new_edge_id = crate::models::document::EdgeId::new(Uuid::new_v4().to_string());
+            let _ = doc.document.edges.insert(new_edge_id, next);
+        }
+    }
+
+    doc.editor_state.selected_items = selected;
+    Ok(clipboard)
 }
 
 #[cfg(test)]
