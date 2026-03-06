@@ -1,7 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
-    use crate::core::transform::{align_left, distribute_horizontal, TransformError};
+    use crate::core::transform::{
+        align_selection, distribute_selection, AlignmentAxis, AlignmentMode, TransformError,
+    };
     use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
 
     fn test_node(x: f64, width: f64) -> Node {
@@ -47,7 +48,7 @@ mod tests {
             .selected_items
             .insert(n2.as_str().to_string());
 
-        align_left(&mut doc).unwrap();
+        align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start).unwrap();
 
         assert_eq!(doc.document.nodes.get(&n1).unwrap().x.0, 100.0);
         assert_eq!(doc.document.nodes.get(&n2).unwrap().x.0, 100.0);
@@ -66,7 +67,8 @@ mod tests {
             .selected_items
             .insert(n1.as_str().to_string());
 
-        let err = align_left(&mut doc).unwrap_err();
+        let err =
+            align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start).unwrap_err();
         assert_eq!(err, TransformError::LockedNode(n1));
     }
 
@@ -94,7 +96,7 @@ mod tests {
             .selected_items
             .insert(n3.as_str().to_string());
 
-        distribute_horizontal(&mut doc).unwrap();
+        distribute_selection(&mut doc, AlignmentAxis::Horizontal).unwrap();
 
         // Total space = (200 + 50) - 0 = 250
         // Sum of widths = 50 * 3 = 150
