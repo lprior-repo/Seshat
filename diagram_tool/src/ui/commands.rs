@@ -7,7 +7,7 @@
 
 use crate::history::History;
 use crate::models::document::{
-    DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    DiagramDocument, Edge, Node, NodeId, NodeKind, OrderedFloat,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -515,7 +515,7 @@ pub fn apply_group_selection(
                 doc.revision = doc.revision.increment();
                 success = true;
             }
-            Err(e) => {
+            Err(_e) => {
                 // We could log or show a toast for specific grouping errors
                 success = false;
             }
@@ -617,7 +617,7 @@ pub fn apply_align_selection(
                 doc.revision = doc.revision.increment();
                 success = true;
             }
-            Err(e) => {
+            Err(_e) => {
                 // If it fails (e.g. empty selection), we handle it below
                 success = false;
             }
