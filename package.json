@@ -22,10 +22,10 @@
   },
   "homepage": "https://github.com/lprior-repo/Seshat#readme",
   "devDependencies": {
-    "@playwright/test": "^1.55.0",
-    "@types/node": "^25.3.2",
+    "@playwright/test": "^1.58.2",
+    "@types/node": "^25.3.3",
     "effect": "^3.19.19",
-    "playwright": "^1.55.0",
+    "playwright": "^1.58.2",
     "typescript": "^5.9.3"
   }
 }
