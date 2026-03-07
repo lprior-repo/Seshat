@@ -7,7 +7,7 @@
 
 #[must_use]
 pub fn safe_zoom(zoom: f64) -> Option<f64> {
-    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
+    (zoom.is_finite() && zoom >= f64::EPSILON).then_some(zoom)
 }
 
 #[must_use]
@@ -26,6 +26,15 @@ pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
 pub fn within(subgraph: (f64, f64, f64, f64), node: (f64, f64, f64, f64)) -> bool {
     let (sx, sy, sw, sh) = subgraph;
     let (nx, ny, nw, nh) = node;
+    if sw.is_infinite() || sh.is_infinite() || nw.is_infinite() || nh.is_infinite() {
+        return false;
+    }
+    if sx.is_nan() || sy.is_nan() || sw.is_nan() || sh.is_nan() {
+        return false;
+    }
+    if nx.is_nan() || ny.is_nan() || nw.is_nan() || nh.is_nan() {
+        return false;
+    }
     nx >= sx && ny >= sy && nx + nw <= sx + sw && ny + nh <= sy + sh
 }
 
@@ -37,6 +46,9 @@ pub fn screen_to_canvas(
     camera_y: f64,
     zoom: f64,
 ) -> Option<(f64, f64)> {
+    if client_x.is_nan() || client_y.is_nan() || client_x.is_infinite() || client_y.is_infinite() {
+        return None;
+    }
     let valid_zoom = safe_zoom(zoom)?;
     let cx = (client_x / valid_zoom) + camera_x;
     let cy = (client_y / valid_zoom) + camera_y;

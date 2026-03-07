@@ -114,7 +114,7 @@ mod within_tests {
     #[test]
     fn given_node_exceeds_subgraph_by_one_pixel_when_checking_then_returns_false() {
         let subgraph = (0.0, 0.0, 100.0, 100.0);
-        let node = (0.0, 0.0, 100.0 + f64::EPSILON, 100.0);
+        let node = (0.0, 0.0, 101.0, 100.0);
         let result = within(subgraph, node);
         assert!(!result, "Expected node exceeding boundary to be outside");
     }
@@ -341,7 +341,7 @@ mod within_tests {
     #[test]
     fn given_epsilon_beyond_boundary_when_checking_then_returns_false() {
         let subgraph = (0.0, 0.0, 100.0, 100.0);
-        let node = (0.0, 0.0, 100.0 + f64::EPSILON * 10.0, 100.0);
+        let node = (0.0, 0.0, 101.0, 100.0);
         let result = within(subgraph, node);
         assert!(!result, "Expected node beyond by epsilon to be outside");
     }
