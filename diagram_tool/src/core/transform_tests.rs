@@ -58,14 +58,24 @@ mod tests {
     fn test_locked_element_cannot_be_moved() {
         let mut doc = DiagramDocument::default();
 
+        // Two nodes - one locked, one not
         let n1 = NodeId::new("1".to_string());
-        let mut node = test_node(100.0, 50.0);
-        node.locked = true;
+        let n2 = NodeId::new("2".to_string());
+        
+        let mut node1 = test_node(100.0, 50.0);
+        node1.locked = true;
+        
+        let node2 = test_node(200.0, 50.0);
 
-        doc.document.nodes.insert(n1.clone(), node);
+        doc.document.nodes.insert(n1.clone(), node1);
+        doc.document.nodes.insert(n2.clone(), node2);
+        
         doc.editor_state
             .selected_items
             .insert(n1.as_str().to_string());
+        doc.editor_state
+            .selected_items
+            .insert(n2.as_str().to_string());
 
         let err =
             align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start).unwrap_err();

@@ -1438,6 +1438,7 @@ dependencies = [
  "image",
  "include_dir",
  "itertools 0.14.0",
+ "js-sys",
  "notify",
  "num_cpus",
  "petgraph",
@@ -1455,6 +1456,7 @@ dependencies = [
  "tiny-skia",
  "tokio",
  "uuid",
+ "web-sys",
 ]
 
 [[package]]
