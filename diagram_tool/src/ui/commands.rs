@@ -15,6 +15,7 @@ use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
 
 #[derive(Clone, Copy)]
+#[allow(dead_code)]
 enum ZOrderOp {
     BringForward,
     SendBackward,
@@ -340,6 +341,7 @@ fn push_history(mut history_signal: Signal<History>, current: DiagramDocument) {
     *history_signal.write() = history.push(current);
 }
 
+#[allow(dead_code)]
 fn reparent_if_deleted(parent: Option<NodeId>, deleted_ids: &BTreeSet<NodeId>) -> Option<NodeId> {
     parent.and_then(|parent_id| {
         if deleted_ids.contains(&parent_id) {
@@ -354,6 +356,7 @@ fn remap_pasted_parent(parent: Option<NodeId>, id_map: &HashMap<NodeId, NodeId>)
     parent.and_then(|parent_id| id_map.get(&parent_id).cloned().or(Some(parent_id)))
 }
 
+#[allow(dead_code)]
 fn selected_nodes_from_selection(
     selected: &im::HashSet<String>,
     nodes: &im::HashMap<NodeId, Node>,

@@ -208,6 +208,7 @@ impl RegressionTest {
 }
 
 /// Performance report for CI integration.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PerformanceReport {
     /// Report version
@@ -225,6 +226,7 @@ pub struct PerformanceReport {
 }
 
 /// Machine information for reproducibility.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct MachineInfo {
     /// Operating system

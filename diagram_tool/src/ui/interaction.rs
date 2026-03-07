@@ -847,6 +847,7 @@ mod snp_interaction_tests {
 
 /// Minimum touch hit radius in screen pixels for touch targets.
 /// This is larger than mouse hit radius for touch usability.
+#[allow(dead_code)]
 const TOUCH_HIT_RADIUS_MIN: f64 = 22.0; // Minimum radius for 44x44 hit area
 
 #[cfg(test)]

@@ -19,7 +19,7 @@ impl NodeCount {
     /// # Errors
     ///
     /// Returns `PerfError::InvalidNodeCount` if count is outside [1, 10000].
-    pub fn new(count: u32) -> Result<Self, PerfError> {
+    pub const fn new(count: u32) -> Result<Self, PerfError> {
         if count < MIN_NODE_COUNT || count > MAX_NODE_COUNT {
             return Err(PerfError::InvalidNodeCount(count));
         }
@@ -49,7 +49,7 @@ impl DurationMs {
     /// # Errors
     ///
     /// Returns `PerfError::InvalidDuration` if duration < 100ms.
-    pub fn new(ms: u64) -> Result<Self, PerfError> {
+    pub const fn new(ms: u64) -> Result<Self, PerfError> {
         if ms < MIN_DURATION_MS {
             return Err(PerfError::InvalidDuration(ms));
         }
@@ -160,7 +160,7 @@ impl BenchmarkConfig {
 
     /// Sets the target FPS.
     #[must_use]
-    pub fn with_target_fps(mut self, fps: f64) -> Self {
+    pub const fn with_target_fps(mut self, fps: f64) -> Self {
         self.target_fps = fps;
         self
     }

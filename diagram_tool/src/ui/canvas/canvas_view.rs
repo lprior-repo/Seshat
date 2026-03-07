@@ -859,17 +859,21 @@ mod proptests {
 
 /// Double-tap timing threshold in milliseconds.
 /// Two taps within this window are considered a double-tap.
+#[allow(dead_code)]
 const DOUBLE_TAP_THRESHOLD_MS: u64 = 350;
 
 /// Minimum touch hit radius in screen pixels for touch targets.
 /// This is larger than mouse hit radius for touch usability.
+#[allow(dead_code)]
 const TOUCH_HIT_RADIUS_PX: f64 = 44.0;
 
 /// Resize handle size in screen pixels.
+#[allow(dead_code)]
 const RESIZE_HANDLE_SIZE_PX: f64 = 14.0;
 
 /// Check if two tap timestamps qualify as a double-tap.
 #[must_use]
+#[allow(dead_code)]
 pub const fn is_double_tap(first_tap_ms: u64, second_tap_ms: u64) -> bool {
     second_tap_ms.saturating_sub(first_tap_ms) <= DOUBLE_TAP_THRESHOLD_MS
 }
@@ -877,6 +881,7 @@ pub const fn is_double_tap(first_tap_ms: u64, second_tap_ms: u64) -> bool {
 /// Calculate touch-adjusted hit radius for touch input.
 /// Touch input requires larger hit areas than mouse input for usability.
 #[must_use]
+#[allow(dead_code)]
 pub const fn touch_hit_radius(base_radius: f64, is_touch: bool) -> f64 {
     if is_touch {
         base_radius.max(TOUCH_HIT_RADIUS_PX)
@@ -888,6 +893,7 @@ pub const fn touch_hit_radius(base_radius: f64, is_touch: bool) -> f64 {
 /// Check if a touch point is within a resize handle's hit area.
 /// Touch handles need expanded hit areas for usability.
 #[must_use]
+#[allow(dead_code)]
 pub fn touch_handle_hit_test(
     touch_x: f64,
     touch_y: f64,
