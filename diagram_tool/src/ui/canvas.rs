@@ -496,7 +496,7 @@ fn flush_pending_pointer_update(
             }
 
             if *did_resize {
-                let (obx, oby, obw, obh) = *original_bounds;
+                let (obx, oby, obw, obh) = (original_bounds.0, original_bounds.1, original_bounds.2, original_bounds.3);
                 let north = *handle == ResizeHandle::Nw
                     || *handle == ResizeHandle::N
                     || *handle == ResizeHandle::Ne;
