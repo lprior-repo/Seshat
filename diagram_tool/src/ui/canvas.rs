@@ -583,7 +583,11 @@ fn flush_pending_pointer_update(
         InteractionMode::Select
         | InteractionMode::RubberBand { .. }
         | InteractionMode::DrawingEdge { .. }
-        | InteractionMode::DrawingSubgraph { .. } => {}
+        | InteractionMode::DrawingSubgraph { .. }
+        | InteractionMode::DragPending(_)
+        | InteractionMode::Dragging(_)
+        | InteractionMode::ResizePending(_)
+        | InteractionMode::Resizing(_) => {}
     });
 }
 
@@ -1333,6 +1337,12 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
+                        InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_) => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
                         InteractionMode::Select => {}
                     });
                     continue;
@@ -1479,6 +1489,12 @@ pub fn Canvas() -> Element {
                             });
                         }
                         InteractionMode::Panning { .. } => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_) => {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => {}
@@ -1903,6 +1919,12 @@ pub fn Canvas() -> Element {
                         InteractionMode::DraggingSelection { .. }
                         | InteractionMode::ResizingSelection { .. }
                         | InteractionMode::Panning { .. } => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
+                        InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_) => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
                         InteractionMode::Select => {}

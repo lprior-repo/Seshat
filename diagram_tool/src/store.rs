@@ -40,12 +40,14 @@ pub use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "async-db"))]
 pub use crate::store_async::{
-    append_event_async, append_batch_async, bootstrap_async_store,
+    append_event_async, append_batch_async, append_idempotent_async,
+    bootstrap_async_store, classify_duplicate_async,
     create_async_pool, current_store_config_async,
     fetch_all_events, fetch_events_since,
-    integrity_check_async, open_recovery_mode_async,
-    open_recovery_only_async, read_store_pragmas_async,
-    startup_integrity_check_async, AsyncAppendResult, AsyncBatchAppendResult,
+    integrity_check_async, lookup_existing_op_async,
+    open_recovery_mode_async, open_recovery_only_async,
+    read_store_pragmas_async, startup_integrity_check_async,
+    AsyncAppendResult, AsyncBatchAppendResult,
     AsyncIntegrityStatus, AsyncRecoveryError, AsyncRecoveryHandle,
     AsyncRecoverySession, AsyncStoreBootstrap, AsyncStoreConfig, AsyncStoreError,
     AsyncStorePragmas,
