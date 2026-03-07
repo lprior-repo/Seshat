@@ -22,7 +22,10 @@ impl NodeId {
         Self(id)
     }
 
-    /// Create a new NodeId, returning error for empty strings
+    /// Create a new `NodeId`, returning error for empty strings
+    ///
+    /// # Errors
+    /// Returns an error if the input string is empty.
     pub fn try_new(id: String) -> Result<Self, &'static str> {
         if id.is_empty() {
             Err("NodeId cannot be empty")
@@ -53,7 +56,10 @@ impl EdgeId {
         Self(id)
     }
 
-    /// Create a new EdgeId, returning error for empty strings
+    /// Create a new `EdgeId`, returning error for empty strings
+    ///
+    /// # Errors
+    /// Returns an error if the input string is empty.
     pub fn try_new(id: String) -> Result<Self, &'static str> {
         if id.is_empty() {
             Err("EdgeId cannot be empty")
@@ -145,7 +151,7 @@ pub struct Node {
     pub collapsed: Option<bool>,
 }
 
-/// Error type for OrderedFloat construction
+/// Error type for `OrderedFloat` construction
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OrderedFloatError {
     #[error("NaN is not a valid value for OrderedFloat")]
@@ -178,7 +184,10 @@ impl Serialize for OrderedFloat {
 }
 
 impl OrderedFloat {
-    #[must_use]
+    /// Create a new OrderedFloat from a f64 value.
+    ///
+    /// # Errors
+    /// Returns an error if the value is NaN or infinite.
     pub const fn new(value: f64) -> Result<Self, OrderedFloatError> {
         if value.is_nan() {
             Err(OrderedFloatError::NaN)
