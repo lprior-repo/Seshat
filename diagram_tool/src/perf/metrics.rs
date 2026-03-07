@@ -75,6 +75,7 @@ impl Percentiles {
 
         let len = sorted.len();
         let percentile = |p: f64| -> f64 {
+            #[allow(clippy::cast_precision_loss)]
             let idx = ((len - 1) as f64 * p).round() as usize;
             sorted[idx.min(len - 1)]
         };
@@ -145,9 +146,11 @@ impl Statistics {
         }
 
         // Compute mean
+        #[allow(clippy::cast_precision_loss)]
         let mean = samples.iter().sum::<f64>() / count as f64;
 
         // Compute variance
+        #[allow(clippy::cast_precision_loss)]
         let variance = if count > 1 {
             samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (count - 1) as f64
         } else {
@@ -164,6 +167,7 @@ impl Statistics {
         // 95% confidence interval using t-distribution approximation
         // For large samples, t ≈ 1.96
         let t_value = if count >= 30 { 1.96 } else { 2.0 };
+        #[allow(clippy::cast_precision_loss)]
         let margin = t_value * std_dev / (count as f64).sqrt();
         let ci95_lower = mean - margin;
         let ci95_upper = mean + margin;

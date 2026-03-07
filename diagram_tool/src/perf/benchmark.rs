@@ -1,12 +1,12 @@
 //! Benchmark configuration and execution.
 
-use std::time::Duration;
+use std::time::{Duration, Instant, UNIX_EPOCH};
 
 use serde::{Deserialize, Serialize};
 
 use super::{
-    error::PerfError, fps::FpsReport, DEFAULT_BENCHMARK_DURATION_MS, DEFAULT_WARMUP_ITERATIONS,
-    MAX_NODE_COUNT, MIN_DURATION_MS, MIN_NODE_COUNT, TARGET_FPS,
+    error::PerfError, fps::FpsMeasurement, fps::FpsReport, DEFAULT_BENCHMARK_DURATION_MS,
+    DEFAULT_WARMUP_ITERATIONS, MAX_NODE_COUNT, MIN_DURATION_MS, MIN_NODE_COUNT, TARGET_FPS,
 };
 
 /// Validated node count (P1: 1-10000).
@@ -275,10 +275,11 @@ impl Benchmark {
 
         // Add simulated work proportional to node count
         // For 3000 nodes at 120 FPS target, this should complete in ~8.33ms
-        let node_factor = self.config.node_count.value() as f64 / 3000.0;
+        let node_factor = f64::from(self.config.node_count.value()) / 3000.0;
         let work_time_ms = base_time_ms * node_factor;
 
         // Add small variance to simulate real-world conditions
+        #[allow(clippy::cast_precision_loss)]
         let variance = (self.config.seed as f64 % 0.5) - 0.25; // -0.25 to +0.25 ms
 
         work_time_ms + variance
@@ -295,10 +296,6 @@ impl Benchmark {
                 "invalid benchmark configuration".to_string(),
             ));
         }
-
-        use std::time::{Instant, UNIX_EPOCH};
-
-        use super::fps::FpsMeasurement;
 
         let mut measurement = FpsMeasurement::new();
 

@@ -290,18 +290,18 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     };
 
     // Generate nodes in a grid pattern
-    let grid_size = (node_count as f64).sqrt().ceil() as u32;
+    let grid_size = f64::from(node_count).sqrt().ceil() as u32;
     for i in 0..node_count {
         let row = i / grid_size;
         let col = i % grid_size;
 
-        let x = col as f64 * 120.0 + next_random(&mut rng) * 20.0;
-        let y = row as f64 * 80.0 + next_random(&mut rng) * 20.0;
+        let x = f64::from(col) * 120.0 + next_random(&mut rng) * 20.0;
+        let y = f64::from(row) * 80.0 + next_random(&mut rng) * 20.0;
 
         let node = Node {
             kind: NodeKind::Node,
             icon: String::new(),
-            label: format!("Node {}", i),
+            label: format!("Node {i}"),
             x: OrderedFloat(x),
             y: OrderedFloat(y),
             width: OrderedFloat(100.0),
@@ -313,12 +313,12 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
             dag_rank: None,
             tags: im::vector![],
             metadata: ImHashMap::new(),
-            z_index: i as i64,
+            z_index: i64::from(i),
             style: None,
             collapsed: None,
         };
 
-        nodes.insert(NodeId::new(format!("node-{}", i)), node);
+        nodes.insert(NodeId::new(format!("node-{i}")), node);
     }
 
     // Generate some edges (about 50% of nodes have edges)

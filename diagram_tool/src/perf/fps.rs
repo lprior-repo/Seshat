@@ -174,7 +174,9 @@ impl FpsMeasurement {
 
         let (frame_time_ms, timestamp_ms) =
             if let (Some(start), Some(last)) = (self.start_time, self.last_frame_time) {
+                #[allow(clippy::cast_precision_loss)]
                 let frame_time = now.duration_since(last).as_nanos() as f64 / 1_000_000.0;
+                #[allow(clippy::cast_precision_loss)]
                 let timestamp = now.duration_since(start).as_nanos() as f64 / 1_000_000.0;
                 (frame_time, timestamp)
             } else {
