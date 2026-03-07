@@ -11,6 +11,14 @@ path = "src/main.rs"
 name = "diagram_tool"
 path = "src/lib.rs"
 
+[features]
+default = ["desktop", "server"]
+web = ["dioxus/web"]
+desktop = ["dioxus/desktop"]
+server = ["dioxus/server"]
+fullstack = ["web", "server"]
+async-db = ["dep:sqlx", "dep:tokio"]
+
 [dependencies]
 dioxus          = { version = "0.7" }
 
@@ -46,14 +54,6 @@ num_cpus = "1.16"
 
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"], optional = true }
 tokio = { version = "1.1", features = ["rt", "sync"], optional = true }
-
-[features]
-default = ["desktop", "server"]
-web = ["dioxus/web"]
-desktop = ["dioxus/desktop"]
-server = ["dioxus/server"]
-fullstack = ["web", "server"]
-async-db = ["dep:sqlx", "dep:tokio"]
 
 [build-dependencies]
 serde = { version = "1.0", features = ["derive"] }
