@@ -128,15 +128,18 @@ impl ToastHandle {
         self.id
     }
 
+    #[must_use]
     pub fn update(self, patch: ToastUpdate) -> bool {
         self.api.update(self.id, patch)
     }
 
+    #[must_use]
     pub fn dismiss(self) -> bool {
         self.api.dismiss(Some(self.id))
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn remove(self) -> bool {
         self.api.remove(self.id)
     }
@@ -174,6 +177,7 @@ impl ToastApi {
             .id()
     }
 
+    #[must_use]
     pub fn update(self, id: ToastId, patch: ToastUpdate) -> bool {
         let mut queue = self.queue;
         let mut changed = false;
@@ -183,6 +187,7 @@ impl ToastApi {
         changed
     }
 
+    #[must_use]
     pub fn dismiss(self, id: Option<ToastId>) -> bool {
         let mut queue = self.queue;
         let mut changed = false;

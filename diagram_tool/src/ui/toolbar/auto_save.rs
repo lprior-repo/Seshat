@@ -106,6 +106,7 @@ pub fn has_revision_changed(current: Revision, previous: Option<Revision>) -> bo
 
 /// Default revision to use when no history
 #[allow(dead_code)]
+#[must_use]
 pub const fn default_revision() -> Revision {
     Revision::INITIAL
 }

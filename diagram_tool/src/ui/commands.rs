@@ -178,6 +178,7 @@ pub fn paste_contents(
 ///
 /// This function maintains backward compatibility with the existing API
 /// by using a Dioxus signal for clipboard state management.
+#[must_use]
 pub fn apply_copy_selection(
     doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
@@ -202,6 +203,7 @@ pub fn apply_copy_selection(
 /// Public API: Applies paste operation using a clipboard signal.
 ///
 /// Returns true if paste was successful, false otherwise.
+#[must_use]
 pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
@@ -663,6 +665,7 @@ pub fn apply_align_selection(
 /// - Horizontal distribution preserves Y positions
 /// - Vertical distribution preserves X positions
 /// - Z-order is preserved
+#[must_use]
 pub fn apply_distribute_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -787,6 +790,7 @@ pub fn apply_zoom_out(
     true
 }
 
+#[must_use]
 pub fn apply_zoom_reset(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,

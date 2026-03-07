@@ -77,6 +77,7 @@ pub fn sync_canvas_origin() -> Option<(f64, f64)> {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
+#[must_use]
 pub fn sync_canvas_origin() -> Option<(f64, f64)> {
     None
 }

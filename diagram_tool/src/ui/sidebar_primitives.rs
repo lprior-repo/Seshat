@@ -60,6 +60,7 @@ fn local_storage_set_sidebar_open(_open: bool) {
     }
 }
 
+#[must_use]
 pub fn use_sidebar_provider() -> Option<SidebarProviderContext> {
     try_use_context::<SidebarProviderContext>()
 }
