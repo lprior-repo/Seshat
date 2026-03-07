@@ -223,4 +223,88 @@ mod proptests {
             }
         }
     }
+
+    #[test]
+    fn screen_to_canvas_identity_at_zoom_one() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 1.0);
+        assert_eq!(result, Some((100.0, 200.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_scales_with_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 2.0);
+        assert_eq!(result, Some((50.0, 100.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_shifts_with_camera() {
+        let result = screen_to_canvas(0.0, 0.0, 100.0, 50.0, 1.0);
+        assert_eq!(result, Some((100.0, 50.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_combined_transform() {
+        let result = screen_to_canvas(100.0, 100.0, 500.0, 300.0, 2.0);
+        assert_eq!(result, Some((550.0, 350.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_zero_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 0.0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_negative_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, -1.0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_infinite_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, f64::INFINITY);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_nan_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, f64::NAN);
+        assert!(result.is_none());
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(128))]
+        #[test]
+        fn prop_screen_to_canvas_roundtrip(
+            client_x in -1e6_f64..1e6_f64,
+            client_y in -1e6_f64..1e6_f64,
+            camera_x in -1e6_f64..1e6_f64,
+            camera_y in -1e6_f64..1e6_f64,
+            zoom in 0.01_f64..10.0_f64,
+        ) {
+            let result = screen_to_canvas(client_x, client_y, camera_x, camera_y, zoom);
+            prop_assert!(result.is_some());
+            let (cx, cy) = result.unwrap();
+            let scale = (camera_x.abs() + camera_y.abs() + client_x.abs() / zoom.abs() + client_y.abs() / zoom.abs()).max(1.0);
+            prop_assert!((cx - camera_x - client_x / zoom).abs() / scale < 1e-9);
+            prop_assert!((cy - camera_y - client_y / zoom).abs() / scale < 1e-9);
+        }
+    }
+
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(64))]
+        #[test]
+        fn prop_screen_to_canvas_zoom_edge_cases(zoom in prop::sample::select(&[
+            f64::EPSILON,
+            f64::MIN_POSITIVE,
+            1e-300,
+        ])) {
+            let result = screen_to_canvas(100.0, 100.0, 0.0, 0.0, zoom);
+            if zoom > f64::EPSILON && zoom.is_finite() {
+                prop_assert!(result.is_some());
+            } else {
+                prop_assert!(result.is_none());
+            }
+        }
+    }
 }

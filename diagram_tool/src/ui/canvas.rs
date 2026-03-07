@@ -309,14 +309,6 @@ fn subgraph_release_bounds(
     (w > 20.0 && h > 20.0).then_some((x, y, w, h))
 }
 
-fn safe_zoom(zoom: f64) -> f64 {
-    if zoom.is_finite() && zoom > f64::EPSILON {
-        zoom
-    } else {
-        1.0
-    }
-}
-
 fn fit_icon_side(side: f64) -> f64 {
     if !side.is_finite() {
         return 0.0;
@@ -475,7 +467,7 @@ fn flush_pending_pointer_update(
                 client_y,
                 doc_for_mouse.editor_state.camera_x.0,
                 doc_for_mouse.editor_state.camera_y.0,
-                safe_zoom(doc_for_mouse.editor_state.zoom.0),
+                math::safe_zoom(doc_for_mouse.editor_state.zoom.0).unwrap_or(1.0),
             );
             let delta_x_raw = mx - anchor.0;
             let delta_y_raw = my - anchor.1;
@@ -575,7 +567,7 @@ fn flush_pending_pointer_update(
             *last_pos = (client_x, client_y);
             if dx.abs() > f64::EPSILON || dy.abs() > f64::EPSILON {
                 doc_signal.with_mut(|doc| {
-                    let zoom = safe_zoom(doc.editor_state.zoom.0);
+                    let zoom = math::safe_zoom(doc.editor_state.zoom.0).unwrap_or(1.0);
                     doc.editor_state.camera_x =
                         OrderedFloat(doc.editor_state.camera_x.0 - (dx / zoom));
                     doc.editor_state.camera_y =

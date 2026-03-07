@@ -10,6 +10,7 @@
 #![forbid(unsafe_code)]
 
 use crate::geometry::{Point, AABB};
+use crate::ui::canvas::math::safe_zoom;
 
 /// Transform a screen point to world coordinates
 ///
@@ -33,11 +34,7 @@ pub fn screen_to_world(
     camera_y: f64,
     zoom: f64,
 ) -> Point {
-    let safe_zoom = if zoom.is_finite() && zoom > 0.0 {
-        zoom
-    } else {
-        1.0
-    };
+    let safe_zoom = safe_zoom(zoom).unwrap_or(1.0);
 
     Point::new(
         camera_x + screen_x / safe_zoom,
@@ -67,11 +64,7 @@ pub fn world_to_screen(
     camera_y: f64,
     zoom: f64,
 ) -> Point {
-    let safe_zoom = if zoom.is_finite() && zoom > 0.0 {
-        zoom
-    } else {
-        1.0
-    };
+    let safe_zoom = safe_zoom(zoom).unwrap_or(1.0);
 
     Point::new(
         (world_x - camera_x) * safe_zoom,
