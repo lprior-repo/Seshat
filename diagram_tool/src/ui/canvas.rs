@@ -25,6 +25,7 @@ use dioxus::{
 use im::HashMap;
 use interaction_reducer::{
     commit_inline_edit, finalize_motion_release, InteractionMode, ResizeHandle,
+    DragState, DragPendingState, ResizeState,
 };
 use perf::{
     normalize_viewport, to_canvas_coords, to_screen_coords, viewport_changed, wheel_update,
@@ -386,12 +387,26 @@ fn flush_pending_pointer_update(
     pending_pointer_sample.set(None);
 
     interaction_mode.with_mut(|mode| match mode {
-        InteractionMode::DraggingSelection {
-            anchor_canvas,
-            anchor_client,
-            original_positions,
-            did_move,
-        } => {
+        InteractionMode::DragPending(state) => {
+            let doc = doc_signal.read().clone();
+            let has_movable_nodes = state.original_positions.keys().any(|id| {
+                doc.document
+                    .nodes
+                    .get(id)
+                    .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+            });
+
+            if has_movable_nodes && has_drag_threshold(state.anchor_client, (client_x, client_y)) {
+                let history = history_signal.read().clone();
+                *history_signal.write() = history.push(doc.clone());
+                
+                *mode = InteractionMode::Dragging(DragState {
+                    anchor_canvas: state.anchor_canvas,
+                    original_positions: state.original_positions.clone(),
+                });
+            }
+        }
+        InteractionMode::Dragging(state) => {
             let doc = doc_signal.read().clone();
             let (curr_x, curr_y) = to_canvas_coords(
                 client_x,
@@ -400,27 +415,10 @@ fn flush_pending_pointer_update(
                 doc.editor_state.camera_y.0,
                 doc.editor_state.zoom.0,
             );
-
-            let has_movable_nodes = original_positions.keys().any(|id| {
-                doc.document
-                    .nodes
-                    .get(id)
-                    .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
-            });
-
-            if !*did_move
-                && has_movable_nodes
-                && has_drag_threshold(*anchor_client, (client_x, client_y))
             {
-                let history = history_signal.read().clone();
-                *history_signal.write() = history.push(doc.clone());
-                *did_move = true;
-            }
-
-            if *did_move {
                 let positions = dragged_positions_with_snap(
-                    original_positions,
-                    *anchor_canvas,
+                    &state.original_positions,
+                    state.anchor_canvas,
                     (curr_x, curr_y),
                     doc.editor_state.snap_to_grid,
                     doc.editor_state.grid_size,
@@ -459,13 +457,7 @@ fn flush_pending_pointer_update(
                 }
             }
         }
-        InteractionMode::ResizingSelection {
-            handle,
-            original_bounds,
-            originals,
-            anchor,
-            did_resize,
-        } => {
+        InteractionMode::ResizePending(state) => {
             let doc_for_mouse = doc_signal.read().clone();
             let (mx, my) = to_canvas_coords(
                 client_x,
@@ -474,14 +466,14 @@ fn flush_pending_pointer_update(
                 doc_for_mouse.editor_state.camera_y.0,
                 safe_zoom(doc_for_mouse.editor_state.zoom.0),
             );
-            let delta_x_raw = mx - anchor.0;
-            let delta_y_raw = my - anchor.1;
+            let delta_x_raw = mx - state.anchor.0;
+            let delta_y_raw = my - state.anchor.1;
             let snap = doc_for_mouse.editor_state.snap_to_grid;
             let grid = doc_for_mouse.editor_state.grid_size;
             let dx = snap_value(delta_x_raw, snap, grid);
             let dy = snap_value(delta_y_raw, snap, grid);
 
-            let has_resizable_nodes = originals.keys().any(|id| {
+            let has_resizable_nodes = state.originals.keys().any(|id| {
                 doc_for_mouse
                     .document
                     .nodes
@@ -489,26 +481,47 @@ fn flush_pending_pointer_update(
                     .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
             });
 
-            if !*did_resize && has_resizable_nodes && (dx != 0.0 || dy != 0.0) {
+            if has_resizable_nodes && (dx != 0.0 || dy != 0.0) {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc_for_mouse);
-                *did_resize = true;
+                
+                *mode = InteractionMode::Resizing(ResizeState {
+                    handle: state.handle,
+                    original_bounds: state.original_bounds,
+                    originals: state.originals.clone(),
+                    anchor: state.anchor,
+                });
             }
-
-            if *did_resize {
-                let (obx, oby, obw, obh) = *original_bounds;
-                let north = *handle == ResizeHandle::Nw
-                    || *handle == ResizeHandle::N
-                    || *handle == ResizeHandle::Ne;
-                let south = *handle == ResizeHandle::Sw
-                    || *handle == ResizeHandle::S
-                    || *handle == ResizeHandle::Se;
-                let west = *handle == ResizeHandle::Nw
-                    || *handle == ResizeHandle::W
-                    || *handle == ResizeHandle::Sw;
-                let east = *handle == ResizeHandle::Ne
-                    || *handle == ResizeHandle::E
-                    || *handle == ResizeHandle::Se;
+        }
+        InteractionMode::Resizing(state) => {
+            let doc_for_mouse = doc_signal.read().clone();
+            let (mx, my) = to_canvas_coords(
+                client_x,
+                client_y,
+                doc_for_mouse.editor_state.camera_x.0,
+                doc_for_mouse.editor_state.camera_y.0,
+                safe_zoom(doc_for_mouse.editor_state.zoom.0),
+            );
+            let delta_x_raw = mx - state.anchor.0;
+            let delta_y_raw = my - state.anchor.1;
+            let snap = doc_for_mouse.editor_state.snap_to_grid;
+            let grid = doc_for_mouse.editor_state.grid_size;
+            let dx = snap_value(delta_x_raw, snap, grid);
+            let dy = snap_value(delta_y_raw, snap, grid);
+            {
+                let (obx, oby, obw, obh) = state.original_bounds;
+                let north = state.handle == ResizeHandle::Nw
+                    || state.handle == ResizeHandle::N
+                    || state.handle == ResizeHandle::Ne;
+                let south = state.handle == ResizeHandle::Sw
+                    || state.handle == ResizeHandle::S
+                    || state.handle == ResizeHandle::Se;
+                let west = state.handle == ResizeHandle::Nw
+                    || state.handle == ResizeHandle::W
+                    || state.handle == ResizeHandle::Sw;
+                let east = state.handle == ResizeHandle::Ne
+                    || state.handle == ResizeHandle::E
+                    || state.handle == ResizeHandle::Se;
 
                 let mut dx_clamped = dx;
                 let mut dy_clamped = dy;
@@ -527,7 +540,7 @@ fn flush_pending_pointer_update(
 
                 let nx = if west { obx + dx_clamped } else { obx };
                 let ny = if north { oby + dy_clamped } else { oby };
-                let nw = if west {
+                let nw: f64 = if west {
                     obw - dx_clamped
                 } else if east {
                     obw + dx_clamped
@@ -535,7 +548,7 @@ fn flush_pending_pointer_update(
                     obw
                 }
                 .max(24.0);
-                let nh = if north {
+                let nh: f64 = if north {
                     obh - dy_clamped
                 } else if south {
                     obh + dy_clamped
@@ -548,13 +561,13 @@ fn flush_pending_pointer_update(
                 let scale_y = if obh > 0.0 { nh / obh } else { 1.0 };
 
                 doc_signal.with_mut(|doc_mut| {
-                    for (id, (ox, oy, ow, oh)) in originals.iter() {
+                    for (id, (ox, oy, ow, oh)) in state.originals.iter() {
                         if let Some(node) = doc_mut.document.nodes.get_mut(id) {
                             if node.locked && node.kind != NodeKind::Subgraph {
                                 continue;
                             }
-                            let nxx = (ox - obx).mul_add(scale_x, nx);
-                            let nyy = (oy - oby).mul_add(scale_y, ny);
+                            let nxx: f64 = (ox - obx).mul_add(scale_x, nx);
+                            let nyy: f64 = (oy - oby).mul_add(scale_y, ny);
                             let nww = (ow * scale_x).max(24.0);
                             let nhh = (oh * scale_y).max(24.0);
                             node.x = OrderedFloat(nxx);
@@ -738,8 +751,8 @@ pub fn Canvas() -> Element {
                             } else {
                                 let mode = interaction_mode.read().clone();
                                 match mode {
-                                    InteractionMode::DraggingSelection { .. }
-                                    | InteractionMode::ResizingSelection { .. } => {
+                                    InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
+                                    | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_) => {
                                         interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {
                                                 let _ = finalize_motion_release(mode_mut, doc);
@@ -1328,8 +1341,8 @@ pub fn Canvas() -> Element {
                                 doc.editor_state.grid_size,
                             );
                         }
-                        InteractionMode::DraggingSelection { .. }
-                        | InteractionMode::ResizingSelection { .. }
+                        InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
+                        | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
@@ -1472,8 +1485,8 @@ pub fn Canvas() -> Element {
                             tool_signal.set(ToolMode::Select);
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::ResizingSelection { .. }
-                        | InteractionMode::DraggingSelection { .. } => {
+                        InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
+                        | InteractionMode::Dragging(_) | InteractionMode::DragPending(_) => {
                             doc_signal.with_mut(|doc| {
                                 let _ = finalize_motion_release(mode, doc);
                             });
@@ -1574,13 +1587,13 @@ pub fn Canvas() -> Element {
         match mode {
             InteractionMode::Panning { .. } => "grabbing",
             InteractionMode::DrawingEdge { .. } => "crosshair",
-            InteractionMode::ResizingSelection { handle, .. } => match handle {
+            InteractionMode::Resizing(state) | InteractionMode::ResizePending(state) => match state.handle {
                 ResizeHandle::Nw | ResizeHandle::Se => "nwse-resize",
                 ResizeHandle::Ne | ResizeHandle::Sw => "nesw-resize",
                 ResizeHandle::N | ResizeHandle::S => "ns-resize",
                 ResizeHandle::E | ResizeHandle::W => "ew-resize",
             },
-            InteractionMode::DraggingSelection { .. } => "move",
+            InteractionMode::Dragging(_) | InteractionMode::DragPending(_) => "move",
             _ => {
                 if *space_pressed.read() || tool == ToolMode::Pan {
                     "grab"
@@ -1900,8 +1913,8 @@ pub fn Canvas() -> Element {
                                 doc.editor_state.grid_size,
                             );
                         }
-                        InteractionMode::DraggingSelection { .. }
-                        | InteractionMode::ResizingSelection { .. }
+                        InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
+                        | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
@@ -2046,8 +2059,8 @@ pub fn Canvas() -> Element {
                             tool_signal.set(ToolMode::Select);
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::ResizingSelection { .. }
-                        | InteractionMode::DraggingSelection { .. } => {
+                        InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
+                        | InteractionMode::Dragging(_) | InteractionMode::DragPending(_) => {
                             doc_signal.with_mut(|doc| {
                                 let _ = finalize_motion_release(mode, doc);
                             });
@@ -2449,12 +2462,11 @@ pub fn Canvas() -> Element {
                                     let current_doc = doc_signal.read().clone();
                                     let original_positions =
                                         drag_original_positions(&current_doc, &current_doc.editor_state.selected_items);
-                                    interaction_mode.set(InteractionMode::DraggingSelection {
+                                    interaction_mode.set(InteractionMode::DragPending(DragPendingState {
                                         anchor_canvas: pos,
                                         anchor_client: (local_x, local_y),
                                         original_positions,
-                                        did_move: false,
-                                    });
+                                    }));
                                 }
                             },
 
@@ -2526,8 +2538,8 @@ pub fn Canvas() -> Element {
                                             interaction_mode.set(InteractionMode::Select);
                                         }
                                     }
-                                    InteractionMode::DraggingSelection { .. }
-                                    | InteractionMode::ResizingSelection { .. } => {
+                                    InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
+                                    | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_) => {
                                         interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {
                                                 let _ = finalize_motion_release(mode_mut, doc);
@@ -2796,8 +2808,8 @@ pub fn Canvas() -> Element {
                 let mode = interaction_mode.read().clone();
                 let hide_toolbar = matches!(
                     mode,
-                    InteractionMode::DraggingSelection { .. }
-                        | InteractionMode::ResizingSelection { .. }
+                    InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
+                        | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
                         | InteractionMode::RubberBand { .. }
                 );
                 let selected_nodes = selected_node_ids(&doc);

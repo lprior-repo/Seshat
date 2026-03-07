@@ -38,18 +38,35 @@ fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
 }
 
 #[derive(Clone, Debug, PartialEq)]
+pub(super) struct DragState {
+    pub anchor_canvas: (f64, f64),
+    pub original_positions: HashMap<NodeId, (f64, f64)>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct DragPendingState {
+    pub anchor_canvas: (f64, f64),
+    pub anchor_client: (f64, f64),
+    pub original_positions: HashMap<NodeId, (f64, f64)>,
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub(super) struct ResizeState {
+    pub handle: ResizeHandle,
+    pub original_bounds: (f64, f64, f64, f64),
+    pub originals: HashMap<NodeId, (f64, f64, f64, f64)>,
+    pub anchor: (f64, f64),
+}
+
+#[derive(Clone, Debug, PartialEq)]
 pub(super) enum InteractionMode {
     Select,
     RubberBand {
         start: (f64, f64),
         current: (f64, f64),
     },
-    DraggingSelection {
-        anchor_canvas: (f64, f64),
-        anchor_client: (f64, f64),
-        original_positions: HashMap<NodeId, (f64, f64)>,
-        did_move: bool,
-    },
+    DragPending(DragPendingState),
+    Dragging(DragState),
     DrawingEdge {
         from_node: NodeId,
         current_pos: (f64, f64),
@@ -58,13 +75,8 @@ pub(super) enum InteractionMode {
         start: (f64, f64),
         current: (f64, f64),
     },
-    ResizingSelection {
-        handle: ResizeHandle,
-        original_bounds: (f64, f64, f64, f64),
-        originals: HashMap<NodeId, (f64, f64, f64, f64)>,
-        anchor: (f64, f64),
-        did_resize: bool,
-    },
+    ResizePending(ResizeState),
+    Resizing(ResizeState),
     Panning {
         last_pos: (f64, f64),
     },
@@ -168,13 +180,12 @@ pub(super) fn start_resize_interaction(
                 }
             });
 
-        interaction_mode.set(InteractionMode::ResizingSelection {
+        interaction_mode.set(InteractionMode::ResizePending(ResizeState {
             handle,
             original_bounds: bounds,
             originals,
             anchor: (cx, cy),
-            did_resize: false,
-        });
+        }));
     }
 }
 
@@ -183,15 +194,16 @@ pub(super) fn finalize_motion_release(
     doc: &mut DiagramDocument,
 ) -> bool {
     let should_increment = match mode {
-        InteractionMode::DraggingSelection { did_move, .. } => Some(*did_move),
-        InteractionMode::ResizingSelection { did_resize, .. } => Some(*did_resize),
-        _ => None,
+        InteractionMode::Dragging(_) | InteractionMode::Resizing(_) => true,
+        InteractionMode::DragPending(_) | InteractionMode::ResizePending(_) => {
+            *mode = InteractionMode::Select;
+            return true;
+        }
+        _ => return false,
     };
 
-    if let Some(increment) = should_increment {
-        if increment {
-            doc.revision = doc.revision.increment();
-        }
+    if should_increment {
+        doc.revision = doc.revision.increment();
         *mode = InteractionMode::Select;
         true
     } else {
@@ -203,7 +215,10 @@ pub(super) fn finalize_motion_release(
 mod tests {
     use im::HashMap;
 
-    use super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
+    use super::{
+        finalize_motion_release, resize_target_ids, DragPendingState, DragState, InteractionMode,
+        ResizeHandle, ResizeState,
+    };
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
@@ -233,12 +248,10 @@ mod tests {
     #[test]
     fn given_drag_end_when_finalized_twice_then_revision_bumps_once() {
         let mut doc = DiagramDocument::default();
-        let mut mode = InteractionMode::DraggingSelection {
+        let mut mode = InteractionMode::Dragging(DragState {
             anchor_canvas: (0.0, 0.0),
-            anchor_client: (0.0, 0.0),
             original_positions: HashMap::new(),
-            did_move: true,
-        };
+        });
 
         let first = finalize_motion_release(&mut mode, &mut doc);
         let second = finalize_motion_release(&mut mode, &mut doc);
@@ -255,13 +268,12 @@ mod tests {
     #[test]
     fn given_resize_end_without_resize_when_finalized_then_no_revision_bump() {
         let mut doc = DiagramDocument::default();
-        let mut mode = InteractionMode::ResizingSelection {
+        let mut mode = InteractionMode::ResizePending(ResizeState {
             handle: ResizeHandle::Se,
             original_bounds: (0.0, 0.0, 10.0, 10.0),
             originals: HashMap::new(),
             anchor: (0.0, 0.0),
-            did_resize: false,
-        };
+        });
 
         let finalized = finalize_motion_release(&mut mode, &mut doc);
 
@@ -273,13 +285,12 @@ mod tests {
     #[test]
     fn given_resize_end_when_finalized_twice_then_revision_bumps_once() {
         let mut doc = DiagramDocument::default();
-        let mut mode = InteractionMode::ResizingSelection {
+        let mut mode = InteractionMode::Resizing(ResizeState {
             handle: ResizeHandle::E,
             original_bounds: (0.0, 0.0, 10.0, 10.0),
             originals: HashMap::new(),
             anchor: (0.0, 0.0),
-            did_resize: true,
-        };
+        });
 
         let first = finalize_motion_release(&mut mode, &mut doc);
         let second = finalize_motion_release(&mut mode, &mut doc);
@@ -348,12 +359,10 @@ mod tests {
         let initial_revision = doc.revision;
 
         // First event: normal drag completion
-        let mut mode = InteractionMode::DraggingSelection {
+        let mut mode = InteractionMode::Dragging(DragState {
             anchor_canvas: (0.0, 0.0),
-            anchor_client: (0.0, 0.0),
             original_positions: HashMap::new(),
-            did_move: true,
-        };
+        });
 
         let first_result = finalize_motion_release(&mut mode, &mut doc);
         let first_revision = doc.revision;
@@ -396,13 +405,12 @@ mod tests {
         let initial_revision = doc.revision;
 
         // First event: normal resize completion
-        let mut mode = InteractionMode::ResizingSelection {
+        let mut mode = InteractionMode::Resizing(ResizeState {
             handle: ResizeHandle::E,
             original_bounds: (0.0, 0.0, 100.0, 100.0),
             originals: HashMap::new(),
             anchor: (50.0, 50.0),
-            did_resize: true,
-        };
+        });
 
         let first_result = finalize_motion_release(&mut mode, &mut doc);
         assert!(first_result);
@@ -428,12 +436,11 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let initial_revision = doc.revision;
 
-        let mut mode = InteractionMode::DraggingSelection {
+        let mut mode = InteractionMode::DragPending(DragPendingState {
             anchor_canvas: (0.0, 0.0),
             anchor_client: (0.0, 0.0),
             original_positions: HashMap::new(),
-            did_move: false, // No actual movement
-        };
+        });
 
         let result = finalize_motion_release(&mut mode, &mut doc);
 
@@ -455,24 +462,21 @@ mod tests {
         assert_eq!(doc.revision, initial_revision);
 
         // Second: drag gesture
-        mode = InteractionMode::DraggingSelection {
+        mode = InteractionMode::Dragging(DragState {
             anchor_canvas: (0.0, 0.0),
-            anchor_client: (0.0, 0.0),
             original_positions: HashMap::new(),
-            did_move: true,
-        };
+        });
         let result = finalize_motion_release(&mut mode, &mut doc);
         assert!(result);
         assert_eq!(doc.revision, initial_revision.increment());
 
         // Third: resize gesture
-        mode = InteractionMode::ResizingSelection {
+        mode = InteractionMode::Resizing(ResizeState {
             handle: ResizeHandle::Se,
             original_bounds: (0.0, 0.0, 100.0, 100.0),
             originals: HashMap::new(),
             anchor: (50.0, 50.0),
-            did_resize: true,
-        };
+        });
         let result = finalize_motion_release(&mut mode, &mut doc);
         assert!(result);
         assert_eq!(doc.revision, initial_revision.increment().increment());
@@ -747,13 +751,12 @@ mod tests {
             map
         };
 
-        let mut mode = InteractionMode::ResizingSelection {
+        let mut mode = InteractionMode::Resizing(ResizeState {
             handle: ResizeHandle::Se,
             original_bounds: (50.0, 50.0, 100.0, 100.0),
             originals,
             anchor: (150.0, 150.0), // Anchor at SE corner
-            did_resize: true,
-        };
+        });
 
         // When: Finalizing the resize (even with inversion potential)
         let result = finalize_motion_release(&mut mode, &mut doc);
@@ -788,13 +791,12 @@ mod tests {
 
         // Simulate extreme resize that would go negative
         // The canvas resize logic clamps to 24.0 minimum
-        let mut mode = InteractionMode::ResizingSelection {
+        let mut mode = InteractionMode::Resizing(ResizeState {
             handle: ResizeHandle::Se,
             original_bounds: (0.0, 0.0, 50.0, 50.0),
             originals,
             anchor: (25.0, 25.0),
-            did_resize: true,
-        };
+        });
 
         // When: Finalizing
         let result = finalize_motion_release(&mut mode, &mut doc);
@@ -810,7 +812,10 @@ mod proptests {
     use im::HashMap;
     use proptest::prelude::*;
 
-    use super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
+    use super::{
+        finalize_motion_release, resize_target_ids, DragPendingState, DragState, InteractionMode,
+        ResizeHandle, ResizeState,
+    };
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
@@ -876,12 +881,7 @@ mod proptests {
             anchor_canvas_y in prop::sample::select(&[f64::MIN, f64::MAX, f64::INFINITY, f64::NEG_INFINITY, f64::NAN]),
         ) {
             let mut doc = DiagramDocument::default();
-            let mut mode = InteractionMode::DraggingSelection {
-                anchor_canvas: (anchor_canvas_x, anchor_canvas_y),
-                anchor_client: (0.0, 0.0),
-                original_positions: HashMap::new(),
-                did_move: true,
-            };
+            let mut mode = InteractionMode::Dragging(DragState { anchor_canvas: (anchor_canvas_x, anchor_canvas_y), original_positions: HashMap::new() });
             let _ = finalize_motion_release(&mut mode, &mut doc);
             prop_assert_eq!(mode, InteractionMode::Select);
         }
@@ -892,13 +892,12 @@ mod proptests {
     fn stress_resize_nan_bounds() {
         for _ in 0..256 {
             let mut doc = DiagramDocument::default();
-            let mut mode = InteractionMode::ResizingSelection {
+            let mut mode = InteractionMode::Resizing(ResizeState {
                 handle: ResizeHandle::Se,
                 original_bounds: (f64::NAN, f64::NAN, f64::NAN, f64::NAN),
                 originals: HashMap::new(),
                 anchor: (f64::NAN, f64::NAN),
-                did_resize: true,
-            };
+            });
             let result = finalize_motion_release(&mut mode, &mut doc);
             assert!(result);
             assert_eq!(mode, InteractionMode::Select);
@@ -910,7 +909,7 @@ mod proptests {
     fn stress_resize_infinite_bounds() {
         for _ in 0..256 {
             let mut doc = DiagramDocument::default();
-            let mut mode = InteractionMode::ResizingSelection {
+            let mut mode = InteractionMode::Resizing(ResizeState {
                 handle: ResizeHandle::Nw,
                 original_bounds: (
                     f64::NEG_INFINITY,
@@ -920,8 +919,7 @@ mod proptests {
                 ),
                 originals: HashMap::new(),
                 anchor: (f64::INFINITY, f64::NEG_INFINITY),
-                did_resize: true,
-            };
+            });
             let result = finalize_motion_release(&mut mode, &mut doc);
             assert!(result);
         }
@@ -1027,12 +1025,7 @@ mod proptests {
             let mut doc = DiagramDocument::default();
             let initial_revision = doc.revision;
             for _ in 0..iterations {
-                let mut mode = InteractionMode::DraggingSelection {
-                    anchor_canvas: (0.0, 0.0),
-                    anchor_client: (0.0, 0.0),
-                    original_positions: HashMap::new(),
-                    did_move: true,
-                };
+                let mut mode = InteractionMode::Dragging(DragState { anchor_canvas: (0.0, 0.0), original_positions: HashMap::new() });
                 let _ = finalize_motion_release(&mut mode, &mut doc);
             }
             let mut expected = initial_revision;
@@ -1053,13 +1046,12 @@ mod proptests {
             ResizeHandle::Sw, ResizeHandle::W,
         ])) {
             let mut doc = DiagramDocument::default();
-            let mut mode = InteractionMode::ResizingSelection {
+            let mut mode = InteractionMode::Resizing(ResizeState {
                 handle,
                 original_bounds: (0.0, 0.0, 100.0, 100.0),
                 originals: HashMap::new(),
                 anchor: (50.0, 50.0),
-                did_resize: true,
-            };
+            });
             let result = finalize_motion_release(&mut mode, &mut doc);
             prop_assert!(result);
         }
@@ -1075,12 +1067,7 @@ mod proptests {
                 let id = NodeId::new(format!("node_{i}"));
                 positions = positions.update(id, (i as f64, i as f64 * 2.0));
             }
-            let mut mode = InteractionMode::DraggingSelection {
-                anchor_canvas: (0.0, 0.0),
-                anchor_client: (0.0, 0.0),
-                original_positions: positions.clone(),
-                did_move: true,
-            };
+            let mut mode = InteractionMode::Dragging(DragState { anchor_canvas: (0.0, 0.0), original_positions: positions.clone() });
             let mut doc = DiagramDocument::default();
             let _ = finalize_motion_release(&mut mode, &mut doc);
             prop_assert_eq!(mode, InteractionMode::Select);
@@ -1142,13 +1129,12 @@ mod proptests {
             ]),
             coord in prop::sample::select(&[f64::MIN, f64::MAX, 0.0, f64::NAN]),
         ) {
-            let mut mode = InteractionMode::ResizingSelection {
+            let mut mode = InteractionMode::ResizePending(ResizeState {
                 handle,
-                original_bounds: (coord, coord, coord, coord),
+                original_bounds: (coord, coord, 100.0, 100.0),
                 originals: HashMap::new(),
                 anchor: (coord, coord),
-                did_resize: false,
-            };
+            });
             let mut doc = DiagramDocument::default();
             let result = finalize_motion_release(&mut mode, &mut doc);
             prop_assert!(result);
@@ -1161,12 +1147,11 @@ mod proptests {
         for _ in 0..256 {
             let mut doc = DiagramDocument::default();
             let initial = doc.revision;
-            let mut mode = InteractionMode::DraggingSelection {
+            let mut mode = InteractionMode::DragPending(DragPendingState {
                 anchor_canvas: (0.0, 0.0),
                 anchor_client: (0.0, 0.0),
                 original_positions: HashMap::new(),
-                did_move: false,
-            };
+            });
             let _ = finalize_motion_release(&mut mode, &mut doc);
             assert_eq!(doc.revision, initial);
         }
@@ -1178,13 +1163,12 @@ mod proptests {
         for _ in 0..256 {
             let mut doc = DiagramDocument::default();
             let initial = doc.revision;
-            let mut mode = InteractionMode::ResizingSelection {
+            let mut mode = InteractionMode::ResizePending(ResizeState {
                 handle: ResizeHandle::Se,
                 original_bounds: (0.0, 0.0, 100.0, 100.0),
                 originals: HashMap::new(),
                 anchor: (50.0, 50.0),
-                did_resize: false,
-            };
+            });
             let _ = finalize_motion_release(&mut mode, &mut doc);
             assert_eq!(doc.revision, initial);
         }
@@ -1231,24 +1215,13 @@ mod proptests {
                 mode = match op {
                     0 => InteractionMode::Select,
                     1 => InteractionMode::RubberBand { start: (0.0, 0.0), current: (1.0, 1.0) },
-                    2 => InteractionMode::DraggingSelection {
-                        anchor_canvas: (0.0, 0.0),
-                        anchor_client: (0.0, 0.0),
-                        original_positions: HashMap::new(),
-                        did_move: false,
-                    },
+                    2 => InteractionMode::DragPending(DragPendingState { anchor_canvas: (0.0, 0.0), anchor_client: (0.0, 0.0), original_positions: HashMap::new() }),
                     3 => InteractionMode::DrawingEdge {
                         from_node: NodeId::new(String::from("n")),
                         current_pos: (0.0, 0.0),
                     },
                     4 => InteractionMode::DrawingSubgraph { start: (0.0, 0.0), current: (1.0, 1.0) },
-                    5 => InteractionMode::ResizingSelection {
-                        handle: ResizeHandle::Se,
-                        original_bounds: (0.0, 0.0, 10.0, 10.0),
-                        originals: HashMap::new(),
-                        anchor: (5.0, 5.0),
-                        did_resize: false,
-                    },
+                    5 => InteractionMode::ResizePending(ResizeState { handle: ResizeHandle::Se, original_bounds: (0.0, 0.0, 10.0, 10.0), originals: HashMap::new(), anchor: (5.0, 5.0) }),
                     6 => InteractionMode::Panning { last_pos: (0.0, 0.0) },
                     _ => {
                         let _ = finalize_motion_release(&mut mode, &mut doc);
@@ -1316,7 +1289,7 @@ mod proptests {
 mod inp_mobile_touch_tests {
     use im::HashMap;
 
-    use super::{InteractionMode, ResizeHandle};
+    use super::{DragPendingState, InteractionMode, ResizeHandle, ResizeState};
     use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
 
     fn make_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
@@ -1355,20 +1328,19 @@ mod inp_mobile_touch_tests {
             last_pos: (100.0, 100.0),
         };
 
-        let dragging = InteractionMode::DraggingSelection {
+        let dragging = InteractionMode::DragPending(DragPendingState {
             anchor_canvas: (0.0, 0.0),
             anchor_client: (0.0, 0.0),
             original_positions: HashMap::new(),
-            did_move: false,
-        };
+        });
 
         // Modes should be different
         assert_ne!(
             panning, dragging,
-            "Panning and DraggingSelection should be distinct modes"
+            "Panning and DragPending should be distinct modes"
         );
 
-        // Panning should not be DraggingSelection
+        // Panning should not be DragPending
         match panning {
             InteractionMode::Panning { .. } => {}
             _ => panic!("Expected Panning mode"),
@@ -1376,8 +1348,8 @@ mod inp_mobile_touch_tests {
 
         // Dragging should not be Panning
         match dragging {
-            InteractionMode::DraggingSelection { .. } => {}
-            _ => panic!("Expected DraggingSelection mode"),
+            InteractionMode::DragPending(_) => {}
+            _ => panic!("Expected DragPending mode"),
         }
     }
 
@@ -1433,17 +1405,16 @@ mod inp_mobile_touch_tests {
             last_pos: (200.0, 200.0),
         };
 
-        let resizing = InteractionMode::ResizingSelection {
+        let resizing = InteractionMode::ResizePending(ResizeState {
             handle: ResizeHandle::Se,
             original_bounds: (0.0, 0.0, 100.0, 100.0),
             originals: HashMap::new(),
             anchor: (100.0, 100.0),
-            did_resize: false,
-        };
+        });
 
         assert_ne!(
             panning, resizing,
-            "Panning should not equal ResizingSelection mode"
+            "Panning should not equal ResizePending mode"
         );
     }
 
@@ -1474,12 +1445,11 @@ mod inp_mobile_touch_tests {
                 start: (0.0, 0.0),
                 current: (42.0, 24.0),
             },
-            InteractionMode::DraggingSelection {
+            InteractionMode::DragPending(DragPendingState {
                 anchor_canvas: (0.0, 0.0),
                 anchor_client: (0.0, 0.0),
                 original_positions: HashMap::new(),
-                did_move: false,
-            },
+            }),
             InteractionMode::DrawingEdge {
                 from_node: NodeId::new("x".to_string()),
                 current_pos: (42.0, 24.0),
@@ -1488,13 +1458,12 @@ mod inp_mobile_touch_tests {
                 start: (0.0, 0.0),
                 current: (42.0, 24.0),
             },
-            InteractionMode::ResizingSelection {
+            InteractionMode::ResizePending(ResizeState {
                 handle: ResizeHandle::Nw,
                 original_bounds: (0.0, 0.0, 42.0, 24.0),
                 originals: HashMap::new(),
                 anchor: (21.0, 12.0),
-                did_resize: false,
-            },
+            }),
         ];
 
         for other in other_modes {
