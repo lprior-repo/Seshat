@@ -13,6 +13,7 @@
 
 use criterion::{black_box, criterion_group, criterion_main, BenchmarkId, Criterion, Throughput};
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicU64, Ordering};
 use tempfile::TempDir;
 
 // Re-export the types we need from both implementations
@@ -32,7 +33,10 @@ use diagram_tool::store_async::{
 use diagram_tool::models::envelope::EventEnvelope;
 use diagram_tool::models::sync::fetch_new_events as sync_fetch_new_events;
 
-// Generate a test event envelope
+// Global counter for unique operation IDs
+static OP_COUNTER: AtomicU64 = AtomicU64::new(0);
+
+// Generate a test event envelope with a unique operation ID
 fn make_envelope(op_id: String, timestamp: i64) -> EventEnvelope {
     EventEnvelope {
         op_id,
@@ -53,11 +57,15 @@ fn make_envelope(op_id: String, timestamp: i64) -> EventEnvelope {
     }
 }
 
+fn make_unique_envelope(timestamp: i64) -> EventEnvelope {
+    let id = OP_COUNTER.fetch_add(1, Ordering::SeqCst);
+    make_envelope(format!("op-{}-{}", id, uuid::Uuid::new_v4()), timestamp)
+}
+
 // Setup for sync benchmarks
 struct SyncBenchmarkSetup {
     _temp_dir: TempDir,
     db_path: PathBuf,
-    initial_count: usize,
 }
 
 fn setup_sync_benchmark(initial_count: usize) -> SyncBenchmarkSetup {
@@ -67,7 +75,10 @@ fn setup_sync_benchmark(initial_count: usize) -> SyncBenchmarkSetup {
 
     if initial_count > 0 {
         let envelopes: Vec<_> = (0..initial_count as i64)
-            .map(|i| make_envelope(format!("op-{}", i), 1_700_000_000 + i))
+            .map(|i| {
+                let id = OP_COUNTER.fetch_add(1, Ordering::SeqCst);
+                make_envelope(format!("init-op-{}-{}", id, uuid::Uuid::new_v4()), 1_700_000_000 + i)
+            })
             .collect();
         sync_append_batch(&mut bootstrap.conn, envelopes, None)
             .expect("Failed to populate db");
@@ -76,7 +87,6 @@ fn setup_sync_benchmark(initial_count: usize) -> SyncBenchmarkSetup {
     SyncBenchmarkSetup {
         _temp_dir: temp_dir,
         db_path,
-        initial_count,
     }
 }
 
@@ -84,7 +94,6 @@ fn setup_sync_benchmark(initial_count: usize) -> SyncBenchmarkSetup {
 struct AsyncBenchmarkSetup {
     _temp_dir: TempDir,
     db_path: PathBuf,
-    initial_count: usize,
 }
 
 fn setup_async_benchmark(initial_count: usize) -> AsyncBenchmarkSetup {
@@ -99,7 +108,10 @@ fn setup_async_benchmark(initial_count: usize) -> AsyncBenchmarkSetup {
 
         if initial_count > 0 {
             let envelopes: Vec<_> = (0..initial_count as i64)
-                .map(|i| make_envelope(format!("op-{}", i), 1_700_000_000 + i))
+                .map(|i| {
+                    let id = OP_COUNTER.fetch_add(1, Ordering::SeqCst);
+                    make_envelope(format!("init-op-{}-{}", id, uuid::Uuid::new_v4()), 1_700_000_000 + i)
+                })
                 .collect();
             async_append_batch(&bootstrap.pool, envelopes, None)
                 .await
@@ -110,7 +122,6 @@ fn setup_async_benchmark(initial_count: usize) -> AsyncBenchmarkSetup {
     AsyncBenchmarkSetup {
         _temp_dir: temp_dir,
         db_path,
-        initial_count,
     }
 }
 
@@ -124,7 +135,7 @@ fn bench_append_event(c: &mut Criterion) {
         group.bench_with_input(BenchmarkId::new("sync", size), &size, |b, _| {
             b.iter(|| {
                 let mut bootstrap = sync_bootstrap_store(&sync_setup.db_path).expect("Failed to open");
-                let env = make_envelope(format!("new-op-{}", uuid::Uuid::new_v4()), 1_700_000_000);
+                let env = make_unique_envelope(1_700_000_000);
                 black_box(sync_append_event(&mut bootstrap.conn, env, None).unwrap())
             });
         });
@@ -138,7 +149,7 @@ fn bench_append_event(c: &mut Criterion) {
                     let bootstrap = async_bootstrap_store(&async_setup.db_path)
                         .await
                         .expect("Failed to open");
-                    let env = make_envelope(format!("new-op-{}", uuid::Uuid::new_v4()), 1_700_000_000);
+                    let env = make_unique_envelope(1_700_000_000);
                     black_box(async_append_event(&bootstrap.pool, env, None).await.unwrap())
                 });
             });
@@ -161,7 +172,7 @@ fn bench_append_batch(c: &mut Criterion) {
             b.iter(|| {
                 let mut bootstrap = sync_bootstrap_store(&sync_setup.db_path).expect("Failed to open");
                 let envelopes: Vec<_> = (0..size)
-                    .map(|i| make_envelope(format!("batch-op-{}", i), 1_700_000_000 + i as i64))
+                    .map(|_| make_unique_envelope(1_700_000_000))
                     .collect();
                 black_box(sync_append_batch(&mut bootstrap.conn, envelopes, None).unwrap())
             });
@@ -177,7 +188,7 @@ fn bench_append_batch(c: &mut Criterion) {
                         .await
                         .expect("Failed to open");
                     let envelopes: Vec<_> = (0..size)
-                        .map(|i| make_envelope(format!("batch-op-{}", i), 1_700_000_000 + i as i64))
+                        .map(|_| make_unique_envelope(1_700_000_000))
                         .collect();
                     black_box(async_append_batch(&bootstrap.pool, envelopes, None).await.unwrap())
                 });
