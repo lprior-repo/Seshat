@@ -7,7 +7,7 @@
 
 use crate::history::History;
 use crate::models::document::{
-    DiagramDocument, Edge, Node, NodeId, NodeKind, OrderedFloat,
+    DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;

@@ -241,8 +241,7 @@ impl FpsMeasurement {
     /// Returns the elapsed time since start.
     #[must_use]
     pub fn elapsed(&self) -> Duration {
-        self.start_time
-            .map_or(Duration::ZERO, |s| s.elapsed())
+        self.start_time.map_or(Duration::ZERO, |s| s.elapsed())
     }
 }
 

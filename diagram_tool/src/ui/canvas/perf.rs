@@ -6,15 +6,11 @@
 #![forbid(unsafe_code)]
 
 use crate::models::document::OrderedFloat;
+use crate::ui::canvas::math;
 
 const ZOOM_MIN: f64 = 0.1;
 const ZOOM_MAX: f64 = 4.0;
 const VIEWPORT_EPSILON: f64 = 0.5;
-
-#[must_use]
-fn sanitize_zoom(zoom: f64) -> Option<f64> {
-    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom.clamp(ZOOM_MIN, ZOOM_MAX))
-}
 
 #[derive(Clone, Copy, Debug)]
 pub(super) struct WheelInput {
@@ -38,7 +34,8 @@ pub(super) fn to_canvas_coords(
     cam_y: f64,
     zoom: f64,
 ) -> (f64, f64) {
-    ((client_x / zoom) + cam_x, (client_y / zoom) + cam_y)
+    math::screen_to_canvas(client_x, client_y, cam_x, cam_y, zoom)
+        .unwrap_or((client_x + cam_x, client_y + cam_y))
 }
 
 #[must_use]
@@ -49,12 +46,13 @@ pub(super) fn to_screen_coords(
     cam_y: f64,
     zoom: f64,
 ) -> (f64, f64) {
-    ((world_x - cam_x) * zoom, (world_y - cam_y) * zoom)
+    math::canvas_to_screen(world_x, world_y, cam_x, cam_y, zoom)
+        .unwrap_or(((world_x - cam_x) * zoom, (world_y - cam_y) * zoom))
 }
 
 #[must_use]
 pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
-    let current_zoom = sanitize_zoom(input.zoom.0).unwrap_or(1.0);
+    let current_zoom = math::safe_zoom_clamped(input.zoom.0, ZOOM_MIN, ZOOM_MAX).unwrap_or(1.0);
     let wheel_delta = if input.shift_pan {
         if input.dx.abs() > f64::EPSILON {
             input.dx
@@ -318,21 +316,23 @@ mod tests {
 
     #[test]
     fn given_sanitize_zoom_when_invalid_input_then_returns_none() {
-        assert!(sanitize_zoom(f64::NAN).is_none());
-        assert!(sanitize_zoom(f64::INFINITY).is_none());
-        assert!(sanitize_zoom(f64::NEG_INFINITY).is_none());
-        assert!(sanitize_zoom(0.0).is_none());
-        assert!(sanitize_zoom(-1.0).is_none());
-        assert!(sanitize_zoom(f64::EPSILON / 2.0).is_none());
+        use crate::ui::canvas::math::sanitize_zoom;
+        assert!(sanitize_zoom(f64::NAN, ZOOM_MIN, ZOOM_MAX).is_none());
+        assert!(sanitize_zoom(f64::INFINITY, ZOOM_MIN, ZOOM_MAX).is_none());
+        assert!(sanitize_zoom(f64::NEG_INFINITY, ZOOM_MIN, ZOOM_MAX).is_none());
+        assert!(sanitize_zoom(0.0, ZOOM_MIN, ZOOM_MAX).is_none());
+        assert!(sanitize_zoom(-1.0, ZOOM_MIN, ZOOM_MAX).is_none());
+        assert!(sanitize_zoom(f64::EPSILON / 2.0, ZOOM_MIN, ZOOM_MAX).is_none());
     }
 
     #[test]
     fn given_sanitize_zoom_when_valid_input_then_clamps_to_range() {
-        assert_eq!(sanitize_zoom(1.0), Some(1.0));
-        assert_eq!(sanitize_zoom(2.0), Some(2.0));
-        assert_eq!(sanitize_zoom(5.0), Some(ZOOM_MAX));
-        assert_eq!(sanitize_zoom(0.05), Some(ZOOM_MIN));
-        assert_eq!(sanitize_zoom(0.5), Some(0.5));
+        use crate::ui::canvas::math::sanitize_zoom;
+        assert_eq!(sanitize_zoom(1.0, ZOOM_MIN, ZOOM_MAX), Some(1.0));
+        assert_eq!(sanitize_zoom(2.0, ZOOM_MIN, ZOOM_MAX), Some(2.0));
+        assert_eq!(sanitize_zoom(5.0, ZOOM_MIN, ZOOM_MAX), Some(ZOOM_MAX));
+        assert_eq!(sanitize_zoom(0.05, ZOOM_MIN, ZOOM_MAX), Some(ZOOM_MIN));
+        assert_eq!(sanitize_zoom(0.5, ZOOM_MIN, ZOOM_MAX), Some(0.5));
     }
 
     #[test]
@@ -452,7 +452,8 @@ mod proptests {
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_sanitize_zoom_valid_clamped(zoom in 0.001_f64..100.0_f64) {
-            let result = sanitize_zoom(zoom);
+            use crate::ui::canvas::math::sanitize_zoom;
+            let result = sanitize_zoom(zoom, ZOOM_MIN, ZOOM_MAX);
             prop_assert!(result.is_some());
             let sanitized = result.unwrap();
             prop_assert!(sanitized >= ZOOM_MIN);
@@ -461,8 +462,9 @@ mod proptests {
 
         #[test]
         fn prop_sanitize_zoom_invalid_returns_none(zoom in proptest::num::f64::INFINITE) {
+            use crate::ui::canvas::math::sanitize_zoom;
             if !zoom.is_finite() || zoom <= f64::EPSILON {
-                prop_assert!(sanitize_zoom(zoom).is_none());
+                prop_assert!(sanitize_zoom(zoom, ZOOM_MIN, ZOOM_MAX).is_none());
             }
         }
 

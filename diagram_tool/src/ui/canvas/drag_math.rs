@@ -49,11 +49,11 @@ pub fn calculate_resize_target_ids<'a>(
 mod subgraph_tests {
     use im::HashMap;
 
-    use crate::ui::canvas::interaction_reducer::{InteractionMode};
     use super::calculate_resize_target_ids;
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
+    use crate::ui::canvas::interaction_reducer::InteractionMode;
 
     fn make_subgraph_node(
         id: &str,
@@ -702,10 +702,29 @@ mod subgraph_tests {
             .insert(container_id.to_string());
 
         // Get resize targets
-        let selected = doc.editor_state.selected_items.iter().map(|s| crate::models::document::NodeId::new(s.clone())).collect::<Vec<_>>();
-        let node_geometry = doc.document.nodes.iter().map(|(id, node)| {
-            (id.clone(), (node.x.0, node.y.0, node.width.0, node.height.0, node.kind == crate::models::document::NodeKind::Subgraph))
-        }).collect::<im::HashMap<_, _>>();
+        let selected = doc
+            .editor_state
+            .selected_items
+            .iter()
+            .map(|s| crate::models::document::NodeId::new(s.clone()))
+            .collect::<Vec<_>>();
+        let node_geometry = doc
+            .document
+            .nodes
+            .iter()
+            .map(|(id, node)| {
+                (
+                    id.clone(),
+                    (
+                        node.x.0,
+                        node.y.0,
+                        node.width.0,
+                        node.height.0,
+                        node.kind == crate::models::document::NodeKind::Subgraph,
+                    ),
+                )
+            })
+            .collect::<im::HashMap<_, _>>();
         let targets = super::calculate_resize_target_ids(&selected, &node_geometry);
 
         // Verify container and children are included, outside is not
@@ -759,7 +778,8 @@ mod subgraph_tests {
 
         // Simulate resize finalization (which would update positions)
         let mut mode = InteractionMode::Select;
-        let _ = crate::ui::canvas::interaction_reducer::finalize_motion_release(&mut mode, &mut doc);
+        let _ =
+            crate::ui::canvas::interaction_reducer::finalize_motion_release(&mut mode, &mut doc);
 
         // Verify parent reference is still intact
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
@@ -1021,10 +1041,29 @@ mod subgraph_tests {
             .insert(container_id.to_string());
 
         // Get resize targets
-        let selected = doc.editor_state.selected_items.iter().map(|s| crate::models::document::NodeId::new(s.clone())).collect::<Vec<_>>();
-        let node_geometry = doc.document.nodes.iter().map(|(id, node)| {
-            (id.clone(), (node.x.0, node.y.0, node.width.0, node.height.0, node.kind == crate::models::document::NodeKind::Subgraph))
-        }).collect::<im::HashMap<_, _>>();
+        let selected = doc
+            .editor_state
+            .selected_items
+            .iter()
+            .map(|s| crate::models::document::NodeId::new(s.clone()))
+            .collect::<Vec<_>>();
+        let node_geometry = doc
+            .document
+            .nodes
+            .iter()
+            .map(|(id, node)| {
+                (
+                    id.clone(),
+                    (
+                        node.x.0,
+                        node.y.0,
+                        node.width.0,
+                        node.height.0,
+                        node.kind == crate::models::document::NodeKind::Subgraph,
+                    ),
+                )
+            })
+            .collect::<im::HashMap<_, _>>();
         let targets = super::calculate_resize_target_ids(&selected, &node_geometry);
 
         // Container and child should both be in targets
@@ -1117,4 +1156,3 @@ mod subgraph_tests {
         assert_eq!(leaf_pos.map(|p| (p.0, p.1)), Some((150.0, 150.0)));
     }
 }
-

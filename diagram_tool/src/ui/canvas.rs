@@ -7,9 +7,9 @@
 #![forbid(unsafe_code)]
 
 mod canvas_view;
+pub mod drag_math;
 mod interaction_reducer;
 pub mod math;
-pub mod drag_math;
 mod perf;
 mod selection_geometry;
 
@@ -53,13 +53,11 @@ use crate::{
         editor::ToolMode,
         interaction::{
             drag_original_positions, dragged_positions_with_snap, has_drag_threshold,
-            node_ids_in_rect, select_single, toggle_selection,
-            with_auto_selected_edges,
+            node_ids_in_rect, select_single, toggle_selection, with_auto_selected_edges,
         },
         theme::{
-            ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT,
-            EDGE_SELECTED, GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED,
-            TOOLBAR_BG,
+            ACCENT, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, BORDER, EDGE_DEFAULT, EDGE_SELECTED,
+            GRID_DOT, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG,
         },
         toast::use_toast,
     },
@@ -71,7 +69,10 @@ use crate::ui::grid::{snap_point, snap_value, GridSize};
 pub fn sync_canvas_origin() -> Option<(f64, f64)> {
     let window = web_sys::window()?;
     let document = window.document()?;
-    let el = document.query_selector(".canvas-container").ok().flatten()?;
+    let el = document
+        .query_selector(".canvas-container")
+        .ok()
+        .flatten()?;
     let rect = el.get_bounding_client_rect();
     Some((rect.left(), rect.top()))
 }
@@ -310,11 +311,7 @@ fn subgraph_release_bounds(
 }
 
 fn safe_zoom(zoom: f64) -> f64 {
-    if zoom.is_finite() && zoom > f64::EPSILON {
-        zoom
-    } else {
-        1.0
-    }
+    math::safe_zoom(zoom).unwrap_or(1.0)
 }
 
 fn fit_icon_side(side: f64) -> f64 {

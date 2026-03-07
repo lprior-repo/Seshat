@@ -33,7 +33,7 @@ pub fn screen_to_world(
     camera_y: f64,
     zoom: f64,
 ) -> Point {
-    let safe_zoom = if zoom.is_finite() && zoom > 0.0 {
+    let safe_zoom = if zoom.is_finite() && zoom > f64::EPSILON {
         zoom
     } else {
         1.0
@@ -67,7 +67,7 @@ pub fn world_to_screen(
     camera_y: f64,
     zoom: f64,
 ) -> Point {
-    let safe_zoom = if zoom.is_finite() && zoom > 0.0 {
+    let safe_zoom = if zoom.is_finite() && zoom > f64::EPSILON {
         zoom
     } else {
         1.0
@@ -224,5 +224,23 @@ mod tests {
         // Should fit height: 100/100 = 1.0
         // Use minimum to fit both: 0.5
         assert!((scale - 0.5).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_screen_to_world_uses_epsilon_threshold() {
+        let result = screen_to_world(100.0, 100.0, 0.0, 0.0, f64::EPSILON / 2.0);
+        assert!((result.x - 100.0).abs() < TOLERANCE);
+
+        let result = screen_to_world(100.0, 100.0, 0.0, 0.0, f64::EPSILON * 2.0);
+        assert!((result.x - (100.0 / (f64::EPSILON * 2.0))).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_world_to_screen_uses_epsilon_threshold() {
+        let result = world_to_screen(100.0, 100.0, 0.0, 0.0, f64::EPSILON / 2.0);
+        assert!((result.x - 100.0).abs() < TOLERANCE);
+
+        let result = world_to_screen(100.0, 100.0, 0.0, 0.0, f64::EPSILON * 2.0);
+        assert!((result.x - (100.0 * f64::EPSILON * 2.0)).abs() < TOLERANCE);
     }
 }

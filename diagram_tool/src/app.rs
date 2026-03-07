@@ -96,7 +96,7 @@ pub fn App() -> Element {
             .iter()
             .find(|(id, _)| id == &current_id)
             .map_or_else(|| "Unknown".to_string(), |(_, name)| name.clone());
-        
+
         background_tabs.write().insert(
             current_id.clone(),
             DiagramTab {
@@ -125,7 +125,7 @@ pub fn App() -> Element {
         let new_index = tab_names.read().len() + 1;
         let new_name = format!("Diagram {new_index}");
         tab_names.write().push((new_id.clone(), new_name.clone()));
-        
+
         // Initialize fresh state in background tabs
         background_tabs.write().insert(
             new_id.clone(),
@@ -142,7 +142,7 @@ pub fn App() -> Element {
 
     let mut close_tab = move |close_id: String| {
         let is_active = close_id == *active_tab_id.read();
-        
+
         // Remove from list
         tab_names.write().retain(|(id, _)| id != &close_id);
         background_tabs.write().remove(&close_id);
@@ -150,7 +150,9 @@ pub fn App() -> Element {
         if tab_names.read().is_empty() {
             // Must have at least one tab
             let default_id = "default".to_string();
-            tab_names.write().push((default_id.clone(), "Diagram 1".to_string()));
+            tab_names
+                .write()
+                .push((default_id.clone(), "Diagram 1".to_string()));
             *doc_signal.write() = DiagramDocument::default();
             *history_signal.write() = History::new();
             active_tab_id.set(default_id);

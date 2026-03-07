@@ -24,7 +24,9 @@ impl PartialOrd for ValidationSeverity {
 impl Ord for ValidationSeverity {
     fn cmp(&self, other: &Self) -> std::cmp::Ordering {
         match (self, other) {
-            (Self::Error, Self::Error) | (Self::Warning, Self::Warning) => std::cmp::Ordering::Equal,
+            (Self::Error, Self::Error) | (Self::Warning, Self::Warning) => {
+                std::cmp::Ordering::Equal
+            }
             (Self::Error, Self::Warning) => std::cmp::Ordering::Greater,
             (Self::Warning, Self::Error) => std::cmp::Ordering::Less,
         }

@@ -187,9 +187,7 @@ impl RegressionTest {
         let passed = results.iter().filter(|r| r.passed).count();
         let failed = results.len() - passed;
 
-        let mut summary = format!(
-            "Regression Test Summary: {passed} passed, {failed} failed\n"
-        );
+        let mut summary = format!("Regression Test Summary: {passed} passed, {failed} failed\n");
 
         for result in results {
             summary.push_str(&format!("  {}\n", result.summary()));

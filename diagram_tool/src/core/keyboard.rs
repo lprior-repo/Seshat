@@ -1,4 +1,3 @@
-
 pub enum KeyAction {
     Undo,
     Redo,
