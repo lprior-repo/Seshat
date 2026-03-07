@@ -82,7 +82,7 @@ impl fmt::Display for EdgeId {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct DiagramDocument {
     pub version: u32,
