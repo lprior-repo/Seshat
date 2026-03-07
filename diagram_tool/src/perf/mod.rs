@@ -7,8 +7,8 @@
 //!
 //! ## Design by Contract
 //!
-//! - **P1**: NodeCount is 1-10000 (validated at construction)
-//! - **P2**: DurationMs >= 100 (minimum measurement window)
+//! - **P1**: `NodeCount` is 1-10000 (validated at construction)
+//! - **P2**: `DurationMs` >= 100 (minimum measurement window)
 //! - **P3**: Warm-up iterations complete before measurement
 //! - **P4**: Measurement environment is isolated
 //! - **P5**: Sample rate >= 60 Hz (Nyquist compliance)

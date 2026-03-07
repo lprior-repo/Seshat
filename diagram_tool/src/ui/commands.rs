@@ -494,6 +494,7 @@ pub fn apply_nudge_selection(
     any_moved
 }
 
+#[must_use]
 pub fn apply_group_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -531,6 +532,7 @@ pub fn apply_group_selection(
     success
 }
 
+#[must_use]
 pub fn apply_ungroup_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -596,6 +598,7 @@ fn selected_subgraphs_for_ungroup(doc: &DiagramDocument) -> BTreeSet<NodeId> {
 /// - Node dimensions (width, height) are never modified
 /// - Z-order is preserved
 /// - Locked nodes are skipped (unless they are Subgraphs)
+#[must_use]
 pub fn apply_align_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,

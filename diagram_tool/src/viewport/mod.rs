@@ -304,8 +304,8 @@ impl ViewportState {
             return None;
         }
 
-        let available_width = (self.viewport_width - 2.0 * padding).max(1.0);
-        let available_height = (self.viewport_height - 2.0 * padding).max(1.0);
+        let available_width = 2.0f64.mul_add(-padding, self.viewport_width).max(1.0);
+        let available_height = 2.0f64.mul_add(-padding, self.viewport_height).max(1.0);
 
         let scale_x = available_width / content_width;
         let scale_y = available_height / content_height;

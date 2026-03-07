@@ -14,7 +14,7 @@
 //! - Q2: Undo returns previous state and moves current to redo
 //! - Q3: Redo returns next state and moves current to undo
 //! - Q4: All operations return new History (immutable)
-//! - Q5: History capped at MAX_HISTORY entries (100)
+//! - Q5: History capped at `MAX_HISTORY` entries (100)
 //!
 //! ### Invariants
 //! - I1: Undo stack contains documents in reverse chronological order

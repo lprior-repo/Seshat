@@ -1,4 +1,4 @@
-//! Schema definitions for SQLite database - single source of truth
+//! Schema definitions for `SQLite` database - single source of truth
 //!
 //! This module provides centralized schema definitions to avoid duplication
 //! between store.rs and models/events.rs

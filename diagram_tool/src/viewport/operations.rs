@@ -123,7 +123,7 @@ pub fn apply_fit_to_content(
 /// * `padding` - Padding around content
 ///
 /// # Returns
-/// Zoom level that fits content, clamped to [MIN_ZOOM, MAX_ZOOM]
+/// Zoom level that fits content, clamped to [MIN_ZOOM, `MAX_ZOOM`]
 #[must_use]
 pub fn calculate_fit_zoom(
     content: &AABB,
