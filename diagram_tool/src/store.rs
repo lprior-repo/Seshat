@@ -31,6 +31,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "sync-db"))]
 use rusqlite::{Connection, OptionalExtension, Transaction};
 use serde::Serialize;
 use std::path::{Path, PathBuf};
@@ -58,6 +59,7 @@ pub const CURRENT_SCHEMA_VERSION: i32 = 1;
 pub enum StoreError {
     #[error("IO error: {0}")]
     Io(#[from] std::io::Error),
+    #[cfg(feature = "sync-db")]
     #[error("SQLite error: {0}")]
     Sqlite(#[from] rusqlite::Error),
     #[error("Invalid pragma configuration: {0}")]
