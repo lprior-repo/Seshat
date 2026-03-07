@@ -73,3 +73,9 @@ pub mod perf;
 pub mod store;
 pub mod ui;
 pub mod viewport;
+
+// Test harness is public for use in tests
+pub mod test_harness;
+
+#[cfg(test)]
+mod test_infrastructure_tests;

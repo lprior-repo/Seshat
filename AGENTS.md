@@ -123,3 +123,26 @@ For more details, see README.md and docs/QUICKSTART.md.
 - NEVER stop before pushing - that leaves work stranded locally
 - NEVER say "ready to push when you are" - YOU must push
 - If push fails, resolve and retry until it succeeds
+
+## Test Protection (CRITICAL)
+
+Certain test files are CONTRACT TESTS and MUST NEVER be overwritten:
+
+### Protected Test Files
+
+| File | Bead | Coverage |
+|------|------|----------|
+| `diagram_tool/src/models/io_tests.rs` | seshat-4uc | IO-001 to IO-015 |
+| `diagram_tool/src/test_infrastructure_tests.rs` | seshat-wcb | P1-P4, Q1-Q3 |
+| `diagram_tool/src/geometry/mod.rs` (tests) | seshat-pnn | GEO-001 to GEO-030 |
+
+**RULE**: Before modifying ANY test file, check `.beads/TEST_PROTECTION.md`
+
+```bash
+# Verify protected tests exist
+test -f diagram_tool/src/models/io_tests.rs
+test -f diagram_tool/src/test_infrastructure_tests.rs
+grep -q "GEO-0" diagram_tool/src/geometry/mod.rs
+```
+
+**DO NOT**: Delete, replace, merge, or "clean up" protected test files without explicit permission.
