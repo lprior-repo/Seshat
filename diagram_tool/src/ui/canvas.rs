@@ -46,7 +46,7 @@ use crate::{
     ui::{
         commands::{
             apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
-            apply_zoom_out, apply_zoom_reset, Clipboard,
+            apply_zoom_out, apply_zoom_reset,
         },
         editor::ToolMode,
         grid::{snap_point, snap_value, GridSize},
