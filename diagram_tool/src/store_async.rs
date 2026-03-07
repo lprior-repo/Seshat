@@ -22,9 +22,6 @@ use thiserror::Error;
 
 use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
-// Re-export EventEnvelope for external use
-pub use crate::models::envelope::EventEnvelope;
-
 /// Current schema version for the async store
 pub const CURRENT_SCHEMA_VERSION: i32 = 1;
 
