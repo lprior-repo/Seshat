@@ -5,7 +5,7 @@ use im::HashMap;
 use thiserror::Error;
 use uuid::Uuid;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum ClipboardError {
     #[error("Selection is empty")]
     EmptySelection,
@@ -17,6 +17,10 @@ pub enum ClipboardError {
 
 /// Creates a Clipboard payload from the currently selected items.
 /// Drops any edges that refer to non-selected nodes to maintain referential integrity.
+///
+/// # Errors
+///
+/// Returns `ClipboardError::EmptySelection` if no items are selected.
 pub fn copy_selection(doc: &DiagramDocument) -> Result<Clipboard, ClipboardError> {
     let selected = &doc.editor_state.selected_items;
 
@@ -51,6 +55,11 @@ fn remap_pasted_parent(parent: Option<NodeId>, id_map: &HashMap<NodeId, NodeId>)
     parent.and_then(|parent_id| id_map.get(&parent_id).cloned().or(Some(parent_id)))
 }
 
+/// Pastes clipboard contents into the document at offset positions.
+///
+/// # Errors
+///
+/// Returns `ClipboardError::EmptyClipboard` if clipboard has no nodes.
 pub fn paste_contents(
     mut clipboard: Clipboard,
     doc: &mut DiagramDocument,

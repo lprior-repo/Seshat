@@ -25,20 +25,20 @@ impl MutationError {
 
 impl From<crate::models::dag::CycleError> for MutationError {
     fn from(err: crate::models::dag::CycleError) -> Self {
-        Self::Schema(format!("cycle error: {}", err))
+        Self::Schema(format!("cycle error: {err}"))
     }
 }
 
 impl From<crate::models::conflict::ConflictError> for MutationError {
     fn from(err: crate::models::conflict::ConflictError) -> Self {
-        Self::Semantic(format!("conflict: {}", err))
+        Self::Semantic(format!("conflict: {err}"))
     }
 }
 
 #[cfg(not(target_arch = "wasm32"))]
 impl From<crate::models::sync::SyncError> for MutationError {
     fn from(err: crate::models::sync::SyncError) -> Self {
-        Self::Schema(format!("sync error: {}", err))
+        Self::Schema(format!("sync error: {err}"))
     }
 }
 

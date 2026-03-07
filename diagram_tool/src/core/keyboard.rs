@@ -13,6 +13,7 @@ pub enum KeyAction {
     None,
 }
 
+#[must_use]
 pub fn map_key_to_action(
     key: &str,
     ctrl_or_meta: bool,

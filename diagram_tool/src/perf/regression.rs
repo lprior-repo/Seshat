@@ -130,8 +130,7 @@ impl RegressionTest {
             "render_frame" => Operation::RenderFrame,
             _ => {
                 return Err(PerfError::BaselineNotFound(format!(
-                    "unknown operation: {}",
-                    operation_name
+                    "unknown operation: {operation_name}"
                 )))
             }
         };
@@ -139,7 +138,7 @@ impl RegressionTest {
         let baseline_result = self
             .baseline
             .get_result(operation)
-            .ok_or_else(|| PerfError::BaselineNotFound(format!("operation: {}", operation_name)))?;
+            .ok_or_else(|| PerfError::BaselineNotFound(format!("operation: {operation_name}")))?;
 
         let baseline_fps = baseline_result.fps_report.mean_fps;
         let current_fps = result.fps_report.mean_fps;
@@ -189,8 +188,7 @@ impl RegressionTest {
         let failed = results.len() - passed;
 
         let mut summary = format!(
-            "Regression Test Summary: {} passed, {} failed\n",
-            passed, failed
+            "Regression Test Summary: {passed} passed, {failed} failed\n"
         );
 
         for result in results {
@@ -208,6 +206,7 @@ impl RegressionTest {
 }
 
 /// Performance report for CI integration.
+#[allow(dead_code)]
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 pub struct PerformanceReport {
     /// Report version
@@ -225,7 +224,8 @@ pub struct PerformanceReport {
 }
 
 /// Machine information for reproducibility.
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[allow(dead_code)]
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct MachineInfo {
     /// Operating system
     pub os: String,
@@ -305,7 +305,7 @@ impl PerformanceReport {
     pub fn markdown_summary(&self) -> String {
         let status = if self.all_passed { "PASSED" } else { "FAILED" };
 
-        let mut md = format!("# Performance Report\n\n**Status**: {}\n\n", status);
+        let mut md = format!("# Performance Report\n\n**Status**: {status}\n\n");
 
         md.push_str("## Regression Results\n\n");
         md.push_str("| Operation | Current FPS | Baseline FPS | Delta | Status |\n");

@@ -98,8 +98,8 @@ pub fn fit_scale(content: &AABB, viewport_width: f64, viewport_height: f64, padd
         return 1.0;
     }
 
-    let available_width = (viewport_width - 2.0 * padding).max(1.0);
-    let available_height = (viewport_height - 2.0 * padding).max(1.0);
+    let available_width = 2.0f64.mul_add(-padding, viewport_width).max(1.0);
+    let available_height = 2.0f64.mul_add(-padding, viewport_height).max(1.0);
 
     let scale_x = available_width / content_width;
     let scale_y = available_height / content_height;
@@ -116,7 +116,7 @@ pub fn fit_scale(content: &AABB, viewport_width: f64, viewport_height: f64, padd
 /// * `viewport_height` - Viewport height in pixels
 ///
 /// # Returns
-/// (camera_x, camera_y) to center content
+/// (`camera_x`, `camera_y`) to center content
 #[must_use]
 pub fn center_camera_for_content(
     content: &AABB,

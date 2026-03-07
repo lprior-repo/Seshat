@@ -62,6 +62,10 @@ use dioxus::prelude::*;
 ///     });
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Returns a `MutationError` if the mutation fails validation.
 pub fn mutate_doc_signal(
     mut doc_signal: Signal<DiagramDocument>,
     mutation: impl FnOnce(&mut DiagramDocument),
@@ -130,6 +134,10 @@ pub fn mutate_editor_signal(
 ///     });
 /// }
 /// ```
+///
+/// # Errors
+///
+/// Returns a `MutationError` if the mutation fails validation.
 pub fn mutate_doc_with_history(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,

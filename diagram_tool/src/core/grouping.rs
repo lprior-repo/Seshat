@@ -1,7 +1,7 @@
 use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind};
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum GroupingError {
     #[error("Selection is empty")]
     EmptySelection,
@@ -11,6 +11,11 @@ pub enum GroupingError {
 
 /// Creates a new Subgraph node that encompasses all selected nodes,
 /// then assigns the selected nodes as children of the new Subgraph.
+///
+/// # Errors
+///
+/// Returns `GroupingError::EmptySelection` if no nodes are selected.
+/// Returns `GroupingError::LockedNode` if any selected node is locked.
 pub fn group_selection(doc: &mut DiagramDocument, group_id: NodeId) -> Result<(), GroupingError> {
     let selected = doc.editor_state.selected_items.clone();
     if selected.is_empty() {
@@ -85,6 +90,10 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: NodeId) -> Result<()
 /// Finds all selected Subgraph nodes, collects their children, sets their children's
 /// parent to the subgraph's parent (or None), deletes the subgraph node, and selects
 /// all the newly orphaned children.
+///
+/// # Errors
+///
+/// Returns `GroupingError::EmptySelection` if no nodes are selected.
 pub fn ungroup_selection(doc: &mut DiagramDocument) -> Result<(), GroupingError> {
     let selected_items = doc.editor_state.selected_items.clone();
 

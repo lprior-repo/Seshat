@@ -23,6 +23,11 @@ pub enum RevisionPolicy {
     Preserve,
 }
 
+/// Runs a mutation on the document with default policies.
+///
+/// # Errors
+///
+/// Returns a `MutationError` if the transform function fails or validation fails.
 pub fn run_mutation<F>(
     current: &DiagramDocument,
     transform: F,
@@ -38,6 +43,11 @@ where
     )
 }
 
+/// Runs a mutation on the document with specified policies.
+///
+/// # Errors
+///
+/// Returns a `MutationError` if the transform function fails or validation fails.
 pub fn run_mutation_with_policy<F>(
     current: &DiagramDocument,
     revision_policy: RevisionPolicy,

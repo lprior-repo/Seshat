@@ -138,8 +138,8 @@ pub fn calculate_fit_zoom(
         return 1.0;
     }
 
-    let available_width = (viewport_width - 2.0 * padding).max(1.0);
-    let available_height = (viewport_height - 2.0 * padding).max(1.0);
+    let available_width = 2.0f64.mul_add(-padding, viewport_width).max(1.0);
+    let available_height = 2.0f64.mul_add(-padding, viewport_height).max(1.0);
 
     let scale_x = available_width / content_width;
     let scale_y = available_height / content_height;
@@ -156,16 +156,14 @@ pub fn calculate_fit_zoom(
 /// true if the viewport was modified
 #[must_use]
 pub fn apply_reset(viewport: &mut ViewportState) -> bool {
-    let mut changed = false;
+    const EPSILON: f64 = 1e-9;
+    let changed = (viewport.zoom() - 1.0).abs() > EPSILON
+        || viewport.camera_x() != 0.0
+        || viewport.camera_y() != 0.0;
 
-    if viewport.zoom() != 1.0 {
+    if changed {
         viewport.set_zoom(1.0);
-        changed = true;
-    }
-
-    if viewport.camera_x() != 0.0 || viewport.camera_y() != 0.0 {
         viewport.set_camera(0.0, 0.0);
-        changed = true;
     }
 
     changed

@@ -1,7 +1,7 @@
 use crate::models::document::{DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId};
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum RoutingError {
     #[error("Source node {0} not found")]
     SourceNotFound(NodeId),
@@ -13,6 +13,14 @@ pub enum RoutingError {
     CycleDetected,
 }
 
+/// Creates a new edge between two nodes.
+///
+/// # Errors
+///
+/// Returns `RoutingError::SelfLoop` if source and target are the same.
+/// Returns `RoutingError::SourceNotFound` if source node doesn't exist.
+/// Returns `RoutingError::TargetNotFound` if target node doesn't exist.
+/// Returns `RoutingError::CycleDetected` if the edge would create a cycle.
 pub fn create_edge(
     doc: &mut DiagramDocument,
     source: NodeId,

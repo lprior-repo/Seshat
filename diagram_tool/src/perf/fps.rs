@@ -35,12 +35,12 @@ impl FpsReport {
     #[must_use]
     pub fn from_samples(samples: Vec<FrameSample>, target_fps: f64) -> Self {
         let frame_times: Vec<f64> = samples.iter().map(|s| s.frame_time_ms).collect();
-        let fps_values: Vec<f64> = samples.iter().map(|s| s.fps()).collect();
+        let fps_values: Vec<f64> = samples.iter().map(FrameSample::fps).collect();
 
         let frame_time_stats = Statistics::from_samples(&frame_times);
         let fps_stats = Statistics::from_samples(&fps_values);
 
-        let duration_ms = samples.last().map(|s| s.timestamp_ms).unwrap_or(0.0);
+        let duration_ms = samples.last().map_or(0.0, |s| s.timestamp_ms);
 
         let target_achieved = fps_stats.mean >= target_fps;
 
@@ -174,7 +174,9 @@ impl FpsMeasurement {
 
         let (frame_time_ms, timestamp_ms) =
             if let (Some(start), Some(last)) = (self.start_time, self.last_frame_time) {
+                #[allow(clippy::cast_precision_loss)]
                 let frame_time = now.duration_since(last).as_nanos() as f64 / 1_000_000.0;
+                #[allow(clippy::cast_precision_loss)]
                 let timestamp = now.duration_since(start).as_nanos() as f64 / 1_000_000.0;
                 (frame_time, timestamp)
             } else {
@@ -240,8 +242,7 @@ impl FpsMeasurement {
     #[must_use]
     pub fn elapsed(&self) -> Duration {
         self.start_time
-            .map(|s| s.elapsed())
-            .unwrap_or(Duration::ZERO)
+            .map_or(Duration::ZERO, |s| s.elapsed())
     }
 }
 

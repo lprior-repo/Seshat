@@ -33,13 +33,12 @@ fn accumulated_parent_delta(
 /// Returns a new document with updated positions for unlocked nodes.
 ///
 /// # Panics
-/// Panics if cell_size is not positive or is not finite.
+/// Panics if `cell_size` is not positive or is not finite.
 #[must_use]
 pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
     debug_assert!(
         cell_size.is_finite() && cell_size > 0.0,
-        "cell_size must be positive and finite, got {}",
-        cell_size
+        "cell_size must be positive and finite, got {cell_size}",
     );
 
     let occupied_cells = doc

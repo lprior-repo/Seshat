@@ -23,6 +23,10 @@ impl NodeId {
     }
 
     /// Create a new NodeId, returning error for empty strings
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `id` is an empty string.
     pub fn try_new(id: String) -> Result<Self, &'static str> {
         if id.is_empty() {
             Err("NodeId cannot be empty")
@@ -54,6 +58,10 @@ impl EdgeId {
     }
 
     /// Create a new EdgeId, returning error for empty strings
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `id` is an empty string.
     pub fn try_new(id: String) -> Result<Self, &'static str> {
         if id.is_empty() {
             Err("EdgeId cannot be empty")
@@ -113,7 +121,7 @@ pub struct DocumentData {
     pub edges: HashMap<EdgeId, Edge>,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Node {
     pub kind: NodeKind,
@@ -178,7 +186,12 @@ impl Serialize for OrderedFloat {
 }
 
 impl OrderedFloat {
-    #[must_use]
+    /// Creates a new OrderedFloat from a f64 value.
+    ///
+    /// # Errors
+    ///
+    /// Returns `OrderedFloatError::NaN` if value is NaN.
+    /// Returns `OrderedFloatError::Infinite` if value is infinite.
     pub const fn new(value: f64) -> Result<Self, OrderedFloatError> {
         if value.is_nan() {
             Err(OrderedFloatError::NaN)
@@ -271,7 +284,7 @@ pub enum FontWeight {
     Bold,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Edge {
     pub source: NodeId,
@@ -337,14 +350,14 @@ pub enum ArrowType {
     Straight,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct Point {
     pub x: OrderedFloat,
     pub y: OrderedFloat,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct EditorState {
     pub camera_x: OrderedFloat,

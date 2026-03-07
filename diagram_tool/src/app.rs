@@ -81,7 +81,7 @@ pub fn App() -> Element {
 
     // Multi-Diagram State
     let mut active_tab_id = use_signal(|| "default".to_string());
-    let mut background_tabs = use_signal(|| HashMap::<String, DiagramTab>::new());
+    let mut background_tabs = use_signal(HashMap::<String, DiagramTab>::new);
     let mut tab_names = use_signal(|| vec![("default".to_string(), "Diagram 1".to_string())]);
 
     let mut switch_tab = move |target_id: String| {

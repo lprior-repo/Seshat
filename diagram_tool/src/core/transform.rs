@@ -1,7 +1,7 @@
 use crate::models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
 use thiserror::Error;
 
-#[derive(Debug, Error, PartialEq)]
+#[derive(Debug, Error, PartialEq, Eq)]
 pub enum TransformError {
     #[error("No items selected to align")]
     EmptySelection,
@@ -20,6 +20,12 @@ pub enum AlignmentMode {
     End,
 }
 
+/// Aligns selected nodes along the specified axis.
+///
+/// # Errors
+///
+/// Returns `TransformError::EmptySelection` if fewer than 2 nodes are selected.
+/// Returns `TransformError::LockedNode` if any selected node is locked.
 pub fn align_selection(
     doc: &mut DiagramDocument,
     axis: AlignmentAxis,
@@ -84,6 +90,11 @@ pub fn align_selection(
     Ok(())
 }
 
+/// Distributes selected nodes evenly along the specified axis.
+///
+/// # Errors
+///
+/// Returns `TransformError::EmptySelection` if fewer than 3 nodes are selected.
 pub fn distribute_selection(
     doc: &mut DiagramDocument,
     axis: AlignmentAxis,
@@ -109,12 +120,17 @@ pub fn distribute_selection(
 
     nodes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
 
-    let first = nodes.first().unwrap();
-    let last = nodes.last().unwrap();
+    let Some(first) = nodes.first() else {
+        return Ok(());
+    };
+    let Some(last) = nodes.last() else {
+        return Ok(());
+    };
 
     let total_span = (last.1 + last.2) - first.1;
     let sum_of_extents: f64 = nodes.iter().map(|n| n.2).sum();
     let available_space = total_span - sum_of_extents;
+    #[allow(clippy::cast_precision_loss)]
     let spacing = available_space / (nodes.len() as f64 - 1.0);
 
     let mut current_pos = first.1;

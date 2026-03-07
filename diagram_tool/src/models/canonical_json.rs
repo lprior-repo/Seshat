@@ -7,6 +7,11 @@
 
 use serde::Serialize;
 
+/// Converts a serializable value to canonical pretty-printed JSON.
+///
+/// # Errors
+///
+/// Returns a `serde_json::Error` if serialization fails.
 pub fn to_canonical_pretty_json<T: Serialize>(value: &T) -> Result<String, serde_json::Error> {
     let mut json = serde_json::to_value(value)?;
     canonicalize_value(&mut json);

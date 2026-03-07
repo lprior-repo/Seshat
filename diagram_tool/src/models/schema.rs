@@ -11,6 +11,11 @@ use anyhow::{anyhow, bail, Result};
 use im::HashSet;
 
 /// Functional schema validation.
+///
+/// # Errors
+///
+/// Returns an error if document version is not 2, nodes have invalid properties,
+/// edges reference missing nodes, or the graph contains cycles.
 pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
     if doc.version != 2 {
         bail!("Document version must be 2, got {}", doc.version);
