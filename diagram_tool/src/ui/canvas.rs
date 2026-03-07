@@ -583,7 +583,11 @@ fn flush_pending_pointer_update(
         InteractionMode::Select
         | InteractionMode::RubberBand { .. }
         | InteractionMode::DrawingEdge { .. }
-        | InteractionMode::DrawingSubgraph { .. } => {}
+        | InteractionMode::DrawingSubgraph { .. }
+        | InteractionMode::DragPending(_)
+        | InteractionMode::Dragging(_)
+        | InteractionMode::ResizePending(_)
+        | InteractionMode::Resizing(_) => {}
     });
 }
 
@@ -1334,6 +1338,7 @@ pub fn Canvas() -> Element {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
                         InteractionMode::Select => {}
+                        _ => {}
                     });
                     continue;
                 }
@@ -1482,6 +1487,7 @@ pub fn Canvas() -> Element {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => {}
+                        _ => *mode = InteractionMode::Select,
                     });
                     space_pan_active.set(false);
                 }
@@ -1906,6 +1912,7 @@ pub fn Canvas() -> Element {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
                         InteractionMode::Select => {}
+                        _ => {}
                     }
                 });
             },
@@ -2056,6 +2063,7 @@ pub fn Canvas() -> Element {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => *mode = InteractionMode::Select,
+                        _ => *mode = InteractionMode::Select,
                     }
                 });
                 space_pan_active.set(false);
