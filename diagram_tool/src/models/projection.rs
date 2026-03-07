@@ -11,7 +11,7 @@
 #![forbid(unsafe_code)]
 
 use im::HashMap;
-use serde::{Deserialize, Serialize};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use thiserror::Error;
 use uuid::Uuid;
 
@@ -27,14 +27,51 @@ const SUPPORTED_VERSION: u32 = 2;
 ///
 /// This enum defines whether a diagram allows or denies cycles in its edge graph.
 /// When set to `Deny`, any operation that would create a cycle is rejected.
-#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq, Default)]
-#[serde(rename_all = "snake_case")]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum CyclePolicy {
     /// Cycles are allowed in the diagram (default)
     #[default]
     Allow,
     /// Cycles are denied - operations creating cycles are rejected
     Deny,
+}
+
+impl CyclePolicy {
+    /// Parse cycle policy from string, treating "default" as "allow"
+    fn from_str(s: &str) -> Result<Self, String> {
+        match s {
+            "allow" | "default" => Ok(CyclePolicy::Allow),
+            "deny" => Ok(CyclePolicy::Deny),
+            other => Err(format!("unknown cycle policy: {}", other)),
+        }
+    }
+
+    /// Convert to string representation
+    fn as_str(&self) -> &'static str {
+        match self {
+            CyclePolicy::Allow => "allow",
+            CyclePolicy::Deny => "deny",
+        }
+    }
+}
+
+impl Serialize for CyclePolicy {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        serializer.serialize_str(self.as_str())
+    }
+}
+
+impl<'de> Deserialize<'de> for CyclePolicy {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        let s = String::deserialize(deserializer)?;
+        CyclePolicy::from_str(&s).map_err(serde::de::Error::custom)
+    }
 }
 
 /// Errors that can occur during replay
@@ -85,7 +122,7 @@ pub struct EventRecord {
 ///
 /// This is a pure data structure representing the complete diagram state
 /// after replaying a sequence of events.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, PartialEq)]
 pub struct DiagramProjection {
     /// Schema version for compatibility checking
     pub version: u32,
@@ -102,6 +139,128 @@ pub struct DiagramProjection {
     /// Cycle policy for the diagram - whether cycles are allowed or denied
     #[serde(default)]
     pub cycle_policy: CyclePolicy,
+}
+
+impl<'de> Deserialize<'de> for DiagramProjection {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        #[derive(Debug, Deserialize)]
+        #[serde(field_identifier, rename_all = "snake_case")]
+        enum Field {
+            Version,
+            Revision,
+            Nodes,
+            Edges,
+            AuthorPriority,
+            CyclePolicy,
+        }
+
+        struct DiagramProjectionVisitor;
+
+        impl<'de> serde::de::Visitor<'de> for DiagramProjectionVisitor {
+            type Value = DiagramProjection;
+
+            fn expecting(&self, formatter: &mut std::fmt::Formatter) -> std::fmt::Result {
+                formatter.write_str("struct DiagramProjection")
+            }
+
+            fn visit_map<A>(self, mut map: A) -> Result<Self::Value, A::Error>
+            where
+                A: serde::de::MapAccess<'de>,
+            {
+                let mut version = None;
+                let mut revision = None;
+                let mut nodes = None;
+                let mut edges = None;
+                let mut author_priority = None;
+                let mut cycle_policy = None;
+
+                while let Some(key) = map.next_key()? {
+                    match key {
+                        Field::Version => {
+                            if version.is_some() {
+                                return Err(serde::de::Error::duplicate_field("version"));
+                            }
+                            version = Some(map.next_value()?);
+                        }
+                        Field::Revision => {
+                            if revision.is_some() {
+                                return Err(serde::de::Error::duplicate_field("revision"));
+                            }
+                            revision = Some(map.next_value()?);
+                        }
+                        Field::Nodes => {
+                            if nodes.is_some() {
+                                return Err(serde::de::Error::duplicate_field("nodes"));
+                            }
+                            nodes = Some(map.next_value()?);
+                        }
+                        Field::Edges => {
+                            if edges.is_some() {
+                                return Err(serde::de::Error::duplicate_field("edges"));
+                            }
+                            edges = Some(map.next_value()?);
+                        }
+                        Field::AuthorPriority => {
+                            if author_priority.is_some() {
+                                return Err(serde::de::Error::duplicate_field("author_priority"));
+                            }
+                            let value: serde_json::Value = map.next_value()?;
+                            // Deserialize the value, handling both objects and empty arrays
+                            author_priority = Some(match value {
+                                serde_json::Value::Object(map) => {
+                                    let mut result = HashMap::new();
+                                    for (k, v) in map {
+                                        let bool_val = v.as_bool().ok_or_else(|| {
+                                            serde::de::Error::custom(format!(
+                                                "author_priority value for '{}' must be boolean",
+                                                k
+                                            ))
+                                        })?;
+                                        result.insert(k, bool_val);
+                                    }
+                                    result
+                                }
+                                serde_json::Value::Array(arr) if arr.is_empty() => {
+                                    // Empty array is treated as empty map (legacy format)
+                                    HashMap::new()
+                                }
+                                _ => {
+                                    return Err(serde::de::Error::custom(
+                                        "author_priority must be an object or empty array",
+                                    ))
+                                }
+                            });
+                        }
+                        Field::CyclePolicy => {
+                            if cycle_policy.is_some() {
+                                return Err(serde::de::Error::duplicate_field("cycle_policy"));
+                            }
+                            cycle_policy = Some(map.next_value()?);
+                        }
+                    }
+                }
+
+                let version = version.ok_or_else(|| serde::de::Error::missing_field("version"))?;
+                let revision = revision.ok_or_else(|| serde::de::Error::missing_field("revision"))?;
+                let nodes = nodes.ok_or_else(|| serde::de::Error::missing_field("nodes"))?;
+                let edges = edges.ok_or_else(|| serde::de::Error::missing_field("edges"))?;
+
+                Ok(DiagramProjection {
+                    version,
+                    revision,
+                    nodes,
+                    edges,
+                    author_priority: author_priority.unwrap_or_default(),
+                    cycle_policy: cycle_policy.unwrap_or_default(),
+                })
+            }
+        }
+
+        deserializer.deserialize_map(DiagramProjectionVisitor)
+    }
 }
 
 impl Default for DiagramProjection {

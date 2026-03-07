@@ -91,8 +91,10 @@ impl OpKind {
 }
 
 /// Domain operation representing a diagram editor operation
+///
+/// Uses `op_type` as the tag to avoid conflicts with `EventRecord.operation` field.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
-#[serde(tag = "operation", rename_all = "snake_case")]
+#[serde(tag = "op_type", rename_all = "snake_case")]
 pub enum DomainOp {
     // Node operations
     NodeAdd {

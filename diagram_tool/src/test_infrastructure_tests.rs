@@ -82,7 +82,10 @@ mod test_harness_tests {
         let result = load_fixture("mixed_selection.json");
         assert!(result.is_ok(), "Should load existing fixture");
 
-        let doc = result.unwrap();
+        let doc = match result {
+            Ok(d) => d,
+            Err(e) => panic!("Failed to load fixture: {:?}", e),
+        };
         assert!(doc.is_object());
     }
 
@@ -116,7 +119,10 @@ mod test_harness_tests {
         let result = load_fixture("mixed_selection.json");
         assert!(result.is_ok());
 
-        let doc = result.unwrap();
+        let doc = match result {
+            Ok(d) => d,
+            Err(e) => panic!("Failed to load fixture: {:?}", e),
+        };
         assert!(doc.get("version").is_some());
         assert!(doc.get("document").is_some());
     }
@@ -208,7 +214,10 @@ mod test_harness_tests {
         // Then: Loads successfully
         assert!(result.is_ok());
 
-        let doc = result.unwrap();
+        let doc = match result {
+            Ok(d) => d,
+            Err(e) => panic!("Failed to load fixture: {:?}", e),
+        };
         let nodes = get_nodes(&doc);
         assert!(nodes.is_ok());
     }
@@ -236,11 +245,11 @@ mod test_harness_tests {
         let result = run_category_tests(category);
 
         // Then: Returns CategoryReport with expected structure
-        assert!(result.is_ok());
-
-        let report = result.unwrap();
+        let report = match result {
+            Ok(r) => r,
+            Err(e) => panic!("CategoryReport should be returned: {:?}", e),
+        };
         assert_eq!(report.category, category);
-        assert!(report.total_tests >= 0);
     }
 
     #[test]
@@ -254,7 +263,10 @@ mod test_harness_tests {
         // Then: Returns TestSuiteReport
         assert!(result.is_ok());
 
-        let report = result.unwrap();
+        let report = match result {
+            Ok(r) => r,
+            Err(e) => panic!("Failed to run all tests: {:?}", e),
+        };
         assert!(report.total_tests >= 228);
         assert_eq!(report.categories.len(), 11);
     }
@@ -290,7 +302,8 @@ mod test_harness_tests {
     #[test]
     fn get_nodes_returns_nodes_object() {
         // Given: Loaded fixture
-        let doc = load_fixture("mixed_selection.json").unwrap();
+        let doc = load_fixture("mixed_selection.json")
+            .unwrap_or_else(|e| panic!("Failed to load fixture: {:?}", e));
 
         // When: Getting nodes
         let result = get_nodes(&doc);
@@ -302,7 +315,8 @@ mod test_harness_tests {
     #[test]
     fn get_edges_returns_edges_object() {
         // Given: Loaded fixture
-        let doc = load_fixture("mixed_selection.json").unwrap();
+        let doc = load_fixture("mixed_selection.json")
+            .unwrap_or_else(|e| panic!("Failed to load fixture: {:?}", e));
 
         // When: Getting edges
         let result = get_edges(&doc);
@@ -314,21 +328,25 @@ mod test_harness_tests {
     #[test]
     fn get_node_by_id_returns_node_for_valid_id() {
         // Given: Document with a node
-        let doc = load_fixture("mixed_selection.json").unwrap();
+        let doc = load_fixture("mixed_selection.json")
+            .unwrap_or_else(|e| panic!("Failed to load fixture: {:?}", e));
 
         // When: Getting a known node
         let result = get_node_by_id(&doc, "rect-1");
 
         // Then: Returns the node
-        assert!(result.is_ok());
-        let node = result.unwrap();
+        let node = match result {
+            Ok(n) => n,
+            Err(e) => panic!("Failed to get node by id: {:?}", e),
+        };
         assert!(node.get("kind").is_some());
     }
 
     #[test]
     fn get_node_by_id_returns_error_for_invalid_id() {
         // Given: Document
-        let doc = load_fixture("mixed_selection.json").unwrap();
+        let doc = load_fixture("mixed_selection.json")
+            .unwrap_or_else(|e| panic!("Failed to load fixture: {:?}", e));
 
         // When: Getting non-existent node
         let result = get_node_by_id(&doc, "nonexistent-node");
@@ -380,8 +398,10 @@ mod test_harness_tests {
         let operations = 50;
 
         // When: Running twice
-        let result1 = fuzz_document_operations(seed, operations).unwrap();
-        let result2 = fuzz_document_operations(seed, operations).unwrap();
+        let result1 = fuzz_document_operations(seed, operations)
+            .unwrap_or_else(|e| panic!("First fuzz failed: {:?}", e));
+        let result2 = fuzz_document_operations(seed, operations)
+            .unwrap_or_else(|e| panic!("Second fuzz failed: {:?}", e));
 
         // Then: Same projection hash (deterministic)
         assert_eq!(result1.projection_hash, result2.projection_hash);
@@ -408,9 +428,10 @@ mod test_harness_tests {
         let result = serde_json::to_string(&report);
 
         // Then: Produces valid JSON (CI can consume)
-        assert!(result.is_ok());
-
-        let json_str = result.unwrap();
+        let json_str = match result {
+            Ok(s) => s,
+            Err(e) => panic!("Failed to serialize report: {:?}", e),
+        };
         assert!(json_str.contains("\"category\":"));
         assert!(json_str.contains("\"total_tests\":30"));
     }

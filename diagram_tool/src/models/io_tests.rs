@@ -33,10 +33,14 @@ fn create_minimal_export() -> String {
 }
 
 // Helper to create an in-memory database for testing
-fn create_test_db() -> (rusqlite::Connection, tempfile::TempDir) {
-    let temp_dir = tempfile::TempDir::new().unwrap();
+//
+// # Errors
+//
+// Returns error if temp directory creation, database connection, or schema initialization fails.
+fn create_test_db() -> Result<(rusqlite::Connection, tempfile::TempDir), Box<dyn std::error::Error>> {
+    let temp_dir = tempfile::TempDir::new()?;
     let db_path = temp_dir.path().join("test.db");
-    let conn = rusqlite::Connection::open(db_path).unwrap();
+    let conn = rusqlite::Connection::open(db_path)?;
 
     // Initialize schema
     conn.execute(
@@ -47,9 +51,9 @@ fn create_test_db() -> (rusqlite::Connection, tempfile::TempDir) {
             timestamp INTEGER NOT NULL
         )",
         [],
-    ).unwrap();
+    )?;
 
-    (conn, temp_dir)
+    Ok((conn, temp_dir))
 }
 
 // ============================================================================
@@ -99,17 +103,20 @@ fn io_001_malformed_json_import_invalid_escape() {
 #[test]
 fn io_002_empty_document_export() {
     // Given: Empty database (no events)
-    let (conn, _temp_dir) = create_test_db();
+    let (conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
 
     // When: Export is called
     let result = export_diagram_json(&conn);
 
     // Then: Returns valid export with revision=0
-    let export = result.unwrap();
+    let export = match result {
+        Ok(e) => e,
+        Err(e) => panic!("Export should succeed: {:?}", e),
+    };
     assert_eq!(export.metadata.revision, 0);
     assert_eq!(export.metadata.version, 2);
     assert!(export.events.is_some());
-    assert!(export.events.as_ref().unwrap().is_empty());
+    assert!(export.events.as_ref().map_or(false, |v| v.is_empty()));
 }
 
 // ============================================================================
@@ -135,7 +142,9 @@ fn io_003_invalid_schema_version_too_new() {
     });
 
     // When: Checking version
-    let version = future_version_json["metadata"]["version"].as_u64().unwrap() as u32;
+    let version = future_version_json["metadata"]["version"]
+        .as_u64()
+        .unwrap_or(0) as u32;
 
     // Then: Should be rejected (> current version 2)
     assert!(version > 2);
@@ -150,7 +159,7 @@ fn io_003_invalid_schema_version_rejected_on_import() {
         "events": []
     }"#;
 
-    let (mut conn, _temp_dir) = create_test_db();
+    let (mut conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
     let actor = Author {
         id: "test".to_string(),
         is_human: true,
@@ -181,8 +190,10 @@ fn io_004_valid_json_parses() {
     let result: Result<DiagramJsonExport, _> = serde_json::from_str(&json);
 
     // Then: Parses successfully
-    assert!(result.is_ok());
-    let export = result.unwrap();
+    let export = match result {
+        Ok(e) => e,
+        Err(e) => panic!("Failed to parse JSON: {:?}", e),
+    };
     assert_eq!(export.metadata.revision, 0);
     assert_eq!(export.metadata.version, 2);
 }
@@ -194,14 +205,14 @@ fn io_004_valid_json_parses() {
 #[test]
 fn io_005_large_document_export_performance() {
     // Given: Document with 1000+ events
-    let (conn, _temp_dir) = create_test_db();
+    let (conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
 
     // Create 1000 events
     for i in 0..1000 {
         conn.execute(
             "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
             (format!("op-{i}"), i + 1, "{}", 1000 + i),
-        ).unwrap();
+        ).unwrap_or_else(|e| panic!("DB insert failed: {:?}", e));
     }
 
     // When: Exporting
@@ -213,7 +224,10 @@ fn io_005_large_document_export_performance() {
     assert!(result.is_ok());
     assert!(export_duration.as_secs() < 5, "Export took {} seconds", export_duration.as_secs());
 
-    let export = result.unwrap();
+    let export = match result {
+        Ok(e) => e,
+        Err(e) => panic!("Export should succeed: {:?}", e),
+    };
     assert_eq!(export.metadata.revision, 0); // No replay = revision 0
 }
 
@@ -260,8 +274,9 @@ fn io_006_large_document_import_performance() {
         "events": []
     });
 
-    let json_str = serde_json::to_string(&export_json).unwrap();
-    let (mut conn, _temp_dir) = create_test_db();
+    let json_str = serde_json::to_string(&export_json)
+        .unwrap_or_else(|e| panic!("Failed to serialize export JSON: {:?}", e));
+    let (mut conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
     let actor = Author {
         id: "test".to_string(),
         is_human: true,
@@ -293,8 +308,10 @@ fn io_007_unicode_emoji_labels() {
     for (emoji, text) in labels {
         // When: Serializing and deserializing
         let json = serde_json::json!({"label": emoji, "text": text});
-        let serialized = serde_json::to_string(&json).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&json)
+            .unwrap_or_else(|e| panic!("Failed to serialize: {:?}", e));
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized)
+            .unwrap_or_else(|e| panic!("Failed to deserialize: {:?}", e));
 
         // Then: Labels are preserved exactly
         assert_eq!(deserialized["label"], emoji);
@@ -313,8 +330,10 @@ fn io_007_unicode_rtl_text() {
 
     for label in rtl_labels {
         let json = serde_json::json!({"label": label});
-        let serialized = serde_json::to_string(&json).unwrap();
-        let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+        let serialized = serde_json::to_string(&json)
+            .unwrap_or_else(|e| panic!("Failed to serialize: {:?}", e));
+        let deserialized: serde_json::Value = serde_json::from_str(&serialized)
+            .unwrap_or_else(|e| panic!("Failed to deserialize: {:?}", e));
 
         assert_eq!(deserialized["label"], label);
     }
@@ -325,8 +344,10 @@ fn io_007_unicode_combining_characters() {
     // Given: Text with combining diacritics
     let text = "café";  // Combining acute accent
     let json = serde_json::json!({"label": text});
-    let serialized = serde_json::to_string(&json).unwrap();
-    let deserialized: serde_json::Value = serde_json::from_str(&serialized).unwrap();
+    let serialized = serde_json::to_string(&json)
+        .unwrap_or_else(|e| panic!("Failed to serialize: {:?}", e));
+    let deserialized: serde_json::Value = serde_json::from_str(&serialized)
+        .unwrap_or_else(|e| panic!("Failed to deserialize: {:?}", e));
 
     assert_eq!(deserialized["label"], text);
 }
@@ -340,23 +361,35 @@ fn io_008_atomic_save_pattern_works() {
     use std::fs;
 
     // Given: Original file exists
-    let temp_dir = tempfile::TempDir::new().unwrap();
+    let temp_dir = tempfile::TempDir::new()
+        .unwrap_or_else(|e| panic!("Failed to create temp dir: {:?}", e));
     let file_path = temp_dir.path().join("test.json");
     let original_content = r#"{"version": 2, "revision": 0}"#;
 
-    fs::write(&file_path, original_content).unwrap();
+    fs::write(&file_path, original_content)
+        .unwrap_or_else(|e| panic!("Failed to write file: {:?}", e));
 
-    let original_hash = fs::metadata(&file_path).unwrap().len();
+    let original_hash = fs::metadata(&file_path)
+        .unwrap_or_else(|e| panic!("Failed to get metadata: {:?}", e))
+        .len();
 
     // Simulate atomic save pattern
     let temp_path = temp_dir.path().join(format!(".test.json.tmp.{}", std::process::id()));
-    fs::write(&temp_path, "new content").unwrap();
-    fs::rename(&temp_path, &file_path).unwrap();
+    fs::write(&temp_path, "new content")
+        .unwrap_or_else(|e| panic!("Failed to write temp file: {:?}", e));
+    fs::rename(&temp_path, &file_path)
+        .unwrap_or_else(|e| panic!("Failed to rename file: {:?}", e));
 
     // Then: Original file is updated
-    let current_content = fs::read_to_string(&file_path).unwrap();
+    let current_content = fs::read_to_string(&file_path)
+        .unwrap_or_else(|e| panic!("Failed to read file: {:?}", e));
     assert_eq!(current_content, "new content");
-    assert_ne!(fs::metadata(&file_path).unwrap().len(), original_hash);
+    assert_ne!(
+        fs::metadata(&file_path)
+            .unwrap_or_else(|e| panic!("Failed to get metadata: {:?}", e))
+            .len(),
+        original_hash
+    );
 }
 
 // ============================================================================
@@ -369,7 +402,8 @@ fn io_009_lkg_fallback_function_exists() {
     use std::path::Path;
 
     // Given: Non-existent file
-    let temp_dir = tempfile::TempDir::new().unwrap();
+    let temp_dir = tempfile::TempDir::new()
+        .unwrap_or_else(|e| panic!("Failed to create temp dir: {:?}", e));
     let file_path = temp_dir.path().join("nonexistent.json");
 
     // When: Attempting to load
@@ -429,26 +463,29 @@ fn io_011_recovery_mode_export_function_exists() {
     use crate::models::export::export_while_recovering;
 
     // Given: Read-only connection with data
-    let (conn, _temp_dir) = create_test_db();
+    let (conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
 
     // Add some data
     for i in 0..5 {
         conn.execute(
             "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
             (format!("op-{i}"), i + 1, "{}", 1000 + i),
-        ).unwrap();
+        ).unwrap_or_else(|e| panic!("DB insert failed: {:?}", e));
     }
 
     // When: Exporting in recovery mode
     let result = export_while_recovering(&conn);
 
     // Then: Returns valid JSON string
-    assert!(result.is_ok());
-    let json_str = result.unwrap();
+    let json_str = match result {
+        Ok(s) => s,
+        Err(e) => panic!("Recovery export should succeed: {:?}", e),
+    };
     assert!(!json_str.is_empty());
 
     // Should be valid JSON
-    let parsed: serde_json::Value = serde_json::from_str(&json_str).unwrap();
+    let parsed: serde_json::Value = serde_json::from_str(&json_str)
+        .unwrap_or_else(|e| panic!("Failed to parse JSON: {:?}", e));
     assert!(parsed["version"].is_number());
 }
 
@@ -468,7 +505,8 @@ fn io_012_backward_compatible_version_1() {
         "edges": {}
     });
 
-    let json_str = serde_json::to_string(&old_version_json).unwrap();
+    let json_str = serde_json::to_string(&old_version_json)
+        .unwrap_or_else(|e| panic!("Failed to serialize old version JSON: {:?}", e));
 
     // When: Validating
     let result = validate_export_schema(&json_str);

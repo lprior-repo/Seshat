@@ -71,6 +71,10 @@ pub mod mutation;
 pub mod perf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store;
+#[cfg(feature = "async-db")]
+pub mod store_async;
+#[cfg(feature = "async-db")]
+pub mod store_bridge;
 pub mod ui;
 pub mod viewport;
 
