@@ -27,15 +27,14 @@
 //! cargo test concurrent_append_light --features async-db -- --nocapture
 //! ```
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
+#![allow(clippy::expect_used)] // Test code uses expect for clarity
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::store_async::{
-    append_event_async, append_idempotent_async, bootstrap_async_store,
-    create_async_pool, fetch_all_events, fetch_events_since,
+    append_event_async, append_idempotent_async,
+    fetch_all_events, fetch_events_since,
     AsyncStoreError, EventRecord,
 };
 use std::collections::HashMap;
@@ -44,6 +43,9 @@ use std::sync::Arc;
 use std::time::{Duration, Instant};
 use tempfile::TempDir;
 use tokio::sync::Semaphore;
+
+// Re-export sqlx for use in tests
+use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 
 /// Test configuration for load scenarios
 #[derive(Debug, Clone)]
@@ -101,13 +103,13 @@ impl LoadTestStats {
             self.latencies_us.sort_unstable();
             let len = self.latencies_us.len();
 
-            self.min_us = self.latencies_us.first().copied().unwrap_or(0);
-            self.max_us = self.latencies_us.last().copied().unwrap_or(0);
+            self.min_us = *self.latencies_us.first().expect("latencies should have first element");
+            self.max_us = *self.latencies_us.last().expect("latencies should have last element");
 
             // Calculate percentiles
-            self.p50_us = self.percentile(&self.latencies_us, 50);
-            self.p95_us = self.percentile(&self.latencies_us, 95);
-            self.p99_us = self.percentile(&self.latencies_us, 99);
+            self.p50_us = Self::percentile(&self.latencies_us, 50);
+            self.p95_us = Self::percentile(&self.latencies_us, 95);
+            self.p99_us = Self::percentile(&self.latencies_us, 99);
         }
 
         // Calculate throughput
@@ -172,7 +174,7 @@ fn create_test_envelope(op_id: String, timestamp: i64) -> EventEnvelope {
 }
 
 /// Setup a test database with the given pool size
-async fn setup_test_db(pool_size: u32) -> Result<(TempDir, PathBuf, sqlx::SqlitePool), AsyncStoreError> {
+async fn setup_test_db(pool_size: u32) -> Result<(TempDir, PathBuf, SqlitePool), AsyncStoreError> {
     let temp_dir = TempDir::new().map_err(|e| {
         AsyncStoreError::Io(std::io::Error::new(
             std::io::ErrorKind::Other,
@@ -184,7 +186,7 @@ async fn setup_test_db(pool_size: u32) -> Result<(TempDir, PathBuf, sqlx::Sqlite
 
     // Create pool with specified size
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
-    let pool = sqlx::sqlite::SqlitePoolOptions::new()
+    let pool = SqlitePoolOptions::new()
         .max_connections(pool_size)
         .connect(&connection_string)
         .await?;
@@ -234,8 +236,9 @@ async fn concurrent_append_light() {
         pool_size: 10,
     };
 
-    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await.unwrap();
-    let pool = Arc::new(pool);
+    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await
+        .expect("Failed to setup test database");
+    let pool: Arc<SqlitePool> = Arc::new(pool);
 
     let start = Instant::now();
     let mut tasks = Vec::new();
@@ -273,7 +276,8 @@ async fn concurrent_append_light() {
 
     // Collect results
     for task in tasks {
-        let (task_lats, task_success, task_failed) = task.await.unwrap();
+        let (task_lats, task_success, task_failed) = task.await
+            .expect("Failed to join task");
         latencies.extend(task_lats);
         successful += task_success;
         failed += task_failed;
@@ -306,7 +310,7 @@ async fn concurrent_append_light() {
     assert!(stats.p95_us < 10_000_000, "P95 latency should be under 10 seconds");
 
     // Close pool
-    pool.close().await;
+    SqlitePool::close(&pool).await;
 }
 
 /// Test scenario: 50 concurrent read operations (read-heavy load)
@@ -318,13 +322,15 @@ async fn concurrent_read_heavy() {
         pool_size: 10,
     };
 
-    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await.unwrap();
-    let pool = Arc::new(pool);
+    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await
+        .expect("Failed to setup test database");
+    let pool: Arc<SqlitePool> = Arc::new(pool);
 
     // Pre-populate with some data
     for i in 0..100 {
         let envelope = create_test_envelope(format!("preload-op-{}", i), 1700000000 + i as i64);
-        append_event_async(&pool, envelope, None).await.unwrap();
+        append_event_async(&pool, envelope, None).await
+            .expect("Failed to preload data");
     }
 
     let start = Instant::now();
@@ -370,7 +376,8 @@ async fn concurrent_read_heavy() {
 
     // Collect results
     for task in tasks {
-        let (task_lats, task_success, task_failed) = task.await.unwrap();
+        let (task_lats, task_success, task_failed) = task.await
+            .expect("Failed to join task");
         latencies.extend(task_lats);
         successful += task_success;
         failed += task_failed;
@@ -403,7 +410,7 @@ async fn concurrent_read_heavy() {
     assert!(stats.p95_us < 5_000_000, "P95 read latency should be under 5 seconds");
 
     // Close pool
-    pool.close().await;
+    SqlitePool::close(&pool).await;
 }
 
 /// Test scenario: Mixed read/write workload
@@ -415,13 +422,15 @@ async fn concurrent_mixed_workload() {
         pool_size: 10,
     };
 
-    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await.unwrap();
-    let pool = Arc::new(pool);
+    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await
+        .expect("Failed to setup test database");
+    let pool: Arc<SqlitePool> = Arc::new(pool);
 
     // Pre-populate with some data
     for i in 0..50 {
         let envelope = create_test_envelope(format!("preload-op-{}", i), 1700000000 + i as i64);
-        append_event_async(&pool, envelope, None).await.unwrap();
+        append_event_async(&pool, envelope, None).await
+            .expect("Failed to preload data");
     }
 
     let start = Instant::now();
@@ -448,7 +457,8 @@ async fn concurrent_mixed_workload() {
                     let envelope = create_test_envelope(op_id, 1700000000 + (task_id * 1000 + i) as i64);
                     append_event_async(&pool_clone, envelope, None).await
                 } else {
-                    fetch_events_since(&pool_clone, 0).await
+                    // For reads, we convert the result to a consistent type
+                    fetch_events_since(&pool_clone, 0).await.map(|_| ())
                 };
                 let latency = op_start.elapsed().as_micros();
                 task_lats.push(latency);
@@ -466,7 +476,8 @@ async fn concurrent_mixed_workload() {
 
     // Collect results
     for task in tasks {
-        let (task_lats, task_success, task_failed) = task.await.unwrap();
+        let (task_lats, task_success, task_failed) = task.await
+            .expect("Failed to join task");
         latencies.extend(task_lats);
         successful += task_success;
         failed += task_failed;
@@ -502,7 +513,7 @@ async fn concurrent_mixed_workload() {
     assert!(stats.ops_per_sec > 0.0, "Should have positive throughput");
 
     // Close pool
-    pool.close().await;
+    SqlitePool::close(&pool).await;
 }
 
 /// Test scenario: Stress test with 100+ concurrent operations
@@ -514,13 +525,15 @@ async fn concurrent_stress_test() {
         pool_size: 10,
     };
 
-    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await.unwrap();
-    let pool = Arc::new(pool);
+    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await
+        .expect("Failed to setup test database");
+    let pool: Arc<SqlitePool> = Arc::new(pool);
 
     // Pre-populate with some data
     for i in 0..100 {
         let envelope = create_test_envelope(format!("preload-op-{}", i), 1700000000 + i as i64);
-        append_event_async(&pool, envelope, None).await.unwrap();
+        append_event_async(&pool, envelope, None).await
+            .expect("Failed to preload data");
     }
 
     let start = Instant::now();
@@ -534,7 +547,8 @@ async fn concurrent_stress_test() {
 
     // Spawn many concurrent tasks
     for task_id in 0..config.concurrency {
-        let permit = semaphore.clone().acquire_owned().await.unwrap();
+        let permit = semaphore.clone().acquire_owned().await
+            .expect("Failed to acquire semaphore permit");
         let pool_clone = pool.clone();
         let task = tokio::spawn(async move {
             let mut task_lats = Vec::new();
@@ -564,7 +578,8 @@ async fn concurrent_stress_test() {
 
     // Collect results
     for task in tasks {
-        let (task_lats, task_success, task_failed) = task.await.unwrap();
+        let (task_lats, task_success, task_failed) = task.await
+            .expect("Failed to join task");
         latencies.extend(task_lats);
         successful += task_success;
         failed += task_failed;
@@ -598,7 +613,7 @@ async fn concurrent_stress_test() {
              config.concurrency, config.pool_size);
 
     // Close pool
-    pool.close().await;
+    SqlitePool::close(&pool).await;
 }
 
 /// Test scenario: Idempotent append with concurrent duplicates
@@ -610,8 +625,9 @@ async fn concurrent_idempotent_operations() {
         pool_size: 10,
     };
 
-    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await.unwrap();
-    let pool = Arc::new(pool);
+    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await
+        .expect("Failed to setup test database");
+    let pool: Arc<SqlitePool> = Arc::new(pool);
 
     let start = Instant::now();
     let mut tasks = Vec::new();
@@ -657,7 +673,8 @@ async fn concurrent_idempotent_operations() {
 
     // Collect results
     for task in tasks {
-        let (task_lats, task_success, task_failed) = task.await.unwrap();
+        let (task_lats, task_success, task_failed) = task.await
+            .expect("Failed to join task");
         latencies.extend(task_lats);
         successful += task_success;
         failed += task_failed;
@@ -687,11 +704,12 @@ async fn concurrent_idempotent_operations() {
     assert!(stats.ops_per_sec > 0.0, "Should have positive throughput");
 
     // Verify final database state has exactly 10 unique operations
-    let final_events = fetch_all_events(&pool).await.unwrap();
+    let final_events = fetch_all_events(&pool).await
+        .expect("Failed to fetch final events");
     assert_eq!(final_events.len(), 10, "Should have exactly 10 unique events");
 
     // Close pool
-    pool.close().await;
+    SqlitePool::close(&pool).await;
 }
 
 /// Test scenario: Pool size benchmark - compare different pool sizes
@@ -707,8 +725,9 @@ async fn pool_size_benchmark() {
     let mut results: HashMap<u32, f64> = HashMap::new();
 
     for pool_size in pool_sizes {
-        let (_temp_dir, _db_path, pool) = setup_test_db(pool_size).await.unwrap();
-        let pool = Arc::new(pool);
+        let (_temp_dir, _db_path, pool) = setup_test_db(pool_size).await
+            .expect("Failed to setup test database");
+        let pool: Arc<SqlitePool> = Arc::new(pool);
 
         let start = Instant::now();
         let mut tasks = Vec::new();
@@ -738,7 +757,8 @@ async fn pool_size_benchmark() {
 
         let mut successful = 0usize;
         for task in tasks {
-            successful += task.await.unwrap();
+            successful += task.await
+                .expect("Failed to join task");
         }
 
         let elapsed = start.elapsed();
@@ -749,7 +769,8 @@ async fn pool_size_benchmark() {
         println!("Pool size {:>2}: {:.2} ops/sec ({}/{})",
                  pool_size, ops_per_sec, successful, concurrency * ops_per_task);
 
-        pool.close().await;
+        // Close pool
+        SqlitePool::close(&pool).await;
     }
 
     println!("\nAnalysis:");
@@ -781,8 +802,9 @@ async fn sustained_load_latency() {
         pool_size: 10,
     };
 
-    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await.unwrap();
-    let pool = Arc::new(pool);
+    let (_temp_dir, _db_path, pool) = setup_test_db(config.pool_size).await
+        .expect("Failed to setup test database");
+    let pool: Arc<SqlitePool> = Arc::new(pool);
 
     let start = Instant::now();
     let mut tasks = Vec::new();
@@ -829,7 +851,8 @@ async fn sustained_load_latency() {
 
     // Collect results
     for task in tasks {
-        let (task_lats, task_success, task_failed) = task.await.unwrap();
+        let (task_lats, task_success, task_failed) = task.await
+            .expect("Failed to join task");
         for (latency, bucket) in task_lats {
             latencies.push(latency);
             time_buckets[bucket].push(latency);
@@ -872,5 +895,5 @@ async fn sustained_load_latency() {
     }
 
     // Close pool
-    pool.close().await;
+    SqlitePool::close(&pool).await;
 }

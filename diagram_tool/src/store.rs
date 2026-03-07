@@ -36,7 +36,7 @@ use serde::Serialize;
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use crate::models::envelope::{encode_event_envelope, EventEnvelope};
+pub use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
 /// Current schema version for the store
 pub const CURRENT_SCHEMA_VERSION: i32 = 1;
