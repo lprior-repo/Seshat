@@ -25,6 +25,7 @@ pub fn icon_index() -> &'static IconIndex {
 }
 
 #[allow(dead_code)]
+#[must_use]
 pub fn icon_src(icon: &IconMeta) -> String {
     format!("/resources/{}", icon.file_relpath)
 }
