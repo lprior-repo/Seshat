@@ -172,7 +172,7 @@ fn io_005b_large_document_export_performance_10000() {
 #[cfg(feature = "async-db")]
 #[tokio::test]
 async fn io_005c_async_large_document_export_performance() {
-    use crate::store_async::{bootstrap_async_store, fetch_all_events};
+    use crate::store::{bootstrap_async_store, fetch_all_events};
     use tempfile::TempDir;
 
     // Given: Document with 1000 events
@@ -207,7 +207,7 @@ async fn io_005c_async_large_document_export_performance() {
     // Insert events in batches
     let batch_size = 100;
     for chunk in envelopes.chunks(batch_size) {
-        crate::store_async::append_batch_async(&bootstrap.pool, chunk.to_vec(), None)
+        crate::store::append_batch_async(&bootstrap.pool, chunk.to_vec(), None)
             .await
             .expect("Failed to append batch");
     }
@@ -234,7 +234,7 @@ async fn io_005c_async_large_document_export_performance() {
 #[cfg(feature = "async-db")]
 #[tokio::test]
 async fn io_005d_async_large_document_export_performance_5000() {
-    use crate::store_async::{bootstrap_async_store, fetch_all_events};
+    use crate::store::{bootstrap_async_store, fetch_all_events};
     use tempfile::TempDir;
 
     // Given: Document with 5000 events
@@ -269,7 +269,7 @@ async fn io_005d_async_large_document_export_performance_5000() {
     // Insert events in batches
     let batch_size = 100;
     for chunk in envelopes.chunks(batch_size) {
-        crate::store_async::append_batch_async(&bootstrap.pool, chunk.to_vec(), None)
+        crate::store::append_batch_async(&bootstrap.pool, chunk.to_vec(), None)
             .await
             .expect("Failed to append batch");
     }
@@ -296,7 +296,7 @@ async fn io_005d_async_large_document_export_performance_5000() {
 #[cfg(feature = "async-db")]
 #[tokio::test]
 async fn io_005e_async_large_document_export_performance_10000() {
-    use crate::store_async::{bootstrap_async_store, fetch_all_events};
+    use crate::store::{bootstrap_async_store, fetch_all_events};
     use tempfile::TempDir;
 
     // Given: Document with 10000 events
@@ -331,7 +331,7 @@ async fn io_005e_async_large_document_export_performance_10000() {
     // Insert events in batches
     let batch_size = 100;
     for chunk in envelopes.chunks(batch_size) {
-        crate::store_async::append_batch_async(&bootstrap.pool, chunk.to_vec(), None)
+        crate::store::append_batch_async(&bootstrap.pool, chunk.to_vec(), None)
             .await
             .expect("Failed to append batch");
     }

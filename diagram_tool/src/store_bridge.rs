@@ -10,10 +10,10 @@ use thiserror::Error;
 use tokio::runtime::Runtime;
 
 use crate::models::envelope::EventEnvelope;
-use crate::store_async::{
-    AsyncAppendResult, AsyncBatchAppendResult, AsyncStoreError, EventRecord,
-    append_event_async, append_batch_async, append_idempotent_async,
-    bootstrap_async_store, fetch_events_since, lookup_existing_op_async,
+use crate::store::{
+    append_event_async, append_batch_async, bootstrap_async_store,
+    append_idempotent_async, fetch_events_since, lookup_existing_op_async,
+    AsyncAppendResult, AsyncBatchAppendResult, AsyncStoreError,
 };
 
 #[derive(Debug, Error)]

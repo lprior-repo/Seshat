@@ -38,6 +38,19 @@ use thiserror::Error;
 
 pub use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "async-db"))]
+pub use crate::store_async::{
+    append_event_async, append_batch_async, bootstrap_async_store,
+    create_async_pool, current_store_config_async,
+    fetch_all_events, fetch_events_since,
+    integrity_check_async, open_recovery_mode_async,
+    open_recovery_only_async, read_store_pragmas_async,
+    startup_integrity_check_async, AsyncAppendResult, AsyncBatchAppendResult,
+    AsyncIntegrityStatus, AsyncRecoveryError, AsyncRecoveryHandle,
+    AsyncRecoverySession, AsyncStoreBootstrap, AsyncStoreConfig, AsyncStoreError,
+    AsyncStorePragmas,
+};
+
 /// Current schema version for the store
 pub const CURRENT_SCHEMA_VERSION: i32 = 1;
 
