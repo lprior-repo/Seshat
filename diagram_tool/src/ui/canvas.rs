@@ -587,7 +587,9 @@ fn flush_pending_pointer_update(
         | InteractionMode::DragPending(_)
         | InteractionMode::Dragging(_)
         | InteractionMode::ResizePending(_)
-        | InteractionMode::Resizing(_) => {}
+        | InteractionMode::Resizing(_)
+        | InteractionMode::DraggingSelection { .. }
+        | InteractionMode::ResizingSelection { .. } => {}
     });
 }
 
@@ -1337,16 +1339,13 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::Select => {}
-                        InteractionMode::DragPending(_) => {}
-                        InteractionMode::Dragging(_) => {}
-                        InteractionMode::ResizePending(_) => {}
-                        InteractionMode::Resizing(_) => {}
-                        InteractionMode::DrawingEdge { .. } => {}
-                        InteractionMode::RubberBand { .. } => {}
-                        InteractionMode::DrawingSubgraph { .. } => {}
+                        InteractionMode::Select
+                        | InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::DrawingEdge { .. } => {}
                     });
-                    continue;
                 }
 
                 if event_type == "pointerup" {
@@ -1492,14 +1491,14 @@ pub fn Canvas() -> Element {
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::Select => {}
-                        InteractionMode::DragPending(_) => {}
-                        InteractionMode::Dragging(_) => {}
-                        InteractionMode::ResizePending(_) => {}
-                        InteractionMode::Resizing(_) => {}
-                        InteractionMode::DrawingEdge { .. } => {}
-                        InteractionMode::RubberBand { .. } => {}
-                        InteractionMode::DrawingSubgraph { .. } => {}
+                        InteractionMode::Select
+                        | InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::RubberBand { .. }
+                        | InteractionMode::DrawingEdge { .. }
+                        | InteractionMode::DrawingSubgraph { .. } => {}
                     });
                     space_pan_active.set(false);
                 }
@@ -1923,14 +1922,12 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::Select => {}
-                        InteractionMode::DragPending(_) => {}
-                        InteractionMode::Dragging(_) => {}
-                        InteractionMode::ResizePending(_) => {}
-                        InteractionMode::Resizing(_) => {}
-                        InteractionMode::DrawingEdge { .. } => {}
-                        InteractionMode::RubberBand { .. } => {}
-                        InteractionMode::DrawingSubgraph { .. } => {}
+                        InteractionMode::Select
+                        | InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::DrawingEdge { .. } => {}
                     }
                 });
             },
@@ -2081,11 +2078,13 @@ pub fn Canvas() -> Element {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => *mode = InteractionMode::Select,
-                        InteractionMode::DragPending(_) => *mode = InteractionMode::Select,
-                        InteractionMode::Dragging(_) => *mode = InteractionMode::Select,
-                        InteractionMode::ResizePending(_) => *mode = InteractionMode::Select,
-                        InteractionMode::Resizing(_) => *mode = InteractionMode::Select,
-                        InteractionMode::DrawingSubgraph { .. } => *mode = InteractionMode::Select,
+                        InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::RubberBand { .. }
+                        | InteractionMode::DrawingEdge { .. }
+                        | InteractionMode::DrawingSubgraph { .. } => {}
                     }
                 });
                 space_pan_active.set(false);

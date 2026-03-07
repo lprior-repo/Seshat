@@ -67,12 +67,6 @@ pub(super) enum InteractionMode {
     },
     DragPending(DragPendingState),
     Dragging(DragState),
-    DraggingSelection {
-        anchor_canvas: (f64, f64),
-        anchor_client: (f64, f64),
-        original_positions: HashMap<NodeId, (f64, f64)>,
-        did_move: bool,
-    },
     DrawingEdge {
         from_node: NodeId,
         current_pos: (f64, f64),
@@ -83,6 +77,12 @@ pub(super) enum InteractionMode {
     },
     ResizePending(ResizeState),
     Resizing(ResizeState),
+    DraggingSelection {
+        anchor_canvas: (f64, f64),
+        anchor_client: (f64, f64),
+        original_positions: HashMap<NodeId, (f64, f64)>,
+        did_move: bool,
+    },
     ResizingSelection {
         handle: ResizeHandle,
         original_bounds: (f64, f64, f64, f64),
@@ -212,16 +212,16 @@ pub(super) fn finalize_motion_release(
             *mode = InteractionMode::Select;
             return true;
         }
+        InteractionMode::DraggingSelection { did_move, .. } => *did_move,
+        InteractionMode::ResizingSelection { did_resize, .. } => *did_resize,
         _ => return false,
     };
 
     if should_increment {
         doc.revision = doc.revision.increment();
-        *mode = InteractionMode::Select;
-        true
-    } else {
-        false
     }
+    *mode = InteractionMode::Select;
+    true
 }
 
 #[cfg(test)]
@@ -1259,7 +1259,7 @@ mod proptests {
 mod inp_mobile_touch_tests {
     use im::HashMap;
 
-    use super::{InteractionMode, ResizeHandle, DragPendingState, DragState, ResizeState};
+    use super::{DragPendingState, DragState, InteractionMode, ResizeHandle, ResizeState};
     use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
 
     fn make_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
@@ -1298,7 +1298,12 @@ mod inp_mobile_touch_tests {
             last_pos: (100.0, 100.0),
         };
 
-        let dragging = InteractionMode::DragPending(DragPendingState { anchor_canvas: (0.0, 0.0), anchor_client: (0.0, 0.0), original_positions: HashMap::new() });
+        let dragging = InteractionMode::DraggingSelection {
+            anchor_canvas: (0.0, 0.0),
+            anchor_client: (0.0, 0.0),
+            original_positions: HashMap::new(),
+            did_move: false,
+        };
 
         // Modes should be different
         assert_ne!(
