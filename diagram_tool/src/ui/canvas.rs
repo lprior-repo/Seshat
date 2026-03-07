@@ -2055,6 +2055,12 @@ pub fn Canvas() -> Element {
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
                         }
+                        InteractionMode::DragPending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Resizing(_) => {
+                            *mode = InteractionMode::Select;
+                        }
                         InteractionMode::Select => *mode = InteractionMode::Select,
                     }
                 });
