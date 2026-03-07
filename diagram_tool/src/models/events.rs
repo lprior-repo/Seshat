@@ -13,8 +13,8 @@
 #![forbid(unsafe_code)]
 
 use crate::store::StoreError;
-use rusqlite::Connection;
 use serde::{Deserialize, Serialize};
+use sqlx::SqlitePool;
 
 /// Current schema version for events schema
 const SCHEMA_VERSION: i32 = 1;
@@ -37,65 +37,60 @@ pub struct SchemaState {
 /// # Errors
 /// Returns `StoreError::SchemaVersionMismatch` if an incompatible schema version exists
 /// Returns `StoreError::MigrationForbidden` if migration is attempted
-pub fn ensure_schema_v1(conn: &Connection) -> Result<SchemaState, StoreError> {
-    let existing_state = read_schema_state(conn).ok();
+pub async fn ensure_schema_v1(pool: &SqlitePool) -> Result<SchemaState, StoreError> {
+    let existing_state = read_schema_state(pool).await.ok();
 
     if let Some(state) = existing_state {
-        // Schema exists - check version compatibility
         if state.version == SCHEMA_VERSION {
-            // Already at v1, nothing to do
             return Ok(state);
         }
-        // Unknown version - reject instead of migrating
         if state.version > SCHEMA_VERSION {
             return Err(StoreError::SchemaVersionMismatch {
                 expected: SCHEMA_VERSION,
                 found: state.version,
             });
         }
-        // Version < SCHEMA_VERSION - migration forbidden per contract
         return Err(StoreError::MigrationForbidden {
             version: state.version,
         });
     }
 
-    // No schema exists - create v1 schema in a transaction
-    create_schema_v1(conn)
+    create_schema_v1(pool).await
 }
 
 /// Read the current schema state from the database
 ///
 /// # Errors
 /// Returns an error if the schema table cannot be read
-pub fn read_schema_state(conn: &Connection) -> Result<SchemaState, StoreError> {
+pub async fn read_schema_state(pool: &SqlitePool) -> Result<SchemaState, StoreError> {
     let query = format!("SELECT version, created_at FROM {SCHEMA_TABLE} LIMIT 1");
 
-    conn.query_row(&query, [], |row| {
-        Ok(SchemaState {
-            version: row.get(0)?,
-            created_at: row.get(1)?,
-        })
-    })
-    .map_err(StoreError::Sqlite)
+    let row = sqlx::query_as::<_, (i32, i64)>(&query)
+        .fetch_optional(pool)
+        .await
+        .map_err(StoreError::Sqlx)?;
+
+    match row {
+        Some((version, created_at)) => Ok(SchemaState { version, created_at }),
+        None => Err(StoreError::Sqlx(sqlx::Error::RowNotFound)),
+    }
 }
 
 /// Create the v1 schema tables
-fn create_schema_v1(conn: &Connection) -> Result<SchemaState, StoreError> {
-    let tx = conn.unchecked_transaction()?;
+async fn create_schema_v1(pool: &SqlitePool) -> Result<SchemaState, StoreError> {
+    let mut tx = pool.begin().await.map_err(StoreError::Sqlx)?;
 
-    // Create schema version tracking table
-    tx.execute(
-        &format!(
-            "CREATE TABLE IF NOT EXISTS {SCHEMA_TABLE} (
-                version INTEGER NOT NULL PRIMARY KEY,
-                created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )"
-        ),
-        [],
-    )?;
+    sqlx::query(&format!(
+        "CREATE TABLE IF NOT EXISTS {SCHEMA_TABLE} (
+            version INTEGER NOT NULL PRIMARY KEY,
+            created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+        )"
+    ))
+    .execute(&mut *tx)
+    .await
+    .map_err(StoreError::Sqlx)?;
 
-    // Create events table for storing event snapshots
-    tx.execute(
+    sqlx::query(
         "CREATE TABLE IF NOT EXISTS events (
             id TEXT NOT NULL PRIMARY KEY,
             revision INTEGER NOT NULL,
@@ -104,129 +99,126 @@ fn create_schema_v1(conn: &Connection) -> Result<SchemaState, StoreError> {
             metadata TEXT NOT NULL DEFAULT '{}',
             created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
         )",
-        [],
-    )?;
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(StoreError::Sqlx)?;
 
-    // Create index on revision for efficient history queries
-    tx.execute(
-        "CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision)",
-        [],
-    )?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision)")
+        .execute(&mut *tx)
+        .await
+        .map_err(StoreError::Sqlx)?;
 
-    // Create index on event_type for filtering
-    tx.execute(
-        "CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)",
-        [],
-    )?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)")
+        .execute(&mut *tx)
+        .await
+        .map_err(StoreError::Sqlx)?;
 
-    // Create snapshot table for storing serialized projections
-    tx.execute(
+    sqlx::query(
         "CREATE TABLE IF NOT EXISTS snapshots (
             id INTEGER NOT NULL PRIMARY KEY,
             revision INTEGER NOT NULL UNIQUE,
             payload TEXT NOT NULL,
             created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
         )",
-        [],
-    )?;
+    )
+    .execute(&mut *tx)
+    .await
+    .map_err(StoreError::Sqlx)?;
 
-    // Create index on snapshot revision for efficient lookups
-    tx.execute(
-        "CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)",
-        [],
-    )?;
+    sqlx::query("CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)")
+        .execute(&mut *tx)
+        .await
+        .map_err(StoreError::Sqlx)?;
 
-    // Insert schema version record
-    tx.execute(
-        &format!("INSERT INTO {SCHEMA_TABLE} (version) VALUES (?)"),
-        [SCHEMA_VERSION],
-    )?;
+    sqlx::query(&format!("INSERT INTO {SCHEMA_TABLE} (version) VALUES (?)"))
+        .bind(SCHEMA_VERSION)
+        .execute(&mut *tx)
+        .await
+        .map_err(StoreError::Sqlx)?;
 
-    tx.commit()?;
+    tx.commit().await.map_err(StoreError::Sqlx)?;
 
-    // Return the created schema state
-    read_schema_state(conn)
+    read_schema_state(pool).await
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::store::create_pool;
     use tempfile::TempDir;
 
-    #[test]
-    fn given_fresh_database_when_ensuring_schema_then_schema_is_created() {
-        let temp_dir = TempDir::new().unwrap();
+    #[tokio::test]
+    async fn given_fresh_database_when_ensuring_schema_then_schema_is_created() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let mut conn = Connection::open(&db_path).unwrap();
+        let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
-        // Ensure schema v1 on fresh database
-        let result = ensure_schema_v1(&mut conn);
+        let result = ensure_schema_v1(&pool).await;
 
         assert!(result.is_ok(), "Schema creation failed: {:?}", result.err());
-        let state = result.unwrap();
+        let state = result.expect("Schema state");
         assert_eq!(state.version, SCHEMA_VERSION);
+
+        pool.close().await;
     }
 
-    #[test]
-    fn given_database_with_v1_schema_when_reading_state_then_returns_v1() {
-        let temp_dir = TempDir::new().unwrap();
+    #[tokio::test]
+    async fn given_database_with_v1_schema_when_reading_state_then_returns_v1() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let mut conn = Connection::open(&db_path).unwrap();
+        let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
-        // First ensure creates schema
-        ensure_schema_v1(&mut conn).unwrap();
+        ensure_schema_v1(&pool).await.expect("Schema creation failed");
 
-        // Read state separately
-        let state = read_schema_state(&conn).unwrap();
+        let state = read_schema_state(&pool).await.expect("Read state failed");
 
         assert_eq!(state.version, 1);
+
+        pool.close().await;
     }
 
-    #[test]
-    fn given_database_with_v1_schema_when_ensuring_again_then_returns_existing() {
-        let temp_dir = TempDir::new().unwrap();
+    #[tokio::test]
+    async fn given_database_with_v1_schema_when_ensuring_again_then_returns_existing() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let mut conn = Connection::open(&db_path).unwrap();
+        let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
-        // First ensure creates schema
-        let first = ensure_schema_v1(&mut conn).unwrap();
-
-        // Second ensure returns existing
-        let second = ensure_schema_v1(&mut conn).unwrap();
+        let first = ensure_schema_v1(&pool).await.expect("First ensure failed");
+        let second = ensure_schema_v1(&pool).await.expect("Second ensure failed");
 
         assert_eq!(first.version, second.version);
+
+        pool.close().await;
     }
 
-    #[test]
-    fn given_unknown_higher_schema_version_then_rejects_with_mismatch() {
-        let temp_dir = TempDir::new().unwrap();
+    #[tokio::test]
+    async fn given_unknown_higher_schema_version_then_rejects_with_mismatch() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let mut conn = Connection::open(&db_path).unwrap();
+        let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
-        // Manually insert a higher version
-        conn.execute(
-            &format!(
-                "CREATE TABLE {} (version INTEGER NOT NULL, created_at INTEGER)",
-                SCHEMA_TABLE
-            ),
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            &format!(
-                "INSERT INTO {} (version, created_at) VALUES (99, 0)",
-                SCHEMA_TABLE
-            ),
-            [],
-        )
-        .unwrap();
+        sqlx::query(&format!(
+            "CREATE TABLE {} (version INTEGER NOT NULL, created_at INTEGER)",
+            SCHEMA_TABLE
+        ))
+        .execute(&pool)
+        .await
+        .expect("Create table failed");
 
-        // Now try to ensure v1 - should fail
-        let result = ensure_schema_v1(&mut conn);
+        sqlx::query(&format!(
+            "INSERT INTO {} (version, created_at) VALUES (99, 0)",
+            SCHEMA_TABLE
+        ))
+        .execute(&pool)
+        .await
+        .expect("Insert failed");
+
+        let result = ensure_schema_v1(&pool).await;
 
         assert!(result.is_err());
         match result {
@@ -236,35 +228,34 @@ mod tests {
             }
             _ => panic!("Expected SchemaVersionMismatch error"),
         }
+
+        pool.close().await;
     }
 
-    #[test]
-    fn given_lower_schema_version_then_rejects_with_migration_forbidden() {
-        let temp_dir = TempDir::new().unwrap();
+    #[tokio::test]
+    async fn given_lower_schema_version_then_rejects_with_migration_forbidden() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let mut conn = Connection::open(&db_path).unwrap();
+        let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
-        // Manually insert a lower version
-        conn.execute(
-            &format!(
-                "CREATE TABLE {} (version INTEGER NOT NULL, created_at INTEGER)",
-                SCHEMA_TABLE
-            ),
-            [],
-        )
-        .unwrap();
-        conn.execute(
-            &format!(
-                "INSERT INTO {} (version, created_at) VALUES (0, 0)",
-                SCHEMA_TABLE
-            ),
-            [],
-        )
-        .unwrap();
+        sqlx::query(&format!(
+            "CREATE TABLE {} (version INTEGER NOT NULL, created_at INTEGER)",
+            SCHEMA_TABLE
+        ))
+        .execute(&pool)
+        .await
+        .expect("Create table failed");
 
-        // Now try to ensure v1 - should fail
-        let result = ensure_schema_v1(&mut conn);
+        sqlx::query(&format!(
+            "INSERT INTO {} (version, created_at) VALUES (0, 0)",
+            SCHEMA_TABLE
+        ))
+        .execute(&pool)
+        .await
+        .expect("Insert failed");
+
+        let result = ensure_schema_v1(&pool).await;
 
         assert!(result.is_err());
         match result {
@@ -273,5 +264,7 @@ mod tests {
             }
             _ => panic!("Expected MigrationForbidden error"),
         }
+
+        pool.close().await;
     }
 }

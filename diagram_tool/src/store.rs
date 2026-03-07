@@ -62,6 +62,8 @@ pub enum StoreError {
     DuplicateWithConflict(String),
     #[error("Empty batch: cannot append zero events")]
     EmptyBatch,
+    #[error("Migration forbidden: cannot migrate from version {version}")]
+    MigrationForbidden { version: i32 },
 }
 
 /// Structured error codes for CLI output
@@ -102,6 +104,7 @@ pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
         StoreError::TransactionAborted { .. } => CliErrorCode::Unknown,
         StoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
         StoreError::EmptyBatch => CliErrorCode::ValidationFailed,
+        StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
     }
 }
 
