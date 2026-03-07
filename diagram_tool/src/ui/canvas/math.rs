@@ -7,7 +7,7 @@
 
 #[must_use]
 pub fn safe_zoom(zoom: f64) -> Option<f64> {
-    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
+    (zoom.is_finite() && zoom >= f64::EPSILON).then_some(zoom)
 }
 
 #[must_use]
