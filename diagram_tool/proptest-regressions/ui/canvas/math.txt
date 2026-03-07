@@ -5,3 +5,6 @@
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
 cc 083ba2236088d02e4d5861edfb02d70953f30a3dfc7f678ce5778a29384ac3de # shrinks to client_x = 0.0, client_y = 313407.08986317914, camera_x = 0.0, camera_y = 972954.1275021192, zoom = 0.01
+cc 15e9e78877a17c2fba67fb8f300a323faf321a853bb073d3cc28fc89639ddb38 # shrinks to zoom = 2.220446049250313e-16
+cc 4ee29210526b9e90c41f02f71cd8935697e958118044a080acee097185779219 # shrinks to sw = inf, sh = inf
+cc 79a3fe2ff26cfd7988f7ae1eccd14b01328d4033860bbb9f3f9c9779d36559c4 # shrinks to sx = 0.0, sy = -0.0, sw = 1.447771250780678e-308, sh = 9.156178463097345e270, nx = 0.0, ny = -3.6597981730070525e-54, nw = 1.140106574125218e-308, nh = 2.527464524730869e141

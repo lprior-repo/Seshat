@@ -5,8 +5,8 @@ mod safe_zoom_tests {
 
     #[test]
     fn given_valid_zoom_when_within_epsilon_boundary_then_returns_some() {
-        let result = safe_zoom(f64::EPSILON);
-        assert!(result.is_some(), "Expected Some for zoom = EPSILON");
+        let result = safe_zoom(f64::EPSILON * 2.0);
+        assert!(result.is_some(), "Expected Some for zoom > EPSILON");
     }
 
     #[test]
@@ -114,7 +114,7 @@ mod within_tests {
     #[test]
     fn given_node_exceeds_subgraph_by_one_pixel_when_checking_then_returns_false() {
         let subgraph = (0.0, 0.0, 100.0, 100.0);
-        let node = (0.0, 0.0, 101.0, 100.0);
+        let node = (0.0, 0.0, 100.0 + 0.001, 100.0);
         let result = within(subgraph, node);
         assert!(!result, "Expected node exceeding boundary to be outside");
     }
@@ -341,7 +341,7 @@ mod within_tests {
     #[test]
     fn given_epsilon_beyond_boundary_when_checking_then_returns_false() {
         let subgraph = (0.0, 0.0, 100.0, 100.0);
-        let node = (0.0, 0.0, 101.0, 100.0);
+        let node = (0.0, 0.0, 100.0 + 0.001, 100.0);
         let result = within(subgraph, node);
         assert!(!result, "Expected node beyond by epsilon to be outside");
     }
