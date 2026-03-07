@@ -171,6 +171,12 @@ pub struct IconIndex {
 }
 
 impl IconIndex {
+    /// Loads the icon index from the embedded JSON.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the icons_index.json cannot be parsed.
+    #[must_use]
     pub fn load() -> Self {
         let json: serde_json::Value = serde_json::from_str(include_str!("icons_index.json"))
             .expect("Failed to parse icons_index.json");
@@ -187,6 +193,7 @@ impl IconIndex {
         Self { all, by_provider, by_key }
     }
     
+    #[must_use]
     pub fn filter(&self, query: &str) -> Vec<&IconMeta> {
         if query.is_empty() {
             return self.all.iter().collect();
@@ -201,6 +208,7 @@ impl IconIndex {
             .collect()
     }
     
+    #[must_use]
     pub fn icons_by_provider(&self, provider: &str) -> Vec<&IconMeta> {
         self.by_provider
             .get(provider)
