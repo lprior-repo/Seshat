@@ -49,7 +49,7 @@ pub enum DistributionAxis {
 ///
 /// This replaces the mutable thread_local RefCell-based clipboard with
 /// a pure functional approach where clipboard state is passed explicitly.
-#[derive(Clone, Debug, PartialEq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clipboard {
     /// The nodes that were copied to the clipboard
     pub nodes: Vec<(NodeId, Node)>,
@@ -248,6 +248,7 @@ pub fn apply_paste_selection(
 ///
 /// This is equivalent to copy followed by paste, but uses paste_serial=1
 /// to ensure the duplicated content is offset from the original.
+#[must_use]
 pub fn apply_duplicate_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<Clipboard>>,
@@ -446,6 +447,7 @@ pub fn apply_clear_selection(mut doc_signal: Signal<DiagramDocument>) {
     });
 }
 
+#[must_use]
 pub fn apply_delete_selected(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -472,6 +474,7 @@ pub fn apply_delete_selected(
     true
 }
 
+#[must_use]
 pub fn apply_nudge_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -736,6 +739,7 @@ fn zoom_to_center(doc: &mut DiagramDocument, factor: f64, viewport_size: (f64, f
     set_zoom_centered(doc, old_zoom * factor, viewport_size)
 }
 
+#[must_use]
 pub fn apply_zoom_in(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -758,6 +762,7 @@ pub fn apply_zoom_in(
     true
 }
 
+#[must_use]
 pub fn apply_zoom_out(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,

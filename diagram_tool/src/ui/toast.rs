@@ -193,6 +193,7 @@ impl ToastApi {
     }
 
     #[allow(dead_code)]
+    #[must_use]
     pub fn remove(self, id: ToastId) -> bool {
         let mut queue = self.queue;
         let mut changed = false;

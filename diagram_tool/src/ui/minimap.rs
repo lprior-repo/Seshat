@@ -86,7 +86,7 @@ impl MinimapSnapshot {
             let provider = node
                 .tags
                 .get(0)
-                .map_or_else(|| String::from("generic"), |s| s.clone());
+                .map_or_else(|| String::from("generic"), Clone::clone);
             node_rects.push((
                 node.kind == NodeKind::Subgraph,
                 node.x.0,

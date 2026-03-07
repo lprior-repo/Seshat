@@ -114,7 +114,7 @@ impl Revision {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, PartialEq)]
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct DocumentData {
     pub nodes: HashMap<NodeId, Node>,

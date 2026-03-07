@@ -78,12 +78,20 @@ impl std::fmt::Display for AutoSaveError {
 }
 
 /// Serialize diagram to JSON string
+///
+/// # Errors
+///
+/// Returns `AutoSaveError::Serialize` if serialization fails.
 #[allow(dead_code)]
 pub fn serialize_diagram(diagram: &AutoSavedDiagram) -> Result<String, AutoSaveError> {
     serde_json::to_string(diagram).map_err(|e| AutoSaveError::Serialize(e.to_string()))
 }
 
 /// Deserialize diagram from JSON string
+///
+/// # Errors
+///
+/// Returns `AutoSaveError::Deserialize` if deserialization fails.
 #[allow(dead_code)]
 pub fn deserialize_diagram(contents: &str) -> Result<AutoSavedDiagram, AutoSaveError> {
     serde_json::from_str(contents).map_err(|e| AutoSaveError::Deserialize(e.to_string()))
@@ -91,6 +99,7 @@ pub fn deserialize_diagram(contents: &str) -> Result<AutoSavedDiagram, AutoSaveE
 
 /// Check if a revision has changed (for tracking)
 #[allow(dead_code)]
+#[must_use]
 pub fn has_revision_changed(current: Revision, previous: Option<Revision>) -> bool {
     previous != Some(current)
 }
