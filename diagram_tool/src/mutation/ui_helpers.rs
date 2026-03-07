@@ -51,6 +51,9 @@ use dioxus::prelude::*;
 ///
 /// Returns `Ok(true)` on success, `Err(MutationError)` on validation failure.
 ///
+/// # Errors
+/// Returns an error if the mutation or validation fails.
+///
 /// # Example
 /// ```ignore
 /// use crate::mutation::ui_helpers::mutate_doc_signal;
@@ -112,6 +115,9 @@ pub fn mutate_editor_signal(
 /// enabling undo/redo support.
 ///
 /// Returns `Ok(true)` on success, `Err(MutationError)` on validation failure.
+///
+/// # Errors
+/// Returns an error if the mutation or validation fails.
 ///
 /// # Example
 /// ```ignore

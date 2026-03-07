@@ -11,6 +11,9 @@ use anyhow::{anyhow, bail, Result};
 use im::HashSet;
 
 /// Functional schema validation.
+///
+/// # Errors
+/// Returns an error if the document fails schema validation.
 pub fn validate_schema(doc: &DiagramDocument) -> Result<()> {
     if doc.version != 2 {
         bail!("Document version must be 2, got {}", doc.version);

@@ -18,6 +18,9 @@ pub enum CycleError {
 }
 
 /// Pure calculation to validate DAG property using Kahn's algorithm via state reduction.
+///
+/// # Errors
+/// Returns a CycleError if a cycle is detected in the graph.
 pub fn validate_dag(
     nodes: &HashMap<NodeId, Node>,
     edges: &HashMap<EdgeId, Edge>,
