@@ -880,8 +880,8 @@ use serde::Deserialize;
 /// Metadata about a stored snapshot
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct SnapshotMeta {
-    /// Unique snapshot identifier
-    pub id: String,
+    /// Unique snapshot identifier (database row id)
+    pub id: i64,
     /// Revision number this snapshot represents
     pub revision: i64,
     /// Timestamp when snapshot was created (Unix timestamp)
@@ -943,7 +943,7 @@ pub async fn save_snapshot(
     tx.commit().await?;
 
     Ok(SnapshotMeta {
-        id: id.to_string(),
+        id,
         revision: projection_revision,
         created_at: now_ts,
     })
@@ -1025,7 +1025,7 @@ pub async fn get_latest_snapshot_meta(
 
     match result {
         Some((id, revision, created_at)) => Ok(Some(SnapshotMeta {
-            id: id.to_string(),
+            id,
             revision,
             created_at,
         })),
@@ -1074,7 +1074,7 @@ pub async fn list_snapshots(pool: &SqlitePool) -> Result<Vec<SnapshotMeta>, Stor
     let snapshots = rows
         .into_iter()
         .map(|(id, revision, created_at)| SnapshotMeta {
-            id: id.to_string(),
+            id,
             revision,
             created_at,
         })
@@ -2075,7 +2075,13 @@ mod tests {
         };
 
         let result = append_event(&pool, envelope, Some(5)).await;
-        assert!(matches!(result, Err(StoreError::RevisionMismatch { expected: 5, found: 0 })));
+        assert!(matches!(
+            result,
+            Err(StoreError::RevisionMismatch {
+                expected: 5,
+                found: 0
+            })
+        ));
 
         pool.close().await;
     }
@@ -2131,8 +2137,10 @@ mod tests {
             success_count
         );
 
-        let final_revision = current_revision(&pool).await.expect("Failed to get revision");
-        
+        let final_revision = current_revision(&pool)
+            .await
+            .expect("Failed to get revision");
+
         assert_eq!(
             final_revision, success_count as i64,
             "Revision should match successful appends"
@@ -2171,9 +2179,14 @@ mod tests {
         };
 
         let result = append_event(&bootstrap.pool, test_envelope, None).await;
-        assert!(result.is_ok(), "Should be able to append after bootstrap from zero-byte");
+        assert!(
+            result.is_ok(),
+            "Should be able to append after bootstrap from zero-byte"
+        );
 
-        let revision = current_revision(&bootstrap.pool).await.expect("Should get revision");
+        let revision = current_revision(&bootstrap.pool)
+            .await
+            .expect("Should get revision");
         assert_eq!(revision, 1, "Should have one event after append");
 
         bootstrap.pool.close().await;
@@ -2250,8 +2263,13 @@ mod tests {
                 .expect("Sequential append should succeed");
         }
 
-        let revision = current_revision(&pool).await.expect("Failed to get revision");
-        assert_eq!(revision, 3, "Revision should be 3 after 3 sequential appends");
+        let revision = current_revision(&pool)
+            .await
+            .expect("Failed to get revision");
+        assert_eq!(
+            revision, 3,
+            "Revision should be 3 after 3 sequential appends"
+        );
 
         pool.close().await;
     }
@@ -2289,7 +2307,9 @@ mod tests {
             assert!(result.is_ok(), "Append {} should succeed", i);
         }
 
-        let final_revision = current_revision(&pool).await.expect("Failed to get revision");
+        let final_revision = current_revision(&pool)
+            .await
+            .expect("Failed to get revision");
         assert_eq!(final_revision, 5, "Final revision should be 5");
 
         pool.close().await;

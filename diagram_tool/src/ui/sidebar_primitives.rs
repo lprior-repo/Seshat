@@ -483,7 +483,7 @@ pub fn SidebarGroup(
                         "▶ {provider}"
                     }
                 }
-                span { "{visible_count}/{total_count}" }
+                span { "{total_count}" }
             }
 
             if expanded {
