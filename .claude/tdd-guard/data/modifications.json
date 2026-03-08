@@ -1,0 +1,12 @@
+{
+  "session_id": "009c4b88-0068-4824-ac32-a06a8ea15fb2",
+  "transcript_path": "/home/lewis/.claude/projects/-home-lewis-src-seshat/009c4b88-0068-4824-ac32-a06a8ea15fb2.jsonl",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/home/lewis/src/seshat/diagram_tool/src/ui/canvas/canvas_view.rs",
+    "old_string": "#[must_use]\npub(super) fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {",
+    "new_string": "/// Calculates the midpoint between two points\n#[must_use]\npub(super) fn midpoint(x1: f64, y1: f64, x2: f64, y2: f64) -> (f64, f64) {\n    ((x1 + x2) / 2.0, (y1 + y2) / 2.0)\n}\n\n#[must_use]\npub(super) fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {",
+    "replace_all": false
+  }
+}

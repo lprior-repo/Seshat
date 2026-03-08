@@ -1623,8 +1623,8 @@ pub fn Canvas() -> Element {
             style: "flex: 1; position: relative; overflow: hidden; overscroll-behavior: none; touch-action: none; background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; user-select: none; border: {border_style}; box-sizing: border-box;",
 
             ondragover: move |evt| { evt.prevent_default(); },
-            ondragenter: move |_| { drag_over.set(true); },
-            ondragleave: move |_| { drag_over.set(false); },
+            ondragenter: move |evt| { evt.prevent_default(); drag_over.set(true); },
+            ondragleave: move |evt| { evt.prevent_default(); drag_over.set(false); },
             ondrop: handle_drop,
             oncontextmenu: move |evt| evt.prevent_default(),
             onauxclick: move |evt| {

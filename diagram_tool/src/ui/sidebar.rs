@@ -222,7 +222,8 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
                     image_data_url: data_url_for_drag.clone(),
                 }));
             },
-            ondragstart: move |_| {
+            ondragstart: move |evt| {
+                // In Dioxus, we just need the drag to start successfully
                 dragging_icon.set(Some(DraggedIconPayload {
                     icon_key: icon.icon_key.clone(),
                     label: Some(icon.display_name.clone()),

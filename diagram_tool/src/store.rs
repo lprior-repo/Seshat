@@ -920,8 +920,10 @@ pub async fn save_snapshot(
     let payload =
         serde_json::to_string(projection).map_err(|e| StoreError::Serialization(e.to_string()))?;
 
+    let mut tx = pool.begin().await?;
+
     let now_ts: i64 = sqlx::query_scalar("SELECT CAST(strftime('%s', 'now') AS INTEGER)")
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
 
     sqlx::query(
@@ -930,13 +932,15 @@ pub async fn save_snapshot(
     .bind(projection_revision)
     .bind(&payload)
     .bind(now_ts)
-    .execute(pool)
+    .execute(&mut *tx)
     .await?;
 
     let id: i64 = sqlx::query_scalar("SELECT id FROM snapshots WHERE revision = ?1")
         .bind(projection_revision)
-        .fetch_one(pool)
+        .fetch_one(&mut *tx)
         .await?;
+
+    tx.commit().await?;
 
     Ok(SnapshotMeta {
         id: id.to_string(),
