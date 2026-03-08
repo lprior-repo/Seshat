@@ -1815,8 +1815,8 @@ mod tests {
     use crate::models::projection::replay_events_from;
     use tempfile::TempDir;
 
-    #[test]
-    fn test_happy_path_valid_operation_appends_and_returns_revision() {
+    #[tokio::test]
+    async fn test_happy_path_valid_operation_appends_and_returns_revision() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
         let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
@@ -1848,7 +1848,9 @@ mod tests {
         assert_eq!(outcome.op_id, "op-valid-1");
 
         // Verify the revision was actually incremented
-        let latest = fetch_latest_revision(&bootstrap.conn).expect("Failed to fetch revision");
+        let latest = fetch_latest_revision(&bootstrap.pool)
+            .await
+            .expect("Failed to fetch revision");
         assert_eq!(latest, 1, "Latest revision should be 1");
     }
 
@@ -1955,8 +1957,8 @@ mod tests {
         assert_eq!(projection.nodes.len(), 3, "Projection should have 3 nodes");
     }
 
-    #[test]
-    fn test_error_path_stale_revision_rejects_without_append() {
+    #[tokio::test]
+    async fn test_error_path_stale_revision_rejects_without_append() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
         let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
@@ -2014,15 +2016,17 @@ mod tests {
         }
 
         // Verify no new event was appended (still at revision 1)
-        let latest = fetch_latest_revision(&bootstrap.conn).expect("Failed to fetch revision");
+        let latest = fetch_latest_revision(&bootstrap.pool)
+            .await
+            .expect("Failed to fetch revision");
         assert_eq!(
             latest, 1,
             "Revision should still be 1 after rejected append"
         );
     }
 
-    #[test]
-    fn test_error_path_duplicate_op_id_returns_idempotent_success() {
+    #[tokio::test]
+    async fn test_error_path_duplicate_op_id_returns_idempotent_success() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
         let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
@@ -2077,7 +2081,9 @@ mod tests {
         assert!(result2.is_err(), "Duplicate op_id should be rejected");
 
         // Verify no duplicate was created (still at revision 1)
-        let latest = fetch_latest_revision(&bootstrap.conn).expect("Failed to fetch revision");
+        let latest = fetch_latest_revision(&bootstrap.pool)
+            .await
+            .expect("Failed to fetch revision");
         assert_eq!(
             latest, 1,
             "Revision should still be 1 after duplicate rejection"
