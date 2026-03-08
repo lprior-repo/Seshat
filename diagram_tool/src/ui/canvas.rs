@@ -1014,7 +1014,7 @@ pub fn Canvas() -> Element {
                     // Send update every frame to ensure we always have current position.
                     const pollOrigin = () => {
                         const rect = target.getBoundingClientRect();
-                        dioxus.send({ type: 'resize', left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                        notify(rect.left, rect.top, rect.width, rect.height);
                         rafId = window.requestAnimationFrame(pollOrigin);
                     };
                     rafId = window.requestAnimationFrame(pollOrigin);
@@ -1023,7 +1023,7 @@ pub fn Canvas() -> Element {
                     // between scroll and pointerdown
                     const onScroll = () => {
                         const rect = target.getBoundingClientRect();
-                        dioxus.send({ type: 'resize', left: rect.left, top: rect.top, width: rect.width, height: rect.height });
+                        notify(rect.left, rect.top, rect.width, rect.height);
                     };
                     window.addEventListener('scroll', onScroll, { passive: true, capture: true });
                     document.addEventListener('scroll', onScroll, { passive: true, capture: true });

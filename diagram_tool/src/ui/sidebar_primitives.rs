@@ -460,7 +460,6 @@ pub fn SidebarGroup(
     provider: String,
     expanded: bool,
     query_active: bool,
-    visible_count: usize,
     total_count: usize,
     ontoggle: EventHandler<MouseEvent>,
     children: Element,

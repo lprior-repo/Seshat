@@ -426,7 +426,7 @@ fn generate_stress_scene_json() -> Value {
     let mut next_random = || -> f64 {
         // Simple LCG random number generator for determinism
         rng_state = rng_state.wrapping_mul(1103515245).wrapping_add(12345);
-        
+
         ((rng_state >> 16) & 0xFFFF) as f64 / 65535.0
     };
 

@@ -376,7 +376,6 @@ pub fn Sidebar() -> Element {
                             let provider = bucket.provider.clone();
                             let provider_ref = &provider;
                             let expanded = query_active || expanded_providers.read().contains(provider_ref);
-                            let visible_count = bucket.visible_count;
                             let total_count = bucket.total_count;
                             let has_more = bucket.has_more;
 
@@ -386,7 +385,6 @@ pub fn Sidebar() -> Element {
                                         provider: provider.clone(),
                                         expanded,
                                         query_active,
-                                        visible_count,
                                         total_count,
                                         ontoggle: {
                                             let provider = provider.clone();
