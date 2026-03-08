@@ -322,6 +322,19 @@ pub fn start_event_tail_watcher(
     // Clone the sender for use in the callback
     let tx_clone = tx.clone();
 
+    // Create a fallback polling thread
+    let tx_clone_for_timer = tx.clone();
+    let active_for_timer = active.clone();
+    std::thread::spawn(move || {
+        while active_for_timer.load(Ordering::SeqCst) {
+            std::thread::sleep(Duration::from_secs(5));
+            if active_for_timer.load(Ordering::SeqCst) {
+                // Send a periodic sync tick as fallback in case file watcher drops events
+                let _ = tx_clone_for_timer.send(SyncMessage::EventsUpdated(vec![]));
+            }
+        }
+    });
+
     // Create the watcher with an event handler
     let mut watcher = RecommendedWatcher::new(
         move |res: Result<Event, notify::Error>| {
@@ -440,47 +453,41 @@ pub fn fetch_new_events(
         .map_err(|e| SyncError::Sqlite(e.to_string()))?
         .collect();
 
-    let mut decode_errors = Vec::new();
-    let events: Vec<EventRecord> = row_results
-        .into_iter()
-        .filter_map(|result| match result {
+    let mut events = Vec::with_capacity(row_results.len());
+    let mut expected_revision = after_revision + 1;
+
+    for result in row_results {
+        match result {
             Ok((operation_id, revision, payload, timestamp)) => {
-                match parse_event_envelope(&payload) {
-                    Ok(envelope) => match timestamp.parse::<i64>() {
-                        Ok(timestamp) => Some(Ok(EventRecord {
-                            op_id: envelope.op_id,
-                            revision: revision as u64,
-                            operation: envelope.operation,
-                            author: envelope.author,
-                            timestamp,
-                        })),
-                        Err(e) => {
-                            decode_errors.push(format!(
-                                "timestamp parse error for op {}: {}",
-                                operation_id, e
-                            ));
-                            None
-                        }
-                    },
-                    Err(e) => {
-                        decode_errors.push(format!(
-                            "envelope parse error for op {}: {}",
-                            operation_id, e
-                        ));
-                        None
-                    }
+                if revision != expected_revision {
+                    return Err(SyncError::Decode(format!(
+                        "revision gap detected: expected {}, found {}",
+                        expected_revision, revision
+                    )));
                 }
+
+                let envelope = parse_event_envelope(&payload).map_err(|e| {
+                    SyncError::Decode(format!("envelope parse error for op {}: {}", operation_id, e))
+                })?;
+
+                let timestamp = timestamp.parse::<i64>().map_err(|e| {
+                    SyncError::Decode(format!("timestamp parse error for op {}: {}", operation_id, e))
+                })?;
+
+                events.push(EventRecord {
+                    op_id: envelope.op_id,
+                    revision: revision as u64,
+                    operation: envelope.operation,
+                    author: envelope.author,
+                    timestamp,
+                });
+
+                expected_revision += 1;
             }
             Err(e) => {
-                decode_errors.push(format!("row error: {}", e));
-                None
+                return Err(SyncError::Sqlite(format!("row error: {}", e)));
             }
-        })
-        .collect::<Result<Vec<_>, SyncError>>()
-        .map_err(|e| SyncError::Sqlite(e.to_string()))?;
-
-    if !decode_errors.is_empty() {
-        eprintln!("warning: decode_errors during sync: {:?}", decode_errors);
+        }
     }
 
     Ok(events)
@@ -836,7 +843,7 @@ mod tests {
     #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
     async fn test_watcher_detects_database_modifications() {
-        let (_temp_dir, db_path, bootstrap, conn) = create_test_db_async().await;
+        let (_temp_dir, db_path, bootstrap, _conn) = create_test_db_async().await;
         let (tx, rx) = channel();
 
         let _handle = start_event_tail_watcher(db_path.clone(), tx).unwrap();

@@ -2,8 +2,8 @@
 
 ```jsonl
 {"skill": "codanna", "description": "Code intelligence - semantic search, symbol lookups, call graphs", "commands": ["codanna init", "codanna index", "codanna serve --watch"], "mcp": "codanna --config .codanna/settings.toml serve --watch"}
-{"skill": "moon", "description": "Build system - task running, caching, CI/CD", "commands": ["moon run <task>", "moon :ci-hardening --force", "moon check", "moon test"]}
-{"skill": "functional-rust", "description": "Zero panics/unwrap/mut - Data→Calc→Actions pattern", "rules": ["No panics", "No unwrap", "No mut by default", "Result<T, E> for errors"]}
+{"skill": "moon", "description": "Build system - task running, caching, CI/CD", "commands": ["moon run <task>", "moon :ci-hardening --force", "moon check", "moon test", "moon run :clippy-source", "moon run :ci-source"]}
+{"skill": "functional-rust", "description": "Zero panics/unwrap/mut - Data→Calc→Actions pattern", "rules": ["No panics", "No unwrap", "No mut by default", "Result<T, E> for errors", "clippy-source pipeline for flawless source"]}
 {"skill": "go-skill", "description": "BRCLI-first execution - top-priority bead to main", "workflow": "1. jj new main 2. Pick bead from .beads/issues.jsonl 3. Implement 4. jj commit 5. jj git push"}
 {"skill": "landing-skill", "description": "Session completion - validates quality, syncs main, closes bead", "commands": ["/land"]}
 {"workflow": "jj new main → codanna serve --watch → moon run :check --force → implement → jj commit → jj git push → /land", "stack": "codanna + moon + functional-rust + go-skill"}
@@ -98,14 +98,14 @@ For more details, see README.md and docs/QUICKSTART.md.
 
 <!-- END BEADS INTEGRATION -->
 
-## Landing the Plane (Session Completion)
+## Landing the Plane (Full Moon Landing)
 
-**When ending a work session**, you MUST complete ALL steps below. Work is NOT complete until `git push` succeeds.
+**When ending a work session**, you MUST complete ALL steps below to execute a "Full Moon Landing". Work is NOT complete until the moon pipeline passes and `git push` succeeds.
 
 **MANDATORY WORKFLOW:**
 
 1. **File issues for remaining work** - Create issues for anything that needs follow-up
-2. **Run quality gates** (if code changed) - Tests, linters, builds
+2. **Run quality gates** (if code changed) - YOU MUST RUN `moon run :ci-source` to ensure strict functional-rust clippy compliance and flawless tests.
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash

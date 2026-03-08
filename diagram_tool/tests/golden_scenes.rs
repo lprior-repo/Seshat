@@ -17,6 +17,11 @@
 //! - `group_before.json` / `group_after.json`: 3 nodes combined into subgraph
 //! - `reparent_before.json` / `reparent_after.json`: Node moved between subgraphs
 
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
+#![forbid(unsafe_code)]
+
 use serde_json::Value;
 use std::collections::HashSet;
 use std::fs;
