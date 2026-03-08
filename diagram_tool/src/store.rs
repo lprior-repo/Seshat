@@ -3,7 +3,7 @@
 //! Provides async SQLite-based storage with WAL mode and connection pooling.
 //! This is the async counterpart to the synchronous `store` module.
 //!
-//! ## Benefits over synchronous SQLite
+//! ## Benefits over synchronous `SQLite`
 //!
 //! - **True concurrency**: Multiple operations can run simultaneously
 //! - **Non-blocking**: Async operations don't block the thread
@@ -21,7 +21,7 @@ use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::{Path, PathBuf};
 use thiserror::Error;
 
-use crate::models::envelope::{encode_event_envelope, EventEnvelope};
+use crate::models::envelope::{encode_event_envelope, parse_event_envelope, EventEnvelope};
 
 /// Current schema version for the async store
 pub const CURRENT_SCHEMA_VERSION: i32 = 1;
@@ -57,7 +57,9 @@ pub enum StoreError {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    #[error("Revision gap detected: expected sequential revision {expected}, but found gap at {found}")]
+    #[error(
+        "Revision gap detected: expected sequential revision {expected}, but found gap at {found}"
+    )]
     RevisionGap { expected: i64, found: i64 },
     #[error("Duplicate op_id with conflict: {0}")]
     DuplicateWithConflict(String),
@@ -65,6 +67,14 @@ pub enum StoreError {
     EmptyBatch,
     #[error("Migration forbidden: cannot migrate from version {version}")]
     MigrationForbidden { version: i32 },
+    #[error("Invalid input: {0}")]
+    InvalidInput(String),
+    #[error("Not found: {0}")]
+    NotFound(String),
+    #[error("Snapshot stale: expected revision {expected}, found {found}")]
+    SnapshotStale { expected: i64, found: i64 },
+    #[error("Schema version not found in database")]
+    SchemaVersionMissing,
 }
 
 /// Structured error codes for CLI output
@@ -97,15 +107,20 @@ pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
     match err {
         StoreError::RevisionMismatch { .. }
         | StoreError::RevisionGap { .. }
-        | StoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
-        StoreError::ValidationFailed(_) | StoreError::EmptyBatch => CliErrorCode::ValidationFailed,
-        StoreError::Sqlx(_)
+        | StoreError::DuplicateWithConflict(_)
+        | StoreError::SnapshotStale { .. } => CliErrorCode::RevisionMismatch,
+        StoreError::ValidationFailed(_) | StoreError::EmptyBatch | StoreError::InvalidInput(_) => {
+            CliErrorCode::ValidationFailed
+        }
+        StoreError::NotFound(_)
+        | StoreError::Sqlx(_)
         | StoreError::Io(_)
         | StoreError::InvalidPragma(_)
         | StoreError::SchemaVersionMismatch { .. }
         | StoreError::Serialization(_)
         | StoreError::TransactionAborted { .. }
-        | StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
+        | StoreError::MigrationForbidden { .. }
+        | StoreError::SchemaVersionMissing => CliErrorCode::Unknown,
     }
 }
 
@@ -169,9 +184,7 @@ pub async fn create_pool(db_path: &Path) -> Result<SqlitePool, StoreError> {
         .execute(&pool)
         .await?;
 
-    sqlx::query("PRAGMA foreign_keys=ON")
-        .execute(&pool)
-        .await?;
+    sqlx::query("PRAGMA foreign_keys=ON").execute(&pool).await?;
 
     sqlx::query("PRAGMA busy_timeout=5000")
         .execute(&pool)
@@ -193,7 +206,7 @@ pub async fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreErro
     let schema_version = sqlx::query_scalar::<_, i32>("SELECT version FROM schema_version")
         .fetch_one(&pool)
         .await
-        .unwrap_or(0);
+        .map_err(|_| StoreError::SchemaVersionMissing)?;
 
     Ok(StoreBootstrap {
         pool,
@@ -205,7 +218,7 @@ pub async fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreErro
 /// Runs schema migrations for the async store
 async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
     let table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'"
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'",
     )
     .fetch_one(pool)
     .await
@@ -215,7 +228,7 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER NOT NULL DEFAULT 1
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -225,12 +238,11 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
             .await?;
     }
 
-    let events_table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events'"
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(StoreError::Sqlx)?;
+    let events_table_exists: (i32,) =
+        sqlx::query_as("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events'")
+            .fetch_one(pool)
+            .await
+            .map_err(StoreError::Sqlx)?;
 
     if events_table_exists.0 == 0 {
         sqlx::query(
@@ -240,7 +252,7 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
                 revision INTEGER NOT NULL,
                 payload TEXT NOT NULL,
                 timestamp TEXT NOT NULL
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -255,7 +267,7 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
     }
 
     let snapshot_table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='snapshots'"
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='snapshots'",
     )
     .fetch_one(pool)
     .await
@@ -268,14 +280,16 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
                 revision INTEGER NOT NULL UNIQUE,
                 payload TEXT NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )"
+            )",
         )
         .execute(pool)
         .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)")
-            .execute(pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)",
+        )
+        .execute(pool)
+        .await?;
     }
 
     Ok(())
@@ -287,12 +301,10 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
 ///
 /// Returns a `StoreError` if the query fails.
 pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, StoreError> {
-    let revision: Option<i64> = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
-        .fetch_optional(pool)
+    sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
+        .fetch_one(pool)
         .await
-        .map_err(StoreError::Sqlx)?;
-
-    Ok(revision.unwrap_or(0))
+        .map_err(StoreError::Sqlx)
 }
 
 /// Gets the current revision
@@ -342,11 +354,11 @@ pub async fn append_event(
 
     let new_revision = current_revision + 1;
 
-    let payload = encode_event_envelope(&envelope)
-        .map_err(|e| StoreError::Serialization(e.to_string()))?;
+    let payload =
+        encode_event_envelope(&envelope).map_err(|e| StoreError::Serialization(e.to_string()))?;
 
     sqlx::query(
-        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind(&envelope.op_id)
     .bind(new_revision)
@@ -455,7 +467,7 @@ pub async fn lookup_existing_op(
     op_id: &str,
 ) -> Result<Option<EventRecord>, StoreError> {
     let result = sqlx::query_as::<_, (String, i64, String, String)>(
-        "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1"
+        "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1",
     )
     .bind(op_id)
     .fetch_optional(pool)
@@ -464,9 +476,9 @@ pub async fn lookup_existing_op(
 
     match result {
         Some((op_id, revision, timestamp_str, payload)) => {
-            let timestamp: i64 = timestamp_str.parse().map_err(|_| {
-                StoreError::Serialization("Invalid timestamp format".to_string())
-            })?;
+            let timestamp: i64 = timestamp_str
+                .parse()
+                .map_err(|_| StoreError::Serialization("Invalid timestamp format".to_string()))?;
             Ok(Some(EventRecord {
                 op_id,
                 revision,
@@ -488,8 +500,8 @@ pub async fn classify_duplicate(
     existing: &EventRecord,
     incoming: &EventEnvelope,
 ) -> Result<DuplicateKind, StoreError> {
-    let incoming_payload = encode_event_envelope(incoming)
-        .map_err(|e| StoreError::Serialization(e.to_string()))?;
+    let incoming_payload =
+        encode_event_envelope(incoming).map_err(|e| StoreError::Serialization(e.to_string()))?;
 
     if existing.payload == incoming_payload {
         Ok(DuplicateKind::Exact)
@@ -514,12 +526,12 @@ pub async fn append_idempotent(
         .await
         .map_err(StoreError::Sqlx)?;
 
-    let payload = encode_event_envelope(&envelope)
-        .map_err(|e| StoreError::Serialization(e.to_string()))?;
+    let payload =
+        encode_event_envelope(&envelope).map_err(|e| StoreError::Serialization(e.to_string()))?;
 
     let new_revision = current_revision + 1;
     let insert_result = sqlx::query(
-        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind(&envelope.op_id)
     .bind(new_revision)
@@ -552,13 +564,11 @@ pub async fn append_idempotent(
                         let kind = classify_duplicate(&record, &envelope).await?;
 
                         match kind {
-                            DuplicateKind::Exact => {
-                                Ok(AppendResult {
-                                    revision: record.revision,
-                                    op_id: record.op_id,
-                                    timestamp: record.timestamp,
-                                })
-                            }
+                            DuplicateKind::Exact => Ok(AppendResult {
+                                revision: record.revision,
+                                op_id: record.op_id,
+                                timestamp: record.timestamp,
+                            }),
                             DuplicateKind::Conflict => {
                                 Err(StoreError::DuplicateWithConflict(envelope.op_id))
                             }
@@ -592,9 +602,9 @@ pub async fn fetch_events_since(
 
     let mut events = Vec::with_capacity(rows.len());
     for (op_id, revision, timestamp_str, payload) in rows {
-        let timestamp: i64 = timestamp_str.parse().map_err(|_| {
-            StoreError::Serialization("Invalid timestamp format".to_string())
-        })?;
+        let timestamp: i64 = timestamp_str
+            .parse()
+            .map_err(|_| StoreError::Serialization("Invalid timestamp format".to_string()))?;
         events.push(EventRecord {
             op_id,
             revision,
@@ -613,7 +623,7 @@ pub async fn fetch_events_since(
 /// Returns a `StoreError` if the query fails.
 pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, StoreError> {
     let rows = sqlx::query_as::<_, (String, i64, String, String)>(
-        "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC"
+        "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC",
     )
     .fetch_all(pool)
     .await
@@ -621,9 +631,9 @@ pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, Sto
 
     let mut events = Vec::with_capacity(rows.len());
     for (op_id, revision, timestamp_str, payload) in rows {
-        let timestamp: i64 = timestamp_str.parse().map_err(|_| {
-            StoreError::Serialization("Invalid timestamp format".to_string())
-        })?;
+        let timestamp: i64 = timestamp_str
+            .parse()
+            .map_err(|_| StoreError::Serialization("Invalid timestamp format".to_string()))?;
         events.push(EventRecord {
             op_id,
             revision,
@@ -696,7 +706,7 @@ pub async fn current_store_config(pool: &SqlitePool) -> Result<StoreConfig, Stor
 
     Ok(StoreConfig {
         pragmas,
-        schema_version: schema_version.unwrap_or(0),
+        schema_version: schema_version.ok_or(StoreError::SchemaVersionMissing)?,
     })
 }
 
@@ -787,12 +797,13 @@ pub async fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, 
         .await
         .map_err(RecoveryError::Sqlx)?;
 
-    let latest_revision: Option<i64> = sqlx::query_scalar::<_, Option<i64>>("SELECT COALESCE(MAX(revision), 0) FROM events")
-        .fetch_optional(&pool)
-        .await
-        .map_err(RecoveryError::Sqlx)?
-        .flatten()
-        .filter(|&rev| rev > 0);
+    let latest_revision: Option<i64> =
+        sqlx::query_scalar::<_, Option<i64>>("SELECT COALESCE(MAX(revision), 0) FROM events")
+            .fetch_optional(&pool)
+            .await
+            .map_err(RecoveryError::Sqlx)?
+            .flatten()
+            .filter(|&rev| rev > 0);
 
     pool.close().await;
 
@@ -822,7 +833,13 @@ pub async fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, 
 ///
 /// Returns a `RecoveryError` if the database is corrupt or cannot be opened.
 pub async fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryError> {
-    let pool = create_pool(db_path).await?;
+    let connection_string = format!("sqlite:{}?mode=ro", db_path.display());
+
+    let pool = SqlitePoolOptions::new()
+        .max_connections(5)
+        .connect(&connection_string)
+        .await
+        .map_err(RecoveryError::Sqlx)?;
 
     let integrity_result: String = sqlx::query_scalar("PRAGMA integrity_check")
         .fetch_one(&pool)
@@ -859,6 +876,210 @@ pub async fn integrity_check(db_path: &Path) -> Result<IntegrityStatus, Recovery
     startup_integrity_check(db_path).await
 }
 
+use serde::Deserialize;
+
+/// Metadata about a stored snapshot
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub struct SnapshotMeta {
+    /// Unique snapshot identifier
+    pub id: String,
+    /// Revision number this snapshot represents
+    pub revision: i64,
+    /// Timestamp when snapshot was created (Unix timestamp)
+    pub created_at: i64,
+}
+
+/// Save a snapshot of the current projection state
+///
+/// This function:
+/// 1. Validates the projection revision matches current latest revision
+/// 2. Serializes the projection to JSON
+/// 3. Stores in the snapshots table
+///
+/// # Errors
+/// Returns `StoreError::SnapshotStale` if projection revision doesn't match
+/// Returns `StoreError::Serialization` if encoding fails
+/// Returns `StoreError::Sqlx` if database operations fail
+pub async fn save_snapshot(
+    pool: &SqlitePool,
+    projection: &crate::models::projection::DiagramProjection,
+) -> Result<SnapshotMeta, StoreError> {
+    let current_revision: i64 = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
+        .fetch_one(pool)
+        .await?;
+
+    let projection_revision = i64::try_from(projection.revision)
+        .map_err(|_| StoreError::Serialization("Revision too large for i64".to_string()))?;
+
+    if projection_revision != current_revision {
+        return Err(StoreError::SnapshotStale {
+            expected: current_revision,
+            found: projection_revision,
+        });
+    }
+
+    let payload =
+        serde_json::to_string(projection).map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+    let now_ts: i64 = sqlx::query_scalar("SELECT CAST(strftime('%s', 'now') AS INTEGER)")
+        .fetch_one(pool)
+        .await?;
+
+    sqlx::query(
+        "INSERT OR REPLACE INTO snapshots (revision, payload, created_at) VALUES (?1, ?2, ?3)",
+    )
+    .bind(projection_revision)
+    .bind(&payload)
+    .bind(now_ts)
+    .execute(pool)
+    .await?;
+
+    let id: i64 = sqlx::query_scalar("SELECT id FROM snapshots WHERE revision = ?1")
+        .bind(projection_revision)
+        .fetch_one(pool)
+        .await?;
+
+    Ok(SnapshotMeta {
+        id: id.to_string(),
+        revision: projection_revision,
+        created_at: now_ts,
+    })
+}
+
+/// Load projection from latest snapshot with tail replay
+///
+/// This function:
+/// 1. Loads the latest snapshot from the database
+/// 2. Fetches all events with revision greater than snapshot revision
+/// 3. Replays events on top of the snapshot to produce the final projection
+///
+/// If no snapshot exists, falls back to full replay from revision 0.
+///
+/// # Errors
+/// Returns `StoreError::NotFound` if no snapshot exists
+/// Returns `StoreError::Serialization` if deserialization fails
+/// Returns `StoreError::Sqlx` if database operations fail
+pub async fn load_projection_from_snapshot(
+    pool: &SqlitePool,
+) -> Result<crate::models::projection::DiagramProjection, StoreError> {
+    let snapshot_result = sqlx::query_as::<_, (i64, i64, String, i64)>(
+        "SELECT id, revision, payload, created_at FROM snapshots ORDER BY revision DESC LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    let Some((_snapshot_id, snapshot_revision, payload, _created_at)) = snapshot_result else {
+        return Err(StoreError::NotFound("no snapshot available".to_string()));
+    };
+
+    let mut base_projection: crate::models::projection::DiagramProjection =
+        serde_json::from_str(&payload).map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+    let rows = sqlx::query_as::<_, (String, i64, String, String)>(
+        "SELECT operation_id, revision, payload, timestamp FROM events WHERE revision > ?1 ORDER BY revision ASC",
+    )
+    .bind(snapshot_revision)
+    .fetch_all(pool)
+    .await?;
+
+    for (op_id, _revision, event_payload, timestamp_str) in rows {
+        let envelope = parse_event_envelope(&event_payload)
+            .map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+        let timestamp: i64 = timestamp_str
+            .parse()
+            .map_err(|_| StoreError::Serialization("Invalid timestamp format".to_string()))?;
+
+        let event = crate::models::projection::EventRecord {
+            op_id,
+            revision: base_projection.revision,
+            operation: envelope.operation,
+            author: envelope.author,
+            timestamp,
+        };
+
+        base_projection = crate::models::projection::apply_event(base_projection, &event)
+            .map_err(|e| StoreError::Serialization(format!("Replay error: {e}")))?;
+    }
+
+    Ok(base_projection)
+}
+
+/// Get metadata for the latest snapshot
+///
+/// Returns `Ok(Some(meta))` if a snapshot exists, `Ok(None)` if no snapshots exist.
+///
+/// # Errors
+/// Returns `StoreError::Sqlx` if database operations fail
+pub async fn get_latest_snapshot_meta(
+    pool: &SqlitePool,
+) -> Result<Option<SnapshotMeta>, StoreError> {
+    let result = sqlx::query_as::<_, (i64, i64, i64)>(
+        "SELECT id, revision, created_at FROM snapshots ORDER BY revision DESC LIMIT 1",
+    )
+    .fetch_optional(pool)
+    .await?;
+
+    match result {
+        Some((id, revision, created_at)) => Ok(Some(SnapshotMeta {
+            id: id.to_string(),
+            revision,
+            created_at,
+        })),
+        None => Ok(None),
+    }
+}
+
+/// Delete a snapshot by revision
+///
+/// # Errors
+/// Returns `StoreError::InvalidInput` if revision is negative
+/// Returns `StoreError::NotFound` if no snapshot exists at the given revision
+/// Returns `StoreError::Sqlx` if database operations fail
+pub async fn delete_snapshot(pool: &SqlitePool, revision: i64) -> Result<(), StoreError> {
+    if revision < 0 {
+        return Err(StoreError::InvalidInput(
+            "revision must be non-negative".to_string(),
+        ));
+    }
+
+    let result = sqlx::query("DELETE FROM snapshots WHERE revision = ?1")
+        .bind(revision)
+        .execute(pool)
+        .await?;
+
+    if result.rows_affected() == 0 {
+        return Err(StoreError::NotFound(format!(
+            "no snapshot at revision {revision}"
+        )));
+    }
+
+    Ok(())
+}
+
+/// List all snapshot metadata, ordered by revision descending
+///
+/// # Errors
+/// Returns `StoreError::Sqlx` if database operations fail
+pub async fn list_snapshots(pool: &SqlitePool) -> Result<Vec<SnapshotMeta>, StoreError> {
+    let rows = sqlx::query_as::<_, (i64, i64, i64)>(
+        "SELECT id, revision, created_at FROM snapshots ORDER BY revision DESC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let snapshots = rows
+        .into_iter()
+        .map(|(id, revision, created_at)| SnapshotMeta {
+            id: id.to_string(),
+            revision,
+            created_at,
+        })
+        .collect();
+
+    Ok(snapshots)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -872,7 +1093,9 @@ mod tests {
         let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
         // Verify pragmas are set correctly
-        let pragmas = read_store_pragmas(&pool).await.expect("Failed to read pragmas");
+        let pragmas = read_store_pragmas(&pool)
+            .await
+            .expect("Failed to read pragmas");
 
         assert_eq!(pragmas.journal_mode, "wal");
         assert_eq!(pragmas.synchronous, 2); // FULL = 2
@@ -1009,7 +1232,9 @@ mod tests {
                 },
                 timestamp: 1_700_000_000 + i as i64,
             };
-            append_event(&pool, envelope, None).await.expect("Failed to append");
+            append_event(&pool, envelope, None)
+                .await
+                .expect("Failed to append");
         }
 
         let events = fetch_events_since(&pool, 2).await.expect("Failed to fetch");
@@ -1079,7 +1304,9 @@ mod tests {
             .await
             .expect("bootstrap_store failed");
 
-        let initial = fetch_latest_revision(&bootstrap.pool).await.expect("fetch_latest_revision failed");
+        let initial = fetch_latest_revision(&bootstrap.pool)
+            .await
+            .expect("fetch_latest_revision failed");
         assert_eq!(initial, 0);
 
         let envelope = EventEnvelope {
@@ -1099,9 +1326,13 @@ mod tests {
             },
             timestamp: 1_700_000_000,
         };
-        append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
+        append_event(&bootstrap.pool, envelope, None)
+            .await
+            .expect("append failed");
 
-        let after = fetch_latest_revision(&bootstrap.pool).await.expect("fetch_latest_revision failed");
+        let after = fetch_latest_revision(&bootstrap.pool)
+            .await
+            .expect("fetch_latest_revision failed");
         assert_eq!(after, 1);
 
         bootstrap.pool.close().await;
@@ -1116,7 +1347,9 @@ mod tests {
             .await
             .expect("bootstrap_store failed");
 
-        let pragmas = read_store_pragmas(&bootstrap.pool).await.expect("read_store_pragmas failed");
+        let pragmas = read_store_pragmas(&bootstrap.pool)
+            .await
+            .expect("read_store_pragmas failed");
 
         assert_eq!(pragmas.journal_mode, "wal");
         assert_eq!(pragmas.synchronous, 2);
@@ -1136,7 +1369,9 @@ mod tests {
             .await
             .expect("bootstrap_store failed");
 
-        let config = current_store_config(&bootstrap.pool).await.expect("current_store_config failed");
+        let config = current_store_config(&bootstrap.pool)
+            .await
+            .expect("current_store_config failed");
 
         assert_eq!(config.pragmas.journal_mode, "wal");
         assert_eq!(config.schema_version, 1);
@@ -1170,11 +1405,15 @@ mod tests {
             },
             timestamp: 1_700_000_000,
         };
-        append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
+        append_event(&bootstrap.pool, envelope, None)
+            .await
+            .expect("append failed");
 
         bootstrap.pool.close().await;
 
-        let status = startup_integrity_check(&db_path).await.expect("startup_integrity_check failed");
+        let status = startup_integrity_check(&db_path)
+            .await
+            .expect("startup_integrity_check failed");
 
         assert!(status.is_valid);
         assert!(status.error_message.is_none());
@@ -1187,7 +1426,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let nonexistent_path = temp_dir.path().join("nonexistent.db");
 
-        let status = startup_integrity_check(&nonexistent_path).await.expect("startup_integrity_check failed");
+        let status = startup_integrity_check(&nonexistent_path)
+            .await
+            .expect("startup_integrity_check failed");
 
         assert!(!status.is_valid);
         assert!(status.error_message.is_some());
@@ -1220,11 +1461,15 @@ mod tests {
             },
             timestamp: 1_700_000_000,
         };
-        append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
+        append_event(&bootstrap.pool, envelope, None)
+            .await
+            .expect("append failed");
 
         bootstrap.pool.close().await;
 
-        let handle = open_recovery_mode(&db_path).await.expect("open_recovery_mode failed");
+        let handle = open_recovery_mode(&db_path)
+            .await
+            .expect("open_recovery_mode failed");
 
         assert_eq!(handle.db_path, db_path);
 
@@ -1257,11 +1502,15 @@ mod tests {
             },
             timestamp: 1_700_000_000,
         };
-        append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
+        append_event(&bootstrap.pool, envelope, None)
+            .await
+            .expect("append failed");
 
         bootstrap.pool.close().await;
 
-        let session = open_recovery_only(&db_path).await.expect("open_recovery_only failed");
+        let session = open_recovery_only(&db_path)
+            .await
+            .expect("open_recovery_only failed");
 
         assert_eq!(session.db_path, db_path);
 
@@ -1294,13 +1543,495 @@ mod tests {
             },
             timestamp: 1_700_000_000,
         };
-        append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
+        append_event(&bootstrap.pool, envelope, None)
+            .await
+            .expect("append failed");
 
         bootstrap.pool.close().await;
 
-        let status = integrity_check(&db_path).await.expect("integrity_check failed");
+        let status = integrity_check(&db_path)
+            .await
+            .expect("integrity_check failed");
 
         assert!(status.is_valid);
         assert_eq!(status.schema_version, Some(1));
+    }
+
+    #[tokio::test]
+    async fn test_save_snapshot_returns_meta_with_correct_revision() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection = crate::models::projection::DiagramProjection::with_revision(5);
+        let meta = save_snapshot(&pool, &projection)
+            .await
+            .expect("save_snapshot failed");
+        assert_eq!(meta.revision, 5);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_load_projection_from_snapshot_replays_tail() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=3 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection_rev3 = crate::models::projection::DiagramProjection::with_revision(3);
+        save_snapshot(&pool, &projection_rev3)
+            .await
+            .expect("save_snapshot failed");
+
+        for i in 4..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let loaded = load_projection_from_snapshot(&pool)
+            .await
+            .expect("load_projection_from_snapshot failed");
+        assert_eq!(loaded.revision, 5);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_get_latest_snapshot_meta_returns_correct_data() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=10 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection = crate::models::projection::DiagramProjection::with_revision(10);
+        save_snapshot(&pool, &projection)
+            .await
+            .expect("save_snapshot failed");
+
+        let meta = get_latest_snapshot_meta(&pool)
+            .await
+            .expect("get_latest_snapshot_meta failed");
+        assert!(meta.is_some());
+        let meta = meta.expect("snapshot exists");
+        assert_eq!(meta.revision, 10);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_delete_snapshot_removes_record() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection = crate::models::projection::DiagramProjection::with_revision(5);
+        save_snapshot(&pool, &projection)
+            .await
+            .expect("save_snapshot failed");
+
+        delete_snapshot(&pool, 5)
+            .await
+            .expect("delete_snapshot failed");
+
+        let meta = get_latest_snapshot_meta(&pool)
+            .await
+            .expect("get_latest_snapshot_meta failed");
+        assert!(meta.is_none());
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_list_snapshots_returns_all_snapshots() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=8 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+
+            if i == 2 || i == 5 || i == 8 {
+                let projection =
+                    crate::models::projection::DiagramProjection::with_revision(i as u64);
+                save_snapshot(&pool, &projection)
+                    .await
+                    .expect("save_snapshot failed");
+            }
+        }
+
+        let snapshots = list_snapshots(&pool).await.expect("list_snapshots failed");
+        assert_eq!(snapshots.len(), 3);
+
+        let revisions: Vec<i64> = snapshots.iter().map(|s| s.revision).collect();
+        assert_eq!(revisions, vec![8, 5, 2]);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_save_snapshot_fails_with_stale_projection() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=10 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let stale_projection = crate::models::projection::DiagramProjection::with_revision(5);
+        let result = save_snapshot(&pool, &stale_projection).await;
+        assert!(matches!(
+            result,
+            Err(StoreError::SnapshotStale {
+                expected: 10,
+                found: 5
+            })
+        ));
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_load_projection_from_snapshot_fails_when_no_snapshots() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        let result = load_projection_from_snapshot(&pool).await;
+        assert!(matches!(result, Err(StoreError::NotFound(_))));
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_delete_snapshot_fails_when_revision_not_found() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection = crate::models::projection::DiagramProjection::with_revision(5);
+        save_snapshot(&pool, &projection)
+            .await
+            .expect("save_snapshot failed");
+
+        let result = delete_snapshot(&pool, 99).await;
+        assert!(matches!(result, Err(StoreError::NotFound(_))));
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_save_snapshot_at_revision_zero_succeeds() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        let projection = crate::models::projection::DiagramProjection::empty();
+        let meta = save_snapshot(&pool, &projection)
+            .await
+            .expect("save_snapshot failed");
+        assert_eq!(meta.revision, 0);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_load_projection_with_no_tail_events() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection = crate::models::projection::DiagramProjection::with_revision(5);
+        save_snapshot(&pool, &projection)
+            .await
+            .expect("save_snapshot failed");
+
+        let loaded = load_projection_from_snapshot(&pool)
+            .await
+            .expect("load_projection_from_snapshot failed");
+        assert_eq!(loaded.revision, 5);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_multiple_snapshots_same_revision_replaces() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        for i in 1..=5 {
+            let envelope = EventEnvelope {
+                op_id: format!("op-{i}"),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{i}"),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {i}"),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, None)
+                .await
+                .expect("append failed");
+        }
+
+        let projection1 = crate::models::projection::DiagramProjection::with_revision(5);
+        let meta1 = save_snapshot(&pool, &projection1)
+            .await
+            .expect("save_snapshot failed");
+
+        let projection2 = crate::models::projection::DiagramProjection::with_revision(5);
+        let meta2 = save_snapshot(&pool, &projection2)
+            .await
+            .expect("save_snapshot failed");
+
+        let snapshots = list_snapshots(&pool).await.expect("list_snapshots failed");
+        assert_eq!(snapshots.len(), 1);
+
+        let latest = get_latest_snapshot_meta(&pool)
+            .await
+            .expect("get_latest_snapshot_meta failed")
+            .expect("snapshot exists");
+        assert_eq!(latest.id, meta2.id);
+        assert_ne!(latest.id, meta1.id);
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_delete_snapshot_fails_with_negative_revision() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let pool = bootstrap.pool;
+
+        let result = delete_snapshot(&pool, -1).await;
+        assert!(matches!(result, Err(StoreError::InvalidInput(_))));
+
+        pool.close().await;
     }
 }

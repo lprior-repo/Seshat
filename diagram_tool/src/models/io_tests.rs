@@ -10,7 +10,6 @@
 #![allow(unused)]
 #![ignore]
 
-
 // Helper to create a minimal test JSON export
 fn create_minimal_export() -> String {
     r#"{
@@ -28,7 +27,8 @@ fn create_minimal_export() -> String {
             "author_priority": []
         },
         "events": []
-    }"#.to_string()
+    }"#
+    .to_string()
 }
 
 // ============================================================================
@@ -89,7 +89,10 @@ async fn io_005c_async_large_document_export_performance() {
 
     // Print timing for analysis
     println!("IO-005c Async fetch duration: {:?}", fetch_duration);
-    println!("IO-005c Events per second: {:.2}", 1000.0 / fetch_duration.as_secs_f64());
+    println!(
+        "IO-005c Events per second: {:.2}",
+        1000.0 / fetch_duration.as_secs_f64()
+    );
 }
 
 // ============================================================================
@@ -150,7 +153,10 @@ async fn io_005d_async_large_document_export_performance_5000() {
 
     // Print timing for analysis
     println!("IO-005d Async fetch duration: {:?}", fetch_duration);
-    println!("IO-005d Events per second: {:.2}", 5000.0 / fetch_duration.as_secs_f64());
+    println!(
+        "IO-005d Events per second: {:.2}",
+        5000.0 / fetch_duration.as_secs_f64()
+    );
 }
 
 // ============================================================================
@@ -211,5 +217,8 @@ async fn io_005e_async_large_document_export_performance_10000() {
 
     // Print timing for analysis
     println!("IO-005e Async fetch duration: {:?}", fetch_duration);
-    println!("IO-005e Events per second: {:.2}", 10000.0 / fetch_duration.as_secs_f64());
+    println!(
+        "IO-005e Events per second: {:.2}",
+        10000.0 / fetch_duration.as_secs_f64()
+    );
 }

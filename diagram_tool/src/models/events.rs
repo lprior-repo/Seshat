@@ -71,7 +71,10 @@ pub async fn read_schema_state(pool: &SqlitePool) -> Result<SchemaState, StoreEr
         .map_err(StoreError::Sqlx)?;
 
     match row {
-        Some((version, created_at)) => Ok(SchemaState { version, created_at }),
+        Some((version, created_at)) => Ok(SchemaState {
+            version,
+            created_at,
+        }),
         None => Err(StoreError::Sqlx(sqlx::Error::RowNotFound)),
     }
 }
@@ -171,7 +174,9 @@ mod tests {
 
         let pool = create_pool(&db_path).await.expect("Failed to create pool");
 
-        ensure_schema_v1(&pool).await.expect("Schema creation failed");
+        ensure_schema_v1(&pool)
+            .await
+            .expect("Schema creation failed");
 
         let state = read_schema_state(&pool).await.expect("Read state failed");
 

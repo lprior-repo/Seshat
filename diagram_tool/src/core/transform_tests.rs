@@ -51,7 +51,7 @@ mod tests {
             .selected_items
             .insert(n2.as_str().to_string());
 
-        align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start).unwrap();
+        align_selection(&mut doc, &AlignmentAxis::Horizontal, &AlignmentMode::Start).unwrap();
 
         assert_eq!(doc.document.nodes.get(&n1).unwrap().x.0, 100.0);
         assert_eq!(doc.document.nodes.get(&n2).unwrap().x.0, 100.0);
@@ -80,8 +80,8 @@ mod tests {
             .selected_items
             .insert(n2.as_str().to_string());
 
-        let err =
-            align_selection(&mut doc, AlignmentAxis::Horizontal, AlignmentMode::Start).unwrap_err();
+        let err = align_selection(&mut doc, &AlignmentAxis::Horizontal, &AlignmentMode::Start)
+            .unwrap_err();
         assert_eq!(err, TransformError::LockedNode(n1));
     }
 
@@ -109,7 +109,7 @@ mod tests {
             .selected_items
             .insert(n3.as_str().to_string());
 
-        distribute_selection(&mut doc, AlignmentAxis::Horizontal).unwrap();
+        distribute_selection(&mut doc, &AlignmentAxis::Horizontal).unwrap();
 
         // Total space = (200 + 50) - 0 = 250
         // Sum of widths = 50 * 3 = 150

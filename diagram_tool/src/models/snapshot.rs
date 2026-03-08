@@ -95,14 +95,12 @@ pub async fn write_snapshot(
         .await
         .map_err(|e| SnapshotError::Sqlx(e.to_string()))?;
 
-    sqlx::query(
-        "INSERT OR REPLACE INTO snapshots (revision, payload) VALUES (?1, ?2)",
-    )
-    .bind(projection.revision as i64)
-    .bind(&payload)
-    .execute(&mut *tx)
-    .await
-    .map_err(|e| SnapshotError::Sqlx(e.to_string()))?;
+    sqlx::query("INSERT OR REPLACE INTO snapshots (revision, payload) VALUES (?1, ?2)")
+        .bind(projection.revision as i64)
+        .bind(&payload)
+        .execute(&mut *tx)
+        .await
+        .map_err(|e| SnapshotError::Sqlx(e.to_string()))?;
 
     let id: i64 = sqlx::query_scalar("SELECT last_insert_rowid()")
         .fetch_one(&mut *tx)
@@ -305,7 +303,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -340,7 +340,9 @@ mod tests {
             .expect("write_snapshot failed");
         assert_eq!(meta.revision, 1);
 
-        let loaded = load_projection(&pool).await.expect("load_projection failed");
+        let loaded = load_projection(&pool)
+            .await
+            .expect("load_projection failed");
         assert_eq!(loaded.revision, 1);
 
         pool.close().await;
@@ -351,7 +353,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -392,7 +396,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let empty_projection = DiagramProjection::empty();
@@ -423,7 +429,9 @@ mod tests {
             .await
             .expect("append failed");
 
-        let loaded = load_projection(&pool).await.expect("load_projection failed");
+        let loaded = load_projection(&pool)
+            .await
+            .expect("load_projection failed");
         assert_eq!(loaded.revision, 1);
 
         pool.close().await;
@@ -434,7 +442,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -475,7 +485,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         for i in 1..=3 {
@@ -501,7 +513,9 @@ mod tests {
                 .expect("append failed");
         }
 
-        let events = load_tail_events(&pool, 1).await.expect("load_tail_events failed");
+        let events = load_tail_events(&pool, 1)
+            .await
+            .expect("load_tail_events failed");
         assert_eq!(events.len(), 2);
         assert_eq!(events[0].op_id, "op-2");
         assert_eq!(events[1].op_id, "op-3");
@@ -514,7 +528,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope1 = EventEnvelope {
@@ -538,7 +554,9 @@ mod tests {
             .await
             .expect("append failed");
 
-        let events = load_tail_events(&pool, 0).await.expect("load_tail_events failed");
+        let events = load_tail_events(&pool, 0)
+            .await
+            .expect("load_tail_events failed");
         let adjusted_events: Vec<EventRecord> = events
             .into_iter()
             .enumerate()
@@ -578,7 +596,9 @@ mod tests {
             .await
             .expect("append failed");
 
-        let loaded = load_projection(&pool).await.expect("load_projection failed");
+        let loaded = load_projection(&pool)
+            .await
+            .expect("load_projection failed");
         assert_eq!(loaded.revision, 2);
         assert!(loaded
             .nodes
@@ -595,10 +615,14 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
-        let result = latest_snapshot(&pool).await.expect("latest_snapshot failed");
+        let result = latest_snapshot(&pool)
+            .await
+            .expect("latest_snapshot failed");
         assert!(
             result.is_none(),
             "Should return None when no snapshots exist"
@@ -612,7 +636,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -644,7 +670,9 @@ mod tests {
             .await
             .expect("write_snapshot failed");
 
-        let result = latest_snapshot(&pool).await.expect("latest_snapshot failed");
+        let result = latest_snapshot(&pool)
+            .await
+            .expect("latest_snapshot failed");
         assert!(
             result.is_some(),
             "Should return Some after snapshot written"
@@ -663,7 +691,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         for i in 1..=3 {
@@ -697,7 +727,9 @@ mod tests {
                 .expect("write_snapshot failed");
         }
 
-        let result = latest_snapshot(&pool).await.expect("latest_snapshot failed");
+        let result = latest_snapshot(&pool)
+            .await
+            .expect("latest_snapshot failed");
         assert!(result.is_some());
         let meta = result.expect("snapshot exists");
         assert_eq!(meta.revision, 3);
@@ -710,7 +742,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -752,7 +786,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -792,7 +828,9 @@ mod tests {
             _ => panic!("Expected SnapshotStale error"),
         }
 
-        let latest = latest_snapshot(&pool).await.expect("latest_snapshot failed");
+        let latest = latest_snapshot(&pool)
+            .await
+            .expect("latest_snapshot failed");
         assert!(
             latest.is_none(),
             "No snapshot should exist after failed write"
@@ -806,7 +844,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope = EventEnvelope {
@@ -860,7 +900,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let envelope1 = EventEnvelope {
@@ -937,13 +979,17 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
-        sqlx::query("INSERT INTO snapshots (revision, payload) VALUES (1, 'this is not valid json at all')")
-            .execute(&pool)
-            .await
-            .expect("insert failed");
+        sqlx::query(
+            "INSERT INTO snapshots (revision, payload) VALUES (1, 'this is not valid json at all')",
+        )
+        .execute(&pool)
+        .await
+        .expect("insert failed");
 
         let result = load_projection(&pool).await;
 
@@ -961,7 +1007,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let truncated_json = r#"{"version":1,"revision":1,"nodes":{"#;
@@ -988,7 +1036,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let invalid_payload = r#"{
@@ -1022,7 +1072,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let old_format_payload = r#"{
@@ -1054,11 +1106,14 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn given_snapshot_with_missing_metadata_fields_when_load_then_returns_serialization_error() {
+    async fn given_snapshot_with_missing_metadata_fields_when_load_then_returns_serialization_error(
+    ) {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let missing_fields_payload = r#"{
@@ -1088,7 +1143,9 @@ mod tests {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.expect("bootstrap failed");
+        let bootstrap = store::bootstrap_store(&db_path)
+            .await
+            .expect("bootstrap failed");
         let pool = bootstrap.pool;
 
         let partial_payload = r#"{

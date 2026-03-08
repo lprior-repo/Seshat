@@ -1819,7 +1819,9 @@ mod tests {
     async fn test_happy_path_valid_operation_appends_and_returns_revision() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
-        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+        let bootstrap = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap store");
 
         // Submit a valid operation
         let envelope = EventEnvelope {
@@ -1840,7 +1842,7 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let result = append_event(&mut bootstrap.conn, envelope, None);
+        let result = append_event(&bootstrap.pool, envelope, None).await;
 
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let outcome = result.expect("Checked is_ok");
@@ -1854,11 +1856,13 @@ mod tests {
         assert_eq!(latest, 1, "Latest revision should be 1");
     }
 
-    #[test]
-    fn test_happy_path_replay_from_revision_zero_recreates_projection() {
+    #[tokio::test]
+    async fn test_happy_path_replay_from_revision_zero_recreates_projection() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
-        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+        let bootstrap = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap store");
 
         // Add multiple events
         let events_data = [
@@ -1885,29 +1889,27 @@ mod tests {
                 },
                 timestamp: 1700000000 + i as i64,
             };
-            append_event(&mut bootstrap.conn, envelope, None).expect("Failed to append");
+            append_event(&bootstrap.pool, envelope, None)
+                .await
+                .expect("Failed to append");
         }
 
         // Read events back and create EventRecords
-        let mut stmt = bootstrap
-            .conn
-            .prepare(
-                "SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision",
-            )
-            .expect("Failed to prepare statement");
+        let rows: Vec<(String, i64, String, String)> = sqlx::query_as(
+            "SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision",
+        )
+        .fetch_all(&bootstrap.pool)
+        .await
+        .expect("Failed to fetch events");
 
-        let event_records: Vec<EventRecord> = stmt
-            .query_map([], |row| {
-                let op_id: String = row.get(0)?;
-                let revision: i64 = row.get(1)?;
-                let payload: String = row.get(2)?;
-                let timestamp_str: String = row.get(3)?;
-
+        let event_records: Vec<EventRecord> = rows
+            .iter()
+            .map(|(op_id, revision, payload, timestamp_str)| {
                 // Parse timestamp from string
                 let timestamp: i64 = timestamp_str.parse().unwrap_or(0);
 
                 // Parse the envelope from payload to get the operation
-                let envelope: EventEnvelope = match serde_json::from_str(&payload) {
+                let envelope: EventEnvelope = match serde_json::from_str(payload) {
                     Ok(e) => e,
                     Err(e) => {
                         eprintln!("DEBUG: Failed to parse payload: {}", e);
@@ -1917,14 +1919,13 @@ mod tests {
                 };
 
                 Ok(EventRecord {
-                    op_id,
-                    revision: revision as u64,
+                    op_id: op_id.clone(),
+                    revision: *revision as u64,
                     operation: envelope.operation,
                     author: envelope.author,
                     timestamp,
                 })
             })
-            .expect("Failed to query")
             .collect::<Result<Vec<_>, _>>()
             .expect("Failed to collect events");
 
@@ -1961,7 +1962,9 @@ mod tests {
     async fn test_error_path_stale_revision_rejects_without_append() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
-        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+        let bootstrap = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap store");
 
         // Add an initial event to get to revision 1
         let envelope1 = EventEnvelope {
@@ -1981,7 +1984,9 @@ mod tests {
             },
             timestamp: 1700000000,
         };
-        append_event(&mut bootstrap.conn, envelope1, None).expect("Failed to append initial");
+        append_event(&bootstrap.pool, envelope1, None)
+            .await
+            .expect("Failed to append initial");
 
         // Try to append with stale expected revision (0 instead of 1)
         let envelope2 = EventEnvelope {
@@ -2002,7 +2007,7 @@ mod tests {
             timestamp: 1700000001,
         };
 
-        let result = append_event(&mut bootstrap.conn, envelope2, Some(0));
+        let result = append_event(&bootstrap.pool, envelope2, Some(0)).await;
 
         // Should fail with revision mismatch
         assert!(result.is_err(), "Expected error for stale revision");
@@ -2029,7 +2034,9 @@ mod tests {
     async fn test_error_path_duplicate_op_id_returns_idempotent_success() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
-        let mut bootstrap = bootstrap_store(&db_path).expect("Failed to bootstrap store");
+        let bootstrap = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap store");
 
         let op_id = "op-duplicate-test";
 
@@ -2052,7 +2059,7 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let result1 = append_event(&mut bootstrap.conn, envelope1, None);
+        let result1 = append_event(&bootstrap.pool, envelope1, None).await;
         assert!(result1.is_ok(), "First append should succeed");
         let outcome1 = result1.expect("Checked is_ok");
 
@@ -2075,7 +2082,7 @@ mod tests {
             timestamp: 1700000001,
         };
 
-        let result2 = append_event(&mut bootstrap.conn, envelope2, None);
+        let result2 = append_event(&bootstrap.pool, envelope2, None).await;
 
         // Should fail with SQLite constraint violation (UNIQUE constraint on operation_id)
         assert!(result2.is_err(), "Duplicate op_id should be rejected");
@@ -2090,16 +2097,13 @@ mod tests {
         );
 
         // Verify the original event is still there
-        let count: i64 = bootstrap
-            .conn
-            .query_row(
-                "SELECT COUNT(*) FROM events WHERE operation_id = ?1",
-                [op_id],
-                |row| row.get(0),
-            )
+        let count: (i64,) = sqlx::query_as("SELECT COUNT(*) FROM events WHERE operation_id = ?1")
+            .bind(op_id)
+            .fetch_one(&bootstrap.pool)
+            .await
             .expect("Failed to count events");
 
-        assert_eq!(count, 1, "Should have exactly one event with the op_id");
+        assert_eq!(count.0, 1, "Should have exactly one event with the op_id");
     }
 
     #[test]

@@ -6,9 +6,12 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 #![allow(clippy::ref_option)]
+#![allow(unused_imports)]
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, Edge, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{
+    DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+};
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
 use std::collections::{BTreeSet, HashMap};

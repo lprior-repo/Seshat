@@ -456,11 +456,17 @@ pub async fn fetch_new_events(
         }
 
         let envelope = parse_event_envelope(&payload).map_err(|e| {
-            SyncError::Decode(format!("envelope parse error for op {}: {}", operation_id, e))
+            SyncError::Decode(format!(
+                "envelope parse error for op {}: {}",
+                operation_id, e
+            ))
         })?;
 
         let timestamp = timestamp.parse::<i64>().map_err(|e| {
-            SyncError::Decode(format!("timestamp parse error for op {}: {}", operation_id, e))
+            SyncError::Decode(format!(
+                "timestamp parse error for op {}: {}",
+                operation_id, e
+            ))
         })?;
 
         events.push(EventRecord {
@@ -707,7 +713,9 @@ mod tests {
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         // Fetch events after revision 2 (should get revisions 3, 4, 5)
@@ -725,7 +733,9 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         // Fetch all events (after revision 0)
@@ -740,7 +750,9 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         // Fetch events after revision 3 (latest)
@@ -763,7 +775,9 @@ mod tests {
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         let revision = fetch_latest_revision(&bootstrap.pool).await.unwrap();
@@ -818,7 +832,9 @@ mod tests {
 
         // Modify the database
         let envelope = make_test_envelope("op-new", 1);
-        store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+        store::append_event(&bootstrap.pool, envelope, None)
+            .await
+            .unwrap();
 
         // The watcher should detect the change
         let recv_result = rx.recv_timeout(Duration::from_secs(2));
@@ -846,7 +862,9 @@ mod tests {
         // Add events
         for i in 1..=10 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         // Fetch events after revision 5
@@ -878,7 +896,9 @@ mod tests {
             },
         };
 
-        store::append_event(&bootstrap.pool, envelope.clone(), None).await.unwrap();
+        store::append_event(&bootstrap.pool, envelope.clone(), None)
+            .await
+            .unwrap();
 
         let events = fetch_new_events(&bootstrap.pool, 0).await.unwrap();
         assert_eq!(events.len(), 1);
@@ -940,7 +960,9 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         // Fetch all events
@@ -1040,7 +1062,9 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         let events = fetch_new_events(&bootstrap.pool, 0).await.unwrap();
@@ -1107,7 +1131,9 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         let events = fetch_new_events(&bootstrap.pool, 0).await.unwrap();

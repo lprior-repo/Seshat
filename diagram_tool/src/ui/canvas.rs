@@ -24,8 +24,8 @@ use dioxus::{
 };
 use im::HashMap;
 use interaction_reducer::{
-    commit_inline_edit, finalize_motion_release, InteractionMode, ResizeHandle,
-    DragState, DragPendingState, ResizeState,
+    commit_inline_edit, finalize_motion_release, DragPendingState, DragState, InteractionMode,
+    ResizeHandle, ResizeState,
 };
 use perf::{
     normalize_viewport, to_canvas_coords, to_screen_coords, viewport_changed, wheel_update,
@@ -399,7 +399,7 @@ fn flush_pending_pointer_update(
             if has_movable_nodes && has_drag_threshold(state.anchor_client, (client_x, client_y)) {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc);
-                
+
                 *mode = InteractionMode::Dragging(DragState {
                     anchor_canvas: state.anchor_canvas,
                     original_positions: state.original_positions.clone(),
@@ -484,7 +484,7 @@ fn flush_pending_pointer_update(
             if has_resizable_nodes && (dx != 0.0 || dy != 0.0) {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc_for_mouse);
-                
+
                 *mode = InteractionMode::Resizing(ResizeState {
                     handle: state.handle,
                     original_bounds: state.original_bounds,
@@ -751,8 +751,10 @@ pub fn Canvas() -> Element {
                             } else {
                                 let mode = interaction_mode.read().clone();
                                 match mode {
-                                    InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
-                                    | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_) => {
+                                    InteractionMode::Dragging(_)
+                                    | InteractionMode::DragPending(_)
+                                    | InteractionMode::Resizing(_)
+                                    | InteractionMode::ResizePending(_) => {
                                         interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {
                                                 let _ = finalize_motion_release(mode_mut, doc);
@@ -1341,8 +1343,10 @@ pub fn Canvas() -> Element {
                                 doc.editor_state.grid_size,
                             );
                         }
-                        InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
-                        | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
+                        InteractionMode::Dragging(_)
+                        | InteractionMode::DragPending(_)
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::ResizePending(_)
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
@@ -1485,8 +1489,10 @@ pub fn Canvas() -> Element {
                             tool_signal.set(ToolMode::Select);
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::Resizing(_) | InteractionMode::ResizePending(_)
-                        | InteractionMode::Dragging(_) | InteractionMode::DragPending(_) => {
+                        InteractionMode::Resizing(_)
+                        | InteractionMode::ResizePending(_)
+                        | InteractionMode::Dragging(_)
+                        | InteractionMode::DragPending(_) => {
                             doc_signal.with_mut(|doc| {
                                 let _ = finalize_motion_release(mode, doc);
                             });
@@ -1587,12 +1593,14 @@ pub fn Canvas() -> Element {
         match mode {
             InteractionMode::Panning { .. } => "grabbing",
             InteractionMode::DrawingEdge { .. } => "crosshair",
-            InteractionMode::Resizing(state) | InteractionMode::ResizePending(state) => match state.handle {
-                ResizeHandle::Nw | ResizeHandle::Se => "nwse-resize",
-                ResizeHandle::Ne | ResizeHandle::Sw => "nesw-resize",
-                ResizeHandle::N | ResizeHandle::S => "ns-resize",
-                ResizeHandle::E | ResizeHandle::W => "ew-resize",
-            },
+            InteractionMode::Resizing(state) | InteractionMode::ResizePending(state) => {
+                match state.handle {
+                    ResizeHandle::Nw | ResizeHandle::Se => "nwse-resize",
+                    ResizeHandle::Ne | ResizeHandle::Sw => "nesw-resize",
+                    ResizeHandle::N | ResizeHandle::S => "ns-resize",
+                    ResizeHandle::E | ResizeHandle::W => "ew-resize",
+                }
+            }
             InteractionMode::Dragging(_) | InteractionMode::DragPending(_) => "move",
             _ => {
                 if *space_pressed.read() || tool == ToolMode::Pan {

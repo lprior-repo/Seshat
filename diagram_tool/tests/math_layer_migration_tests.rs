@@ -1,4 +1,4 @@
-use diagram_tool::ui::canvas::math::{safe_zoom, within, screen_to_canvas};
+use diagram_tool::ui::canvas::math::{safe_zoom, screen_to_canvas, within};
 
 mod safe_zoom_tests {
     use super::*;
@@ -66,7 +66,10 @@ mod safe_zoom_tests {
     #[test]
     fn given_min_positive_zoom_when_validating_then_returns_none() {
         let result = safe_zoom(f64::MIN_POSITIVE);
-        assert!(result.is_none(), "Expected None for MIN_POSITIVE (smaller than EPSILON)");
+        assert!(
+            result.is_none(),
+            "Expected None for MIN_POSITIVE (smaller than EPSILON)"
+        );
     }
 
     #[test]
@@ -140,7 +143,10 @@ mod within_tests {
         let subgraph = (0.0, 0.0, 100.0, 100.0);
         let node = (50.0, 0.0, 60.0, 50.0);
         let result = within(subgraph, node);
-        assert!(!result, "Expected node extending beyond right to be outside");
+        assert!(
+            !result,
+            "Expected node extending beyond right to be outside"
+        );
     }
 
     #[test]
@@ -148,7 +154,10 @@ mod within_tests {
         let subgraph = (0.0, 0.0, 100.0, 100.0);
         let node = (0.0, 50.0, 50.0, 60.0);
         let result = within(subgraph, node);
-        assert!(!result, "Expected node extending beyond bottom to be outside");
+        assert!(
+            !result,
+            "Expected node extending beyond bottom to be outside"
+        );
     }
 
     #[test]
@@ -427,7 +436,10 @@ mod screen_to_canvas_tests {
     #[test]
     fn given_negative_infinity_client_x_when_converting_then_returns_none() {
         let result = screen_to_canvas(f64::NEG_INFINITY, 200.0, 0.0, 0.0, 1.0);
-        assert!(result.is_none(), "Expected None for negative infinity client x");
+        assert!(
+            result.is_none(),
+            "Expected None for negative infinity client x"
+        );
     }
 
     #[test]

@@ -22,15 +22,6 @@ use crate::models::projection::{DiagramProjection, EventRecord};
 use crate::models::schema::validate_schema;
 use crate::store;
 
-#[allow(clippy::unwrap_used)]
-fn block_on<T>(fut: impl std::future::Future<Output = T>) -> T {
-    tokio::runtime::Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(fut)
-}
-
 /// Errors that can occur during export/import operations
 #[derive(Debug, Error, Clone)]
 pub enum ExportError {
@@ -123,9 +114,9 @@ impl Author {
 ///
 /// # Errors
 /// Returns ExportError if export fails
-pub fn export_diagram_json(pool: &SqlitePool) -> Result<DiagramJsonExport, ExportError> {
+pub async fn export_diagram_json(pool: &SqlitePool) -> Result<DiagramJsonExport, ExportError> {
     // Fetch all events from the database
-    let events = fetch_all_events(pool)?;
+    let events = fetch_all_events(pool).await?;
 
     // Replay events to get the projection
     let projection = replay_events_from_db(&events)?;
@@ -202,9 +193,9 @@ pub fn export_projection_json(projection: &DiagramProjection) -> Result<String, 
 ///
 /// # Errors
 /// Returns ExportError if any step fails
-pub fn export_while_recovering(pool: &SqlitePool) -> Result<String, ExportError> {
+pub async fn export_while_recovering(pool: &SqlitePool) -> Result<String, ExportError> {
     // Fetch all events from the read-only connection
-    let events = fetch_all_events(pool)?;
+    let events = fetch_all_events(pool).await?;
 
     // Replay events to get the projection
     let projection = replay_events_from_db(&events)?;
@@ -271,14 +262,14 @@ const SUPPORTED_VERSION: u32 = 2;
 /// # Errors
 /// Returns ExportError::Sqlite if database operations fail
 /// Returns ExportError::Serialization if event parsing fails
-fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, ExportError> {
-    let rows: Vec<(String, i64, String, String)> = block_on(
+pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, ExportError> {
+    let rows: Vec<(String, i64, String, String)> =
         sqlx::query_as::<_, (String, i64, String, String)>(
             "SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision",
         )
-        .fetch_all(pool),
-    )
-    .map_err(|e| ExportError::Sqlite(e.to_string()))?;
+        .fetch_all(pool)
+        .await
+        .map_err(|e| ExportError::Sqlite(e.to_string()))?;
 
     let mut decode_errors = Vec::new();
     let events: Vec<EventRecord> = rows
@@ -359,7 +350,7 @@ fn projection_to_document(projection: &DiagramProjection) -> DiagramDocument {
 ///
 /// # Errors
 /// Returns ExportError if import fails
-pub fn import_diagram_json(
+pub async fn import_diagram_json(
     pool: &SqlitePool,
     input: &str,
     actor: Author,
@@ -414,7 +405,7 @@ pub fn import_diagram_json(
         };
 
         // Append event idempotently - checks by op_id, not revision
-        match block_on(store::append_idempotent(pool, envelope)) {
+        match store::append_idempotent(pool, envelope).await {
             Ok(_outcome) => {
                 events_imported += 1;
             }
@@ -444,7 +435,8 @@ pub fn import_diagram_json(
     }
 
     // Get final revision
-    let final_revision = block_on(store::fetch_latest_revision(pool))
+    let final_revision = store::fetch_latest_revision(pool)
+        .await
         .map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
 
     Ok(ImportResult {
@@ -536,15 +528,15 @@ mod tests {
     use crate::store;
     use tempfile::TempDir;
 
-    #[test]
-    fn given_empty_database_when_exporting_then_returns_empty_projection() {
+    #[tokio::test]
+    async fn given_empty_database_when_exporting_then_returns_empty_projection() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let conn = &bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
-        let result = export_diagram_json(conn);
+        let result = export_diagram_json(conn).await;
 
         assert!(result.is_ok(), "Export failed: {:?}", result.err());
         let export = result.unwrap();
@@ -553,12 +545,12 @@ mod tests {
         assert!(export.events.is_some());
     }
 
-    #[test]
-    fn given_database_with_events_when_exporting_then_includes_projection_data() {
+    #[tokio::test]
+    async fn given_database_with_events_when_exporting_then_includes_projection_data() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
 
         // Add some events
         let envelope1 = EventEnvelope {
@@ -597,23 +589,27 @@ mod tests {
             timestamp: 1700000001,
         };
 
-        store::append_event(&mut bootstrap.conn, envelope1, None).unwrap();
-        store::append_event(&mut bootstrap.conn, envelope2, None).unwrap();
+        store::append_event(&bootstrap.pool, envelope1, None)
+            .await
+            .unwrap();
+        store::append_event(&bootstrap.pool, envelope2, None)
+            .await
+            .unwrap();
 
-        let result = export_diagram_json(&bootstrap.conn);
+        let result = export_diagram_json(&bootstrap.pool).await;
 
         assert!(result.is_ok(), "Export failed: {:?}", result.err());
         let export = result.unwrap();
         assert_eq!(export.metadata.revision, 2);
     }
 
-    #[test]
-    fn given_empty_database_when_importing_then_succeeds_with_zero_events() {
+    #[tokio::test]
+    async fn given_empty_database_when_importing_then_succeeds_with_zero_events() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         let input = r#"{
             "metadata": {
@@ -636,7 +632,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         assert!(result.is_ok(), "Import failed: {:?}", result.err());
         let import_result = result.unwrap();
@@ -644,13 +640,13 @@ mod tests {
         assert_eq!(import_result.final_revision, 0);
     }
 
-    #[test]
-    fn given_valid_export_json_when_importing_then_creates_events() {
+    #[tokio::test]
+    async fn given_valid_export_json_when_importing_then_creates_events() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // First create some data
-        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
 
         let envelope = EventEnvelope {
             op_id: "op-1".to_string(),
@@ -670,17 +666,19 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+        store::append_event(&bootstrap.pool, envelope, None)
+            .await
+            .unwrap();
 
         // Export
-        let export = export_diagram_json(&bootstrap.conn).unwrap();
+        let export = export_diagram_json(&bootstrap.pool).await.unwrap();
         let export_json = serde_json::to_string(&export).unwrap();
 
         // Create a fresh database for import
         let temp_dir2 = TempDir::new().unwrap();
         let db_path2 = temp_dir2.path().join("test.db");
-        let bootstrap2 = store::bootstrap_store(&db_path2).unwrap();
-        let mut conn2 = bootstrap2.conn;
+        let bootstrap2 = store::bootstrap_store(&db_path2).await.unwrap();
+        let conn2 = &bootstrap2.pool;
 
         // Import
         let actor = Author {
@@ -688,7 +686,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn2, &export_json, actor);
+        let result = import_diagram_json(conn2, &export_json, actor).await;
 
         assert!(result.is_ok(), "Import failed: {:?}", result.err());
         let import_result = result.unwrap();
@@ -696,13 +694,13 @@ mod tests {
         assert!(import_result.final_revision > 0);
     }
 
-    #[test]
-    fn given_invalid_json_when_importing_then_returns_error() {
+    #[tokio::test]
+    async fn given_invalid_json_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         let input = "not valid json";
         let actor = Author {
@@ -710,18 +708,18 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         assert!(result.is_err());
     }
 
-    #[test]
-    fn given_mismatched_revision_when_importing_then_returns_error() {
+    #[tokio::test]
+    async fn given_mismatched_revision_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         // Add one event first
         let envelope = EventEnvelope {
@@ -742,7 +740,7 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        store::append_event(&mut conn, envelope, None).unwrap();
+        store::append_event(conn, envelope, None).await.unwrap();
 
         // Now try to import with events starting at revision 0 (should be revision 1)
         let input = r#"{
@@ -765,13 +763,13 @@ mod tests {
         };
 
         // This should fail due to revision mismatch
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
         // The import expects revision 0 but database is at revision 1
         assert!(result.is_err());
     }
 
-    #[test]
-    fn given_author_to_envelope_author_conversion() {
+    #[tokio::test]
+    async fn given_author_to_envelope_author_conversion() {
         let author = Author {
             id: "test-user".to_string(),
             is_human: true,
@@ -783,8 +781,8 @@ mod tests {
         assert_eq!(envelope_author.name, "test-user");
     }
 
-    #[test]
-    fn given_ai_author_to_envelope_author_conversion() {
+    #[tokio::test]
+    async fn given_ai_author_to_envelope_author_conversion() {
         let author = Author {
             id: "ai-assistant".to_string(),
             is_human: false,
@@ -796,8 +794,8 @@ mod tests {
         assert_eq!(envelope_author.id, "ai-assistant");
     }
 
-    #[test]
-    fn given_empty_projection_when_exporting_then_returns_valid_json() {
+    #[tokio::test]
+    async fn given_empty_projection_when_exporting_then_returns_valid_json() {
         let projection = DiagramProjection::empty();
 
         let result = export_projection_json(&projection);
@@ -808,8 +806,8 @@ mod tests {
         assert!(json.contains("\"version\": 2"));
     }
 
-    #[test]
-    fn given_projection_with_nodes_when_exporting_then_includes_nodes_in_json() {
+    #[tokio::test]
+    async fn given_projection_with_nodes_when_exporting_then_includes_nodes_in_json() {
         use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat};
 
         let mut projection = DiagramProjection::empty();
@@ -844,8 +842,8 @@ mod tests {
         assert!(json.contains("Test Node"));
     }
 
-    #[test]
-    fn given_valid_json_when_validating_schema_then_succeeds() {
+    #[tokio::test]
+    async fn given_valid_json_when_validating_schema_then_succeeds() {
         let projection = DiagramProjection::empty();
         let json = export_projection_json(&projection).unwrap();
 
@@ -854,8 +852,8 @@ mod tests {
         assert!(result.is_ok(), "Validation failed: {:?}", result.err());
     }
 
-    #[test]
-    fn given_invalid_json_when_validating_schema_then_fails() {
+    #[tokio::test]
+    async fn given_invalid_json_when_validating_schema_then_fails() {
         let invalid_json = "not valid json";
 
         let result = validate_export_schema(invalid_json);
@@ -863,8 +861,8 @@ mod tests {
         assert!(result.is_err());
     }
 
-    #[test]
-    fn given_json_with_wrong_version_when_validating_then_fails() {
+    #[tokio::test]
+    async fn given_json_with_wrong_version_when_validating_then_fails() {
         let json = r#"{
             "version": 999,
             "revision": 0,
@@ -879,8 +877,8 @@ mod tests {
         assert!(matches!(err, ExportError::InvalidSchema(_)));
     }
 
-    #[test]
-    fn given_projection_with_edges_when_exporting_then_includes_edges_in_json() {
+    #[tokio::test]
+    async fn given_projection_with_edges_when_exporting_then_includes_edges_in_json() {
         use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
 
         let mut projection = DiagramProjection::empty();
@@ -958,36 +956,37 @@ mod tests {
 
     // Tests for export_while_recovering - bd-mtu
 
-    #[test]
-    fn given_empty_database_in_recovery_mode_when_exporting_then_returns_valid_json() {
+    #[tokio::test]
+    async fn given_empty_database_in_recovery_mode_when_exporting_then_returns_valid_json() {
         use crate::store::open_recovery_mode;
 
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a valid database
-        let _bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let _bootstrap = store::bootstrap_store(&db_path).await.unwrap();
 
         // Open in recovery mode (read-only)
-        let handle = open_recovery_mode(&db_path).unwrap();
+        let handle = open_recovery_mode(&db_path).await.unwrap();
 
         // Export while in recovery mode
-        let result = export_while_recovering(&handle.conn);
+        let result = export_while_recovering(&handle.pool).await;
 
         assert!(result.is_ok(), "Export failed: {:?}", result.err());
         let json = result.unwrap();
         assert!(json.contains("\"revision\": 0"));
     }
 
-    #[test]
-    fn given_database_with_events_in_recovery_mode_when_exporting_then_returns_projection_json() {
+    #[tokio::test]
+    async fn given_database_with_events_in_recovery_mode_when_exporting_then_returns_projection_json(
+    ) {
         use crate::store::open_recovery_mode;
 
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a database with events
-        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
 
         let envelope = EventEnvelope {
             op_id: "op-1".to_string(),
@@ -1007,13 +1006,15 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+        store::append_event(&bootstrap.pool, envelope, None)
+            .await
+            .unwrap();
 
         // Open in recovery mode (read-only)
-        let handle = open_recovery_mode(&db_path).unwrap();
+        let handle = open_recovery_mode(&db_path).await.unwrap();
 
         // Export while in recovery mode
-        let result = export_while_recovering(&handle.conn);
+        let result = export_while_recovering(&handle.pool).await;
 
         assert!(result.is_ok(), "Export failed: {:?}", result.err());
         let json = result.unwrap();
@@ -1022,28 +1023,30 @@ mod tests {
         assert!(json.contains("\"revision\": 1"));
     }
 
-    #[test]
-    fn given_recovery_connection_is_read_only_when_exporting_then_succeeds() {
+    #[tokio::test]
+    async fn given_recovery_connection_is_read_only_when_exporting_then_succeeds() {
         use crate::store::open_recovery_mode;
 
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a valid database
-        let _bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let _bootstrap = store::bootstrap_store(&db_path).await.unwrap();
 
         // Open in recovery mode
-        let handle = open_recovery_mode(&db_path).unwrap();
+        let handle = open_recovery_mode(&db_path).await.unwrap();
 
         // Verify connection is read-only by attempting a write (should fail)
-        let write_result = handle.conn.execute("INSERT INTO events (operation_id, revision, payload, timestamp) VALUES ('test', 1, '{}', '0')", []);
+        let write_result = sqlx::query("INSERT INTO events (operation_id, revision, payload, timestamp) VALUES ('test', 1, '{}', '0')")
+            .execute(&handle.pool)
+            .await;
         assert!(
             write_result.is_err(),
             "Read-only connection should reject writes"
         );
 
         // But export should still work
-        let result = export_while_recovering(&handle.conn);
+        let result = export_while_recovering(&handle.pool).await;
         assert!(
             result.is_ok(),
             "Export should work with read-only connection"
@@ -1058,13 +1061,13 @@ mod tests {
     // 1. Serialization Errors
     // -------------------------------------------------------------------------
 
-    #[test]
-    fn given_truncated_json_when_importing_then_returns_serialization_error() {
+    #[tokio::test]
+    async fn given_truncated_json_when_importing_then_returns_serialization_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         // Truncated JSON (cut off mid-string)
         let input = r#"{"metadata": {"name": "test", "revision"#;
@@ -1074,7 +1077,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         assert!(
             result.is_err(),
@@ -1088,13 +1091,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_null_in_required_field_when_importing_then_returns_error() {
+    #[tokio::test]
+    async fn given_null_in_required_field_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         // JSON with null where a required field should be
         let input = r#"{
@@ -1108,7 +1111,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         // Should fail - null in required field
         assert!(
@@ -1117,13 +1120,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_malformed_json_structure_when_importing_then_returns_serialization_error() {
+    #[tokio::test]
+    async fn given_malformed_json_structure_when_importing_then_returns_serialization_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         // Valid JSON but wrong structure (array instead of object)
         let input = r#"["not", "an", "object"]"#;
@@ -1133,7 +1136,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         assert!(
             result.is_err(),
@@ -1145,8 +1148,8 @@ mod tests {
     // 2. Large Diagrams
     // -------------------------------------------------------------------------
 
-    #[test]
-    fn given_1000_nodes_when_exporting_then_succeeds_within_time_limit() {
+    #[tokio::test]
+    async fn given_1000_nodes_when_exporting_then_succeeds_within_time_limit() {
         use std::time::Instant;
 
         let mut projection = DiagramProjection::empty();
@@ -1196,8 +1199,8 @@ mod tests {
         assert!(json.contains("node-999"), "JSON should contain last node");
     }
 
-    #[test]
-    fn given_1000_edges_when_exporting_then_succeeds_within_time_limit() {
+    #[tokio::test]
+    async fn given_1000_edges_when_exporting_then_succeeds_within_time_limit() {
         use std::time::Instant;
 
         let mut projection = DiagramProjection::empty();
@@ -1264,13 +1267,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_large_diagram_when_importing_then_all_events_replay_correctly() {
+    #[tokio::test]
+    async fn given_large_diagram_when_importing_then_all_events_replay_correctly() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a database with many events
-        let mut bootstrap = store::bootstrap_store(&db_path).unwrap();
+        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
 
         // Add 100 node events
         for i in 0..100 {
@@ -1291,18 +1294,20 @@ mod tests {
                 },
                 timestamp: 1700000000 + i,
             };
-            store::append_event(&mut bootstrap.conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None)
+                .await
+                .unwrap();
         }
 
         // Export
-        let export = export_diagram_json(&bootstrap.conn).unwrap();
+        let export = export_diagram_json(&bootstrap.pool).await.unwrap();
         let export_json = serde_json::to_string(&export).unwrap();
 
         // Create a fresh database for import
         let temp_dir2 = TempDir::new().unwrap();
         let db_path2 = temp_dir2.path().join("test.db");
-        let bootstrap2 = store::bootstrap_store(&db_path2).unwrap();
-        let mut conn2 = bootstrap2.conn;
+        let bootstrap2 = store::bootstrap_store(&db_path2).await.unwrap();
+        let conn2 = &bootstrap2.pool;
 
         // Import
         let actor = Author {
@@ -1310,7 +1315,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn2, &export_json, actor);
+        let result = import_diagram_json(conn2, &export_json, actor).await;
 
         assert!(
             result.is_ok(),
@@ -1328,8 +1333,8 @@ mod tests {
     // 3. Unicode Handling
     // -------------------------------------------------------------------------
 
-    #[test]
-    fn given_emoji_labels_when_exporting_then_roundtrips_correctly() {
+    #[tokio::test]
+    async fn given_emoji_labels_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
 
         let emoji_labels = [
@@ -1387,8 +1392,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn given_right_to_left_text_when_exporting_then_roundtrips_correctly() {
+    #[tokio::test]
+    async fn given_right_to_left_text_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
 
         let rtl_labels = [
@@ -1434,8 +1439,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn given_zero_width_characters_when_exporting_then_roundtrips_correctly() {
+    #[tokio::test]
+    async fn given_zero_width_characters_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
 
         // Labels with zero-width joiner and other invisible characters
@@ -1483,8 +1488,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn given_mixed_script_labels_when_exporting_then_roundtrips_correctly() {
+    #[tokio::test]
+    async fn given_mixed_script_labels_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
 
         let mixed_labels: [&str; 2] = [
@@ -1530,8 +1535,8 @@ mod tests {
         }
     }
 
-    #[test]
-    fn given_unicode_in_edge_labels_when_exporting_then_roundtrips_correctly() {
+    #[tokio::test]
+    async fn given_unicode_in_edge_labels_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
 
         // Create two nodes
@@ -1624,8 +1629,8 @@ mod tests {
     // 4. Schema Validation Failures (via validate_export_schema)
     // -------------------------------------------------------------------------
 
-    #[test]
-    fn given_negative_dimensions_in_json_when_validating_then_schema_fails() {
+    #[tokio::test]
+    async fn given_negative_dimensions_in_json_when_validating_then_schema_fails() {
         // This tests that schema validation catches negative dimensions
         // Note: This requires going through the full export validation path
         let json = r#"{
@@ -1660,8 +1665,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_invalid_color_format_in_json_when_validating_then_schema_fails() {
+    #[tokio::test]
+    async fn given_invalid_color_format_in_json_when_validating_then_schema_fails() {
         // JSON with invalid color format in edge
         let json = r#"{
             "version": 2,
@@ -1695,8 +1700,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_orphan_edge_references_in_json_when_validating_then_schema_fails() {
+    #[tokio::test]
+    async fn given_orphan_edge_references_in_json_when_validating_then_schema_fails() {
         // JSON with edge referencing non-existent node
         let json = r#"{
             "version": 2,
@@ -1729,8 +1734,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_invalid_label_offset_in_json_when_validating_then_schema_fails() {
+    #[tokio::test]
+    async fn given_invalid_label_offset_in_json_when_validating_then_schema_fails() {
         // JSON with label_offset_t > 1.0
         let json = r#"{
             "version": 2,
@@ -1764,8 +1769,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_non_subgraph_parent_in_json_when_validating_then_schema_fails() {
+    #[tokio::test]
+    async fn given_non_subgraph_parent_in_json_when_validating_then_schema_fails() {
         // JSON with node parent that is a regular node, not a subgraph
         let json = r#"{
             "version": 2,
@@ -1788,13 +1793,13 @@ mod tests {
     // 5. Version Mismatches
     // -------------------------------------------------------------------------
 
-    #[test]
-    fn given_future_schema_version_when_importing_then_returns_version_error() {
+    #[tokio::test]
+    async fn given_future_schema_version_when_importing_then_returns_version_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         let input = r#"{
             "metadata": {"name": "test", "revision": 0, "version": 999},
@@ -1807,7 +1812,7 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         assert!(result.is_err(), "Future schema version should return error");
         let err = result.unwrap_err();
@@ -1818,8 +1823,8 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_future_schema_version_when_validating_export_then_returns_version_error() {
+    #[tokio::test]
+    async fn given_future_schema_version_when_validating_export_then_returns_version_error() {
         let json = r#"{
             "version": 999,
             "revision": 0,
@@ -1841,13 +1846,13 @@ mod tests {
         );
     }
 
-    #[test]
-    fn given_missing_version_field_when_importing_then_returns_error() {
+    #[tokio::test]
+    async fn given_missing_version_field_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        let mut conn = bootstrap.conn;
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = &bootstrap.pool;
 
         // JSON missing version field in metadata
         let input = r#"{
@@ -1861,14 +1866,14 @@ mod tests {
             is_human: true,
         };
 
-        let result = import_diagram_json(&mut conn, input, actor);
+        let result = import_diagram_json(conn, input, actor).await;
 
         // Should fail - missing required field
         assert!(result.is_err(), "Missing version field should return error");
     }
 
-    #[test]
-    fn given_version_1_export_when_validating_then_current_version_works() {
+    #[tokio::test]
+    async fn given_version_1_export_when_validating_then_current_version_works() {
         // Version 1 is less than current (2), so it should work
         let json = r#"{
             "version": 1,

@@ -69,7 +69,7 @@ mod tests {
             .insert(n2.as_str().to_string());
 
         let group_id = NodeId::new("g1".to_string());
-        group_selection(&mut doc, group_id.clone()).unwrap();
+        group_selection(&mut doc, &group_id).unwrap();
 
         // Assert group created
         let group = doc.document.nodes.get(&group_id).unwrap();

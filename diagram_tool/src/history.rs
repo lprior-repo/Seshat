@@ -1394,7 +1394,7 @@ mod tests {
             "second redo should restore state C (x=300)"
         );
 
-        let Some((state_d, _h3)) = h2.redo(state_c.clone()) else {
+        let Some((state_d, h3)) = h2.redo(state_c.clone()) else {
             panic!("third redo should succeed");
         };
         let node_at_d = state_d
@@ -1407,7 +1407,7 @@ mod tests {
             "third redo should restore state D (x=400)"
         );
 
-        let Some((state_current, _)) = h2.redo(state_d.clone()) else {
+        let Some((state_current, _)) = h3.redo(state_d.clone()) else {
             panic!("fourth redo should succeed");
         };
         let node_final = state_current
