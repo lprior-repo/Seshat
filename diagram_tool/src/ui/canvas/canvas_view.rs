@@ -854,6 +854,426 @@ mod proptests {
 }
 
 // =============================================================================
+// SEL-002 Edge Selection Tests
+// =============================================================================
+
+/// Tests for SEL-002: Select single edge by clicking
+/// Contract: .beads/task-sel-002/contract.md
+#[cfg(test)]
+mod sel_002_edge_selection_tests {
+    use super::find_edge_at;
+    use crate::models::document::{
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
+        NodeStyle, OrderedFloat,
+    };
+    use crate::models::selection::{Selection, SelectionMode};
+    use im::HashMap;
+
+    /// Helper to create a node at the given position
+    fn node_at(x: f64, y: f64) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: String::new(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(10.0),
+            height: OrderedFloat(10.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        }
+    }
+
+    /// Helper to create an edge between two nodes
+    fn edge(source: NodeId, target: NodeId) -> Edge {
+        Edge {
+            source,
+            target,
+            label: String::new(),
+            style: EdgeStyle::Solid,
+            arrow_type: ArrowType::Straight,
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.5),
+            directed: true,
+            bend_points: im::Vector::new(),
+            tags: im::Vector::new(),
+            metadata: HashMap::new(),
+            font_size: None,
+        }
+    }
+
+    /// Create a test document with two nodes and one edge between them
+    fn create_document_with_edge() -> DiagramDocument {
+        let source_id = NodeId::new(String::from("node-a"));
+        let target_id = NodeId::new(String::from("node-b"));
+        let edge_id = EdgeId::new(String::from("edge-1"));
+
+        DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new().update(edge_id, edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        }
+    }
+
+    // =========================================================================
+    // Happy Path Tests
+    // =========================================================================
+
+    /// Test: Click on edge selects it
+    /// Given: Document with two nodes and an edge between them
+    /// When: Click on edge at position (50, 0) - center of edge line
+    /// Then: Edge is found and selected
+    #[test]
+    fn test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_edge_is_selected(
+    ) {
+        let doc = create_document_with_edge();
+
+        // When: Click on edge at center (50, 0)
+        let hit = find_edge_at(&doc, 50.0, 0.0);
+
+        // Then: Edge is found
+        assert!(hit.is_some(), "Expected to find edge at click position");
+        let edge_id = hit.unwrap();
+        assert_eq!(edge_id.as_str(), "edge-1");
+
+        // Then: Selection contains the edge
+        let selection = Selection::new();
+        let result = selection.select_edge(edge_id, &doc);
+        assert!(result.is_ok());
+        let selected = result.unwrap();
+        assert_eq!(
+            selected.len(),
+            1,
+            "Q1: Selection should contain exactly one item"
+        );
+        assert!(selected.contains_edge(&EdgeId::new(String::from("edge-1"))));
+    }
+
+    /// Test: Click at edge center selects edge
+    #[test]
+    fn test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_selected() {
+        let doc = create_document_with_edge();
+
+        // Click at midpoint of edge (50, 0)
+        let hit = find_edge_at(&doc, 50.0, 0.0);
+        assert!(hit.is_some());
+        assert_eq!(hit.unwrap().as_str(), "edge-1");
+    }
+
+    // =========================================================================
+    // Error Path Tests
+    // =========================================================================
+
+    /// Test: Click on empty document returns None
+    #[test]
+    fn test_sel_002_given_empty_document_when_clicking_then_no_edge_selected() {
+        let doc = DiagramDocument::default();
+
+        // When: Click at any position
+        let hit = find_edge_at(&doc, 50.0, 50.0);
+
+        // Then: No edge found
+        assert!(hit.is_none(), "Expected no edge for empty document");
+    }
+
+    /// Test: Click far from edge returns None
+    #[test]
+    fn test_sel_002_given_document_with_edge_when_clicking_far_from_edge_then_no_edge_selected() {
+        let doc = create_document_with_edge();
+
+        // When: Click far from the edge (500, 500)
+        let hit = find_edge_at(&doc, 500.0, 500.0);
+
+        // Then: No edge found
+        assert!(
+            hit.is_none(),
+            "Expected no edge when clicking far from edge"
+        );
+    }
+
+    /// Test: NaN coordinates return None
+    #[test]
+    fn test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_selected() {
+        let doc = create_document_with_edge();
+
+        // When: Click with NaN coordinates
+        let hit_nan = find_edge_at(&doc, f64::NAN, 0.0);
+        let hit_inf = find_edge_at(&doc, f64::INFINITY, 0.0);
+
+        // Then: No edge found (NaN cannot hit any edge)
+        assert!(hit_nan.is_none(), "Expected no edge for NaN coordinates");
+        assert!(
+            hit_inf.is_none(),
+            "Expected no edge for Infinity coordinates"
+        );
+    }
+
+    // =========================================================================
+    // Edge Case Tests
+    // =========================================================================
+
+    /// Test: Click at endpoint selects edge
+    #[test]
+    fn test_sel_002_given_horizontal_edge_when_clicking_at_endpoint_then_edge_selected() {
+        let doc = create_document_with_edge();
+
+        // When: Click at source endpoint (0, 0) - within endpoint hit radius (21px / zoom = 21px)
+        let hit = find_edge_at(&doc, 0.0, 0.0);
+
+        // Then: Edge is found
+        assert!(hit.is_some(), "Expected edge at endpoint");
+        assert_eq!(hit.unwrap().as_str(), "edge-1");
+    }
+
+    /// Test: Vertical edge selection
+    #[test]
+    fn test_sel_002_given_vertical_edge_when_clicking_along_edge_then_edge_selected() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("vertical-edge"));
+
+        let doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(40.0, 0.0))
+                    .update(target_id.clone(), node_at(40.0, 100.0)),
+                edges: HashMap::new().update(edge_id.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        // When: Click at middle of vertical edge
+        let hit = find_edge_at(&doc, 40.0, 50.0);
+
+        // Then: Edge is found
+        assert!(hit.is_some());
+        assert_eq!(hit.unwrap(), edge_id);
+    }
+
+    /// Test: Diagonal edge selection
+    #[test]
+    fn test_sel_002_given_diagonal_edge_when_clicking_along_edge_then_edge_selected() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("diagonal-edge"));
+
+        let doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 100.0)),
+                edges: HashMap::new().update(edge_id.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        // When: Click at positions along the diagonal edge
+        for (x, y) in [(25.0, 25.0), (50.0, 50.0), (75.0, 75.0)] {
+            let hit = find_edge_at(&doc, x, y);
+            assert!(hit.is_some(), "Expected edge at ({}, {})", x, y);
+            assert_eq!(hit.unwrap(), edge_id, "Wrong edge at ({}, {})", x, y);
+        }
+    }
+
+    // =========================================================================
+    // Contract Verification Tests
+    // =========================================================================
+
+    /// P1: Document contains edge
+    #[test]
+    fn test_precondition_p1_document_contains_edge() {
+        let doc = create_document_with_edge();
+
+        // Verify document has the edge
+        assert!(
+            doc.document
+                .edges
+                .contains_key(&EdgeId::new(String::from("edge-1"))),
+            "P1: Document must contain edge"
+        );
+    }
+
+    /// P4: Coordinates finite
+    #[test]
+    fn test_precondition_p4_coordinates_finite() {
+        let doc = create_document_with_edge();
+
+        // Valid finite coordinates should work
+        let valid_hit = find_edge_at(&doc, 50.0, 0.0);
+        assert!(
+            valid_hit.is_some(),
+            "P4: Valid coordinates should find edge"
+        );
+
+        // NaN/Infinity should not find edge (handled gracefully)
+        assert!(
+            find_edge_at(&doc, f64::NAN, 0.0).is_none(),
+            "P4: NaN should not find edge"
+        );
+        assert!(
+            find_edge_at(&doc, 0.0, f64::INFINITY).is_none(),
+            "P4: Infinity should not find edge"
+        );
+    }
+
+    /// Q1: Selection count exactly one
+    #[test]
+    fn test_postcondition_q1_selection_count_exactly_one() {
+        let doc = create_document_with_edge();
+
+        let hit = find_edge_at(&doc, 50.0, 0.0).unwrap();
+        let selection = Selection::new();
+        let selected = selection.select_edge(hit, &doc).unwrap();
+
+        // Q1: Exactly one item selected
+        assert_eq!(
+            selected.len(),
+            1,
+            "Q1: Selection should contain exactly one item"
+        );
+    }
+
+    /// Q2: Selection contains correct edge ID
+    #[test]
+    fn test_postcondition_q2_selection_contains_edge_id() {
+        let doc = create_document_with_edge();
+
+        let hit = find_edge_at(&doc, 50.0, 0.0).unwrap();
+        let selection = Selection::new();
+        let selected = selection.select_edge(hit.clone(), &doc).unwrap();
+
+        // Q2: Selected item ID matches edge ID from hit test
+        assert!(
+            selected.contains_edge(&hit),
+            "Q2: Selected items should contain the exact edge ID"
+        );
+    }
+
+    /// I1: Selection contains valid IDs only
+    #[test]
+    fn test_invariant_i1_selection_contains_valid_ids() {
+        let doc = create_document_with_edge();
+
+        let hit = find_edge_at(&doc, 50.0, 0.0).unwrap();
+        let selection = Selection::new();
+        let selected = selection.select_edge(hit.clone(), &doc).unwrap();
+
+        // I1: Selected edge ID exists in document
+        assert!(
+            doc.document.edges.contains_key(&hit),
+            "I1: Selected ID must exist in document"
+        );
+    }
+
+    /// I4: Edge selection does not mutate nodes
+    #[test]
+    fn test_invariant_i4_edge_selection_does_not_mutate_nodes() {
+        let source_id = NodeId::new(String::from("node-a"));
+        let target_id = NodeId::new(String::from("node-b"));
+        let edge_id = EdgeId::new(String::from("edge-1"));
+
+        let mut doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 0.0)),
+                edges: HashMap::new().update(edge_id.clone(), edge(source_id, target_id)),
+            },
+            ..DiagramDocument::default()
+        };
+
+        // Capture original node positions
+        let original_node_a_x = doc
+            .document
+            .nodes
+            .get(&NodeId::new(String::from("node-a")))
+            .map(|n| n.x.0);
+        let original_node_b_x = doc
+            .document
+            .nodes
+            .get(&NodeId::new(String::from("node-b")))
+            .map(|n| n.x.0);
+
+        // Perform selection
+        let selection = Selection::new();
+        let _selected = selection.select_edge(edge_id, &doc).unwrap();
+
+        // I4: Node positions unchanged after selection
+        let node_a_x = doc
+            .document
+            .nodes
+            .get(&NodeId::new(String::from("node-a")))
+            .map(|n| n.x.0);
+        let node_b_x = doc
+            .document
+            .nodes
+            .get(&NodeId::new(String::from("node-b")))
+            .map(|n| n.x.0);
+
+        assert_eq!(
+            original_node_a_x, node_a_x,
+            "I4: Node positions must not change after edge selection"
+        );
+        assert_eq!(
+            original_node_b_x, node_b_x,
+            "I4: Node positions must not change after edge selection"
+        );
+    }
+
+    /// Q3: No nodes selected (only the edge)
+    #[test]
+    fn test_postcondition_q3_no_nodes_selected() {
+        let doc = create_document_with_edge();
+
+        let hit = find_edge_at(&doc, 50.0, 0.0).unwrap();
+        let selection = Selection::new();
+        let selected = selection.select_edge(hit, &doc).unwrap();
+
+        // Q3: No nodes are selected
+        assert!(
+            selected.nodes.is_empty(),
+            "Q3: No nodes should be selected when selecting an edge"
+        );
+    }
+
+    /// Q5: Single-click replaces previous selection
+    #[test]
+    fn test_postcondition_q5_selection_replaces_previous() {
+        let doc = create_document_with_edge();
+
+        // First select a node (using internal knowledge of nodes)
+        let selection = Selection::new();
+
+        // Select first edge
+        let hit1 = find_edge_at(&doc, 50.0, 0.0).unwrap();
+        let selected1 = selection.select_edge(hit1.clone(), &doc).unwrap();
+
+        // Select second time - should replace (in Replace mode)
+        let selected2 = selected1.select_edge(hit1, &doc).unwrap();
+
+        // Q5: Still exactly one item (replaced, not added)
+        assert_eq!(
+            selected2.len(),
+            1,
+            "Q5: Single-select should replace previous selection"
+        );
+    }
+}
+
+// =============================================================================
 // INP Mobile/Touch Input tests (bd-jqu)
 // =============================================================================
 

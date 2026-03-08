@@ -352,19 +352,18 @@ pub async fn append_event(
         }
     }
 
-    let new_revision = current_revision + 1;
-
     let payload =
         encode_event_envelope(&envelope).map_err(|e| StoreError::Serialization(e.to_string()))?;
 
-    sqlx::query(
-        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
+    let new_revision: i64 = sqlx::query_scalar(
+        "INSERT INTO events (operation_id, revision, payload, timestamp) 
+         VALUES (?1, (SELECT COALESCE(MAX(revision), 0) + 1 FROM events), ?2, ?3)
+         RETURNING revision",
     )
     .bind(&envelope.op_id)
-    .bind(new_revision)
     .bind(&payload)
     .bind(envelope.timestamp.to_string())
-    .execute(&mut *tx)
+    .fetch_one(&mut *tx)
     .await
     .map_err(StoreError::Sqlx)?;
 
@@ -2031,6 +2030,312 @@ mod tests {
 
         let result = delete_snapshot(&pool, -1).await;
         assert!(matches!(result, Err(StoreError::InvalidInput(_))));
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_returns_error_when_invalid_db_path_provided() {
+        let invalid_path = Path::new("/nonexistent directory that does not exist/test.db");
+
+        let result = bootstrap_store(invalid_path).await;
+        assert!(matches!(result, Err(StoreError::Sqlx(_))));
+    }
+
+    #[tokio::test]
+    async fn test_returns_error_when_appending_with_revision_gap() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let envelope = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1_700_000_000,
+        };
+
+        let result = append_event(&pool, envelope, Some(5)).await;
+        assert!(matches!(result, Err(StoreError::RevisionMismatch { expected: 5, found: 0 })));
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_handles_concurrent_async_appends_gracefully() {
+        use tokio::task::JoinSet;
+
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let mut join_set = JoinSet::new();
+
+        for i in 0..10 {
+            let pool = pool.clone();
+            join_set.spawn(async move {
+                let envelope = EventEnvelope {
+                    op_id: format!("concurrent-op-{}", i),
+                    operation: crate::models::envelope::DomainOp::NodeAdd {
+                        id: format!("node-{}", i),
+                        x: 10.0 * i as f64,
+                        y: 20.0,
+                        width: 100.0,
+                        height: 50.0,
+                        label: format!("Node {}", i),
+                    },
+                    author: crate::models::envelope::Author {
+                        id: "user-1".to_string(),
+                        name: "Test User".to_string(),
+                        email: None,
+                    },
+                    timestamp: 1_700_000_000 + i as i64,
+                };
+                append_event(&pool, envelope, None).await
+            });
+        }
+
+        let mut success_count = 0;
+        while let Some(result) = join_set.join_next().await {
+            if matches!(result, Ok(Ok(_))) {
+                success_count += 1;
+            }
+        }
+
+        assert!(
+            success_count > 0,
+            "At least some concurrent appends should succeed, got {}",
+            success_count
+        );
+
+        let final_revision = current_revision(&pool).await.expect("Failed to get revision");
+        
+        assert_eq!(
+            final_revision, success_count as i64,
+            "Revision should match successful appends"
+        );
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_handles_zero_byte_database_initialization() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("zero_byte.db");
+
+        std::fs::write(&db_path, b"").expect("Failed to create zero-byte file");
+
+        let bootstrap = bootstrap_store(&db_path)
+            .await
+            .expect("Should handle zero-byte file gracefully");
+
+        let test_envelope = EventEnvelope {
+            op_id: "init-test-op".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1_700_000_000,
+        };
+
+        let result = append_event(&bootstrap.pool, test_envelope, None).await;
+        assert!(result.is_ok(), "Should be able to append after bootstrap from zero-byte");
+
+        let revision = current_revision(&bootstrap.pool).await.expect("Should get revision");
+        assert_eq!(revision, 1, "Should have one event after append");
+
+        bootstrap.pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_invariant_unique_op_id_enforced_by_schema() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let envelope = EventEnvelope {
+            op_id: "duplicate-op-id".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1_700_000_000,
+        };
+
+        append_event(&pool, envelope.clone(), None)
+            .await
+            .expect("First append should succeed");
+
+        let result = append_event(&pool, envelope, None).await;
+        assert!(matches!(result, Err(StoreError::Sqlx(_))));
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_precondition_sequential_revision_enforced() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        for i in 1..=3 {
+            let envelope = EventEnvelope {
+                op_id: format!("seq-op-{}", i),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{}", i),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {}", i),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            append_event(&pool, envelope, Some(i - 1))
+                .await
+                .expect("Sequential append should succeed");
+        }
+
+        let revision = current_revision(&pool).await.expect("Failed to get revision");
+        assert_eq!(revision, 3, "Revision should be 3 after 3 sequential appends");
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_concurrent_appends_with_expected_revision_serialized() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        for i in 0..5 {
+            let envelope = EventEnvelope {
+                op_id: format!("serialized-op-{}", i),
+                operation: crate::models::envelope::DomainOp::NodeAdd {
+                    id: format!("node-{}", i),
+                    x: 10.0 * i as f64,
+                    y: 20.0,
+                    width: 100.0,
+                    height: 50.0,
+                    label: format!("Node {}", i),
+                },
+                author: crate::models::envelope::Author {
+                    id: "user-1".to_string(),
+                    name: "Test User".to_string(),
+                    email: None,
+                },
+                timestamp: 1_700_000_000 + i as i64,
+            };
+            let expected_rev = i as i64;
+            let result = append_event(&pool, envelope, Some(expected_rev)).await;
+            assert!(result.is_ok(), "Append {} should succeed", i);
+        }
+
+        let final_revision = current_revision(&pool).await.expect("Failed to get revision");
+        assert_eq!(final_revision, 5, "Final revision should be 5");
+
+        pool.close().await;
+    }
+
+    #[tokio::test]
+    async fn test_postcondition_wal_mode_concurrent_access_works() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        use tokio::task::JoinSet;
+        let mut join_set = JoinSet::new();
+        for i in 0..5 {
+            let pool = pool.clone();
+            join_set.spawn(async move {
+                let envelope = EventEnvelope {
+                    op_id: format!("wal-test-{}", i),
+                    operation: crate::models::envelope::DomainOp::NodeAdd {
+                        id: format!("node-{}", i),
+                        x: 10.0,
+                        y: 20.0,
+                        width: 100.0,
+                        height: 50.0,
+                        label: "Test".to_string(),
+                    },
+                    author: crate::models::envelope::Author {
+                        id: "user".to_string(),
+                        name: "User".to_string(),
+                        email: None,
+                    },
+                    timestamp: i as i64,
+                };
+                append_event(&pool, envelope, None).await
+            });
+        }
+
+        let mut successes = 0;
+        while let Some(result) = join_set.join_next().await {
+            if matches!(result, Ok(Ok(_))) {
+                successes += 1;
+            }
+        }
+
+        assert!(successes > 0, "WAL mode should allow concurrent writes");
+        assert_eq!(current_revision(&pool).await.unwrap(), successes as i64);
 
         pool.close().await;
     }

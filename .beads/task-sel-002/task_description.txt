@@ -1,0 +1,12 @@
+Implement SEL-002: Select single edge by clicking
+
+From the architecture spec:
+- Scenario: Click selects edge
+- Given: Diagram with nodes and an edge
+- When: Click on edge
+- Then: Edge in selection
+
+This test should verify that clicking on an edge selects it. The test should:
+1. Create a document with two nodes and an edge between them
+2. Simulate a click on the edge
+3. Verify the edge is in the selection
