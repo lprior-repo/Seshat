@@ -1,5 +1,0 @@
-{"event":"start","command":"validate","ok":true,"code":"start","message":null}
-{"event":"stage","name":"validating","details":{"path":".bead/bd-2cm/qa-fixtures/bad.json"}}
-{"event":"stage","name":"validating","details":{"path":".bead/bd-2cm/qa-fixtures/bad.json","code":"validation_failed","message":"Failed to parse document: missing field `revision` at line 1 column 13"}}
-{"event":"stage","name":"loaded","details":{"path":".bead/bd-2cm/qa-fixtures/bad.json.lkg","fallback_used":true}}
-{"event":"finish","command":"validate","ok":true,"code":"ok","message":null}
