@@ -183,8 +183,8 @@ mod cli_event_tests {
     /// Test: Given MutationError, when error_code derived, then returns structured code
     #[test]
     fn given_mutation_error_when_deriving_error_code_then_returns_structured_code() {
-        let schema_err = MutationError::Schema(String::from("version must be 2"));
-        let semantic_err = MutationError::Semantic(String::from("edge references missing node"));
+        let _schema_err = MutationError::Schema(String::from("version must be 2"));
+        let _semantic_err = MutationError::Semantic(String::from("edge references missing node"));
 
         // The error_code function should handle MutationError via anyhow
         let schema_anyhow: Error = anyhow!("schema error: version must be 2");

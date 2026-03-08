@@ -178,7 +178,7 @@ mod tests {
 
     #[test]
     fn given_nan_client_coords_when_wheel_update_then_returns_none() {
-        let nan_x_input = WheelInput {
+        let nan_client_x = WheelInput {
             camera_x: OrderedFloat(100.0),
             camera_y: OrderedFloat(100.0),
             zoom: OrderedFloat(1.0),
@@ -190,9 +190,9 @@ mod tests {
             shift_pan: false,
             discrete_wheel: false,
         };
-        assert!(wheel_update(nan_x_input).is_none());
+        assert!(wheel_update(nan_client_x).is_none());
 
-        let nan_y_input = WheelInput {
+        let nan_client_y = WheelInput {
             camera_x: OrderedFloat(100.0),
             camera_y: OrderedFloat(100.0),
             zoom: OrderedFloat(1.0),
@@ -204,12 +204,12 @@ mod tests {
             shift_pan: false,
             discrete_wheel: false,
         };
-        assert!(wheel_update(nan_y_input).is_none());
+        assert!(wheel_update(nan_client_y).is_none());
     }
 
     #[test]
     fn given_nan_camera_when_wheel_update_then_returns_none() {
-        let nan_cam_x_input = WheelInput {
+        let nan_camera_x = WheelInput {
             camera_x: OrderedFloat(f64::NAN),
             camera_y: OrderedFloat(100.0),
             zoom: OrderedFloat(1.0),
@@ -221,9 +221,9 @@ mod tests {
             shift_pan: false,
             discrete_wheel: false,
         };
-        assert!(wheel_update(nan_cam_x_input).is_none());
+        assert!(wheel_update(nan_camera_x).is_none());
 
-        let nan_cam_y_input = WheelInput {
+        let nan_camera_y = WheelInput {
             camera_x: OrderedFloat(100.0),
             camera_y: OrderedFloat(f64::NAN),
             zoom: OrderedFloat(1.0),
@@ -235,7 +235,7 @@ mod tests {
             shift_pan: false,
             discrete_wheel: false,
         };
-        assert!(wheel_update(nan_cam_y_input).is_none());
+        assert!(wheel_update(nan_camera_y).is_none());
     }
 
     #[test]

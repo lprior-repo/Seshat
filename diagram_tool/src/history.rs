@@ -1368,46 +1368,46 @@ mod tests {
         );
 
         // Now verify redo chain by redoing all the way
-        let Some((state_b_again, history_redo1)) = history_after_4.redo(state_a.clone()) else {
+        let Some((state_b, h1)) = history_after_4.redo(state_a.clone()) else {
             panic!("first redo should succeed");
         };
-        let node_b = state_b_again
+        let node_at_b = state_b
             .document
             .nodes
             .get(&node_id)
             .expect("node should exist");
         assert_eq!(
-            node_b.x.0, 200.0,
+            node_at_b.x.0, 200.0,
             "first redo should restore state B (x=200)"
         );
 
-        let Some((state_c_again, history_redo2)) = history_redo1.redo(state_b_again.clone()) else {
+        let Some((state_c, h2)) = h1.redo(state_b.clone()) else {
             panic!("second redo should succeed");
         };
-        let node_c = state_c_again
+        let node_at_c = state_c
             .document
             .nodes
             .get(&node_id)
             .expect("node should exist");
         assert_eq!(
-            node_c.x.0, 300.0,
+            node_at_c.x.0, 300.0,
             "second redo should restore state C (x=300)"
         );
 
-        let Some((state_d_again, history_redo3)) = history_redo2.redo(state_c_again.clone()) else {
+        let Some((state_d, _h3)) = h2.redo(state_c.clone()) else {
             panic!("third redo should succeed");
         };
-        let node_d = state_d_again
+        let node_at_d = state_d
             .document
             .nodes
             .get(&node_id)
             .expect("node should exist");
         assert_eq!(
-            node_d.x.0, 400.0,
+            node_at_d.x.0, 400.0,
             "third redo should restore state D (x=400)"
         );
 
-        let Some((state_current, _)) = history_redo3.redo(state_d_again.clone()) else {
+        let Some((state_current, _)) = h2.redo(state_d.clone()) else {
             panic!("fourth redo should succeed");
         };
         let node_final = state_current

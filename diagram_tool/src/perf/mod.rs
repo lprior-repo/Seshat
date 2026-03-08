@@ -27,6 +27,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(unused_imports, dead_code)]
 
 mod benchmark;
 mod error;

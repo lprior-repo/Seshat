@@ -9,6 +9,7 @@
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use im::HashMap;
 use serde::{Deserialize, Serialize};

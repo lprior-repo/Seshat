@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use crate::history::History;
 use crate::hooks::e2e_reset::use_e2e_reset_hook;

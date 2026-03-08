@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::core::clipboard::{copy_selection, ClipboardError};
     use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
 

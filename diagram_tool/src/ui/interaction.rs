@@ -854,7 +854,6 @@ const TOUCH_HIT_RADIUS_MIN: f64 = 22.0; // Minimum radius for 44x44 hit area
 #[allow(clippy::unwrap_used, clippy::expect_used, deprecated)]
 mod inp_mobile_touch_tests {
     use super::*;
-    use crate::ui::grid::GridSize;
 
     // INP-1: Touch drag selects not marquee
     // Single-finger touch drag on canvas should initiate rubber-band selection, not marquee zoom.

@@ -28,8 +28,8 @@ pub enum AlignmentMode {
 /// Returns `TransformError::LockedNode` if any selected node is locked.
 pub fn align_selection(
     doc: &mut DiagramDocument,
-    axis: AlignmentAxis,
-    mode: AlignmentMode,
+    axis: &AlignmentAxis,
+    mode: &AlignmentMode,
 ) -> Result<(), TransformError> {
     let selected = doc.editor_state.selected_items.clone();
     if selected.len() < 2 {
@@ -97,7 +97,7 @@ pub fn align_selection(
 /// Returns `TransformError::EmptySelection` if fewer than 3 nodes are selected.
 pub fn distribute_selection(
     doc: &mut DiagramDocument,
-    axis: AlignmentAxis,
+    axis: &AlignmentAxis,
 ) -> Result<(), TransformError> {
     let selected = doc.editor_state.selected_items.clone();
     if selected.len() < 3 {

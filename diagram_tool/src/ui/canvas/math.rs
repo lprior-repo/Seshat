@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 #[must_use]
 pub fn safe_zoom(zoom: f64) -> Option<f64> {

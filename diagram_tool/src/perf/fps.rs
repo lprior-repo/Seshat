@@ -234,7 +234,7 @@ impl FpsMeasurement {
 
     /// Returns the current sample count.
     #[must_use]
-    pub fn sample_count(&self) -> usize {
+    pub const fn sample_count(&self) -> usize {
         self.samples.len()
     }
 

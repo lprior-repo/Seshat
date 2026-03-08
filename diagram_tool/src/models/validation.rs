@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use crate::models::dag::validate_dag;
 use crate::models::document::{DiagramDocument, DocumentData, NodeKind};

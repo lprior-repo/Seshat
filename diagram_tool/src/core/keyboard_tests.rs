@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::core::keyboard::{map_key_to_action, KeyAction};
 
     #[test]

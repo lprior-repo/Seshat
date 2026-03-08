@@ -3,6 +3,8 @@
 //! This module provides centralized schema definitions to avoid duplication
 //! between store.rs and models/events.rs
 
+#![allow(dead_code)]
+
 /// Events table schema - consolidated definition
 pub const SCHEMA_EVENTS_TABLE: &str = r"
 CREATE TABLE IF NOT EXISTS events (

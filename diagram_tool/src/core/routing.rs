@@ -1,4 +1,8 @@
-use crate::models::document::{DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId};
+#![allow(dead_code)]
+
+use crate::models::document::{
+    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat,
+};
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -49,10 +53,10 @@ pub fn create_edge(
         target,
         label: String::new(),
         style: EdgeStyle::default(),
-        arrow_type: Default::default(),
-        label_offset_t: Default::default(),
+        arrow_type: ArrowType::default(),
+        label_offset_t: OrderedFloat::default(),
         color: None,
-        thickness: Default::default(),
+        thickness: OrderedFloat::default(),
         directed: true,
         bend_points: im::Vector::new(),
         tags: im::Vector::new(),

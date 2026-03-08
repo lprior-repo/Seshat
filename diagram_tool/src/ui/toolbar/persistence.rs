@@ -483,8 +483,8 @@ mod tests {
 
         // Given - document with precise fractional coordinates
         let mut doc = DiagramDocument::default();
-        let precise_x = 123.456789;
-        let precise_y = 987.654321;
+        let precise_x = 123.456_789;
+        let precise_y = 987.654_321;
         let precise_width = 45.125;
         let precise_height = 67.875;
 
@@ -559,10 +559,10 @@ mod tests {
             ("two_decimals", 100.25, 200.75, 50.25, 30.75),
             (
                 "many_decimals",
-                123.456789012,
-                987.654321098,
-                45.123456789,
-                67.987654321,
+                123.456_789_012,
+                987.654_321_098,
+                45.123_456_789,
+                67.987_654_321,
             ),
             ("small_values", 0.001, 0.002, 0.5, 0.25),
         ];

@@ -16,7 +16,7 @@ pub enum GroupingError {
 ///
 /// Returns `GroupingError::EmptySelection` if no nodes are selected.
 /// Returns `GroupingError::LockedNode` if any selected node is locked.
-pub fn group_selection(doc: &mut DiagramDocument, group_id: NodeId) -> Result<(), GroupingError> {
+pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(), GroupingError> {
     let selected = doc.editor_state.selected_items.clone();
     if selected.is_empty() {
         return Err(GroupingError::EmptySelection);

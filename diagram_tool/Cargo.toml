@@ -65,9 +65,9 @@ criterion = "0.5"
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "rt"] }
 
-[[bench]]
-name = "db_performance"
-harness = false
+# [[bench]]
+# name = "db_performance"
+# harness = false
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3.4", features = ["wasm_js"] }

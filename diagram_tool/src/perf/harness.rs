@@ -29,7 +29,7 @@ pub enum Operation {
 impl Operation {
     /// Returns all operations.
     #[must_use]
-    pub const fn all() -> [Operation; 5] {
+    pub const fn all() -> [Self; 5] {
         [
             Self::Pan,
             Self::Zoom,
@@ -97,10 +97,12 @@ impl Baseline {
             node_count,
             target_fps,
             results: HashMap::new(),
+            #[allow(clippy::map_unwrap_or, clippy::cast_possible_truncation)]
             created_at: UNIX_EPOCH
                 .elapsed()
+                // Cast u128 to u64 - would need ~340M years to overflow, truncation is acceptable
                 .map(|d| d.as_millis() as u64)
-                .unwrap_or(0),
+                .unwrap_or_else(|_| 0),
         }
     }
 
@@ -179,7 +181,7 @@ pub struct BenchmarkHarness {
 impl BenchmarkHarness {
     /// Creates a new benchmark harness.
     #[must_use]
-    pub fn new(output_dir: PathBuf) -> Self {
+    pub const fn new(output_dir: PathBuf) -> Self {
         Self {
             output_dir,
             node_count: BASELINE_NODE_COUNT,
@@ -272,11 +274,17 @@ impl BenchmarkHarness {
 
 /// Generates a test scene with the specified number of nodes.
 #[must_use]
+#[allow(
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cast_possible_truncation
+)]
 pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::document::DiagramDocument {
     use im::HashMap as ImHashMap;
 
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
+        OrderedFloat,
     };
 
     let mut nodes = ImHashMap::new();
@@ -286,17 +294,20 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     let mut rng = seed;
     let next_random = |r: &mut u64| -> f64 {
         *r = r.wrapping_mul(1_103_515_245).wrapping_add(12345);
+        // Cast u64 to u16 - taking lower 16 bits, division normalizes to 0-1 range
         f64::from((*r >> 16) as u16) / 65535.0
     };
 
     // Generate nodes in a grid pattern
+    // Cast f64 to u32 - grid_size is at most sqrt(10000)=100, so truncation is safe
     let grid_size = f64::from(node_count).sqrt().ceil() as u32;
     for i in 0..node_count {
         let row = i / grid_size;
         let col = i % grid_size;
 
-        let x = f64::from(col) * 120.0 + next_random(&mut rng) * 20.0;
-        let y = f64::from(row) * 80.0 + next_random(&mut rng) * 20.0;
+        // Use mul_add for better accuracy
+        let x = f64::from(col).mul_add(120.0, next_random(&mut rng) * 20.0);
+        let y = f64::from(row).mul_add(80.0, next_random(&mut rng) * 20.0);
 
         let node = Node {
             kind: NodeKind::Node,
@@ -324,6 +335,7 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     // Generate some edges (about 50% of nodes have edges)
     for i in 0..(node_count / 2) {
         let source_idx = i;
+        // Cast f64 to u32 - next_random returns 0-1, *10.0 gives 0-10, truncation safe for edge indices
         let target_idx = (i + 1 + (next_random(&mut rng) * 10.0) as u32) % node_count;
 
         if source_idx != target_idx {
@@ -331,8 +343,8 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
                 source: NodeId::new(format!("node-{source_idx}")),
                 target: NodeId::new(format!("node-{target_idx}")),
                 label: String::new(),
-                style: Default::default(),
-                arrow_type: Default::default(),
+                style: EdgeStyle::default(),
+                arrow_type: ArrowType::default(),
                 label_offset_t: OrderedFloat(0.5),
                 color: None,
                 thickness: OrderedFloat(1.5),

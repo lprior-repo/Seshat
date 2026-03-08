@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use crate::models::document::DiagramDocument;
 use crate::models::schema::validate_schema;
@@ -89,7 +90,7 @@ where
 /// - Schema validation fails
 /// - Semantic validation fails
 pub fn mutate_document<F>(
-    current: DiagramDocument,
+    current: &DiagramDocument,
     mutation: F,
 ) -> Result<DiagramDocument, MutationError>
 where
@@ -121,11 +122,10 @@ where
 mod tests {
     use super::{run_mutation, run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, EditorState, Node, NodeId, NodeKind,
-        NodeStyle, OrderedFloat,
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
+        OrderedFloat,
     };
     use crate::mutation::error::MutationError;
-    use crate::ui::grid::GridSize;
     use im::HashMap;
 
     fn make_node(id: &str) -> (NodeId, Node) {

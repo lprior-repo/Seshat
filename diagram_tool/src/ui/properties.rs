@@ -111,6 +111,7 @@ fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
 }
 
 #[component]
+#[allow(clippy::approx_constant, clippy::float_cmp)]
 pub fn PropertiesPanel() -> Element {
     let mut doc_signal = use_context::<Signal<DiagramDocument>>();
     let mut history = use_context::<Signal<History>>();

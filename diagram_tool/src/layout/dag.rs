@@ -841,21 +841,25 @@ mod tests {
         }
 
         let mut graph = DiGraph::<NodeId, ()>::new();
-        let a = graph.add_node(NodeId::new(String::from("a")));
-        let b = graph.add_node(NodeId::new(String::from("b")));
-        let c = graph.add_node(NodeId::new(String::from("c")));
-        let d = graph.add_node(NodeId::new(String::from("d")));
-        let e = graph.add_node(NodeId::new(String::from("e")));
-        let f = graph.add_node(NodeId::new(String::from("f")));
+        let node_a = graph.add_node(NodeId::new(String::from("a")));
+        let node_b = graph.add_node(NodeId::new(String::from("b")));
+        let node_c = graph.add_node(NodeId::new(String::from("c")));
+        let node_d = graph.add_node(NodeId::new(String::from("d")));
+        let node_e = graph.add_node(NodeId::new(String::from("e")));
+        let node_f = graph.add_node(NodeId::new(String::from("f")));
 
-        graph.add_edge(a, c, ());
-        graph.add_edge(a, d, ());
-        graph.add_edge(b, d, ());
-        graph.add_edge(b, e, ());
-        graph.add_edge(c, f, ());
-        graph.add_edge(e, f, ());
+        graph.add_edge(node_a, node_c, ());
+        graph.add_edge(node_a, node_d, ());
+        graph.add_edge(node_b, node_d, ());
+        graph.add_edge(node_b, node_e, ());
+        graph.add_edge(node_c, node_f, ());
+        graph.add_edge(node_e, node_f, ());
 
-        let layers = vec![vec![a, b], vec![e, d, c], vec![f]];
+        let layers = vec![
+            vec![node_a, node_b],
+            vec![node_e, node_d, node_c],
+            vec![node_f],
+        ];
         let expected = reference_sweep(layers.clone(), &graph);
         let actual = barycenter_sweep(layers, &graph);
 

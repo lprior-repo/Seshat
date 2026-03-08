@@ -1,4 +1,4 @@
-//! Async SQLite storage module
+//! Async `SQLite` storage module
 //!
 //! Provides async SQLite-based storage with WAL mode and connection pooling.
 //! This is the async counterpart to the synchronous `store` module.
@@ -14,6 +14,7 @@
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use serde::Serialize;
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
@@ -30,7 +31,7 @@ pub const CURRENT_SCHEMA_VERSION: i32 = 1;
 pub enum DuplicateKind {
     /// Exact duplicate (same payload)
     Exact,
-    /// Conflicting duplicate (same op_id, different payload)
+    /// Conflicting duplicate (same `op_id`, different payload)
     Conflict,
 }
 
@@ -91,20 +92,20 @@ impl CliErrorCode {
 }
 
 /// Maps an async store error to a CLI error code
+#[must_use]
 pub const fn map_error_code(err: &StoreError) -> CliErrorCode {
     match err {
-        StoreError::RevisionMismatch { .. } => CliErrorCode::RevisionMismatch,
-        StoreError::RevisionGap { .. } => CliErrorCode::RevisionMismatch,
-        StoreError::ValidationFailed(_) => CliErrorCode::ValidationFailed,
-        StoreError::Sqlx(_) => CliErrorCode::Unknown,
-        StoreError::Io(_) => CliErrorCode::Unknown,
-        StoreError::InvalidPragma(_) => CliErrorCode::Unknown,
-        StoreError::SchemaVersionMismatch { .. } => CliErrorCode::Unknown,
-        StoreError::Serialization(_) => CliErrorCode::Unknown,
-        StoreError::TransactionAborted { .. } => CliErrorCode::Unknown,
-        StoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
-        StoreError::EmptyBatch => CliErrorCode::ValidationFailed,
-        StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
+        StoreError::RevisionMismatch { .. }
+        | StoreError::RevisionGap { .. }
+        | StoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
+        StoreError::ValidationFailed(_) | StoreError::EmptyBatch => CliErrorCode::ValidationFailed,
+        StoreError::Sqlx(_)
+        | StoreError::Io(_)
+        | StoreError::InvalidPragma(_)
+        | StoreError::SchemaVersionMismatch { .. }
+        | StoreError::Serialization(_)
+        | StoreError::TransactionAborted { .. }
+        | StoreError::MigrationForbidden { .. } => CliErrorCode::Unknown,
     }
 }
 
@@ -142,7 +143,11 @@ pub struct StorePragmas {
     pub busy_timeout: i32,
 }
 
-/// Creates an async SQLite connection pool with the given max_connections
+/// Creates an async `SQLite` connection pool.
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the connection fails.
 pub async fn create_pool(db_path: &Path) -> Result<SqlitePool, StoreError> {
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
 
@@ -176,6 +181,10 @@ pub async fn create_pool(db_path: &Path) -> Result<SqlitePool, StoreError> {
 }
 
 /// Bootstraps a new async store, creating the database and running migrations
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the store cannot be created or migrated.
 pub async fn bootstrap_store(db_path: &Path) -> Result<StoreBootstrap, StoreError> {
     let pool = create_pool(db_path).await?;
 
@@ -273,6 +282,10 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
 }
 
 /// Fetches the latest revision number from the store
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, StoreError> {
     let revision: Option<i64> = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
         .fetch_optional(pool)
@@ -283,17 +296,29 @@ pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, StoreError>
 }
 
 /// Gets the current revision
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn current_revision(pool: &SqlitePool) -> Result<i64, StoreError> {
     fetch_latest_revision(pool).await
 }
 
 /// Gets the next revision number
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn next_revision(pool: &SqlitePool) -> Result<i64, StoreError> {
     let current = current_revision(pool).await?;
     Ok(current + 1)
 }
 
 /// Appends a single event to the store
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the append fails.
 pub async fn append_event(
     pool: &SqlitePool,
     envelope: EventEnvelope,
@@ -341,6 +366,11 @@ pub async fn append_event(
 }
 
 /// Appends a batch of events atomically
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the batch is empty or the append fails.
+#[allow(clippy::cast_possible_wrap)]
 pub async fn append_batch(
     pool: &SqlitePool,
     ops: Vec<EventEnvelope>,
@@ -367,12 +397,14 @@ pub async fn append_batch(
     }
 
     let batch_size = ops.len();
+    // Cast usize to i64 - batch_size is small (bounded by MAX_OPS), safe for revision numbers
     let start_revision = current_revision + 1;
     let end_revision = current_revision + batch_size as i64;
     let mut op_ids = Vec::with_capacity(batch_size);
     let mut last_timestamp = 0i64;
 
     for (idx, envelope) in ops.into_iter().enumerate() {
+        // Cast usize to i64 - idx is bounded by batch_size, safe for revision numbers
         let new_revision = current_revision + 1 + idx as i64;
 
         let payload = encode_event_envelope(&envelope)
@@ -414,6 +446,10 @@ pub struct EventRecord {
 }
 
 /// Looks up an existing operation by ID
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn lookup_existing_op(
     pool: &SqlitePool,
     op_id: &str,
@@ -443,6 +479,11 @@ pub async fn lookup_existing_op(
 }
 
 /// Classifies a duplicate as exact or conflicting
+///
+/// # Errors
+///
+/// Returns a `StoreError` if serialization fails.
+#[allow(clippy::unused_async)]
 pub async fn classify_duplicate(
     existing: &EventRecord,
     incoming: &EventEnvelope,
@@ -458,6 +499,10 @@ pub async fn classify_duplicate(
 }
 
 /// Appends an event idempotently (handles duplicates gracefully)
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the append fails.
 pub async fn append_idempotent(
     pool: &SqlitePool,
     envelope: EventEnvelope,
@@ -529,6 +574,10 @@ pub async fn append_idempotent(
 }
 
 /// Fetches all events since a given revision
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn fetch_events_since(
     pool: &SqlitePool,
     revision: i64,
@@ -558,6 +607,10 @@ pub async fn fetch_events_since(
 }
 
 /// Fetches all events from the store
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, StoreError> {
     let rows = sqlx::query_as::<_, (String, i64, String, String)>(
         "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC"
@@ -583,6 +636,10 @@ pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, Sto
 }
 
 /// Reads store configuration pragmas
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the pragma query fails.
 pub async fn read_store_pragmas(pool: &SqlitePool) -> Result<StorePragmas, StoreError> {
     let journal_mode: String = sqlx::query_scalar("PRAGMA journal_mode")
         .fetch_one(pool)
@@ -625,6 +682,10 @@ pub struct StoreConfig {
 }
 
 /// Gets the current store configuration (async version)
+///
+/// # Errors
+///
+/// Returns a `StoreError` if the query fails.
 pub async fn current_store_config(pool: &SqlitePool) -> Result<StoreConfig, StoreError> {
     let pragmas = read_store_pragmas(pool).await?;
 
@@ -673,10 +734,14 @@ pub struct RecoveryHandle {
     pub export_path: Option<PathBuf>,
 }
 
-/// Alias for RecoveryHandle
+/// Alias for `RecoveryHandle`
 pub type RecoverySession = RecoveryHandle;
 
 /// Runs integrity check on the database at startup (async version)
+///
+/// # Errors
+///
+/// Returns a `RecoveryError` if the integrity check fails.
 pub async fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, RecoveryError> {
     if !db_path.exists() {
         return Ok(IntegrityStatus {
@@ -752,6 +817,10 @@ pub async fn startup_integrity_check(db_path: &Path) -> Result<IntegrityStatus, 
 }
 
 /// Opens the database in read-only recovery mode (async version)
+///
+/// # Errors
+///
+/// Returns a `RecoveryError` if the database is corrupt or cannot be opened.
 pub async fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, RecoveryError> {
     let pool = create_pool(db_path).await?;
 
@@ -773,11 +842,19 @@ pub async fn open_recovery_mode(db_path: &Path) -> Result<RecoveryHandle, Recove
 }
 
 /// Opens the database in recovery-only mode (async version - alias)
+///
+/// # Errors
+///
+/// Returns a `RecoveryError` if the database is corrupt or cannot be opened.
 pub async fn open_recovery_only(db_path: &Path) -> Result<RecoverySession, RecoveryError> {
     open_recovery_mode(db_path).await
 }
 
 /// Runs integrity check on the database (async version - alias)
+///
+/// # Errors
+///
+/// Returns a `RecoveryError` if the integrity check fails.
 pub async fn integrity_check(db_path: &Path) -> Result<IntegrityStatus, RecoveryError> {
     startup_integrity_check(db_path).await
 }
@@ -845,7 +922,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
 
         let result = append_event(&pool, envelope, None)
@@ -883,7 +960,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
 
         let result1 = append_idempotent(&pool, envelope.clone())
@@ -930,7 +1007,7 @@ mod tests {
                     name: "Test User".to_string(),
                     email: None,
                 },
-                timestamp: 1700000000 + i as i64,
+                timestamp: 1_700_000_000 + i as i64,
             };
             append_event(&pool, envelope, None).await.expect("Failed to append");
         }
@@ -980,7 +1057,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
 
         let result = append_event(&bootstrap.pool, envelope, None)
@@ -1020,7 +1097,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
         append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
 
@@ -1091,7 +1168,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
         append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
 
@@ -1141,7 +1218,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
         append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
 
@@ -1178,7 +1255,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
         append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
 
@@ -1215,7 +1292,7 @@ mod tests {
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1_700_000_000,
         };
         append_event(&bootstrap.pool, envelope, None).await.expect("append failed");
 

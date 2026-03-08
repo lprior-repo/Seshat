@@ -127,15 +127,15 @@ mod tests {
         let (node_id1, node1) = create_test_node("node1", 0.0, 0.0);
         let (node_id2, node2) = create_test_node("node2", 200.0, 0.0);
         let (node_id3, node3) = create_test_node("node3", 100.0, 150.0);
-        let mut nodes = HashMap::new();
-        nodes.insert(node_id1, node1);
-        nodes.insert(node_id2, node2);
-        nodes.insert(node_id3, node3);
+        let mut node_map = HashMap::new();
+        node_map.insert(node_id1, node1);
+        node_map.insert(node_id2, node2);
+        node_map.insert(node_id3, node3);
         let doc = DiagramDocument {
             version: 2,
             revision: crate::models::document::Revision::INITIAL,
             document: DocumentData {
-                nodes,
+                nodes: node_map,
                 edges: HashMap::new(),
             },
             editor_state: crate::models::document::EditorState::default(),
@@ -155,15 +155,15 @@ mod tests {
     #[test]
     fn given_document_with_edges_when_export_png_then_creates_valid_png() -> Result<()> {
         // Given
-        let (node_id1, node1) = create_test_node("source", 0.0, 50.0);
-        let (node_id2, node2) = create_test_node("target", 200.0, 50.0);
-        let mut nodes = HashMap::new();
-        nodes.insert(node_id1.clone(), node1);
-        nodes.insert(node_id2.clone(), node2);
+        let (src_node_id, src_node) = create_test_node("source", 0.0, 50.0);
+        let (tgt_node_id, tgt_node) = create_test_node("target", 200.0, 50.0);
+        let mut node_map = HashMap::new();
+        node_map.insert(src_node_id.clone(), src_node);
+        node_map.insert(tgt_node_id.clone(), tgt_node);
 
         let edge = Edge {
-            source: node_id1,
-            target: node_id2,
+            source: src_node_id,
+            target: tgt_node_id,
             label: String::new(),
             style: EdgeStyle::Solid,
             arrow_type: crate::models::document::ArrowType::Default,
@@ -182,7 +182,10 @@ mod tests {
         let doc = DiagramDocument {
             version: 2,
             revision: crate::models::document::Revision::INITIAL,
-            document: DocumentData { nodes, edges },
+            document: DocumentData {
+                nodes: node_map,
+                edges,
+            },
             editor_state: crate::models::document::EditorState::default(),
         };
         let temp_file = NamedTempFile::new().context("Failed to create temp file")?;

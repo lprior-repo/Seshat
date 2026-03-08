@@ -4,11 +4,11 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
+#![allow(clippy::ref_option)]
 
 use crate::history::History;
-use crate::models::document::{
-    DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
-};
+use crate::models::document::{DiagramDocument, Edge, Node, NodeId, NodeKind, OrderedFloat};
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
 use std::collections::{BTreeSet, HashMap};
@@ -47,7 +47,7 @@ pub enum DistributionAxis {
 
 /// Pure clipboard data type - immutable state for clipboard operations.
 ///
-/// This replaces the mutable thread_local RefCell-based clipboard with
+/// This replaces the mutable `thread_local` RefCell-based clipboard with
 /// a pure functional approach where clipboard state is passed explicitly.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Clipboard {
@@ -78,7 +78,7 @@ impl Clipboard {
 
     /// Prepares the clipboard for a paste operation by incrementing the serial
     #[must_use]
-    pub fn prepare_paste(mut self) -> Self {
+    pub const fn prepare_paste(mut self) -> Self {
         self.paste_serial = self.paste_serial.saturating_add(1);
         self
     }
@@ -122,7 +122,7 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> 
 /// Pure function: Pastes clipboard content into the document.
 ///
 /// Returns `None` if the clipboard is empty or has no nodes.
-/// Otherwise returns a tuple of (updated_document, updated_clipboard).
+/// Otherwise returns a tuple of (`updated_document`, `updated_clipboard`).
 #[must_use]
 pub fn paste_contents(
     mut clipboard: Clipboard,
@@ -185,19 +185,22 @@ pub fn apply_copy_selection(
     toast: Option<ToastApi>,
 ) -> bool {
     let doc = doc_signal.read().clone();
-    if let Some(clipboard) = copy_selection(&doc) {
-        clipboard_signal.set(Some(clipboard));
-        true
-    } else {
-        if let Some(toast) = toast {
-            let _ = toast.show(
-                crate::ui::toast::ToastIntent::Info,
-                "Nothing to copy",
-                Some("Select items first".to_string()),
-            );
-        }
-        false
-    }
+    copy_selection(&doc).map_or_else(
+        || {
+            if let Some(toast) = toast {
+                let _ = toast.show(
+                    crate::ui::toast::ToastIntent::Info,
+                    "Nothing to copy",
+                    Some("Select items first".to_string()),
+                );
+            }
+            false
+        },
+        |clipboard| {
+            clipboard_signal.set(Some(clipboard));
+            true
+        },
+    )
 }
 
 /// Public API: Applies paste operation using a clipboard signal.
@@ -248,7 +251,7 @@ pub fn apply_paste_selection(
 
 /// Public API: Applies duplicate operation.
 ///
-/// This is equivalent to copy followed by paste, but uses paste_serial=1
+/// This is equivalent to copy followed by paste, but uses `paste_serial=1`
 /// to ensure the duplicated content is offset from the original.
 #[must_use]
 pub fn apply_duplicate_selection(
@@ -519,8 +522,8 @@ pub fn apply_group_selection(
 
     let mut success = false;
     doc_signal.with_mut(|doc| {
-        match crate::core::grouping::group_selection(doc, group_id) {
-            Ok(_) => {
+        match crate::core::grouping::group_selection(doc, &group_id) {
+            Ok(()) => {
                 doc.revision = doc.revision.increment();
                 success = true;
             }
@@ -565,7 +568,7 @@ pub fn apply_ungroup_selection(
 
     push_history(history_signal, doc_signal.read().clone());
     doc_signal.with_mut(|doc| match crate::core::grouping::ungroup_selection(doc) {
-        Ok(_) => {
+        Ok(()) => {
             doc.revision = doc.revision.increment();
             success = true;
         }
@@ -623,8 +626,8 @@ pub fn apply_align_selection(
     };
 
     doc_signal.with_mut(|doc| {
-        match crate::core::transform::align_selection(doc, core_axis, core_mode) {
-            Ok(_) => {
+        match crate::core::transform::align_selection(doc, &core_axis, &core_mode) {
+            Ok(()) => {
                 doc.revision = doc.revision.increment();
                 success = true;
             }
@@ -680,17 +683,17 @@ pub fn apply_distribute_selection(
         DistributionAxis::Vertical => crate::core::transform::AlignmentAxis::Vertical,
     };
 
-    doc_signal.with_mut(
-        |doc| match crate::core::transform::distribute_selection(doc, core_axis) {
-            Ok(_) => {
+    doc_signal.with_mut(|doc| {
+        match crate::core::transform::distribute_selection(doc, &core_axis) {
+            Ok(()) => {
                 doc.revision = doc.revision.increment();
                 success = true;
             }
             Err(_) => {
                 success = false;
             }
-        },
-    );
+        }
+    });
 
     if success {
         push_history(history_signal, doc_signal.read().clone());
@@ -1014,21 +1017,21 @@ mod tests {
         id_b: &str,
     ) -> (DiagramDocument, crate::models::document::EdgeId) {
         let mut doc = DiagramDocument::default();
-        let node_a_id = NodeId::new(id_a.to_string());
-        let node_b_id = NodeId::new(id_b.to_string());
+        let source_id = NodeId::new(id_a.to_string());
+        let target_id = NodeId::new(id_b.to_string());
         let _ = doc
             .document
             .nodes
-            .insert(node_a_id.clone(), make_node(id_a, 0.0, 0.0));
+            .insert(source_id.clone(), make_node(id_a, 0.0, 0.0));
         let _ = doc
             .document
             .nodes
-            .insert(node_b_id.clone(), make_node(id_b, 200.0, 0.0));
+            .insert(target_id.clone(), make_node(id_b, 200.0, 0.0));
 
         let edge_id = crate::models::document::EdgeId::new("edge-1".to_string());
         let edge = Edge {
-            source: node_a_id,
-            target: node_b_id,
+            source: source_id,
+            target: target_id,
             label: String::new(),
             style: crate::models::document::EdgeStyle::default(),
             arrow_type: crate::models::document::ArrowType::default(),
@@ -1177,7 +1180,10 @@ mod tests {
         TEST_CLIPBOARD.with(|s| {
             let clipboard = s.borrow();
             // The clipboard will have empty nodes/edges since ghost-id doesn't exist
-            assert!(clipboard.as_ref().map(|c| c.nodes.is_empty()).unwrap_or(true));
+            assert!(clipboard
+                .as_ref()
+                .map(|c| c.nodes.is_empty())
+                .unwrap_or(true));
         });
     }
 
@@ -1869,24 +1875,24 @@ mod tests {
         );
 
         // Verify parent relationships
-        let node_a_after = doc
+        let first_node = doc
             .document
             .nodes
             .get(&node_a)
             .expect("node-a should exist");
-        let node_b_after = doc
+        let second_node = doc
             .document
             .nodes
             .get(&node_b)
             .expect("node-b should exist");
 
         assert_eq!(
-            node_a_after.parent,
+            first_node.parent,
             Some(group_id.clone()),
             "node-a parent should be the group"
         );
         assert_eq!(
-            node_b_after.parent,
+            second_node.parent,
             Some(group_id.clone()),
             "node-b parent should be the group"
         );
@@ -1961,31 +1967,31 @@ mod tests {
         );
 
         // Children should still exist with parent = None
-        let child_a_after = doc
+        let first_child = doc
             .document
             .nodes
             .get(&child_a)
             .expect("child-a should exist");
-        let child_b_after = doc
+        let second_child = doc
             .document
             .nodes
             .get(&child_b)
             .expect("child-b should exist");
 
         assert!(
-            child_a_after.parent.is_none(),
+            first_child.parent.is_none(),
             "child-a parent should be None after ungroup"
         );
         assert!(
-            child_b_after.parent.is_none(),
+            second_child.parent.is_none(),
             "child-b parent should be None after ungroup"
         );
 
         // Children should retain their absolute positions
-        assert_eq!(child_a_after.x.0, 100.0, "child-a x position preserved");
-        assert_eq!(child_a_after.y.0, 100.0, "child-a y position preserved");
-        assert_eq!(child_b_after.x.0, 200.0, "child-b x position preserved");
-        assert_eq!(child_b_after.y.0, 150.0, "child-b y position preserved");
+        assert_eq!(first_child.x.0, 100.0, "child-a x position preserved");
+        assert_eq!(first_child.y.0, 100.0, "child-a y position preserved");
+        assert_eq!(second_child.x.0, 200.0, "child-b x position preserved");
+        assert_eq!(second_child.y.0, 150.0, "child-b y position preserved");
 
         // Outsider should be unchanged
         let outsider_after = doc
@@ -3192,14 +3198,14 @@ mod distribution_tests {
             })
             .collect();
 
-        let node0 = nodes[0].as_ref().expect("node-a should exist");
-        let node1 = nodes[1].as_ref().expect("node-b should exist");
-        let node2 = nodes[2].as_ref().expect("node-c should exist");
-        let node3 = nodes[3].as_ref().expect("node-d should exist");
+        let node_a = nodes[0].as_ref().expect("node-a should exist");
+        let node_b = nodes[1].as_ref().expect("node-b should exist");
+        let node_c = nodes[2].as_ref().expect("node-c should exist");
+        let node_d = nodes[3].as_ref().expect("node-d should exist");
 
-        let gap_ab = node1.x.0 - (node0.x.0 + node0.width.0);
-        let gap_bc = node2.x.0 - (node1.x.0 + node1.width.0);
-        let gap_cd = node3.x.0 - (node2.x.0 + node2.width.0);
+        let gap_ab = node_b.x.0 - (node_a.x.0 + node_a.width.0);
+        let gap_bc = node_c.x.0 - (node_b.x.0 + node_b.width.0);
+        let gap_cd = node_d.x.0 - (node_c.x.0 + node_c.width.0);
 
         assert!(
             (gap_ab - gap_bc).abs() < f64::EPSILON,

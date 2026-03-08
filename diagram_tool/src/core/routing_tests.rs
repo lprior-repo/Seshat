@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::core::routing::{create_edge, RoutingError};
     use crate::models::document::{DiagramDocument, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
 

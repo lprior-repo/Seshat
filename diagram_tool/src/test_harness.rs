@@ -20,6 +20,7 @@
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(unused_imports, clippy::unnecessary_lazy_evaluations)]
 
 use std::fs;
 use std::path::{Path, PathBuf};

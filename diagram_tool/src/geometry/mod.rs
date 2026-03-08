@@ -11,6 +11,7 @@
 #![allow(clippy::upper_case_acronyms)]
 #![allow(clippy::cast_precision_loss)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 // Snap and alignment module (SNP-001 through SNP-010)
 pub mod snap;
@@ -4103,13 +4104,13 @@ mod tests {
         let rect_90 = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 2.0);
 
         // When: calculating AABBs
-        let aabb_0 = rect.aabb();
-        let aabb_90 = rect_90.aabb();
+        let aabb_no_rot = rect.aabb();
+        let aabb_rotated = rect_90.aabb();
 
         // Then: 90 degree rotation swaps effective dimensions
         // Original: 100x50, Rotated: 50x100 (centered)
-        assert!((aabb_90.width() - aabb_0.height()).abs() < TOLERANCE);
-        assert!((aabb_90.height() - aabb_0.width()).abs() < TOLERANCE);
+        assert!((aabb_rotated.width() - aabb_no_rot.height()).abs() < TOLERANCE);
+        assert!((aabb_rotated.height() - aabb_no_rot.width()).abs() < TOLERANCE);
     }
 
     #[test]

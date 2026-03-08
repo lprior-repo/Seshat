@@ -80,7 +80,7 @@ pub fn sync_canvas_origin() -> Option<(f64, f64)> {
 
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
-pub fn sync_canvas_origin() -> Option<(f64, f64)> {
+pub const fn sync_canvas_origin() -> Option<(f64, f64)> {
     None
 }
 
@@ -398,7 +398,7 @@ fn flush_pending_pointer_update(
 
             if has_movable_nodes && has_drag_threshold(state.anchor_client, (client_x, client_y)) {
                 let history = history_signal.read().clone();
-                *history_signal.write() = history.push(doc.clone());
+                *history_signal.write() = history.push(doc);
                 
                 *mode = InteractionMode::Dragging(DragState {
                     anchor_canvas: state.anchor_canvas,
@@ -596,11 +596,7 @@ fn flush_pending_pointer_update(
         InteractionMode::Select
         | InteractionMode::RubberBand { .. }
         | InteractionMode::DrawingEdge { .. }
-        | InteractionMode::DrawingSubgraph { .. }
-        | InteractionMode::DragPending(_)
-        | InteractionMode::Dragging(_)
-        | InteractionMode::ResizePending(_)
-        | InteractionMode::Resizing(_) => {}
+        | InteractionMode::DrawingSubgraph { .. } => {}
     });
 }
 
@@ -1351,13 +1347,6 @@ pub fn Canvas() -> Element {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
                         InteractionMode::Select => {}
-                        InteractionMode::DragPending(_) => {}
-                        InteractionMode::Dragging(_) => {}
-                        InteractionMode::ResizePending(_) => {}
-                        InteractionMode::Resizing(_) => {}
-                        InteractionMode::DrawingEdge { .. } => {}
-                        InteractionMode::RubberBand { .. } => {}
-                        InteractionMode::DrawingSubgraph { .. } => {}
                     });
                     continue;
                 }
@@ -1506,13 +1495,6 @@ pub fn Canvas() -> Element {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => {}
-                        InteractionMode::DragPending(_) => {}
-                        InteractionMode::Dragging(_) => {}
-                        InteractionMode::ResizePending(_) => {}
-                        InteractionMode::Resizing(_) => {}
-                        InteractionMode::DrawingEdge { .. } => {}
-                        InteractionMode::RubberBand { .. } => {}
-                        InteractionMode::DrawingSubgraph { .. } => {}
                     });
                     space_pan_active.set(false);
                 }
@@ -1539,7 +1521,7 @@ pub fn Canvas() -> Element {
 
                 doc_signal.with_mut(|doc| {
                     let coords = evt.data.coordinates().client();
-                    let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                    let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                     let local_x = coords.x - origin.0;
                     let local_y = coords.y - origin.1;
                     let (x, y) = to_canvas_coords(
@@ -1644,7 +1626,7 @@ pub fn Canvas() -> Element {
             },
             ondoubleclick: move |evt| {
                 let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 let doc = doc_signal.read().clone();
@@ -1749,7 +1731,7 @@ pub fn Canvas() -> Element {
                     WheelDelta::Pages(v) => (v.x, v.y, false),
                 };
                 let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 pending_wheel_sample.set(Some(WheelSample {
@@ -1779,7 +1761,7 @@ pub fn Canvas() -> Element {
                 let coords = evt.data.coordinates().client();
                 // Use origin from the signal - it should be fresh now because the JS pointerdown
                 // handler sends a 'resize' message first to update it
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
@@ -1900,7 +1882,7 @@ pub fn Canvas() -> Element {
 
             onmousemove: move |evt| {
                 let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 interaction_mode.with_mut(|mode| {
@@ -1937,13 +1919,6 @@ pub fn Canvas() -> Element {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
                         InteractionMode::Select => {}
-                        InteractionMode::DragPending(_) => {}
-                        InteractionMode::Dragging(_) => {}
-                        InteractionMode::ResizePending(_) => {}
-                        InteractionMode::Resizing(_) => {}
-                        InteractionMode::DrawingEdge { .. } => {}
-                        InteractionMode::RubberBand { .. } => {}
-                        InteractionMode::DrawingSubgraph { .. } => {}
                     }
                 });
             },
@@ -1959,7 +1934,7 @@ pub fn Canvas() -> Element {
                     match mode {
                         InteractionMode::DrawingEdge { from_node, .. } => {
                             let coords = evt.data.coordinates().client();
-                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                            let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                             let local_x = coords.x - origin.0;
                             let local_y = coords.y - origin.1;
                             let doc = doc_signal.read().clone();
@@ -2094,11 +2069,6 @@ pub fn Canvas() -> Element {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => *mode = InteractionMode::Select,
-                        InteractionMode::DragPending(_) => *mode = InteractionMode::Select,
-                        InteractionMode::Dragging(_) => *mode = InteractionMode::Select,
-                        InteractionMode::ResizePending(_) => *mode = InteractionMode::Select,
-                        InteractionMode::Resizing(_) => *mode = InteractionMode::Select,
-                        InteractionMode::DrawingSubgraph { .. } => *mode = InteractionMode::Select,
                     }
                 });
                 space_pan_active.set(false);
@@ -2445,7 +2415,7 @@ pub fn Canvas() -> Element {
                                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                                 let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
                                 let coords = evt.data.coordinates().client();
-                                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                                 let local_x = coords.x - origin.0;
                                 let local_y = coords.y - origin.1;
                                 let pos = to_canvas_coords(
@@ -2550,7 +2520,7 @@ pub fn Canvas() -> Element {
                                         if *tool_signal.read() == ToolMode::Edge {
                                             let doc_now = doc_signal.read().clone();
                                             let coords = evt.data.coordinates().client();
-                                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                                            let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                                             let local_x = coords.x - origin.0;
                                             let local_y = coords.y - origin.1;
                                             let pos = to_canvas_coords(
@@ -2715,7 +2685,7 @@ pub fn Canvas() -> Element {
                                                             }
                                                             evt.stop_propagation();
                                                             let coords = evt.data.coordinates().client();
-                                                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                    let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                                                             let local_x = coords.x - origin.0;
                                                             let local_y = coords.y - origin.1;
                                                             let doc = doc_signal.read().clone();

@@ -190,7 +190,8 @@ impl RegressionTest {
         let mut summary = format!("Regression Test Summary: {passed} passed, {failed} failed\n");
 
         for result in results {
-            summary.push_str(&format!("  {}\n", result.summary()));
+            summary.push_str(&result.summary());
+            summary.push('\n');
         }
 
         summary
@@ -251,6 +252,7 @@ impl Default for MachineInfo {
     }
 }
 
+#[allow(dead_code)]
 impl PerformanceReport {
     /// Report version.
     pub const VERSION: u32 = 1;
@@ -263,10 +265,12 @@ impl PerformanceReport {
         Self {
             version: Self::VERSION,
             commit_hash: None,
+            #[allow(clippy::map_unwrap_or, clippy::cast_possible_truncation)]
             timestamp_ms: std::time::UNIX_EPOCH
                 .elapsed()
+                // Cast u128 to u64 - would need ~340M years to overflow, truncation is acceptable
                 .map(|d| d.as_millis() as u64)
-                .unwrap_or(0),
+                .unwrap_or_else(|_| 0),
             regression_results,
             all_passed,
             machine_info: MachineInfo::current(),
@@ -301,6 +305,7 @@ impl PerformanceReport {
     /// Returns a markdown summary.
     #[must_use]
     pub fn markdown_summary(&self) -> String {
+        use std::fmt::Write;
         let status = if self.all_passed { "PASSED" } else { "FAILED" };
 
         let mut md = format!("# Performance Report\n\n**Status**: {status}\n\n");
@@ -311,20 +316,22 @@ impl PerformanceReport {
 
         for result in &self.regression_results {
             let status_icon = if result.passed { "OK" } else { "FAIL" };
-            md.push_str(&format!(
-                "| {} | {:.1} | {:.1} | {:+.1} | {} |\n",
+            let _ = writeln!(
+                md,
+                "| {} | {:.1} | {:.1} | {:+.1} | {} |",
                 result.operation,
                 result.current_fps,
                 result.baseline_fps,
                 result.delta_fps,
                 status_icon
-            ));
+            );
         }
 
-        md.push_str(&format!(
-            "\n## Machine Info\n\n- OS: {}\n- CPU Cores: {}\n",
+        let _ = writeln!(
+            md,
+            "\n## Machine Info\n\n- OS: {}\n- CPU Cores: {}",
             self.machine_info.os, self.machine_info.cpu_cores
-        ));
+        );
 
         md
     }
@@ -333,11 +340,7 @@ impl PerformanceReport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::perf::{
-        benchmark::{BenchmarkConfig, NodeCount},
-        fps::FpsReport,
-        metrics::FrameSample,
-    };
+    use crate::perf::{benchmark::BenchmarkConfig, fps::FpsReport, metrics::FrameSample};
 
     fn make_test_result(operation: &str, fps: f64) -> BenchmarkResult {
         let config = BenchmarkConfig::new(operation)

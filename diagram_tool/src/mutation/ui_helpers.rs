@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 //! UI-friendly mutation helpers.
 //!
@@ -74,7 +75,7 @@ pub fn mutate_doc_signal(
     mutation: impl FnOnce(&mut DiagramDocument),
 ) -> Result<bool, MutationError> {
     let current = doc_signal.read().clone();
-    match mutate_document(current, mutation) {
+    match mutate_document(&current, mutation) {
         Ok(updated) => {
             doc_signal.set(updated);
             Ok(true)
@@ -156,7 +157,7 @@ pub fn mutate_doc_with_history(
 
     // Apply validated mutation
     let current = doc_signal.read().clone();
-    match mutate_document(current, mutation) {
+    match mutate_document(&current, mutation) {
         Ok(updated) => {
             doc_signal.set(updated);
             Ok(true)

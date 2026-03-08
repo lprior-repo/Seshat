@@ -175,7 +175,7 @@ impl IconIndex {
     ///
     /// # Panics
     ///
-    /// Panics if the icons_index.json cannot be parsed.
+    /// Panics if the `icons_index.json` cannot be parsed.
     #[must_use]
     pub fn load() -> Self {
         let json: serde_json::Value = serde_json::from_str(include_str!("icons_index.json"))

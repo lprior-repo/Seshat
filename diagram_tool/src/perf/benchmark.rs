@@ -318,10 +318,12 @@ impl Benchmark {
             measurement.record_frame();
         }
 
+        #[allow(clippy::map_unwrap_or, clippy::cast_possible_truncation)]
         let timestamp_ms = UNIX_EPOCH
             .elapsed()
+            // Cast u128 to u64 - would need ~340M years to overflow, truncation is acceptable
             .map(|d| d.as_millis() as u64)
-            .unwrap_or(0);
+            .unwrap_or_else(|_| 0);
 
         let fps_report = measurement.stop(self.config.target_fps)?;
         let result = BenchmarkResult::new(self.config.clone(), fps_report, timestamp_ms);

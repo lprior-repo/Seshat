@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 use crate::ui::grid::GridSize;
 use im::HashMap;
@@ -22,7 +23,7 @@ impl NodeId {
         Self(id)
     }
 
-    /// Create a new NodeId, returning error for empty strings
+    /// Create a new `NodeId`, returning error for empty strings
     ///
     /// # Errors
     ///
@@ -57,7 +58,7 @@ impl EdgeId {
         Self(id)
     }
 
-    /// Create a new EdgeId, returning error for empty strings
+    /// Create a new `EdgeId`, returning error for empty strings
     ///
     /// # Errors
     ///
@@ -153,7 +154,7 @@ pub struct Node {
     pub collapsed: Option<bool>,
 }
 
-/// Error type for OrderedFloat construction
+/// Error type for `OrderedFloat` construction
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OrderedFloatError {
     #[error("NaN is not a valid value for OrderedFloat")]
@@ -186,7 +187,7 @@ impl Serialize for OrderedFloat {
 }
 
 impl OrderedFloat {
-    /// Creates a new OrderedFloat from a f64 value.
+    /// Creates a new `OrderedFloat` from a `f64` value.
     ///
     /// # Errors
     ///

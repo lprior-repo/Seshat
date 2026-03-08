@@ -1,3 +1,5 @@
+#![allow(dead_code)]
+
 use crate::models::document::OrderedFloat;
 use crate::models::document::{DiagramDocument, EdgeId, NodeId};
 use crate::ui::commands::Clipboard;

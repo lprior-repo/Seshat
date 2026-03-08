@@ -2,13 +2,12 @@ use crate::core::delete::delete_selected;
 use crate::core::history::{apply_redo, apply_undo};
 // Note: We'll implement pure versions of zoom later, for now we skip them or mock them
 // use crate::viewport::operations::{apply_zoom_in as core_zoom_in, apply_zoom_out as core_zoom_out};
-use crate::geometry::Point;
 use crate::history::History;
 use crate::models::document::{
     ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
     OrderedFloat,
 };
-use im::{HashMap, HashSet};
+use im::HashMap;
 
 fn create_test_node(x: f64, y: f64) -> Node {
     Node {

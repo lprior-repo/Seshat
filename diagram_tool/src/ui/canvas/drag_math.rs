@@ -3,7 +3,7 @@ use im::HashMap;
 use std::collections::HashSet;
 
 #[must_use]
-pub fn calculate_resize_target_ids<'a>(
+pub fn calculate_resize_target_ids(
     selected_ids: &[NodeId],
     node_geometry: &HashMap<NodeId, (f64, f64, f64, f64, bool)>, // (x, y, w, h, is_subgraph)
 ) -> Vec<NodeId> {
@@ -49,7 +49,6 @@ pub fn calculate_resize_target_ids<'a>(
 mod subgraph_tests {
     use im::HashMap;
 
-    use super::calculate_resize_target_ids;
     use crate::models::document::{
         DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };

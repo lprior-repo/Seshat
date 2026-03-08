@@ -90,7 +90,6 @@ pub fn ValidationPanel(issues: ReadSignal<Vec<ValidationIssue>>) -> Element {
 // Tests for validation_panel.rs - bd-test-2
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::models::validation::{ValidationIssue, ValidationSeverity};
 
     #[test]

@@ -677,8 +677,27 @@ mod tests {
     fn create_test_db() -> (TempDir, PathBuf, rusqlite::Connection) {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        let bootstrap = store::bootstrap_store(&db_path).unwrap();
-        (temp_dir, db_path, bootstrap.conn)
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        // Initialize schema
+        conn.execute(
+            "CREATE TABLE IF NOT EXISTS events (
+                operation_id TEXT PRIMARY KEY,
+                revision INTEGER NOT NULL,
+                payload TEXT NOT NULL,
+                timestamp INTEGER NOT NULL
+            )",
+            [],
+        )
+        .unwrap();
+        (temp_dir, db_path, conn)
+    }
+
+    async fn create_test_db_async() -> (TempDir, PathBuf, store::StoreBootstrap, rusqlite::Connection) {
+        let temp_dir = TempDir::new().unwrap();
+        let db_path = temp_dir.path().join("test.db");
+        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let conn = rusqlite::Connection::open(&db_path).unwrap();
+        (temp_dir, db_path, bootstrap, conn)
     }
 
     fn make_test_envelope(op_id: &str, revision: i64) -> EventEnvelope {
@@ -709,14 +728,14 @@ mod tests {
         assert!(events.is_empty());
     }
 
-    #[test]
-    fn test_fetch_new_events_returns_events_after_revision() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_fetch_new_events_returns_events_after_revision() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         // Fetch events after revision 2 (should get revisions 3, 4, 5)
@@ -727,14 +746,14 @@ mod tests {
         assert_eq!(events[2].revision, 5);
     }
 
-    #[test]
-    fn test_fetch_new_events_returns_all_events_when_after_revision_zero() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_fetch_new_events_returns_all_events_when_after_revision_zero() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         // Fetch all events (after revision 0)
@@ -742,14 +761,14 @@ mod tests {
         assert_eq!(events.len(), 3);
     }
 
-    #[test]
-    fn test_fetch_new_events_returns_empty_when_after_revision_is_latest() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_fetch_new_events_returns_empty_when_after_revision_is_latest() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         // Fetch events after revision 3 (latest)
@@ -765,14 +784,14 @@ mod tests {
         assert_eq!(revision, 0);
     }
 
-    #[test]
-    fn test_fetch_latest_revision_returns_max_revision() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_fetch_latest_revision_returns_max_revision() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         let revision = fetch_latest_revision(&conn).unwrap();
@@ -814,10 +833,10 @@ mod tests {
         let _ = rx.recv_timeout(Duration::from_millis(100));
     }
 
-    #[test]
+    #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
-    fn test_watcher_detects_database_modifications() {
-        let (_temp_dir, db_path, mut conn) = create_test_db();
+    async fn test_watcher_detects_database_modifications() {
+        let (_temp_dir, db_path, bootstrap, conn) = create_test_db_async().await;
         let (tx, rx) = channel();
 
         let _handle = start_event_tail_watcher(db_path.clone(), tx).unwrap();
@@ -827,7 +846,7 @@ mod tests {
 
         // Modify the database
         let envelope = make_test_envelope("op-new", 1);
-        store::append_event(&mut conn, envelope, None).unwrap();
+        store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
 
         // The watcher should detect the change
         let recv_result = rx.recv_timeout(Duration::from_secs(2));
@@ -848,14 +867,14 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_events_are_ordered_by_revision() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_events_are_ordered_by_revision() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add events
         for i in 1..=10 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         // Fetch events after revision 5
@@ -868,9 +887,9 @@ mod tests {
         }
     }
 
-    #[test]
-    fn test_event_record_contains_correct_data() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_event_record_contains_correct_data() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         let envelope = EventEnvelope {
             op_id: "op-test-123".to_string(),
@@ -887,7 +906,7 @@ mod tests {
             },
         };
 
-        store::append_event(&mut conn, envelope.clone(), None).unwrap();
+        store::append_event(&bootstrap.pool, envelope.clone(), None).await.unwrap();
 
         let events = fetch_new_events(&conn, 0).unwrap();
         assert_eq!(events.len(), 1);
@@ -900,9 +919,9 @@ mod tests {
         assert!(matches!(event.operation, DomainOp::NodeMove { .. }));
     }
 
-    #[test]
-    fn test_replaying_fetched_events_produces_correct_projection() {
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+    #[tokio::test]
+    async fn test_replaying_fetched_events_produces_correct_projection() {
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add a sequence of operations
         let ops = [
@@ -949,7 +968,7 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         // Fetch all events
@@ -1040,16 +1059,16 @@ mod tests {
         assert!(summary.affected_entities.is_empty());
     }
 
-    #[test]
-    fn test_apply_tail_batch_applies_events_and_updates_revision() {
+    #[tokio::test]
+    async fn test_apply_tail_batch_applies_events_and_updates_revision() {
         use crate::models::projection::DiagramProjection;
 
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         let events = fetch_new_events(&conn, 0).unwrap();
@@ -1065,11 +1084,11 @@ mod tests {
         assert_eq!(projection.nodes.len(), 3);
     }
 
-    #[test]
-    fn test_apply_tail_batch_extracts_affected_entities() {
+    #[tokio::test]
+    async fn test_apply_tail_batch_extracts_affected_entities() {
         use crate::models::projection::DiagramProjection;
 
-        let (_temp_dir, _db_path, mut conn) = create_test_db();
+        let (_temp_dir, _db_path, bootstrap, conn) = create_test_db_async().await;
 
         // Add node and edge operations
         let ops = [
@@ -1116,7 +1135,7 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            store::append_event(&mut conn, envelope, None).unwrap();
+            store::append_event(&bootstrap.pool, envelope, None).await.unwrap();
         }
 
         let events = fetch_new_events(&conn, 0).unwrap();

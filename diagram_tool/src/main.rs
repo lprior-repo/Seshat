@@ -4,6 +4,7 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(unexpected_cfgs)]
 
 #[cfg(not(target_arch = "wasm32"))]
 use clap::Parser;

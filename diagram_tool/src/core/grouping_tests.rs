@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use super::*;
     use crate::core::grouping::{group_selection, ungroup_selection, GroupingError};
     use crate::models::document::{DiagramDocument, Edge, Node, NodeId, NodeKind, OrderedFloat};
 

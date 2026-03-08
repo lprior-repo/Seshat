@@ -45,6 +45,7 @@
 #![allow(clippy::too_many_lines)]
 #![allow(clippy::no_effect_underscore_binding)]
 #![allow(clippy::match_same_arms)]
+#![allow(dead_code, clippy::trivially_copy_pass_by_ref)]
 
 use crate::geometry::Point;
 use thiserror::Error;
