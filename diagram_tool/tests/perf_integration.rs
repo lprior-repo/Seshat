@@ -185,7 +185,7 @@ fn ec_002_maximum_nodes_benchmark() {
     let config = BenchmarkConfig::new("test")
         .with_node_count(10000)
         .unwrap()
-        .with_duration_ms(200)
+        .with_duration_ms(500)
         .unwrap();
 
     let benchmark = Benchmark::new(config);

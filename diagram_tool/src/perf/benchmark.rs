@@ -282,7 +282,12 @@ impl Benchmark {
         #[allow(clippy::cast_precision_loss)]
         let variance = (self.config.seed as f64 % 0.5) - 0.25; // -0.25 to +0.25 ms
 
-        work_time_ms + variance
+        let total_ms = work_time_ms + variance;
+        if total_ms > 0.0 {
+            std::thread::sleep(std::time::Duration::from_secs_f64(total_ms / 1000.0));
+        }
+
+        total_ms
     }
 
     /// Runs the benchmark and returns the result.

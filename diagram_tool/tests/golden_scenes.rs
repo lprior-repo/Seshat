@@ -77,7 +77,7 @@ fn golden_mixed_selection_has_required_elements() {
 
     // Verify edge count (1 edge minimum)
     assert!(
-        edges.len() >= 1,
+        !edges.is_empty(),
         "Expected at least 1 edge, got {}",
         edges.len()
     );
@@ -426,8 +426,8 @@ fn generate_stress_scene_json() -> Value {
     let mut next_random = || -> f64 {
         // Simple LCG random number generator for determinism
         rng_state = rng_state.wrapping_mul(1103515245).wrapping_add(12345);
-        let normalized = ((rng_state >> 16) & 0xFFFF) as f64 / 65535.0;
-        normalized
+        
+        ((rng_state >> 16) & 0xFFFF) as f64 / 65535.0
     };
 
     // Collect node IDs for edge generation

@@ -1094,10 +1094,7 @@ fn test_crash_during_snapshot_write() -> Result<TestReport, VerifyError> {
 
     // Write a valid snapshot at revision 3
     let projection = DiagramProjection::with_revision(3);
-    let snapshot_result = block_on(crate::models::snapshot::write_snapshot(
-        &bootstrap.pool,
-        &projection,
-    ));
+    let snapshot_result = block_on(crate::store::save_snapshot(&bootstrap.pool, &projection));
 
     if snapshot_result.is_err() {
         return Ok(TestReport::failing(
@@ -1134,7 +1131,7 @@ fn test_crash_during_snapshot_write() -> Result<TestReport, VerifyError> {
 
     // Recover and verify we can load projection (snapshot + tail replay)
     let recovery_bootstrap = block_on(bootstrap_store(&test_db_path))?;
-    let loaded_projection = block_on(crate::models::snapshot::load_projection(
+    let loaded_projection = block_on(crate::store::load_projection_from_snapshot(
         &recovery_bootstrap.pool,
     ))
     .map_err(|e| VerifyError::TestFailure(format!("Failed to load projection: {e}")))?;
@@ -1197,7 +1194,7 @@ fn test_incomplete_snapshot_fallback() -> Result<TestReport, VerifyError> {
 
     // Try to load projection - should fail gracefully or fall back to replay
     // The load_projection function should either return an error or fall back
-    let result = block_on(crate::models::snapshot::load_projection(&bootstrap.pool));
+    let result = block_on(crate::store::load_projection_from_snapshot(&bootstrap.pool));
 
     // We expect either:
     // 1. An error (serialization error) - acceptable
@@ -1235,7 +1232,8 @@ fn test_incomplete_snapshot_fallback() -> Result<TestReport, VerifyError> {
             )
             .map_err(|e| VerifyError::Sqlite(e.to_string()))?;
 
-            let retry_result = block_on(crate::models::snapshot::load_projection(&bootstrap.pool));
+            let retry_result =
+                block_on(crate::store::load_projection_from_snapshot(&bootstrap.pool));
             match retry_result {
                 Ok(projection) => {
                     if projection.revision != 3 {

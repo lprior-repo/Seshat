@@ -222,7 +222,7 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
                     image_data_url: data_url_for_drag.clone(),
                 }));
             },
-            ondragstart: move |evt| {
+            ondragstart: move |_| {
                 // In Dioxus, we just need the drag to start successfully
                 dragging_icon.set(Some(DraggedIconPayload {
                     icon_key: icon.icon_key.clone(),
@@ -251,6 +251,23 @@ fn IconTile(icon: IconMeta, dragging_icon: Signal<Option<DraggedIconPayload>>) -
 
 #[component]
 pub fn Sidebar() -> Element {
+    use_effect(|| {
+        document::eval(
+            r"
+            if (!window.__seshat_drag_fix) {
+                window.__seshat_drag_fix = true;
+                document.addEventListener('dragstart', (e) => {
+                    if (e.target && e.target.closest && e.target.closest('.icon-item')) {
+                        if (e.dataTransfer) {
+                            e.dataTransfer.setData('text/plain', 'icon');
+                            e.dataTransfer.effectAllowed = 'copy';
+                        }
+                    }
+                });
+            }
+        ",
+        );
+    });
     let mut search = use_signal(String::new);
     let mut expanded_providers: Signal<BTreeSet<String>> =
         use_signal(|| BTreeSet::from([String::from(DEFAULT_EXPANDED_PROVIDER)]));
