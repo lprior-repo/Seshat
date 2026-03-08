@@ -3,7 +3,7 @@
 //! Provides async SQLite-based storage with WAL mode and connection pooling.
 //! This is the async counterpart to the synchronous `store` module.
 //!
-//! ## Benefits over synchronous rusqlite
+//! ## Benefits over synchronous SQLite
 //!
 //! - **True concurrency**: Multiple operations can run simultaneously
 //! - **Non-blocking**: Async operations don't block the thread
