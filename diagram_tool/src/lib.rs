@@ -60,6 +60,7 @@ pub mod app;
 pub mod backend;
 pub mod cli;
 pub mod cli_persistence;
+pub mod config;
 pub mod export;
 pub mod geometry;
 pub mod history;
