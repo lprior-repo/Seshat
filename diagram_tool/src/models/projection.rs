@@ -337,7 +337,23 @@ fn apply_node_add(
         )));
     }
 
-    let node = Node {
+    let new_nodes = state
+        .nodes
+        .update(node_id, create_default_node(x, y, width, height, label));
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
+/// Create a default node with specified geometry and label
+fn create_default_node(x: f64, y: f64, width: f64, height: f64, label: &str) -> Node {
+    Node {
         kind: crate::models::document::NodeKind::Node,
         icon: String::new(),
         label: label.to_string(),
@@ -355,18 +371,7 @@ fn apply_node_add(
         z_index: 0,
         style: None,
         collapsed: None,
-    };
-
-    let new_nodes = state.nodes.update(node_id, node);
-
-    Ok(DiagramProjection {
-        version: state.version,
-        revision: state.revision,
-        nodes: new_nodes,
-        edges: state.edges,
-        author_priority: state.author_priority,
-        cycle_policy: state.cycle_policy,
-    })
+    }
 }
 
 /// Apply `NodeMove` operation
@@ -491,7 +496,23 @@ fn apply_edge_connect(
         )));
     }
 
-    let edge = Edge {
+    let new_edges = state
+        .edges
+        .update(edge_id, create_default_edge(source_id, target_id));
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: state.nodes,
+        edges: new_edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
+/// Create a default edge with standard settings
+fn create_default_edge(source_id: NodeId, target_id: NodeId) -> Edge {
+    Edge {
         source: source_id,
         target: target_id,
         label: String::new(),
@@ -505,18 +526,7 @@ fn apply_edge_connect(
         tags: im::Vector::new(),
         metadata: HashMap::new(),
         font_size: None,
-    };
-
-    let new_edges = state.edges.update(edge_id, edge);
-
-    Ok(DiagramProjection {
-        version: state.version,
-        revision: state.revision,
-        nodes: state.nodes,
-        edges: new_edges,
-        author_priority: state.author_priority,
-        cycle_policy: state.cycle_policy,
-    })
+    }
 }
 
 /// Apply `EdgeDisconnect` operation
@@ -601,23 +611,9 @@ fn apply_edge_connect_checked(
         )));
     }
 
-    let edge = Edge {
-        source: source_id,
-        target: target_id,
-        label: String::new(),
-        style: crate::models::document::EdgeStyle::Solid,
-        arrow_type: crate::models::document::ArrowType::Default,
-        label_offset_t: OrderedFloat(0.5),
-        color: None,
-        thickness: OrderedFloat(1.5),
-        directed: true,
-        bend_points: im::Vector::new(),
-        tags: im::Vector::new(),
-        metadata: HashMap::new(),
-        font_size: None,
-    };
-
-    let new_edges = state.edges.update(edge_id, edge);
+    let new_edges = state
+        .edges
+        .update(edge_id, create_default_edge(source_id, target_id));
 
     Ok(DiagramProjection {
         version: state.version,
@@ -670,43 +666,61 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayErro
     let mut seen_ids = std::collections::HashSet::new();
 
     for (edge_id, edge) in state.edges.iter() {
-        // Check for duplicate IDs (should not happen with HashMap, but verify)
-        let id_str = edge_id.to_string();
-        if !seen_ids.insert(id_str.clone()) {
-            return Err(ReplayError::DuplicateEdge(id_str));
-        }
-
-        // Verify source node exists
-        if !state.has_node(&edge.source) {
-            return Err(ReplayError::PolicyViolation(format!(
-                "edge {} references non-existent source node: {}",
-                edge_id, edge.source
-            )));
-        }
-
-        // Verify target node exists
-        if !state.has_node(&edge.target) {
-            return Err(ReplayError::PolicyViolation(format!(
-                "edge {} references non-existent target node: {}",
-                edge_id, edge.target
-            )));
-        }
-
-        // Verify edge geometry is valid
-        if !edge.label_offset_t.0.is_finite() {
-            return Err(ReplayError::InvariantViolation(format!(
-                "edge {} has invalid label_offset_t",
-                edge_id
-            )));
-        }
-        if !edge.thickness.0.is_finite() {
-            return Err(ReplayError::InvariantViolation(format!(
-                "edge {} has invalid thickness",
-                edge_id
-            )));
-        }
+        check_edge_id_unique(&mut seen_ids, edge_id)?;
+        verify_edge_endpoints(state, edge_id, edge)?;
+        verify_edge_geometry(edge_id, edge)?;
     }
 
+    Ok(())
+}
+
+/// Check that edge ID is unique (no duplicates)
+fn check_edge_id_unique(
+    seen_ids: &mut std::collections::HashSet<String>,
+    edge_id: &EdgeId,
+) -> Result<(), ReplayError> {
+    let id_str = edge_id.to_string();
+    if !seen_ids.insert(id_str.clone()) {
+        return Err(ReplayError::DuplicateEdge(id_str));
+    }
+    Ok(())
+}
+
+/// Verify that edge source and target nodes exist
+fn verify_edge_endpoints(
+    state: &DiagramProjection,
+    edge_id: &EdgeId,
+    edge: &Edge,
+) -> Result<(), ReplayError> {
+    if !state.has_node(&edge.source) {
+        return Err(ReplayError::PolicyViolation(format!(
+            "edge {} references non-existent source node: {}",
+            edge_id, edge.source
+        )));
+    }
+    if !state.has_node(&edge.target) {
+        return Err(ReplayError::PolicyViolation(format!(
+            "edge {} references non-existent target node: {}",
+            edge_id, edge.target
+        )));
+    }
+    Ok(())
+}
+
+/// Verify edge geometry values are finite
+fn verify_edge_geometry(edge_id: &EdgeId, edge: &Edge) -> Result<(), ReplayError> {
+    if !edge.label_offset_t.0.is_finite() {
+        return Err(ReplayError::InvariantViolation(format!(
+            "edge {} has invalid label_offset_t",
+            edge_id
+        )));
+    }
+    if !edge.thickness.0.is_finite() {
+        return Err(ReplayError::InvariantViolation(format!(
+            "edge {} has invalid thickness",
+            edge_id
+        )));
+    }
     Ok(())
 }
 
@@ -1078,44 +1092,9 @@ pub fn apply_group(
 /// Apply Ungroup operation - removes the subgraph node and clears parent on all children
 pub fn apply_ungroup(state: DiagramProjection, id: &str) -> Result<DiagramProjection, ReplayError> {
     let subgraph_id = NodeId::new(id.to_string());
-
-    if !state.has_node(&subgraph_id) {
-        return Err(ReplayError::InvariantViolation(format!(
-            "subgraph not found: {}",
-            id
-        )));
-    }
-
-    let subgraph = state.nodes.get(&subgraph_id).cloned();
-    let _subgraph = match subgraph {
-        Some(s) if s.kind == crate::models::document::NodeKind::Subgraph => s,
-        _ => {
-            return Err(ReplayError::InvariantViolation(format!(
-                "node is not a subgraph: {}",
-                id
-            )))
-        }
-    };
-
-    let children_to_unparent: Vec<NodeId> = state
-        .nodes
-        .iter()
-        .filter(|(_, node)| node.parent.as_ref() == Some(&subgraph_id))
-        .map(|(id, _)| id.clone())
-        .collect();
-
-    let new_nodes = children_to_unparent
-        .iter()
-        .fold(state.nodes.clone(), |acc, child_id| {
-            if let Some(child) = acc.get(child_id) {
-                let mut updated_child = child.clone();
-                updated_child.parent = None;
-                acc.update(child_id.clone(), updated_child)
-            } else {
-                acc
-            }
-        })
-        .without(&subgraph_id);
+    validate_subgraph_exists(&state, &subgraph_id, id)?;
+    let children = find_child_nodes(&state, &subgraph_id);
+    let new_nodes = unparent_children_and_remove_group(&state, &subgraph_id, &children);
 
     Ok(DiagramProjection {
         version: state.version,
@@ -1125,6 +1104,61 @@ pub fn apply_ungroup(state: DiagramProjection, id: &str) -> Result<DiagramProjec
         author_priority: state.author_priority,
         cycle_policy: state.cycle_policy,
     })
+}
+
+/// Validate that a subgraph exists and is actually a subgraph
+fn validate_subgraph_exists(
+    state: &DiagramProjection,
+    subgraph_id: &NodeId,
+    id: &str,
+) -> Result<(), ReplayError> {
+    if !state.has_node(subgraph_id) {
+        return Err(ReplayError::InvariantViolation(format!(
+            "subgraph not found: {}",
+            id
+        )));
+    }
+
+    let subgraph = state.nodes.get(subgraph_id).cloned();
+    match subgraph {
+        Some(s) if s.kind == crate::models::document::NodeKind::Subgraph => Ok(()),
+        _ => Err(ReplayError::InvariantViolation(format!(
+            "node is not a subgraph: {}",
+            id
+        ))),
+    }
+}
+
+/// Find all child nodes of a given parent subgraph
+fn find_child_nodes(state: &DiagramProjection, subgraph_id: &NodeId) -> Vec<NodeId> {
+    state
+        .nodes
+        .iter()
+        .filter(|(_, node)| node.parent.as_ref() == Some(subgraph_id))
+        .map(|(id, _)| id.clone())
+        .collect()
+}
+
+/// Unparent all children and remove the group node
+fn unparent_children_and_remove_group(
+    state: &DiagramProjection,
+    subgraph_id: &NodeId,
+    children: &[NodeId],
+) -> im::HashMap<NodeId, Node> {
+    children
+        .iter()
+        .fold(state.nodes.clone(), |acc, child_id| {
+            acc.alter(
+                |child_opt| {
+                    child_opt.map(|mut child| {
+                        child.parent = None;
+                        child
+                    })
+                },
+                child_id.clone(),
+            )
+        })
+        .without(subgraph_id)
 }
 
 /// Convert a `DiagramProjection` to a `DiagramDocument`

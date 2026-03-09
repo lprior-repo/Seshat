@@ -971,8 +971,9 @@ pub async fn load_projection_from_snapshot(
     .fetch_optional(pool)
     .await?;
 
+    // If no snapshot exists, fall back to full replay from events
     let Some((_snapshot_id, snapshot_revision, payload, _created_at)) = snapshot_result else {
-        return Err(StoreError::NotFound("no snapshot available".to_string()));
+        return load_projection_from_events(pool).await;
     };
 
     let mut base_projection: crate::models::projection::DiagramProjection =
@@ -1006,6 +1007,41 @@ pub async fn load_projection_from_snapshot(
     }
 
     Ok(base_projection)
+}
+
+/// Load projection by replaying all events from scratch (fallback when no snapshot)
+async fn load_projection_from_events(
+    pool: &SqlitePool,
+) -> Result<crate::models::projection::DiagramProjection, StoreError> {
+    let rows = sqlx::query_as::<_, (String, i64, String, String)>(
+        "SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision ASC",
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut projection = crate::models::projection::DiagramProjection::empty();
+
+    for (op_id, _revision, event_payload, timestamp_str) in rows {
+        let envelope = parse_event_envelope(&event_payload)
+            .map_err(|e| StoreError::Serialization(e.to_string()))?;
+
+        let timestamp: i64 = timestamp_str
+            .parse()
+            .map_err(|_| StoreError::Serialization("Invalid timestamp format".to_string()))?;
+
+        let event = crate::models::projection::EventRecord {
+            op_id,
+            revision: projection.revision(),
+            operation: envelope.operation,
+            author: envelope.author,
+            timestamp,
+        };
+
+        projection = crate::models::projection::apply_event(projection, &event)
+            .map_err(|e| StoreError::Serialization(format!("Replay error: {e}")))?;
+    }
+
+    Ok(projection)
 }
 
 /// Get metadata for the latest snapshot
@@ -1854,15 +1890,25 @@ mod tests {
     }
 
     #[tokio::test]
-    async fn test_load_projection_from_snapshot_fails_when_no_snapshots() {
+    async fn test_load_projection_from_snapshot_falls_back_to_replay_when_no_snapshots() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
         let bootstrap = bootstrap_store(&db_path).await.expect("bootstrap failed");
         let pool = bootstrap.pool;
 
+        // When no snapshot exists, should fall back to replay and return empty projection
         let result = load_projection_from_snapshot(&pool).await;
-        assert!(matches!(result, Err(StoreError::NotFound(_))));
+        assert!(
+            result.is_ok(),
+            "Expected fallback to replay, got: {:?}",
+            result
+        );
+        let projection = result.expect("checked is_ok");
+        assert_eq!(
+            projection.revision, 0,
+            "Empty projection should have revision 0"
+        );
 
         pool.close().await;
     }

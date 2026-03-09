@@ -25,6 +25,7 @@ pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
 pub mod document;
+pub mod edge_ops;
 pub mod envelope;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod events;
@@ -32,6 +33,8 @@ pub mod events;
 pub mod export;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod harness;
+pub mod hashing;
+pub mod mapping;
 pub mod policy;
 pub mod projection;
 pub mod schema;

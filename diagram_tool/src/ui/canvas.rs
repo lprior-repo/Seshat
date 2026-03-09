@@ -1759,8 +1759,8 @@ pub fn Canvas() -> Element {
                     if tool == ToolMode::Select {
                         let doc = doc_signal.read().clone();
                         if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
-                            let additive = evt.data.modifiers().contains(Modifiers::SHIFT) 
-                                || evt.data.modifiers().contains(Modifiers::CONTROL) 
+                            let additive = evt.data.modifiers().contains(Modifiers::SHIFT)
+                                || evt.data.modifiers().contains(Modifiers::CONTROL)
                                 || evt.data.modifiers().contains(Modifiers::META)
                                 || *shift_pressed.read();
                             doc_signal.with_mut(|d| {
@@ -2169,7 +2169,7 @@ pub fn Canvas() -> Element {
                                 let scy = src.y.0 + src.height.0 / 2.0;
                                 let tcx = tgt.x.0 + tgt.width.0 / 2.0;
                                 let tcy = tgt.y.0 + tgt.height.0 / 2.0;
-                                
+
                                 let (scx_edge, scy_edge) = crate::ui::canvas::canvas_view::rect_ray_intersection(scx, scy, src.width.0, src.height.0, tcx, tcy);
                                 let (tcx_edge, tcy_edge) = crate::ui::canvas::canvas_view::rect_ray_intersection(tcx, tcy, tgt.width.0, tgt.height.0, scx, scy);
 
@@ -2384,8 +2384,8 @@ pub fn Canvas() -> Element {
                                 evt.stop_propagation();
                                 let tool = *tool_signal.read();
                                 let doc = doc_signal.read().clone();
-                                let additive = evt.data.modifiers().contains(Modifiers::SHIFT) 
-                                    || evt.data.modifiers().contains(Modifiers::CONTROL) 
+                                let additive = evt.data.modifiers().contains(Modifiers::SHIFT)
+                                    || evt.data.modifiers().contains(Modifiers::CONTROL)
                                     || evt.data.modifiers().contains(Modifiers::META)
                                     || *shift_pressed.read();
                                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
@@ -2516,8 +2516,8 @@ pub fn Canvas() -> Element {
                                         }
                                     }
                                     InteractionMode::DragPending(_) => {
-                                let additive = evt.data.modifiers().contains(Modifiers::SHIFT) 
-                                    || evt.data.modifiers().contains(Modifiers::CONTROL) 
+                                let additive = evt.data.modifiers().contains(Modifiers::SHIFT)
+                                    || evt.data.modifiers().contains(Modifiers::CONTROL)
                                     || evt.data.modifiers().contains(Modifiers::META)
                                     || *shift_pressed.read();
                                         if !additive {
@@ -2531,7 +2531,7 @@ pub fn Canvas() -> Element {
                                             });
                                         });
                                     }
-                                    InteractionMode::Dragging(_) 
+                                    InteractionMode::Dragging(_)
                                     | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_) => {
                                         interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {
