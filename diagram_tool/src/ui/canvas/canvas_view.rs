@@ -4,6 +4,8 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
+#![allow(clippy::imprecise_flops)]
+#![allow(clippy::suboptimal_flops)]
 
 use std::fmt::Write as _;
 

@@ -183,7 +183,7 @@ impl DiagramProjection {
 }
 
 /// Check if an author is human (not AI-generated)
-fn is_human_author(author: &Author) -> bool {
+pub fn is_human_author(author: &Author) -> bool {
     // Author IDs starting with "human-" are considered human-authored
     // All others are assumed to be AI-authored
     author.id.starts_with("human-") || author.name.to_lowercase().contains("human")
@@ -285,7 +285,7 @@ pub fn apply_event(
 }
 
 /// Apply a domain operation to the projection
-fn apply_operation(
+pub fn apply_operation(
     state: DiagramProjection,
     event: &EventRecord,
 ) -> Result<DiagramProjection, ReplayError> {

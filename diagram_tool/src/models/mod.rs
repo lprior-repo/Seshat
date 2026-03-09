@@ -24,6 +24,7 @@
 pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
+pub mod dispatcher;
 pub mod document;
 pub mod edge_ops;
 pub mod envelope;
