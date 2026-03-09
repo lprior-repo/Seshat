@@ -14,7 +14,6 @@ mod persistence_compat;
 use crate::history::History;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use crate::mutation::error::MutationError;
-use crate::ui::commands::Clipboard;
 use crate::ui::editor::ToolMode;
 use crate::ui::panels::PanelVisibility;
 use crate::ui::theme::{
@@ -36,7 +35,7 @@ pub struct ToolbarStats {
 pub fn Toolbar() -> Element {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
+    let clipboard_signal = use_context::<Signal<Option<crate::ui::commands::Clipboard>>>();
     let mut tool_signal = use_context::<Signal<ToolMode>>();
     let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
     let mut theme_mode_signal = use_context::<Signal<ThemeMode>>();
@@ -125,14 +124,14 @@ pub fn Toolbar() -> Element {
                 "data-testid": "toolbar-undo",
                 disabled: undo_disabled,
                 style: "padding: 6px 10px; cursor: {undo_cursor}; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN}; opacity: {undo_opacity};",
-                onclick: move |_| actions::undo(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::undo(doc_signal, history_signal),
                 "Undo"
             }
             button {
                 "data-testid": "toolbar-redo",
                 disabled: redo_disabled,
                 style: "padding: 6px 10px; cursor: {redo_cursor}; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN}; opacity: {redo_opacity};",
-                onclick: move |_| actions::redo(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::redo(doc_signal, history_signal),
                 "Redo"
             }
 
@@ -167,21 +166,21 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-delete",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {delete_color}; opacity: {delete_opacity};",
-                onclick: move |_| actions::delete_selection(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::delete_selection(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
                 "Delete"
             }
             button {
                 "data-testid": "toolbar-copy",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::copy_selection(doc_signal, clipboard_signal, Some(toast)),
+                onclick: move |_| actions::copy_selection(doc_signal, clipboard_signal),
                 disabled: stats.selected_count == 0,
                 "Copy"
             }
             button {
                 "data-testid": "toolbar-paste",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::paste_selection(doc_signal, clipboard_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::paste_selection(doc_signal, clipboard_signal, history_signal),
                 disabled: !actions::can_paste(clipboard_signal),
                 "Paste"
             }
@@ -189,28 +188,28 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-send-backward",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::send_backward(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::send_backward(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
                 "Back"
             }
             button {
                 "data-testid": "toolbar-bring-forward",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::bring_forward(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::bring_forward(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
                 "Forward"
             }
             button {
                 "data-testid": "toolbar-send-to-back",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::send_to_back(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::send_to_back(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
                 "To Back"
             }
             button {
                 "data-testid": "toolbar-bring-to-front",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::bring_to_front(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::bring_to_front(doc_signal, history_signal),
                 disabled: stats.selected_count == 0,
                 "To Front"
             }
@@ -221,42 +220,42 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-align-left",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::align_left(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::align_left(doc_signal, history_signal),
                 disabled: stats.selected_count < 2,
                 "Left"
             }
             button {
                 "data-testid": "toolbar-align-center-h",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::align_center_horizontal(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::align_center_horizontal(doc_signal, history_signal),
                 disabled: stats.selected_count < 2,
                 "H-Center"
             }
             button {
                 "data-testid": "toolbar-align-right",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::align_right(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::align_right(doc_signal, history_signal),
                 disabled: stats.selected_count < 2,
                 "Right"
             }
             button {
                 "data-testid": "toolbar-align-top",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::align_top(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::align_top(doc_signal, history_signal),
                 disabled: stats.selected_count < 2,
                 "Top"
             }
             button {
                 "data-testid": "toolbar-align-middle-v",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::align_middle_vertical(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::align_middle_vertical(doc_signal, history_signal),
                 disabled: stats.selected_count < 2,
                 "V-Center"
             }
             button {
                 "data-testid": "toolbar-align-bottom",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::align_bottom(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::align_bottom(doc_signal, history_signal),
                 disabled: stats.selected_count < 2,
                 "Bottom"
             }
@@ -265,14 +264,14 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-distribute-h",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::distribute_horizontal(doc_signal, history_signal, Some(toast)),
+                onclick: move |_| actions::distribute_horizontal(doc_signal, history_signal),
                 disabled: stats.selected_count < 3,
                 "Dist H"
             }
             button {
                 "data-testid": "toolbar-distribute-v",
-                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px bound {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::distribute_vertical(doc_signal, history_signal, Some(toast)),
+                style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                onclick: move |_| actions::distribute_vertical(doc_signal, history_signal),
                 disabled: stats.selected_count < 3,
                 "Dist V"
             }
