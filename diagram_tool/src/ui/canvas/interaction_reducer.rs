@@ -121,35 +121,37 @@ pub(super) fn commit_inline_edit(
             .get(&target)
             .map_or_else(String::new, |n| n.label.clone());
         if current_label != new_label {
-            let _ = mutate_doc_with_history(
-                &mut doc_signal,
-                &mut history_signal,
-                |doc| {
-                    let new_nodes: HashMap<NodeId, Node> = doc
-                        .document
-                        .nodes
-                        .iter()
-                        .map(|(id, node)| {
-                            if *id == target {
-                                (id.clone(), Node { label: new_label.clone(), ..node.clone() })
-                            } else {
-                                (id.clone(), node.clone())
-                            }
-                        })
-                        .collect();
+            let _ = mutate_doc_with_history(&mut doc_signal, &mut history_signal, |doc| {
+                let new_nodes: HashMap<NodeId, Node> = doc
+                    .document
+                    .nodes
+                    .iter()
+                    .map(|(id, node)| {
+                        if *id == target {
+                            (
+                                id.clone(),
+                                Node {
+                                    label: new_label.clone(),
+                                    ..node.clone()
+                                },
+                            )
+                        } else {
+                            (id.clone(), node.clone())
+                        }
+                    })
+                    .collect();
 
-                    let new_doc = DiagramDocument {
-                        version: doc.version,
-                        revision: doc.revision.increment(),
-                        document: crate::models::document::DocumentData {
-                            nodes: new_nodes,
-                            edges: doc.document.edges.clone(),
-                        },
-                        editor_state: doc.editor_state,
-                    };
-                    Ok(new_doc)
-                },
-            );
+                let new_doc = DiagramDocument {
+                    version: doc.version,
+                    revision: doc.revision.increment(),
+                    document: crate::models::document::DocumentData {
+                        nodes: new_nodes,
+                        edges: doc.document.edges.clone(),
+                    },
+                    editor_state: doc.editor_state,
+                };
+                Ok(new_doc)
+            });
         }
         editing_node.set(None);
         return;
@@ -166,35 +168,37 @@ pub(super) fn commit_inline_edit(
             .get(&target)
             .map_or_else(String::new, |e| e.label.clone());
         if current_label != new_label {
-            let _ = mutate_doc_with_history(
-                &mut doc_signal,
-                &mut history_signal,
-                |doc| {
-                    let new_edges: HashMap<EdgeId, Edge> = doc
-                        .document
-                        .edges
-                        .iter()
-                        .map(|(id, edge)| {
-                            if *id == target {
-                                (id.clone(), Edge { label: new_label.clone(), ..edge.clone() })
-                            } else {
-                                (id.clone(), edge.clone())
-                            }
-                        })
-                        .collect();
+            let _ = mutate_doc_with_history(&mut doc_signal, &mut history_signal, |doc| {
+                let new_edges: HashMap<EdgeId, Edge> = doc
+                    .document
+                    .edges
+                    .iter()
+                    .map(|(id, edge)| {
+                        if *id == target {
+                            (
+                                id.clone(),
+                                Edge {
+                                    label: new_label.clone(),
+                                    ..edge.clone()
+                                },
+                            )
+                        } else {
+                            (id.clone(), edge.clone())
+                        }
+                    })
+                    .collect();
 
-                    let new_doc = DiagramDocument {
-                        version: doc.version,
-                        revision: doc.revision.increment(),
-                        document: crate::models::document::DocumentData {
-                            nodes: doc.document.nodes.clone(),
-                            edges: new_edges,
-                        },
-                        editor_state: doc.editor_state,
-                    };
-                    Ok(new_doc)
-                },
-            );
+                let new_doc = DiagramDocument {
+                    version: doc.version,
+                    revision: doc.revision.increment(),
+                    document: crate::models::document::DocumentData {
+                        nodes: doc.document.nodes.clone(),
+                        edges: new_edges,
+                    },
+                    editor_state: doc.editor_state,
+                };
+                Ok(new_doc)
+            });
         }
         editing_edge.set(None);
     }
@@ -278,7 +282,7 @@ mod tests {
             locked: true,
             parent: None,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),
@@ -886,7 +890,7 @@ mod proptests {
             locked: false,
             parent: None,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 0,
             style: Some(NodeStyle::default()),
@@ -1575,7 +1579,7 @@ mod subgraph_tests {
             locked,
             parent,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: -1, // Containers have lower z_index
             style: Some(NodeStyle::Box),
@@ -1607,7 +1611,7 @@ mod subgraph_tests {
             locked,
             parent,
             dag_rank: None,
-            tags: Vec::new(),
+            tags: im::Vector::new(),
             metadata: HashMap::new(),
             z_index: 1000, // Children have higher z_index
             style: Some(NodeStyle::default()),
@@ -2613,6 +2617,7 @@ mod inp_mobile_touch_tests {
     use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
     use im::HashMap;
 
+    #[allow(dead_code)]
     fn make_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
         (
             NodeId::new(id.to_string()),
@@ -2629,7 +2634,7 @@ mod inp_mobile_touch_tests {
                 locked: false,
                 parent: None,
                 dag_rank: None,
-                tags: Vec::new(),
+                tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 z_index: 0,
                 style: Some(NodeStyle::default()),

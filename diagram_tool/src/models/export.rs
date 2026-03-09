@@ -12,6 +12,7 @@
 #![forbid(unsafe_code)]
 
 use serde::{Deserialize, Serialize};
+#[cfg(not(target_arch = "wasm32"))]
 use sqlx::SqlitePool;
 use thiserror::Error;
 
@@ -20,7 +21,6 @@ use crate::models::document::DiagramDocument;
 use crate::models::envelope::{parse_event_envelope, Author as EnvelopeAuthor, EventEnvelope};
 use crate::models::projection::{DiagramProjection, EventRecord};
 use crate::models::schema::validate_schema;
-use crate::store;
 
 /// Errors that can occur during export/import operations
 #[derive(Debug, Error, Clone)]
@@ -262,21 +262,22 @@ const SUPPORTED_VERSION: u32 = 2;
 /// # Errors
 /// Returns ExportError::Sqlite if database operations fail
 /// Returns ExportError::Serialization if event parsing fails
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, ExportError> {
     let rows: Vec<(String, i64, String, String)> =
-        sqlx::query_as::<_, (String, i64, String, String)>(
+        sqlx::query_as::<sqlx::Sqlite, (String, i64, String, String)>(
             "SELECT operation_id, revision, payload, timestamp FROM events ORDER BY revision",
         )
         .fetch_all(pool)
         .await
-        .map_err(|e| ExportError::Sqlite(e.to_string()))?;
+        .map_err(|e: sqlx::Error| ExportError::Sqlite(e.to_string()))?;
 
     let mut decode_errors = Vec::new();
     let events: Vec<EventRecord> = rows
         .into_iter()
-        .filter_map(|(operation_id, revision, payload, timestamp)| {
+        .filter_map(|(operation_id, revision, payload, timestamp_str)| {
             match parse_event_envelope(&payload) {
-                Ok(envelope) => match timestamp.parse::<i64>() {
+                Ok(envelope) => match timestamp_str.parse::<i64>() {
                     Ok(timestamp) => Some(Ok(EventRecord {
                         op_id: envelope.op_id,
                         revision: revision as u64,
@@ -405,11 +406,11 @@ pub async fn import_diagram_json(
         };
 
         // Append event idempotently - checks by op_id, not revision
-        match store::append_idempotent(pool, envelope).await {
+        match crate::store_async::append_idempotent_async(pool, envelope).await {
             Ok(_outcome) => {
                 events_imported += 1;
             }
-            Err(store::StoreError::RevisionMismatch {
+            Err(crate::store_async::AsyncStoreError::RevisionMismatch {
                 expected: exp,
                 found,
             }) => {
@@ -435,7 +436,7 @@ pub async fn import_diagram_json(
     }
 
     // Get final revision
-    let final_revision = store::fetch_latest_revision(pool)
+    let final_revision = crate::store_async::fetch_latest_revision(pool)
         .await
         .map_err(|e| ExportError::Sqlite(e.to_string()))? as u64;
 
@@ -525,7 +526,7 @@ mod tests {
     use super::*;
     use crate::models::document::{ArrowType, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
     use crate::models::envelope::{Author as EnvelopeAuthor, DomainOp, EventEnvelope};
-    use crate::store;
+    use crate::store_async as store;
     use tempfile::TempDir;
 
     #[tokio::test]
@@ -533,7 +534,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         let result = export_diagram_json(conn).await;
@@ -550,7 +551,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let mut bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
 
         // Add some events
         let envelope1 = EventEnvelope {
@@ -589,10 +590,10 @@ mod tests {
             timestamp: 1700000001,
         };
 
-        store::append_event(&bootstrap.pool, envelope1, None)
+        crate::store_async::append_event_async(&bootstrap.pool, envelope1, None)
             .await
             .unwrap();
-        store::append_event(&bootstrap.pool, envelope2, None)
+        crate::store_async::append_event_async(&bootstrap.pool, envelope2, None)
             .await
             .unwrap();
 
@@ -608,7 +609,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         let input = r#"{
@@ -646,7 +647,7 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         // First create some data
-        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let mut bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
 
         let envelope = EventEnvelope {
             op_id: "op-1".to_string(),
@@ -666,7 +667,7 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        store::append_event(&bootstrap.pool, envelope, None)
+        crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
             .await
             .unwrap();
 
@@ -677,7 +678,7 @@ mod tests {
         // Create a fresh database for import
         let temp_dir2 = TempDir::new().unwrap();
         let db_path2 = temp_dir2.path().join("test.db");
-        let bootstrap2 = store::bootstrap_store(&db_path2).await.unwrap();
+        let bootstrap2 = crate::store_async::bootstrap_async_store(&db_path2).await.unwrap();
         let conn2 = &bootstrap2.pool;
 
         // Import
@@ -699,7 +700,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         let input = "not valid json";
@@ -718,7 +719,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         // Add one event first
@@ -740,7 +741,7 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        store::append_event(conn, envelope, None).await.unwrap();
+        crate::store_async::append_event_async(conn, envelope, None).await.unwrap();
 
         // Now try to import with events starting at revision 0 (should be revision 1)
         let input = r#"{
@@ -958,19 +959,22 @@ mod tests {
 
     #[tokio::test]
     async fn given_empty_database_in_recovery_mode_when_exporting_then_returns_valid_json() {
-        use crate::store::open_recovery_mode;
+        use crate::store_async::open_recovery_mode_async;
 
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a valid database
-        let _bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let _bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
+
+        // Close the write connection before opening recovery mode
+        _bootstrap.pool.close().await;
 
         // Open in recovery mode (read-only)
-        let handle = open_recovery_mode(&db_path).await.unwrap();
+        let handle = crate::store_async::open_recovery_mode_async(&db_path).await.unwrap();
 
         // Export while in recovery mode
-        let result = export_while_recovering(&handle.pool).await;
+        let result = export_while_recovering(&handle).await;
 
         assert!(result.is_ok(), "Export failed: {:?}", result.err());
         let json = result.unwrap();
@@ -980,13 +984,13 @@ mod tests {
     #[tokio::test]
     async fn given_database_with_events_in_recovery_mode_when_exporting_then_returns_projection_json(
     ) {
-        use crate::store::open_recovery_mode;
+        use crate::store_async::open_recovery_mode_async;
 
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a database with events
-        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let mut bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
 
         let envelope = EventEnvelope {
             op_id: "op-1".to_string(),
@@ -1006,15 +1010,18 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        store::append_event(&bootstrap.pool, envelope, None)
+        crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
             .await
             .unwrap();
 
+        // Close the write connection before opening recovery mode
+        bootstrap.pool.close().await;
+
         // Open in recovery mode (read-only)
-        let handle = open_recovery_mode(&db_path).await.unwrap();
+        let handle = crate::store_async::open_recovery_mode_async(&db_path).await.unwrap();
 
         // Export while in recovery mode
-        let result = export_while_recovering(&handle.pool).await;
+        let result = export_while_recovering(&handle).await;
 
         assert!(result.is_ok(), "Export failed: {:?}", result.err());
         let json = result.unwrap();
@@ -1025,20 +1032,23 @@ mod tests {
 
     #[tokio::test]
     async fn given_recovery_connection_is_read_only_when_exporting_then_succeeds() {
-        use crate::store::open_recovery_mode;
+        use crate::store_async::open_recovery_mode_async;
 
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
         // Create a valid database
-        let _bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let _bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
+
+        // Close the write connection before opening recovery mode
+        _bootstrap.pool.close().await;
 
         // Open in recovery mode
-        let handle = open_recovery_mode(&db_path).await.unwrap();
+        let handle = crate::store_async::open_recovery_mode_async(&db_path).await.unwrap();
 
         // Verify connection is read-only by attempting a write (should fail)
-        let write_result = sqlx::query("INSERT INTO events (operation_id, revision, payload, timestamp) VALUES ('test', 1, '{}', '0')")
-            .execute(&handle.pool)
+        let write_result: Result<sqlx::sqlite::SqliteQueryResult, sqlx::Error> = sqlx::query("INSERT INTO events (operation_id, revision, payload, timestamp) VALUES ('test', 1, '{}', '0')")
+            .execute(&handle)
             .await;
         assert!(
             write_result.is_err(),
@@ -1046,7 +1056,7 @@ mod tests {
         );
 
         // But export should still work
-        let result = export_while_recovering(&handle.pool).await;
+        let result = export_while_recovering(&handle).await;
         assert!(
             result.is_ok(),
             "Export should work with read-only connection"
@@ -1066,7 +1076,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         // Truncated JSON (cut off mid-string)
@@ -1096,7 +1106,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         // JSON with null where a required field should be
@@ -1125,7 +1135,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         // Valid JSON but wrong structure (array instead of object)
@@ -1273,7 +1283,7 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         // Create a database with many events
-        let mut bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let mut bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
 
         // Add 100 node events
         for i in 0..100 {
@@ -1294,7 +1304,7 @@ mod tests {
                 },
                 timestamp: 1700000000 + i,
             };
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -1306,7 +1316,7 @@ mod tests {
         // Create a fresh database for import
         let temp_dir2 = TempDir::new().unwrap();
         let db_path2 = temp_dir2.path().join("test.db");
-        let bootstrap2 = store::bootstrap_store(&db_path2).await.unwrap();
+        let bootstrap2 = crate::store_async::bootstrap_async_store(&db_path2).await.unwrap();
         let conn2 = &bootstrap2.pool;
 
         // Import
@@ -1798,7 +1808,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         let input = r#"{
@@ -1851,7 +1861,7 @@ mod tests {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
 
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         let conn = &bootstrap.pool;
 
         // JSON missing version field in metadata

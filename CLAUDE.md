@@ -27,4 +27,11 @@ A session is NOT complete until all these steps are done:
    git push
    git status # MUST show "up to date with origin"
    ```
-4. **Never stop before pushing**: Do not leave work stranded locally. 
+4. **Never stop before pushing**: Do not leave work stranded locally.
+
+## Dioxus WASM Build Constraints (CRITICAL)
+When running `dx build --platform web` or building for `wasm32-unknown-unknown`, the build will fatally panic if backend networking or database logic leaks into the WASM client.
+- **NEVER** include `sqlx`, `tokio`, `mio`, `rusqlite`, or `reqwest` (with default TLS) in the `wasm32-unknown-unknown` target.
+- **ALWAYS** wrap server/database dependencies in `Cargo.toml` with `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`.
+- **NEVER** set `default = ["desktop", "server"]` or enable `fullstack` by default in `Cargo.toml`. You must use `default = ["web"]` to ensure `dx build` does not accidentally pull in `dioxus-server` and `tokio`.
+- **ALWAYS** wrap domain functions that take `SqlitePool` with `#[cfg(not(target_arch = "wasm32"))]`.

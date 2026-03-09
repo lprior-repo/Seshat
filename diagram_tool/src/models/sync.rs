@@ -431,18 +431,20 @@ pub fn start_event_tail_watcher(
 ///     // Process each event
 /// }
 /// ```
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn fetch_new_events(
     pool: &sqlx::SqlitePool,
     after_revision: i64,
 ) -> Result<Vec<EventRecord>, SyncError> {
-    let rows = sqlx::query_as::<_, (String, i64, String, String)>(
+    let rows = sqlx::query_as::<sqlx::Sqlite, (String, i64, String, String)>(
         "SELECT operation_id, revision, payload, timestamp FROM events \
          WHERE revision > $1 ORDER BY revision ASC",
     )
     .bind(after_revision)
     .fetch_all(pool)
     .await
-    .map_err(|e| SyncError::Sqlite(e.to_string()))?;
+    .map_err(|e: sqlx::Error| SyncError::Sqlite(e.to_string()))?;
 
     let mut events = Vec::with_capacity(rows.len());
     let mut expected_revision = after_revision + 1;
@@ -488,11 +490,13 @@ pub async fn fetch_new_events(
 /// # Errors
 ///
 /// Returns `SyncError::Sqlite` if the query fails.
+#[cfg(not(target_arch = "wasm32"))]
+#[cfg(not(target_arch = "wasm32"))]
 pub async fn fetch_latest_revision(pool: &sqlx::SqlitePool) -> Result<i64, SyncError> {
-    sqlx::query_scalar::<_, i64>("SELECT COALESCE(MAX(revision), 0) FROM events")
+    sqlx::query_scalar::<sqlx::Sqlite, i64>("SELECT COALESCE(MAX(revision), 0) FROM events")
         .fetch_one(pool)
         .await
-        .map_err(|e| SyncError::Sqlite(e.to_string()))
+        .map_err(|e: sqlx::Error| SyncError::Sqlite(e.to_string()))
 }
 
 /// Summary of a batch apply operation
@@ -667,14 +671,14 @@ pub fn schedule_ui_update(summary: ApplySummary) -> Result<(), SyncError> {
 mod tests {
     use super::*;
     use crate::models::envelope::{Author, DomainOp, EventEnvelope};
-    use crate::store;
+    use crate::store_async as store;
     use std::sync::mpsc::{channel, RecvTimeoutError};
     use tempfile::TempDir;
 
-    async fn create_test_db() -> (TempDir, PathBuf, store::StoreBootstrap) {
+    async fn create_test_db() -> (TempDir, PathBuf, store::AsyncStoreBootstrap) {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        let bootstrap = store::bootstrap_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
         (temp_dir, db_path, bootstrap)
     }
 
@@ -713,7 +717,7 @@ mod tests {
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -733,7 +737,7 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -750,7 +754,7 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -775,7 +779,7 @@ mod tests {
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -832,7 +836,7 @@ mod tests {
 
         // Modify the database
         let envelope = make_test_envelope("op-new", 1);
-        store::append_event(&bootstrap.pool, envelope, None)
+        crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
             .await
             .unwrap();
 
@@ -862,7 +866,7 @@ mod tests {
         // Add events
         for i in 1..=10 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -896,7 +900,7 @@ mod tests {
             },
         };
 
-        store::append_event(&bootstrap.pool, envelope.clone(), None)
+        crate::store_async::append_event_async(&bootstrap.pool, envelope.clone(), None)
             .await
             .unwrap();
 
@@ -960,7 +964,7 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -1062,7 +1066,7 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }
@@ -1131,7 +1135,7 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            store::append_event(&bootstrap.pool, envelope, None)
+            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
                 .await
                 .unwrap();
         }

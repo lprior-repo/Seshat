@@ -32,7 +32,9 @@ impl ConfigValidator {
         }
 
         if config.wal_autocheckpoint < 0 || config.wal_autocheckpoint > 10000 {
-            return Err(ConfigError::InvalidWalAutocheckpoint(config.wal_autocheckpoint));
+            return Err(ConfigError::InvalidWalAutocheckpoint(
+                config.wal_autocheckpoint,
+            ));
         }
 
         Ok(())

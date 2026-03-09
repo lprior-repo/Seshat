@@ -4,6 +4,7 @@ use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct AppConfig {
     pub database: DatabaseConfig,
     pub logging: LogConfig,
@@ -25,6 +26,7 @@ pub struct LogConfig {
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+#[derive(Default)]
 pub struct DebugConfig {
     pub enable_validation_panel: bool,
     pub enable_perf_metrics: bool,
@@ -50,24 +52,7 @@ impl Default for LogConfig {
     }
 }
 
-impl Default for DebugConfig {
-    fn default() -> Self {
-        Self {
-            enable_validation_panel: false,
-            enable_perf_metrics: false,
-        }
-    }
-}
 
-impl Default for AppConfig {
-    fn default() -> Self {
-        Self {
-            database: DatabaseConfig::default(),
-            logging: LogConfig::default(),
-            debug: DebugConfig::default(),
-        }
-    }
-}
 
 impl AppConfig {
     pub fn load_from_environment() -> Result<Self, super::ConfigError> {
@@ -98,7 +83,8 @@ impl AppConfig {
         }
 
         if let Ok(validation) = std::env::var("DIAGRAM_TOOL_DEBUG_VALIDATION") {
-            config.debug.enable_validation_panel = validation == "1" || validation.to_lowercase() == "true";
+            config.debug.enable_validation_panel =
+                validation == "1" || validation.to_lowercase() == "true";
         }
 
         if let Ok(perf) = std::env::var("DIAGRAM_TOOL_DEBUG_PERF") {
@@ -110,25 +96,25 @@ impl AppConfig {
 
     pub fn merge_from_config_file(mut self) -> Result<Self, super::ConfigError> {
         let config_path = self.find_config_file()?;
-        
+
         if let Some(path) = config_path {
             if path.exists() {
-                let content = std::fs::read_to_string(&path)
-                    .map_err(|e| super::ConfigError::FileRead {
+                let content =
+                    std::fs::read_to_string(&path).map_err(|e| super::ConfigError::FileRead {
                         path: path.clone(),
                         source: e,
                     })?;
-                
-                let file_config: FileConfig = serde_json::from_str(&content)
-                    .map_err(|e| super::ConfigError::FileParse {
+
+                let file_config: FileConfig =
+                    serde_json::from_str(&content).map_err(|e| super::ConfigError::FileParse {
                         path: path.clone(),
                         source: e,
                     })?;
-                
+
                 self = file_config.merge_into(self);
             }
         }
-        
+
         Ok(self)
     }
 
@@ -142,7 +128,7 @@ impl AppConfig {
         if let Some(config_dir) = dirs::config_dir() {
             search_paths.push(config_dir.join("diagram_tool"));
         }
-        
+
         if let Some(home_dir) = dirs::home_dir() {
             search_paths.push(home_dir.join(".config").join("diagram_tool"));
         }
@@ -257,7 +243,7 @@ mod tests {
 
         let mut app_config = AppConfig::default();
         app_config = file_config.merge_into(app_config);
-        
+
         assert_eq!(app_config.database.path, "/custom/path.db");
     }
 }

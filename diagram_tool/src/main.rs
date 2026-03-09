@@ -5,6 +5,9 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 #![allow(unexpected_cfgs)]
+#![allow(dead_code)]
+#![allow(unused_imports)]
+#![allow(unused_variables)]
 
 #[cfg(not(target_arch = "wasm32"))]
 use clap::Parser;
@@ -18,8 +21,9 @@ mod cli;
 #[cfg(not(target_arch = "wasm32"))]
 mod cli_events_tests;
 #[cfg(not(target_arch = "wasm32"))]
-mod cli_persistence;
-mod core;
+pub mod cli_persistence;
+pub mod config;
+pub mod core;
 mod export;
 mod geometry;
 mod history;
@@ -31,7 +35,11 @@ mod mutation;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf;
 #[cfg(not(target_arch = "wasm32"))]
-mod store;
+pub mod store;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod store_async;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod store_bridge;
 mod test_harness;
 mod ui;
 

@@ -16,18 +16,17 @@ pub enum RevisionPolicy {
     Preserve,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
 pub enum ValidationPolicy {
+    #[default]
     Validate,
     Skip,
 }
 
-impl Default for ValidationPolicy {
-    fn default() -> Self {
-        Self::Validate
-    }
-}
-
+/// Run a mutation and check validation.
+///
+/// # Errors
+/// Returns an error if the transformed document is invalid.
 pub fn run_mutation<F>(
     current: &DiagramDocument,
     transform: F,
@@ -35,9 +34,18 @@ pub fn run_mutation<F>(
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
-    run_mutation_with_policy(current, RevisionPolicy::Increment, ValidationPolicy::default(), transform)
+    run_mutation_with_policy(
+        current,
+        RevisionPolicy::Increment,
+        crate::mutation::pipeline::ValidationPolicy::default(),
+        transform,
+    )
 }
 
+/// Run a mutation with an explicit policy.
+///
+/// # Errors
+/// Returns an error if the transformation fails or validation fails depending on the policy.
 pub fn run_mutation_with_policy<F>(
     current: &DiagramDocument,
     revision_policy: RevisionPolicy,
@@ -71,6 +79,10 @@ where
     )
 }
 
+/// Run a mutation without validation.
+///
+/// # Errors
+/// Returns an error if the transformation fails.
 pub fn run_mutation_unchecked<F>(
     current: &DiagramDocument,
     transform: F,
@@ -78,18 +90,23 @@ pub fn run_mutation_unchecked<F>(
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
-    run_mutation_with_policy(current, RevisionPolicy::Increment, ValidationPolicy::Skip, transform)
+    run_mutation_with_policy(
+        current,
+        RevisionPolicy::Increment,
+        ValidationPolicy::Skip,
+        transform,
+    )
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
+    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, EditorState, Node, NodeId, NodeKind,
-        NodeStyle, OrderedFloat,
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
+        OrderedFloat,
     };
     use crate::mutation::error::MutationError;
-    use crate::ui::grid::GridSize;
+
     use im::HashMap;
 
     fn make_node(id: &str) -> (NodeId, Node) {
@@ -108,7 +125,7 @@ mod tests {
                 locked: false,
                 parent: None,
                 dag_rank: None,
-                tags: Vec::new(),
+                tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 z_index: 0,
                 style: Some(NodeStyle::default()),
@@ -130,8 +147,8 @@ mod tests {
                 color: None,
                 thickness: OrderedFloat(1.5),
                 directed: true,
-                bend_points: Vec::new(),
-                tags: Vec::new(),
+                bend_points: im::Vector::new(),
+                tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 font_size: None,
             },
@@ -167,8 +184,12 @@ mod tests {
     #[test]
     fn given_preserve_policy_when_run_mutation_then_revision_is_not_incremented() {
         let current = DiagramDocument::default();
-        let result =
-            run_mutation_with_policy(&current, RevisionPolicy::Preserve, ValidationPolicy::default(), |doc| Ok(doc.clone()));
+        let result = run_mutation_with_policy(
+            &current,
+            RevisionPolicy::Preserve,
+            crate::mutation::pipeline::ValidationPolicy::default(),
+            |doc| Ok(doc.clone()),
+        );
 
         let next = result.ok();
         assert!(next.is_some());
@@ -181,9 +202,12 @@ mod tests {
         let mut current = DiagramDocument::default();
         current.revision = current.revision.increment();
 
-        let result = run_mutation_with_policy(&current, RevisionPolicy::Preserve, ValidationPolicy::default(), |_| {
-            Ok(DiagramDocument::default())
-        });
+        let result = run_mutation_with_policy(
+            &current,
+            RevisionPolicy::Preserve,
+            crate::mutation::pipeline::ValidationPolicy::default(),
+            |_| Ok(DiagramDocument::default()),
+        );
 
         assert!(result.is_ok());
         assert_eq!(result.ok().map(|doc| doc.revision), Some(current.revision));
@@ -283,7 +307,7 @@ mod proptests {
                         locked: false,
                         parent: None,
                         dag_rank: None,
-                        tags: Vec::new(),
+                        tags: im::Vector::new(),
                         metadata: HashMap::new(),
                         z_index: 0,
                         style: Some(NodeStyle::default()),
@@ -324,7 +348,7 @@ mod proptests {
                         locked: false,
                         parent: None,
                         dag_rank: None,
-                        tags: Vec::new(),
+                        tags: im::Vector::new(),
                         metadata: HashMap::new(),
                         z_index: 0,
                         style: Some(NodeStyle::default()),
@@ -373,7 +397,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -418,7 +442,7 @@ mod proptests {
                             locked: false,
                             parent: None,
                             dag_rank: None,
-                            tags: Vec::new(),
+                            tags: im::Vector::new(),
                             metadata: HashMap::new(),
                             z_index: 0,
                             style: Some(NodeStyle::default()),
@@ -472,7 +496,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -508,7 +532,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -547,7 +571,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -583,7 +607,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -623,7 +647,7 @@ mod proptests {
                             locked: false,
                             parent: None,
                             dag_rank: None,
-                            tags: Vec::new(),
+                            tags: im::Vector::new(),
                             metadata: HashMap::new(),
                             z_index: 0,
                             style: Some(NodeStyle::default()),
@@ -670,7 +694,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -686,8 +710,8 @@ mod proptests {
                     color: None,
                     thickness: OrderedFloat(1.5),
                     directed: true,
-                    bend_points: Vec::new(),
-                    tags: Vec::new(),
+                    bend_points: im::Vector::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     font_size: None,
                 };
@@ -710,13 +734,13 @@ mod proptests {
             let with_increment = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Increment,
-                ValidationPolicy::default(),
+                crate::mutation::pipeline::ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
             let with_preserve = run_mutation_with_policy(
                 &current,
                 RevisionPolicy::Preserve,
-                ValidationPolicy::default(),
+                crate::mutation::pipeline::ValidationPolicy::default(),
                 |d| Ok(d.clone())
             );
 
@@ -741,8 +765,8 @@ mod proptests {
                     color: None,
                     thickness: OrderedFloat(1.5),
                     directed: true,
-                    bend_points: Vec::new(),
-                    tags: Vec::new(),
+                    bend_points: im::Vector::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     font_size: None,
                 };
@@ -775,7 +799,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: z,
                     style: Some(NodeStyle::default()),
@@ -811,7 +835,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -830,7 +854,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -849,8 +873,8 @@ mod proptests {
                         color: None,
                         thickness: OrderedFloat(1.5),
                         directed: true,
-                        bend_points: vec![Point { x: OrderedFloat(100.0), y: OrderedFloat(i as f64 * 20.0) }],
-                        tags: Vec::new(),
+                        bend_points: im::vector![Point { x: OrderedFloat(100.0), y: OrderedFloat(i as f64 * 20.0) }],
+                        tags: im::Vector::new(),
                         metadata: HashMap::new(),
                         font_size: None,
                     };
@@ -888,7 +912,7 @@ mod proptests {
                     locked: false,
                     parent: Some(nid_clone.clone()),
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -927,7 +951,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: vec![tag.clone()],
+                    tags: im::vector![tag.clone()],
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -962,7 +986,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -997,7 +1021,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -1033,7 +1057,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -1052,7 +1076,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -1075,8 +1099,8 @@ mod proptests {
                     color: None,
                     thickness: OrderedFloat(1.5),
                     directed: true,
-                    bend_points,
-                    tags: Vec::new(),
+                    bend_points: bend_points.into(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     font_size: None,
                 };
@@ -1142,7 +1166,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata,
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -1177,7 +1201,7 @@ mod proptests {
                     locked: true,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),
@@ -1215,7 +1239,7 @@ mod proptests {
                     locked: false,
                     parent: None,
                     dag_rank: None,
-                    tags: Vec::new(),
+                    tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     z_index: 0,
                     style: Some(NodeStyle::default()),

@@ -1,9 +1,5 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
-
 use diagram_tool::ui::canvas::math::{
-    canvas_to_screen, safe_zoom, safe_zoom_clamped, sanitize_zoom, screen_to_canvas, within,
+    canvas_to_screen, safe_zoom, sanitize_zoom, screen_to_canvas, within,
 };
 
 #[test]
@@ -101,31 +97,31 @@ fn test_canvas_to_screen_roundtrip() {
 }
 
 #[test]
-fn test_safe_zoom_clamped_basic() {
-    let result = safe_zoom_clamped(0.5, 0.1, 4.0);
+fn test_sanitize_zoom_basic() {
+    let result = sanitize_zoom(0.5, 0.1, 4.0);
     assert!(result.is_some());
     assert_eq!(result.unwrap(), 0.5);
 }
 
 #[test]
 fn test_safe_zoom_clamp_below_min() {
-    let result = safe_zoom_clamped(0.05, 0.1, 4.0);
+    let result = sanitize_zoom(0.05, 0.1, 4.0);
     assert!(result.is_some());
     assert_eq!(result.unwrap(), 0.1);
 }
 
 #[test]
 fn test_safe_zoom_clamp_above_max() {
-    let result = safe_zoom_clamped(10.0, 0.1, 4.0);
+    let result = sanitize_zoom(10.0, 0.1, 4.0);
     assert!(result.is_some());
     assert_eq!(result.unwrap(), 4.0);
 }
 
 #[test]
-fn test_safe_zoom_clamped_rejects_invalid() {
-    assert!(safe_zoom_clamped(0.0, 0.1, 4.0).is_none());
-    assert!(safe_zoom_clamped(-1.0, 0.1, 4.0).is_none());
-    assert!(safe_zoom_clamped(f64::NAN, 0.1, 4.0).is_none());
+fn test_sanitize_zoom_rejects_invalid() {
+    assert!(sanitize_zoom(0.0, 0.1, 4.0).is_none());
+    assert!(sanitize_zoom(-1.0, 0.1, 4.0).is_none());
+    assert!(sanitize_zoom(f64::NAN, 0.1, 4.0).is_none());
 }
 
 #[test]

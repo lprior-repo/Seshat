@@ -72,19 +72,19 @@ impl CliErrorCode {
     }
 }
 
+#[must_use] 
 pub const fn map_error_code(err: &AsyncStoreError) -> CliErrorCode {
     match err {
-        AsyncStoreError::RevisionMismatch { .. } => CliErrorCode::RevisionMismatch,
-        AsyncStoreError::RevisionGap { .. } => CliErrorCode::RevisionMismatch,
-        AsyncStoreError::ValidationFailed(_) => CliErrorCode::ValidationFailed,
-        AsyncStoreError::Sqlx(_) => CliErrorCode::Unknown,
-        AsyncStoreError::Io(_) => CliErrorCode::Unknown,
-        AsyncStoreError::InvalidPragma(_) => CliErrorCode::Unknown,
-        AsyncStoreError::SchemaVersionMismatch { .. } => CliErrorCode::Unknown,
-        AsyncStoreError::Serialization(_) => CliErrorCode::Unknown,
-        AsyncStoreError::TransactionAborted { .. } => CliErrorCode::Unknown,
-        AsyncStoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
-        AsyncStoreError::EmptyBatch => CliErrorCode::ValidationFailed,
+        AsyncStoreError::RevisionMismatch { .. }
+        | AsyncStoreError::RevisionGap { .. }
+        | AsyncStoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
+        AsyncStoreError::ValidationFailed(_) | AsyncStoreError::EmptyBatch => CliErrorCode::ValidationFailed,
+        AsyncStoreError::Sqlx(_)
+        | AsyncStoreError::Io(_)
+        | AsyncStoreError::InvalidPragma(_)
+        | AsyncStoreError::SchemaVersionMismatch { .. }
+        | AsyncStoreError::Serialization(_)
+        | AsyncStoreError::TransactionAborted { .. } => CliErrorCode::Unknown,
     }
 }
 
@@ -118,6 +118,10 @@ pub struct AsyncStorePragmas {
     pub busy_timeout: i32,
 }
 
+/// Creates an async pool.
+///
+/// # Errors
+/// Returns an error if the connection fails or pragmas cannot be set.
 pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
     
@@ -149,6 +153,10 @@ pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreE
     Ok(pool)
 }
 
+/// Bootstraps the async store.
+///
+/// # Errors
+/// Returns an error if the connection fails or migrations fail.
 pub async fn bootstrap_async_store(db_path: &Path) -> Result<AsyncStoreBootstrap, AsyncStoreError> {
     let pool = create_async_pool(db_path).await?;
     
@@ -244,6 +252,10 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     Ok(())
 }
 
+/// Fetches the latest revision.
+///
+/// # Errors
+/// Returns an error if the query fails.
 pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
     let revision: Option<i64> = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
         .fetch_optional(pool)
@@ -253,15 +265,27 @@ pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreE
     Ok(revision.unwrap_or(0))
 }
 
+/// Gets current revision.
+///
+/// # Errors
+/// Returns an error if the query fails.
 pub async fn current_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
     fetch_latest_revision(pool).await
 }
 
+/// Gets next revision.
+///
+/// # Errors
+/// Returns an error if the query fails.
 pub async fn next_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
     let current = current_revision(pool).await?;
     Ok(current + 1)
 }
 
+/// Appends an event asynchronously.
+///
+/// # Errors
+/// Returns an error on serialization or database failure.
 pub async fn append_event_async(
     pool: &SqlitePool,
     envelope: EventEnvelope,
@@ -308,6 +332,10 @@ pub async fn append_event_async(
     })
 }
 
+/// Appends a batch of events asynchronously.
+///
+/// # Errors
+/// Returns an error if any append fails.
 pub async fn append_batch_async(
     pool: &SqlitePool,
     ops: Vec<EventEnvelope>,
@@ -335,12 +363,12 @@ pub async fn append_batch_async(
 
     let batch_size = ops.len();
     let start_revision = current_revision + 1;
-    let end_revision = current_revision + batch_size as i64;
+    let end_revision = current_revision + i64::try_from(batch_size).unwrap_or(0);
     let mut op_ids = Vec::with_capacity(batch_size);
     let mut last_timestamp = 0i64;
 
     for (idx, envelope) in ops.into_iter().enumerate() {
-        let new_revision = current_revision + 1 + idx as i64;
+        let new_revision = current_revision + 1 + i64::try_from(idx).unwrap_or(0);
 
         let payload = encode_event_envelope(&envelope)
             .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
@@ -379,6 +407,10 @@ pub struct EventRecord {
     pub payload: String,
 }
 
+/// Looks up an existing operation by ID.
+///
+/// # Errors
+/// Returns an error if the query fails or timestamp parsing fails.
 pub async fn lookup_existing_op_async(
     pool: &SqlitePool,
     op_id: &str,
@@ -407,7 +439,11 @@ pub async fn lookup_existing_op_async(
     }
 }
 
-pub async fn classify_duplicate_async(
+/// Classifies a duplicate.
+///
+/// # Errors
+/// Returns an error if serialization fails.
+pub fn classify_duplicate_async(
     existing: &EventRecord,
     incoming: &EventEnvelope,
 ) -> Result<DuplicateKind, AsyncStoreError> {
@@ -421,6 +457,10 @@ pub async fn classify_duplicate_async(
     }
 }
 
+/// Appends an event idempotently.
+///
+/// # Errors
+/// Returns an error if serialization or database execution fails.
 pub async fn append_idempotent_async(
     pool: &SqlitePool,
     envelope: EventEnvelope,
@@ -465,7 +505,7 @@ pub async fn append_idempotent_async(
 
                 match existing {
                     Some(record) => {
-                        let kind = classify_duplicate_async(&record, &envelope).await?;
+                        let kind = classify_duplicate_async(&record, &envelope)?;
 
                         match kind {
                             DuplicateKind::Exact => {
@@ -489,6 +529,10 @@ pub async fn append_idempotent_async(
     }
 }
 
+/// Fetches events since a given revision.
+///
+/// # Errors
+/// Returns an error on query failure.
 pub async fn fetch_events_since(
     pool: &SqlitePool,
     revision: i64,
@@ -517,6 +561,10 @@ pub async fn fetch_events_since(
     Ok(events)
 }
 
+/// Fetches all events.
+///
+/// # Errors
+/// Returns an error on query failure.
 pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, AsyncStoreError> {
     let rows = sqlx::query_as::<_, (String, i64, String, String)>(
         "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC"
@@ -541,6 +589,10 @@ pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, Asy
     Ok(events)
 }
 
+/// Reads store pragmas asynchronously.
+///
+/// # Errors
+/// Returns an error if any pragma query fails.
 pub async fn read_store_pragmas_async(pool: &SqlitePool) -> Result<AsyncStorePragmas, AsyncStoreError> {
     let journal_mode: String = sqlx::query_scalar("PRAGMA journal_mode")
         .fetch_one(pool)
@@ -576,6 +628,10 @@ pub async fn read_store_pragmas_async(pool: &SqlitePool) -> Result<AsyncStorePra
     })
 }
 
+/// Performs an integrity check on the database.
+///
+/// # Errors
+/// Returns an error if the query fails.
 pub async fn integrity_check_async(db_path: &Path) -> Result<Vec<String>, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=ro", db_path.display());
     
@@ -595,6 +651,10 @@ pub async fn integrity_check_async(db_path: &Path) -> Result<Vec<String>, AsyncS
     Ok(results)
 }
 
+/// Opens the database in recovery mode.
+///
+/// # Errors
+/// Returns an error if the connection fails or pragmas cannot be set.
 pub async fn open_recovery_mode_async(db_path: &Path) -> Result<SqlitePool, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
     
@@ -896,7 +956,6 @@ mod tests {
             .expect("Record should exist");
 
         let kind = classify_duplicate_async(&record, &envelope)
-            .await
             .expect("classify_duplicate_async should succeed");
 
         assert_eq!(kind, DuplicateKind::Exact);
@@ -958,7 +1017,6 @@ mod tests {
             .expect("Record should exist");
 
         let kind = classify_duplicate_async(&record, &envelope2)
-            .await
             .expect("classify_duplicate_async should succeed");
 
         assert_eq!(kind, DuplicateKind::Conflict);

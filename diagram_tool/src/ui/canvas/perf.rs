@@ -52,7 +52,7 @@ pub(super) fn to_screen_coords(
 
 #[must_use]
 pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
-    let current_zoom = math::safe_zoom_clamped(input.zoom.0, ZOOM_MIN, ZOOM_MAX).unwrap_or(1.0);
+    let current_zoom = math::sanitize_zoom(input.zoom.0, ZOOM_MIN, ZOOM_MAX).unwrap_or(1.0);
     let wheel_delta = if input.shift_pan {
         if input.dx.abs() > f64::EPSILON {
             input.dx

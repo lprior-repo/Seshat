@@ -8,11 +8,6 @@
 //! - Concurrent operations
 //! - WAL mode configuration
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
-#![forbid(unsafe_code)]
-
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,

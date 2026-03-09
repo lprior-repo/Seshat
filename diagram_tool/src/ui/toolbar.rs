@@ -35,7 +35,7 @@ pub struct ToolbarStats {
 pub fn Toolbar() -> Element {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
-    let clipboard_signal = use_context::<Signal<Option<crate::ui::commands::Clipboard>>>();
+    let _clipboard_signal = use_context::<Signal<Option<crate::ui::commands::Clipboard>>>();
     let mut tool_signal = use_context::<Signal<ToolMode>>();
     let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
     let mut theme_mode_signal = use_context::<Signal<ThemeMode>>();
@@ -173,15 +173,15 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-copy",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::copy_selection(doc_signal, clipboard_signal),
+                onclick: move |_| actions::copy_selection(doc_signal),
                 disabled: stats.selected_count == 0,
                 "Copy"
             }
             button {
                 "data-testid": "toolbar-paste",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::paste_selection(doc_signal, clipboard_signal, history_signal),
-                disabled: !actions::can_paste(clipboard_signal),
+                onclick: move |_| actions::paste_selection(doc_signal, history_signal),
+                disabled: !actions::can_paste(),
                 "Paste"
             }
 

@@ -87,7 +87,7 @@ where
     F: FnOnce(DiagramDocument) -> MutationResult<(DiagramDocument, T)>,
 {
     let current = doc_signal.read().clone();
-    let next = transform(current.clone()).map_err(MutationError::from)?;
+    let next = transform(current.clone())?;
     
     crate::models::schema::validate_schema(&next.0).map_err(MutationError::from)?;
     
@@ -96,7 +96,7 @@ where
         return Err(MutationError::from_issue(issue).into());
     }
     
-    let new_history = history_signal.read().push(current.clone());
+    let new_history = history_signal.read().push(current);
     *history_signal.write() = new_history;
     *doc_signal.write() = next.0;
     Ok(next.1)

@@ -39,7 +39,11 @@ pub struct StoreBridge {
 }
 
 impl StoreBridge {
-    pub fn spawn_async_pool(db_path: &Path) -> Result<StoreBridge, BridgeError> {
+    /// Spawns an async pool.
+    ///
+    /// # Errors
+    /// Returns an error if the runtime or store cannot be created.
+    pub fn spawn_async_pool(db_path: &Path) -> Result<Self, BridgeError> {
         let runtime = tokio::runtime::Builder::new_current_thread()
             .enable_all()
             .build()
@@ -48,12 +52,16 @@ impl StoreBridge {
         let bootstrap: AsyncStoreBootstrap = runtime.block_on(bootstrap_async_store(db_path))
             .map_err(BridgeError::AsyncStore)?;
 
-        Ok(StoreBridge {
+        Ok(Self {
             pool: Arc::new(Mutex::new(Some(bootstrap.pool))),
             runtime,
         })
     }
 
+    /// Appends an event synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store fails to append the event.
     pub fn append_event_sync(
         &self,
         envelope: EventEnvelope,
@@ -62,9 +70,11 @@ impl StoreBridge {
         let pool = self.pool.clone();
         
         self.runtime.block_on(async {
-            let pool_guard = pool.lock().await;
-            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
-            append_event_async(pool, envelope, expected_revision)
+            let p = {
+                let pool_guard = pool.lock().await;
+                pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
+            };
+            append_event_async(&p, envelope, expected_revision)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
@@ -116,7 +126,7 @@ impl StoreBridge {
         })
     }
 
-    pub fn shutdown(mut self) -> Result<(), BridgeError> {
+    pub fn shutdown(self) -> Result<(), BridgeError> {
         self.runtime.block_on(async {
             let mut pool_guard = self.pool.lock().await;
             if let Some(pool) = pool_guard.take() {

@@ -29,7 +29,7 @@ pub enum Operation {
 impl Operation {
     /// Returns all operations.
     #[must_use]
-    pub const fn all() -> [Operation; 5] {
+    pub const fn all() -> [Self; 5] {
         [
             Self::Pan,
             Self::Zoom,
@@ -99,8 +99,7 @@ impl Baseline {
             results: HashMap::new(),
             created_at: UNIX_EPOCH
                 .elapsed()
-                .map(|d| d.as_millis() as u64)
-                .unwrap_or(0),
+                .map_or(0, |d| u64::try_from(d.as_millis()).unwrap_or(0)),
         }
     }
 
@@ -158,7 +157,7 @@ impl Baseline {
                 .validate()
                 .map_err(|e| PerfError::InvariantViolation {
                     invariant: "BASELINE_VALIDITY",
-                    details: format!("{}: {}", name, e),
+                    details: format!("{name}: {e}"),
                 })?;
         }
         Ok(())
@@ -179,7 +178,7 @@ pub struct BenchmarkHarness {
 impl BenchmarkHarness {
     /// Creates a new benchmark harness.
     #[must_use]
-    pub fn new(output_dir: PathBuf) -> Self {
+    pub const fn new(output_dir: PathBuf) -> Self {
         Self {
             output_dir,
             node_count: BASELINE_NODE_COUNT,
@@ -286,17 +285,18 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     let mut rng = seed;
     let next_random = |r: &mut u64| -> f64 {
         *r = r.wrapping_mul(1_103_515_245).wrapping_add(12345);
-        f64::from((*r >> 16) as u16) / 65535.0
+        f64::from(u16::try_from((*r >> 16) & 0xFFFF).unwrap_or(0)) / 65535.0
     };
 
     // Generate nodes in a grid pattern
+    #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
     let grid_size = f64::from(node_count).sqrt().ceil() as u32;
     for i in 0..node_count {
         let row = i / grid_size;
         let col = i % grid_size;
 
-        let x = f64::from(col) * 120.0 + next_random(&mut rng) * 20.0;
-        let y = f64::from(row) * 80.0 + next_random(&mut rng) * 20.0;
+        let x = f64::from(col).mul_add(120.0, next_random(&mut rng) * 20.0);
+        let y = f64::from(row).mul_add(80.0, next_random(&mut rng) * 20.0);
 
         let node = Node {
             kind: NodeKind::Node,
@@ -324,15 +324,16 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     // Generate some edges (about 50% of nodes have edges)
     for i in 0..(node_count / 2) {
         let source_idx = i;
+        #[allow(clippy::cast_possible_truncation, clippy::cast_sign_loss)]
         let target_idx = (i + 1 + (next_random(&mut rng) * 10.0) as u32) % node_count;
 
         if source_idx != target_idx {
             let edge = Edge {
-                source: NodeId::new(format!("node-{}", source_idx)),
-                target: NodeId::new(format!("node-{}", target_idx)),
+                source: NodeId::new(format!("node-{source_idx}")),
+                target: NodeId::new(format!("node-{target_idx}")),
                 label: String::new(),
-                style: Default::default(),
-                arrow_type: Default::default(),
+                style: crate::models::document::EdgeStyle::default(),
+                arrow_type: crate::models::document::ArrowType::default(),
                 label_offset_t: OrderedFloat(0.5),
                 color: None,
                 thickness: OrderedFloat(1.5),
@@ -343,7 +344,7 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
                 font_size: None,
             };
 
-            edges.insert(EdgeId::new(format!("edge-{}", i)), edge);
+            edges.insert(EdgeId::new(format!("edge-{i}")), edge);
         }
     }
 

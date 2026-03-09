@@ -75,7 +75,11 @@ impl Percentiles {
 
         let len = sorted.len();
         let percentile = |p: f64| -> f64 {
-            #[allow(clippy::cast_precision_loss)]
+            #[allow(
+                clippy::cast_precision_loss,
+                clippy::cast_possible_truncation,
+                clippy::cast_sign_loss
+            )]
             let idx = ((len - 1) as f64 * p).round() as usize;
             sorted[idx.min(len - 1)]
         };
@@ -185,7 +189,7 @@ impl Statistics {
 
     /// Validates all invariants.
     #[must_use]
-    pub fn is_valid(&self) -> bool {
+    pub const fn is_valid(&self) -> bool {
         // INV-1: No NaN/Infinity
         let values_finite = self.mean.is_finite()
             && self.std_dev.is_finite()
@@ -205,10 +209,10 @@ impl Statistics {
     /// Returns the coefficient of variation (CV).
     #[must_use]
     pub fn coefficient_of_variation(&self) -> f64 {
-        if self.mean != 0.0 {
-            self.std_dev / self.mean.abs()
-        } else {
+        if self.mean == 0.0 {
             0.0
+        } else {
+            self.std_dev / self.mean.abs()
         }
     }
 }

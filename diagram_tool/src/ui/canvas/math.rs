@@ -31,6 +31,26 @@ pub fn screen_to_canvas(
     Some((cx, cy))
 }
 
+#[must_use]
+pub fn canvas_to_screen(
+    world_x: f64,
+    world_y: f64,
+    camera_x: f64,
+    camera_y: f64,
+    zoom: f64,
+) -> Option<(f64, f64)> {
+    let valid_zoom = safe_zoom(zoom)?;
+    let sx = (world_x - camera_x) * valid_zoom;
+    let sy = (world_y - camera_y) * valid_zoom;
+    Some((sx, sy))
+}
+
+#[must_use]
+pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
+    let valid = safe_zoom(zoom)?;
+    Some(valid.clamp(min, max))
+}
+
 #[cfg(test)]
 mod proptests {
     use super::*;

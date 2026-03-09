@@ -79,7 +79,7 @@ pub fn sync_canvas_origin() -> Option<(f64, f64)> {
 
 #[cfg(not(target_arch = "wasm32"))]
 #[must_use]
-pub fn sync_canvas_origin() -> Option<(f64, f64)> {
+pub const fn sync_canvas_origin() -> Option<(f64, f64)> {
     None
 }
 
@@ -583,11 +583,7 @@ fn flush_pending_pointer_update(
         InteractionMode::Select
         | InteractionMode::RubberBand { .. }
         | InteractionMode::DrawingEdge { .. }
-        | InteractionMode::DrawingSubgraph { .. }
-        | InteractionMode::DragPending(_)
-        | InteractionMode::Dragging(_)
-        | InteractionMode::ResizePending(_)
-        | InteractionMode::Resizing(_) => {}
+        | InteractionMode::DrawingSubgraph { .. } => {}
     });
 }
 
@@ -731,7 +727,7 @@ pub fn Canvas() -> Element {
                     }
                     match key {
                         "Delete" | "Backspace" => {
-                            let _ = apply_delete_selected(doc_signal, history_signal, Some(toast));
+                            let _ = apply_delete_selected(doc_signal, history_signal);
                         }
                         "Escape" => {
                             if editing_node.read().is_some() || editing_edge.read().is_some() {
@@ -1337,12 +1333,6 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::DragPending(_)
-                        | InteractionMode::Dragging(_)
-                        | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {
-                            pending_pointer_sample.set(Some((local_x, local_y)));
-                        }
                         InteractionMode::Select => {}
                     });
                     continue;
@@ -1489,12 +1479,6 @@ pub fn Canvas() -> Element {
                             });
                         }
                         InteractionMode::Panning { .. } => {
-                            *mode = InteractionMode::Select;
-                        }
-                        InteractionMode::DragPending(_)
-                        | InteractionMode::Dragging(_)
-                        | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => {}
@@ -1921,12 +1905,6 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::DragPending(_)
-                        | InteractionMode::Dragging(_)
-                        | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {
-                            pending_pointer_sample.set(Some((local_x, local_y)));
-                        }
                         InteractionMode::Select => {}
                     }
                 });
@@ -2075,12 +2053,6 @@ pub fn Canvas() -> Element {
                             });
                         }
                         InteractionMode::Panning { .. } => {
-                            *mode = InteractionMode::Select;
-                        }
-                        InteractionMode::DragPending(_)
-                        | InteractionMode::Dragging(_)
-                        | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => *mode = InteractionMode::Select,

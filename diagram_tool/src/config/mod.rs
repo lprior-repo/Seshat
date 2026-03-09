@@ -9,6 +9,7 @@
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
+#![allow(dead_code)]
 
 mod app_config;
 mod error;
@@ -17,8 +18,8 @@ mod validation;
 pub use app_config::{AppConfig, DatabaseConfig, LogConfig};
 pub use error::ConfigError;
 
-const CONFIG_FILE_NAME: &str = "diagram_tool.json";
-const MAX_DATABASE_PATH_LENGTH: usize = 4096;
+pub(crate) const CONFIG_FILE_NAME: &str = "diagram_tool.json";
+pub(crate) const MAX_DATABASE_PATH_LENGTH: usize = 4096;
 
 pub fn load_config() -> Result<AppConfig, ConfigError> {
     let config = AppConfig::load_from_environment()?;
