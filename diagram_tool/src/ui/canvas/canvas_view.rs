@@ -39,6 +39,32 @@ pub(super) fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f
 }
 
 #[must_use]
+pub(super) fn rect_ray_intersection(
+    cx: f64,
+    cy: f64,
+    w: f64,
+    h: f64,
+    tx: f64,
+    ty: f64,
+) -> (f64, f64) {
+    let dx = tx - cx;
+    let dy = ty - cy;
+    if dx.abs() < f64::EPSILON && dy.abs() < f64::EPSILON {
+        return (cx, cy);
+    }
+
+    let scale_x = (w / 2.0) / dx.abs();
+    let scale_y = (h / 2.0) / dy.abs();
+    let scale = scale_x.min(scale_y);
+
+    // Add a tiny bit of padding (e.g. 5px) so the arrow doesn't clip directly into the stroke
+    let padded_scale = scale.mul_add(-5.0 / (dx * dx + dy * dy).sqrt(), scale);
+    let final_scale = padded_scale.max(0.0);
+
+    (cx + dx * final_scale, cy + dy * final_scale)
+}
+
+#[must_use]
 pub(super) fn edge_path(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> String {
     match edge_geometry(sx, sy, tx, ty, edge) {
         EdgeGeometry::Quadratic { control: (cx, cy) } => {
@@ -332,9 +358,13 @@ pub(super) fn edge_preview_overlay(
         doc.document.nodes.get(from_node).map_or_else(
             || rsx! {},
             |src| {
+                let scx = src.x.0 + src.width.0 / 2.0;
+                let scy = src.y.0 + src.height.0 / 2.0;
+                let (edge_x, edge_y) = rect_ray_intersection(scx, scy, src.width.0, src.height.0, current_pos.0, current_pos.1);
+
                 let (sx, sy) = to_screen_coords(
-                    src.x.0 + src.width.0 / 2.0,
-                    src.y.0 + src.height.0 / 2.0,
+                    edge_x,
+                    edge_y,
                     s.camera_x.0,
                     s.camera_y.0,
                     s.zoom.0,

@@ -1680,51 +1680,6 @@ pub fn Canvas() -> Element {
                     editing_node.set(None);
                     editing_edge.set(Some(eid));
                     edit_value.set(label);
-                    return;
-                }
-
-                // Double-click on empty canvas creates a new node in Select mode
-                let tool = *tool_signal.read();
-                if tool == ToolMode::Select {
-                    let id = NodeId::new(Uuid::new_v4().to_string());
-                    let current = doc_signal.read().clone();
-                    let history = history_signal.read().clone();
-                    *history_signal.write() = history.push(current);
-                    doc_signal.with_mut(|d| {
-                        let (x, y) = snap_point(
-                            pos,
-                            d.editor_state.snap_to_grid,
-                            d.editor_state.grid_size,
-                        );
-                        let _ = d.document.nodes.insert(
-                            id.clone(),
-                            Node {
-                                kind: NodeKind::Node,
-                                icon: String::new(),
-                                label: String::from("Node"),
-                                x: OrderedFloat(x - 32.0),
-                                y: OrderedFloat(y - 32.0),
-                                width: OrderedFloat(64.0),
-                                height: OrderedFloat(64.0),
-                                font_size: None,
-                                font_weight: None,
-                                locked: false,
-                                parent: None,
-                                dag_rank: None,
-                                tags: im::Vector::new(),
-                                metadata: HashMap::new(),
-                                z_index: 0,
-                                style: Some(NodeStyle::default()),
-                                collapsed: None,
-                            },
-                        );
-                        d.editor_state.selected_items.clear();
-                        let _ = d.editor_state.selected_items.insert(id.to_string());
-                        d.revision = d.revision.increment();
-                    });
-                    editing_edge.set(None);
-                    editing_node.set(None);
-                    edit_value.set(String::new());
                 }
             },
 
@@ -1801,11 +1756,14 @@ pub fn Canvas() -> Element {
                     )
                 };
 
-                if tool == ToolMode::Select {
-                    let doc = doc_signal.read().clone();
-                    if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
-                        let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
-                        doc_signal.with_mut(|d| {
+                    if tool == ToolMode::Select {
+                        let doc = doc_signal.read().clone();
+                        if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
+                            let additive = evt.data.modifiers().contains(Modifiers::SHIFT) 
+                                || evt.data.modifiers().contains(Modifiers::CONTROL) 
+                                || evt.data.modifiers().contains(Modifiers::META)
+                                || *shift_pressed.read();
+                            doc_signal.with_mut(|d| {
                             d.editor_state.selected_items = if additive {
                                 toggle_selection(&d.editor_state.selected_items, &edge_id.to_string())
                             } else {
@@ -2207,8 +2165,16 @@ pub fn Canvas() -> Element {
                             })
                     }).collect::<Vec<_>>();
                     edge_rows.into_iter().map(move |(id, edge, src, tgt)| {
-                                let (sx, sy) = to_screen_coords(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0, camera_x, camera_y, zoom);
-                                let (tx, ty) = to_screen_coords(tgt.x.0 + tgt.width.0 / 2.0, tgt.y.0 + tgt.height.0 / 2.0, camera_x, camera_y, zoom);
+                                let scx = src.x.0 + src.width.0 / 2.0;
+                                let scy = src.y.0 + src.height.0 / 2.0;
+                                let tcx = tgt.x.0 + tgt.width.0 / 2.0;
+                                let tcy = tgt.y.0 + tgt.height.0 / 2.0;
+                                
+                                let (scx_edge, scy_edge) = crate::ui::canvas::canvas_view::rect_ray_intersection(scx, scy, src.width.0, src.height.0, tcx, tcy);
+                                let (tcx_edge, tcy_edge) = crate::ui::canvas::canvas_view::rect_ray_intersection(tcx, tcy, tgt.width.0, tgt.height.0, scx, scy);
+
+                                let (sx, sy) = to_screen_coords(scx_edge, scy_edge, camera_x, camera_y, zoom);
+                                let (tx, ty) = to_screen_coords(tcx_edge, tcy_edge, camera_x, camera_y, zoom);
                                 let d = edge_path(sx, sy, tx, ty, &edge);
                                 let (mid_x, mid_y) = edge_label_position(sx, sy, tx, ty, &edge);
                                 let is_selected = selected_items.contains(id.as_str());
@@ -2418,7 +2384,10 @@ pub fn Canvas() -> Element {
                                 evt.stop_propagation();
                                 let tool = *tool_signal.read();
                                 let doc = doc_signal.read().clone();
-                                let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
+                                let additive = evt.data.modifiers().contains(Modifiers::SHIFT) 
+                                    || evt.data.modifiers().contains(Modifiers::CONTROL) 
+                                    || evt.data.modifiers().contains(Modifiers::META)
+                                    || *shift_pressed.read();
                                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
                                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                                 let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
@@ -2546,7 +2515,23 @@ pub fn Canvas() -> Element {
                                             interaction_mode.set(InteractionMode::Select);
                                         }
                                     }
-                                    InteractionMode::Dragging(_) | InteractionMode::DragPending(_)
+                                    InteractionMode::DragPending(_) => {
+                                let additive = evt.data.modifiers().contains(Modifiers::SHIFT) 
+                                    || evt.data.modifiers().contains(Modifiers::CONTROL) 
+                                    || evt.data.modifiers().contains(Modifiers::META)
+                                    || *shift_pressed.read();
+                                        if !additive {
+                                            doc_signal.with_mut(|doc| {
+                                                doc.editor_state.selected_items = select_single(id_mouseup.to_string());
+                                            });
+                                        }
+                                        interaction_mode.with_mut(|mode_mut| {
+                                            doc_signal.with_mut(|doc| {
+                                                let _ = finalize_motion_release(mode_mut, doc);
+                                            });
+                                        });
+                                    }
+                                    InteractionMode::Dragging(_) 
                                     | InteractionMode::Resizing(_) | InteractionMode::ResizePending(_) => {
                                         interaction_mode.with_mut(|mode_mut| {
                                             doc_signal.with_mut(|doc| {

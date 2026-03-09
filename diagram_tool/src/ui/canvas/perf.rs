@@ -66,10 +66,11 @@ pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
     };
 
     let next_zoom = if input.discrete_wheel {
-        let factor = if wheel_delta > 0.0 { 0.9 } else { 1.1 };
+        // Decrease sensitivity of discrete scroll wheel to avoid huge jumps
+        let factor = if wheel_delta > 0.0 { 0.95 } else { 1.05 };
         (current_zoom * factor).clamp(ZOOM_MIN, ZOOM_MAX)
     } else {
-        let intensity = if input.zoom_gesture { 0.01 } else { 0.006 };
+        let intensity = if input.zoom_gesture { 0.005 } else { 0.002 };
         let factor = wheel_delta.mul_add(-intensity, 1.0);
         (current_zoom * factor).clamp(ZOOM_MIN, ZOOM_MAX)
     };
