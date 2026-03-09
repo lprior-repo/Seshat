@@ -1,10 +1,7 @@
-# Seshat
+# Seshat Vision Document
 
-A high-performance, two-way sync diagram tool built in Rust.
-
-## The Vision
-
-Seshat bridges the gap between human-created diagrams and AI-driven automation. It started because drawing on Miro was great—but there was no way for AI to programmatically update and maintain those diagrams. 
+## The Goal
+Seshat bridges the gap between human-created diagrams and AI-driven automation. It started because drawing on Miro was great—but there was no way for AI to programmatically update and maintain those diagrams.
 
 We are building the ultimate tool for designing AI architecture. Seshat combines the best of all worlds:
 - **D2 / Mermaid**: Declarative diagramming syntax and native subgraphs.
@@ -17,7 +14,7 @@ The core principle is a **two-way sync**:
 
 If there's ever a conflict between the human and the AI's architecture spec, an auto-correction layer will either reject the AI's invalid spec based on strict contracts or present a differential to the human, who has the ultimate choice.
 
-## Key Features
+## Core Principles
 
 - **Two-Way Sync**: Human UI and AI database always stay in sync, with humans having the final say in conflicts.
 - **Performant Frontend**: Built in Dioxus and Rust for speed and correctness, handling 3,000+ nodes smoothly.
@@ -25,26 +22,3 @@ If there's ever a conflict between the human and the AI's architecture spec, an 
 - **Functional Rust**: Driven by strict engineering rigor—Data → Calculations → Actions. Zero panics, zero unwrap, making illegal states unrepresentable.
 - **Testing Rigor**: Inspired by Martin Fowler, Kent Beck, and David Farley. We leverage end-to-end tests, mutation testing, and property-based testing. Deeply focused on code quality, testability, and clear Domain-Driven Design boundaries.
 - **Source Control**: Everything backed by SQLite in WAL mode, entirely versioned and verifiable.
-
-## Tech Stack
-
-- **Frontend**: Dioxus (Rust-based UI framework) pushing the DOM to its limits.
-- **Backend**: SQLite in WAL mode, strictly validated contracts.
-- **Layouts**: `petgraph` for intelligent auto-arranging.
-- **Build**: Moon for CI/CD.
-- **VCS**: Jujutsu (jj) for version control.
-- **Code Intelligence**: Codanna for semantic search.
-
-## Quick Start
-
-```bash
-# Start the dev server
-cd diagram_tool && cargo run
-
-# Or run the web version
-cargo run --features web
-```
-
-## Development
-
-See [docs/](docs/) for engineering documentation and [AGENTS.md](AGENTS.md) for AI agent integration. We take code quality and architecture seriously—expect rigorous vibe-coded PRs and heavy mutation testing.
