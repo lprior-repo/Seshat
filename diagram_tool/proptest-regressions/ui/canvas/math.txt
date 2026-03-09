@@ -4,4 +4,4 @@
 #
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
-cc 7264fa4d08f9c5d6c23028fc4c4e7f7ccbb31ea1a7c1e1143a518c9f00d0de26 # shrinks to zoom = 2.220446049250313e-16
+cc 083ba2236088d02e4d5861edfb02d70953f30a3dfc7f678ce5778a29384ac3de # shrinks to client_x = 0.0, client_y = 313407.08986317914, camera_x = 0.0, camera_y = 972954.1275021192, zoom = 0.01

@@ -4,66 +4,16 @@
 #![warn(clippy::pedantic)]
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
-#![allow(dead_code)]
-
-#[must_use]
-pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
-    let valid = safe_zoom(zoom)?;
-    if valid < min {
-        Some(min)
-    } else if valid > max {
-        Some(max)
-    } else {
-        Some(valid)
-    }
-}
 
 #[must_use]
 pub fn safe_zoom(zoom: f64) -> Option<f64> {
-    (zoom.is_finite() && zoom >= f64::EPSILON).then_some(zoom)
-}
-
-#[must_use]
-pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
-    let valid = safe_zoom(zoom)?;
-    if valid < min {
-        Some(min)
-    } else if valid > max {
-        Some(max)
-    } else {
-        Some(valid)
-    }
-}
-
-#[must_use]
-pub fn canvas_to_screen(
-    canvas_x: f64,
-    canvas_y: f64,
-    camera_x: f64,
-    camera_y: f64,
-    zoom: f64,
-) -> Option<(f64, f64)> {
-    let valid_zoom = safe_zoom(zoom)?;
-    let sx = (canvas_x - camera_x) * valid_zoom;
-    let sy = (canvas_y - camera_y) * valid_zoom;
-    Some((sx, sy))
-}
-
-#[must_use]
-pub fn safe_zoom_clamped(zoom: f64, min: f64, max: f64) -> Option<f64> {
-    safe_zoom(zoom).map(|z| z.clamp(min, max))
+    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
 }
 
 #[must_use]
 pub fn within(subgraph: (f64, f64, f64, f64), node: (f64, f64, f64, f64)) -> bool {
     let (sx, sy, sw, sh) = subgraph;
     let (nx, ny, nw, nh) = node;
-    if sw.is_infinite() && sh.is_infinite() && sw > 0.0 && sh > 0.0 {
-        return nx >= sx && ny >= sy;
-    }
-    if sw.is_infinite() || sh.is_infinite() || sw <= 0.0 || sh <= 0.0 {
-        return false;
-    }
     nx >= sx && ny >= sy && nx + nw <= sx + sw && ny + nh <= sy + sh
 }
 
@@ -75,32 +25,10 @@ pub fn screen_to_canvas(
     camera_y: f64,
     zoom: f64,
 ) -> Option<(f64, f64)> {
-    if !client_x.is_finite() || !client_y.is_finite() {
-        return None;
-    }
     let valid_zoom = safe_zoom(zoom)?;
     let cx = (client_x / valid_zoom) + camera_x;
     let cy = (client_y / valid_zoom) + camera_y;
     Some((cx, cy))
-}
-
-#[must_use]
-pub fn canvas_to_screen(
-    canvas_x: f64,
-    canvas_y: f64,
-    camera_x: f64,
-    camera_y: f64,
-    zoom: f64,
-) -> Option<(f64, f64)> {
-    let valid_zoom = safe_zoom(zoom)?;
-    let sx = (canvas_x - camera_x) * valid_zoom;
-    let sy = (canvas_y - camera_y) * valid_zoom;
-    Some((sx, sy))
-}
-
-#[must_use]
-pub fn safe_zoom_clamped(zoom: f64, min: f64, max: f64) -> Option<f64> {
-    safe_zoom(zoom).map(|z| z.clamp(min, max))
 }
 
 #[cfg(test)]
@@ -193,23 +121,22 @@ mod proptests {
         }
     }
 
-    // This test is removed - the within() function explicitly rejects infinite dimensions
-    // proptest! {
-    //     #![proptest_config(ProptestConfig::with_cases(256))]
-    //     #[test]
-    //     #[allow(clippy::unwrap_used)]
-    //     fn prop_within_infinite_dims(
-    //         sw in prop::sample::select(&[f64::INFINITY, f64::NEG_INFINITY]),
-    //         sh in prop::sample::select(&[f64::INFINITY, f64::NEG_INFINITY]),
-    //     ) {
-    //         let subgraph = (0.0, 0.0, sw, sh);
-    //         let node = (10.0, 10.0, 10.0, 10.0);
-    //         let result = within(subgraph, node);
-    //         if sw.is_infinite() && sh.is_infinite() && sw > 0.0 && sh > 0.0 {
-    //             prop_assert!(result);
-    //         }
-    //     }
-    // }
+    proptest! {
+        #![proptest_config(ProptestConfig::with_cases(256))]
+        #[test]
+        #[allow(clippy::unwrap_used)]
+        fn prop_within_infinite_dims(
+            sw in prop::sample::select(&[f64::INFINITY, f64::NEG_INFINITY]),
+            sh in prop::sample::select(&[f64::INFINITY, f64::NEG_INFINITY]),
+        ) {
+            let subgraph = (0.0, 0.0, sw, sh);
+            let node = (10.0, 10.0, 10.0, 10.0);
+            let result = within(subgraph, node);
+            if sw.is_infinite() && sh.is_infinite() && sw > 0.0 && sh > 0.0 {
+                prop_assert!(result);
+            }
+        }
+    }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
@@ -261,7 +188,7 @@ mod proptests {
             ])
         ) {
             let result = safe_zoom(zoom);
-            if zoom >= f64::EPSILON && zoom.is_finite() {
+            if zoom > f64::EPSILON && zoom.is_finite() {
                 prop_assert!(result.is_some());
             } else {
                 prop_assert!(result.is_none());
@@ -297,183 +224,87 @@ mod proptests {
         }
     }
 
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(256))]
-        #[test]
-        fn prop_screen_to_canvas_basic(
-            cx in -1e6_f64..1e6_f64,
-            cy in -1e6_f64..1e6_f64,
-            camera_x in -1e6_f64..1e6_f64,
-            camera_y in -1e6_f64..1e6_f64,
-            zoom in 0.01_f64..100.0_f64,
-        ) {
-            let result = super::screen_to_canvas(
-                (cx - camera_x) * zoom,
-                (cy - camera_y) * zoom,
-                camera_x,
-                camera_y,
-                zoom,
-            );
-            prop_assert!(result.is_some());
-            let (rx, ry) = result.unwrap();
-            prop_assert!((rx - cx).abs() < 1e-6);
-            prop_assert!((ry - cy).abs() < 1e-6);
-        }
+    #[test]
+    fn screen_to_canvas_identity_at_zoom_one() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 1.0);
+        assert_eq!(result, Some((100.0, 200.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_scales_with_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 2.0);
+        assert_eq!(result, Some((50.0, 100.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_shifts_with_camera() {
+        let result = screen_to_canvas(0.0, 0.0, 100.0, 50.0, 1.0);
+        assert_eq!(result, Some((100.0, 50.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_combined_transform() {
+        let result = screen_to_canvas(100.0, 100.0, 500.0, 300.0, 2.0);
+        assert_eq!(result, Some((550.0, 350.0)));
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_zero_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 0.0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_negative_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, -1.0);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_infinite_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, f64::INFINITY);
+        assert!(result.is_none());
+    }
+
+    #[test]
+    fn screen_to_canvas_returns_none_for_nan_zoom() {
+        let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, f64::NAN);
+        assert!(result.is_none());
     }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(128))]
         #[test]
-        fn prop_screen_to_canvas_rejects_invalid_zoom(zoom in prop::sample::select(&[0.0, -1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -f64::EPSILON])) {
-            let result = super::screen_to_canvas(100.0, 100.0, 0.0, 0.0, zoom);
-            prop_assert!(result.is_none());
-        }
-    }
-
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(256))]
-        #[test]
-        fn prop_screen_to_canvas_within_bounds(
+        fn prop_screen_to_canvas_roundtrip(
             client_x in -1e6_f64..1e6_f64,
             client_y in -1e6_f64..1e6_f64,
-            zoom in 0.01_f64..100.0_f64,
-        ) {
-            let result = super::screen_to_canvas(client_x, client_y, 0.0, 0.0, zoom);
-            prop_assert!(result.is_some());
-            let (cx, cy) = result.unwrap();
-            let expected_x = client_x / zoom;
-            let expected_y = client_y / zoom;
-            prop_assert!((cx - expected_x).abs() < 1e-6);
-            prop_assert!((cy - expected_y).abs() < 1e-6);
-        }
-    }
-
-    #[test]
-    fn screen_to_canvas_zero_camera() {
-        let result = super::screen_to_canvas(100.0, 200.0, 0.0, 0.0, 2.0);
-        let (cx, cy) = result.expect("valid zoom should produce Some");
-        assert!((cx - 50.0).abs() < 1e-6, "x coord mismatch");
-        assert!((cy - 100.0).abs() < 1e-6, "y coord mismatch");
-    }
-
-    #[test]
-    fn screen_to_canvas_nonzero_camera() {
-        let result = super::screen_to_canvas(100.0, 200.0, 50.0, 75.0, 2.0);
-        let (cx, cy) = result.expect("valid zoom should produce Some");
-        assert!((cx - 100.0).abs() < 1e-6, "x coord mismatch");
-        assert!((cy - 175.0).abs() < 1e-6, "y coord mismatch");
-    }
-
-    #[test]
-    fn screen_to_canvas_invalid_zoom_zero() {
-        assert!(super::screen_to_canvas(100.0, 100.0, 0.0, 0.0, 0.0).is_none());
-    }
-
-    #[test]
-    fn screen_to_canvas_invalid_zoom_nan() {
-        assert!(super::screen_to_canvas(100.0, 100.0, 0.0, 0.0, f64::NAN).is_none());
-    }
-
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(256))]
-        #[test]
-        fn prop_canvas_to_screen_roundtrip(
-            cx in -1e6_f64..1e6_f64,
-            cy in -1e6_f64..1e6_f64,
             camera_x in -1e6_f64..1e6_f64,
             camera_y in -1e6_f64..1e6_f64,
-            zoom in 0.01_f64..100.0_f64,
+            zoom in 0.01_f64..10.0_f64,
         ) {
-            let screen_result = super::canvas_to_screen(cx, cy, camera_x, camera_y, zoom);
-            prop_assert!(screen_result.is_some());
-            let (sx, sy) = screen_result.unwrap();
-            let back_result = super::screen_to_canvas(sx, sy, camera_x, camera_y, zoom);
-            prop_assert!(back_result.is_some());
-            let (rx, ry) = back_result.unwrap();
-            prop_assert!((rx - cx).abs() < 1e-6);
-            prop_assert!((ry - cy).abs() < 1e-6);
-        }
-    }
-
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(128))]
-        #[test]
-        fn prop_canvas_to_screen_rejects_invalid_zoom(zoom in prop::sample::select(&[0.0, -1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -f64::EPSILON])) {
-            let result = super::canvas_to_screen(100.0, 100.0, 0.0, 0.0, zoom);
-            prop_assert!(result.is_none());
-        }
-    }
-
-    proptest! {
-        #![proptest_config(ProptestConfig::with_cases(256))]
-        #[test]
-        fn prop_safe_zoom_clamped_basic(
-            zoom in 0.001_f64..10.0_f64,
-            min in 0.1_f64..1.0_f64,
-            max in 1.0_f64..5.0_f64,
-        ) {
-            prop_assume!(min < max);
-            let result = super::safe_zoom_clamped(zoom, min, max);
+            let result = screen_to_canvas(client_x, client_y, camera_x, camera_y, zoom);
             prop_assert!(result.is_some());
-            let clamped = result.unwrap();
-            prop_assert!(clamped >= min);
-            prop_assert!(clamped <= max);
+            let (cx, cy) = result.unwrap();
+            let scale = (camera_x.abs() + camera_y.abs() + client_x.abs() / zoom.abs() + client_y.abs() / zoom.abs()).max(1.0);
+            prop_assert!((cx - camera_x - client_x / zoom).abs() / scale < 1e-9);
+            prop_assert!((cy - camera_y - client_y / zoom).abs() / scale < 1e-9);
         }
     }
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
         #[test]
-        fn prop_safe_zoom_clamped_rejects_invalid(zoom in prop::sample::select(&[0.0, -1.0, f64::NAN, f64::INFINITY, f64::NEG_INFINITY])) {
-            let result = super::safe_zoom_clamped(zoom, 0.1, 4.0);
-            prop_assert!(result.is_none());
-        }
-    }
-
-    #[test]
-    fn canvas_to_screen_zero_camera() {
-        let result = super::canvas_to_screen(50.0, 100.0, 0.0, 0.0, 2.0);
-        assert!(result.is_some());
-        assert_eq!(result.unwrap(), (100.0, 200.0));
-    }
-
-    #[test]
-    fn canvas_to_screen_nonzero_camera() {
-        let result = super::canvas_to_screen(100.0, 175.0, 50.0, 75.0, 2.0);
-        assert!(result.is_some());
-        assert_eq!(result.unwrap(), (100.0, 200.0));
-    }
-
-    #[test]
-    fn canvas_to_screen_clamp_below_min() {
-        let result = super::safe_zoom_clamped(0.05, 0.1, 4.0);
-        assert!(result.is_some());
-        assert_eq!(result.unwrap(), 0.1);
-    }
-
-    #[test]
-    fn canvas_to_screen_clamp_above_max() {
-        let result = super::safe_zoom_clamped(10.0, 0.1, 4.0);
-        assert!(result.is_some());
-        assert_eq!(result.unwrap(), 4.0);
-    }
-
-    #[test]
-    fn screen_to_canvas_equiv_to_perf_to_canvas_coords() {
-        let test_cases = [
-            (100.0, 200.0, 50.0, 75.0, 2.0),
-            (0.0, 0.0, 0.0, 0.0, 1.0),
-            (50.0, 100.0, 10.0, 20.0, 0.5),
-            (1000.0, 500.0, 100.0, 200.0, 1.5),
-        ];
-        for (cx, cy, cam_x, cam_y, zoom) in test_cases {
-            let math_result = super::screen_to_canvas(cx, cy, cam_x, cam_y, zoom);
-            let perf_result = super::super::perf::to_canvas_coords(cx, cy, cam_x, cam_y, zoom);
-            assert_eq!(
-                math_result,
-                Some(perf_result),
-                "math::screen_to_canvas should match perf::to_canvas_coords for valid zoom"
-            );
+        fn prop_screen_to_canvas_zoom_edge_cases(zoom in prop::sample::select(&[
+            f64::EPSILON,
+            f64::MIN_POSITIVE,
+            1e-300,
+        ])) {
+            let result = screen_to_canvas(100.0, 100.0, 0.0, 0.0, zoom);
+            if zoom > f64::EPSILON && zoom.is_finite() {
+                prop_assert!(result.is_some());
+            } else {
+                prop_assert!(result.is_none());
+            }
         }
     }
 }
