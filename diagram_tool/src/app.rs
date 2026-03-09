@@ -13,7 +13,7 @@ use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use crate::models::schema::validate_schema;
 use crate::models::validation::validate_document_data;
 use crate::ui::canvas::Canvas;
-use crate::ui::commands::Clipboard;
+use crate::ui::commands::ClipboardData;
 use crate::ui::editor::ToolMode;
 use crate::ui::minimap::Minimap;
 use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
@@ -57,20 +57,20 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(DiagramDocument::default()));
     let _dragging_icon = use_context_provider(|| Signal::new(Option::<DraggedIconPayload>::None));
     use_context_provider(|| Signal::new(History::new()));
-    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
+    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     use_context_provider(|| Signal::new(ToolMode::Select));
     use_context_provider(|| Signal::new(EdgeStyle::Solid));
     use_context_provider(|| Signal::new(ArrowType::Default));
     use_context_provider(|| Signal::new(ToastQueue::default()));
-    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
+    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     use_context_provider(|| Signal::new(PanelVisibility::default()));
     use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
-    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
+    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
-    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
+    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
 
     use_global_keyboard();
     use_e2e_reset_hook();
