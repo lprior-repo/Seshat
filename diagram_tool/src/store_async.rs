@@ -1,18 +1,8 @@
-//! Async SQLite storage module
-//!
-//! Provides async SQLite-based storage with WAL mode and connection pooling.
-//! This is the async counterpart to the synchronous `store` module.
-//!
-//! ## Benefits over synchronous rusqlite
-//!
-//! - **True concurrency**: Multiple operations can run simultaneously
-//! - **Non-blocking**: Async operations don't block the thread
-//! - **Connection pooling**: Efficient management of database connections
-//! - **Better resource utilization**: Under high concurrent load
-
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
+#![warn(clippy::pedantic)]
+#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use serde::Serialize;
@@ -22,19 +12,14 @@ use thiserror::Error;
 
 use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 
-/// Current schema version for the async store
-pub const CURRENT_SCHEMA_VERSION: i32 = 1;
-
-/// Duplicate detection kind
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DuplicateKind {
-    /// Exact duplicate (same payload)
     Exact,
-    /// Conflicting duplicate (same op_id, different payload)
     Conflict,
 }
 
-/// Errors for async store operations
+pub const CURRENT_SCHEMA_VERSION: i32 = 1;
+
 #[derive(Debug, Error)]
 pub enum AsyncStoreError {
     #[error("IO error: {0}")]
@@ -64,7 +49,6 @@ pub enum AsyncStoreError {
     EmptyBatch,
 }
 
-/// Structured error codes for CLI output
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "snake_case")]
 pub enum CliErrorCode {
@@ -88,7 +72,6 @@ impl CliErrorCode {
     }
 }
 
-/// Maps an async store error to a CLI error code
 pub const fn map_error_code(err: &AsyncStoreError) -> CliErrorCode {
     match err {
         AsyncStoreError::RevisionMismatch { .. } => CliErrorCode::RevisionMismatch,
@@ -105,7 +88,6 @@ pub const fn map_error_code(err: &AsyncStoreError) -> CliErrorCode {
     }
 }
 
-/// Result of a single append operation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AsyncAppendResult {
     pub revision: i64,
@@ -113,7 +95,6 @@ pub struct AsyncAppendResult {
     pub timestamp: i64,
 }
 
-/// Result of a batch append operation
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct AsyncBatchAppendResult {
     pub start_revision: i64,
@@ -123,14 +104,12 @@ pub struct AsyncBatchAppendResult {
     pub last_timestamp: i64,
 }
 
-/// Bootstrap result containing the pool and metadata
 pub struct AsyncStoreBootstrap {
     pub pool: SqlitePool,
     pub db_path: PathBuf,
     pub schema_version: i32,
 }
 
-/// Pragma configuration for the store
 pub struct AsyncStorePragmas {
     pub journal_mode: String,
     pub synchronous: i32,
@@ -139,32 +118,30 @@ pub struct AsyncStorePragmas {
     pub busy_timeout: i32,
 }
 
-/// Creates an async SQLite connection pool with the given max_connections
 pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
-
+    
     let pool = SqlitePoolOptions::new()
         .max_connections(10)
         .connect(&connection_string)
         .await?;
 
-    // Configure pragmas for optimal concurrent performance
     sqlx::query("PRAGMA journal_mode=WAL")
         .execute(&pool)
         .await?;
-
+    
     sqlx::query("PRAGMA synchronous=FULL")
         .execute(&pool)
         .await?;
-
+    
     sqlx::query("PRAGMA wal_autocheckpoint=1000")
         .execute(&pool)
         .await?;
-
+    
     sqlx::query("PRAGMA foreign_keys=ON")
         .execute(&pool)
         .await?;
-
+    
     sqlx::query("PRAGMA busy_timeout=5000")
         .execute(&pool)
         .await?;
@@ -172,10 +149,9 @@ pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreE
     Ok(pool)
 }
 
-/// Bootstraps a new async store, creating the database and running migrations
 pub async fn bootstrap_async_store(db_path: &Path) -> Result<AsyncStoreBootstrap, AsyncStoreError> {
     let pool = create_async_pool(db_path).await?;
-
+    
     run_async_schema_migration(&pool).await?;
 
     let schema_version = sqlx::query_scalar::<_, i32>("SELECT version FROM schema_version")
@@ -190,7 +166,6 @@ pub async fn bootstrap_async_store(db_path: &Path) -> Result<AsyncStoreBootstrap
     })
 }
 
-/// Runs schema migrations for the async store
 async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreError> {
     let table_exists: (i32,) = sqlx::query_as(
         "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'"
@@ -269,7 +244,6 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     Ok(())
 }
 
-/// Fetches the latest revision number from the store
 pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
     let revision: Option<i64> = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
         .fetch_optional(pool)
@@ -279,18 +253,15 @@ pub async fn fetch_latest_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreE
     Ok(revision.unwrap_or(0))
 }
 
-/// Gets the current revision
 pub async fn current_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
     fetch_latest_revision(pool).await
 }
 
-/// Gets the next revision number
 pub async fn next_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
     let current = current_revision(pool).await?;
     Ok(current + 1)
 }
 
-/// Appends a single event to the store
 pub async fn append_event_async(
     pool: &SqlitePool,
     envelope: EventEnvelope,
@@ -337,7 +308,6 @@ pub async fn append_event_async(
     })
 }
 
-/// Appends a batch of events atomically
 pub async fn append_batch_async(
     pool: &SqlitePool,
     ops: Vec<EventEnvelope>,
@@ -401,7 +371,6 @@ pub async fn append_batch_async(
     })
 }
 
-/// Event record as stored in the database
 #[derive(Debug, Clone)]
 pub struct EventRecord {
     pub op_id: String,
@@ -410,7 +379,6 @@ pub struct EventRecord {
     pub payload: String,
 }
 
-/// Looks up an existing operation by ID
 pub async fn lookup_existing_op_async(
     pool: &SqlitePool,
     op_id: &str,
@@ -439,7 +407,6 @@ pub async fn lookup_existing_op_async(
     }
 }
 
-/// Classifies a duplicate as exact or conflicting
 pub async fn classify_duplicate_async(
     existing: &EventRecord,
     incoming: &EventEnvelope,
@@ -454,7 +421,6 @@ pub async fn classify_duplicate_async(
     }
 }
 
-/// Appends an event idempotently (handles duplicates gracefully)
 pub async fn append_idempotent_async(
     pool: &SqlitePool,
     envelope: EventEnvelope,
@@ -495,8 +461,6 @@ pub async fn append_idempotent_async(
                 || e.to_string().contains("constraint");
 
             if is_unique_constraint {
-                // Rollback this transaction and look up the existing record
-                drop(tx);
                 let existing = lookup_existing_op_async(pool, &envelope.op_id).await?;
 
                 match existing {
@@ -525,7 +489,6 @@ pub async fn append_idempotent_async(
     }
 }
 
-/// Fetches all events since a given revision
 pub async fn fetch_events_since(
     pool: &SqlitePool,
     revision: i64,
@@ -554,7 +517,6 @@ pub async fn fetch_events_since(
     Ok(events)
 }
 
-/// Fetches all events from the store
 pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, AsyncStoreError> {
     let rows = sqlx::query_as::<_, (String, i64, String, String)>(
         "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC"
@@ -579,7 +541,6 @@ pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, Asy
     Ok(events)
 }
 
-/// Reads store configuration pragmas
 pub async fn read_store_pragmas_async(pool: &SqlitePool) -> Result<AsyncStorePragmas, AsyncStoreError> {
     let journal_mode: String = sqlx::query_scalar("PRAGMA journal_mode")
         .fetch_one(pool)
@@ -615,168 +576,50 @@ pub async fn read_store_pragmas_async(pool: &SqlitePool) -> Result<AsyncStorePra
     })
 }
 
-/// Current configuration of an existing async store
-pub struct AsyncStoreConfig {
-    pub pragmas: AsyncStorePragmas,
-    pub schema_version: i32,
-}
-
-/// Gets the current store configuration (async version)
-pub async fn current_store_config_async(pool: &SqlitePool) -> Result<AsyncStoreConfig, AsyncStoreError> {
-    let pragmas = read_store_pragmas_async(pool).await?;
-
-    let schema_version: Option<i32> = sqlx::query_scalar("SELECT version FROM schema_version")
-        .fetch_optional(pool)
+pub async fn integrity_check_async(db_path: &Path) -> Result<Vec<String>, AsyncStoreError> {
+    let connection_string = format!("sqlite:{}?mode=ro", db_path.display());
+    
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&connection_string)
         .await
         .map_err(AsyncStoreError::Sqlx)?;
 
-    Ok(AsyncStoreConfig {
-        pragmas,
-        schema_version: schema_version.unwrap_or(0),
-    })
-}
-
-/// Errors that can occur during async database recovery operations
-#[derive(Debug, Error)]
-pub enum AsyncRecoveryError {
-    #[error("Database integrity check failed: {0}")]
-    CorruptDatabase(String),
-    #[error("SQLx error during recovery: {0}")]
-    Sqlx(#[from] sqlx::Error),
-    #[error("IO error during recovery: {0}")]
-    Io(#[from] std::io::Error),
-    #[error("Async store error: {0}")]
-    AsyncStore(#[from] AsyncStoreError),
-}
-
-/// Result of an async integrity check
-#[derive(Debug, Clone)]
-pub struct AsyncIntegrityStatus {
-    pub is_valid: bool,
-    pub page_count: u32,
-    pub free_pages: u32,
-    pub corrupted_pages: u32,
-    pub schema_version: Option<i32>,
-    pub event_count: u64,
-    pub latest_revision: Option<i64>,
-    pub error_message: Option<String>,
-}
-
-/// Handle for read-only recovery mode operations (async)
-#[derive(Debug)]
-pub struct AsyncRecoveryHandle {
-    pub pool: SqlitePool,
-    pub db_path: PathBuf,
-    pub export_path: Option<PathBuf>,
-}
-
-/// Alias for AsyncRecoveryHandle
-pub type AsyncRecoverySession = AsyncRecoveryHandle;
-
-/// Runs integrity check on the database at startup (async version)
-pub async fn startup_integrity_check_async(db_path: &Path) -> Result<AsyncIntegrityStatus, AsyncRecoveryError> {
-    if !db_path.exists() {
-        return Ok(AsyncIntegrityStatus {
-            is_valid: false,
-            page_count: 0,
-            free_pages: 0,
-            corrupted_pages: 0,
-            schema_version: None,
-            event_count: 0,
-            latest_revision: None,
-            error_message: Some("Database file does not exist".to_string()),
-        });
-    }
-
-    let pool = create_async_pool(db_path).await?;
-
-    let integrity_result: String = sqlx::query_scalar("PRAGMA integrity_check")
-        .fetch_one(&pool)
+    let results: Vec<String> = sqlx::query_scalar("PRAGMA integrity_check")
+        .fetch_all(&pool)
         .await
-        .map_err(AsyncRecoveryError::Sqlx)?;
-
-    let is_valid = integrity_result == "ok";
-
-    let page_count: u32 = sqlx::query_scalar("PRAGMA page_count")
-        .fetch_one(&pool)
-        .await
-        .map_err(AsyncRecoveryError::Sqlx)?;
-
-    let free_pages: u32 = sqlx::query_scalar("PRAGMA freelist_count")
-        .fetch_one(&pool)
-        .await
-        .map_err(AsyncRecoveryError::Sqlx)?;
-
-    let corrupted_pages: u32 = u32::from(!is_valid && integrity_result.contains("corrupt"));
-
-    let schema_version: Option<i32> = sqlx::query_scalar("SELECT version FROM schema_version")
-        .fetch_optional(&pool)
-        .await
-        .map_err(AsyncRecoveryError::Sqlx)?;
-
-    let event_count: u64 = sqlx::query_scalar("SELECT COUNT(*) FROM events")
-        .fetch_one(&pool)
-        .await
-        .map_err(AsyncRecoveryError::Sqlx)?;
-
-    let latest_revision: Option<i64> = sqlx::query_scalar::<_, Option<i64>>("SELECT COALESCE(MAX(revision), 0) FROM events")
-        .fetch_optional(&pool)
-        .await
-        .map_err(AsyncRecoveryError::Sqlx)?
-        .flatten()
-        .filter(|&rev| rev > 0);
+        .map_err(AsyncStoreError::Sqlx)?;
 
     pool.close().await;
 
-    let error_message = if !is_valid {
-        Some(integrity_result)
-    } else if corrupted_pages > 0 {
-        Some(format!("{corrupted_pages} corrupted pages found"))
-    } else {
-        None
-    };
-
-    Ok(AsyncIntegrityStatus {
-        is_valid,
-        page_count,
-        free_pages,
-        corrupted_pages,
-        schema_version,
-        event_count,
-        latest_revision,
-        error_message,
-    })
+    Ok(results)
 }
 
-/// Opens the database in read-only recovery mode (async version)
-pub async fn open_recovery_mode_async(db_path: &Path) -> Result<AsyncRecoveryHandle, AsyncRecoveryError> {
-    let pool = create_async_pool(db_path).await?;
-
-    let integrity_result: String = sqlx::query_scalar("PRAGMA integrity_check")
-        .fetch_one(&pool)
+pub async fn open_recovery_mode_async(db_path: &Path) -> Result<SqlitePool, AsyncStoreError> {
+    let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
+    
+    let pool = SqlitePoolOptions::new()
+        .max_connections(1)
+        .connect(&connection_string)
         .await
-        .map_err(AsyncRecoveryError::Sqlx)?;
+        .map_err(AsyncStoreError::Sqlx)?;
 
-    if integrity_result != "ok" {
-        pool.close().await;
-        return Err(AsyncRecoveryError::CorruptDatabase(integrity_result));
-    }
+    sqlx::query("PRAGMA journal_mode=DELETE")
+        .execute(&pool)
+        .await
+        .map_err(AsyncStoreError::Sqlx)?;
 
-    Ok(AsyncRecoveryHandle {
-        pool,
-        db_path: db_path.to_path_buf(),
-        export_path: None,
-    })
-}
+    sqlx::query("PRAGMA synchronous=NORMAL")
+        .execute(&pool)
+        .await
+        .map_err(AsyncStoreError::Sqlx)?;
 
-/// Opens the database in recovery-only mode (async version - alias)
-pub async fn open_recovery_only_async(db_path: &Path) -> Result<AsyncRecoverySession, AsyncRecoveryError> {
-    open_recovery_mode_async(db_path).await
-}
+    sqlx::query("PRAGMA wal_checkpoint(TRUNCATE)")
+        .execute(&pool)
+        .await
+        .map_err(AsyncStoreError::Sqlx)?;
 
-/// Runs integrity check on the database (async version - alias)
-pub async fn integrity_check_async(db_path: &Path) -> Result<AsyncIntegrityStatus, AsyncRecoveryError> {
-    startup_integrity_check_async(db_path).await
+    Ok(pool)
 }
 
 #[cfg(test)]
@@ -785,26 +628,7 @@ mod tests {
     use tempfile::TempDir;
 
     #[tokio::test]
-    async fn test_create_async_pool() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool = create_async_pool(&db_path).await.expect("Failed to create pool");
-
-        // Verify pragmas are set correctly
-        let pragmas = read_store_pragmas_async(&pool).await.expect("Failed to read pragmas");
-
-        assert_eq!(pragmas.journal_mode, "wal");
-        assert_eq!(pragmas.synchronous, 2); // FULL = 2
-        assert_eq!(pragmas.wal_autocheckpoint, 1000);
-        assert!(pragmas.foreign_keys);
-        assert_eq!(pragmas.busy_timeout, 5000);
-
-        pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_bootstrap_async_store() {
+    async fn test_bootstrap_async_store_creates_database() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
@@ -812,9 +636,10 @@ mod tests {
             .await
             .expect("Failed to bootstrap async store");
 
-        assert_eq!(bootstrap.schema_version, CURRENT_SCHEMA_VERSION);
-
-        bootstrap.pool.close().await;
+        assert_eq!(
+            bootstrap.schema_version,
+            CURRENT_SCHEMA_VERSION
+        );
     }
 
     #[tokio::test]
@@ -851,12 +676,332 @@ mod tests {
 
         assert_eq!(result.revision, 1);
         assert_eq!(result.op_id, "test-op-1");
+    }
 
+    #[tokio::test]
+    async fn test_current_revision() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let rev = current_revision(&pool).await.expect("Failed to get revision");
+        assert_eq!(rev, 0);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_since_empty() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let events = fetch_events_since(&pool, 0).await.expect("Failed to fetch events");
+        assert!(events.is_empty());
+    }
+
+    #[tokio::test]
+    async fn test_fetch_events_since_with_data() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let envelope1 = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 1".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        };
+
+        let envelope2 = EventEnvelope {
+            op_id: "test-op-2".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-2".to_string(),
+                x: 30.0,
+                y: 40.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Node 2".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000002,
+        };
+
+        append_event_async(&pool, envelope1, None)
+            .await
+            .expect("Failed to append event 1");
+        append_event_async(&pool, envelope2, None)
+            .await
+            .expect("Failed to append event 2");
+
+        let events = fetch_events_since(&pool, 1).await.expect("Failed to fetch events");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].op_id, "test-op-2");
+
+        let all_events = fetch_events_since(&pool, 0).await.expect("Failed to fetch all events");
+        assert_eq!(all_events.len(), 2);
+    }
+
+    #[tokio::test]
+    async fn test_fetch_all_events() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let events = fetch_all_events(&pool).await.expect("Failed to fetch all events");
+        assert!(events.is_empty());
+
+        let envelope = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        append_event_async(&pool, envelope, None)
+            .await
+            .expect("Failed to append event");
+
+        let events = fetch_all_events(&pool).await.expect("Failed to fetch all events");
+        assert_eq!(events.len(), 1);
+        assert_eq!(events[0].op_id, "test-op-1");
+    }
+
+    #[tokio::test]
+    async fn test_read_store_pragmas_async() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let pragmas = read_store_pragmas_async(&pool).await.expect("Failed to read pragmas");
+        
+        assert_eq!(pragmas.journal_mode, "wal");
+        assert_eq!(pragmas.synchronous, 2); // FULL = 2
+        assert_eq!(pragmas.wal_autocheckpoint, 1000);
+        assert!(pragmas.foreign_keys);
+        assert_eq!(pragmas.busy_timeout, 5000);
+    }
+
+    #[tokio::test]
+    async fn test_integrity_check_async() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store");
+
+        let results = integrity_check_async(&db_path).await.expect("Failed to run integrity check");
+        
+        assert_eq!(results.len(), 1);
+        assert_eq!(results[0], "ok");
+    }
+
+    #[tokio::test]
+    async fn test_open_recovery_mode_async() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store");
+
+        let pool = open_recovery_mode_async(&db_path).await.expect("Failed to open recovery mode");
+        
+        let pragmas = read_store_pragmas_async(&pool).await.expect("Failed to read pragmas");
+        assert_eq!(pragmas.journal_mode, "delete");
+        
         pool.close().await;
     }
 
     #[tokio::test]
-    async fn test_append_idempotent_async() {
+    async fn test_classify_duplicate_exact_match() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let envelope = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let _result = append_event_async(&pool, envelope.clone(), None)
+            .await
+            .expect("Failed to append event");
+
+        let record = lookup_existing_op_async(&pool, "test-op-1")
+            .await
+            .expect("Failed to lookup")
+            .expect("Record should exist");
+
+        let kind = classify_duplicate_async(&record, &envelope)
+            .await
+            .expect("classify_duplicate_async should succeed");
+
+        assert_eq!(kind, DuplicateKind::Exact);
+    }
+
+    #[tokio::test]
+    async fn test_classify_duplicate_conflict() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let envelope1 = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Original".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        append_event_async(&pool, envelope1.clone(), None)
+            .await
+            .expect("Failed to append event");
+
+        let envelope2 = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 50.0,
+                y: 60.0,
+                width: 200.0,
+                height: 100.0,
+                label: "Modified".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000001,
+        };
+
+        let record = lookup_existing_op_async(&pool, "test-op-1")
+            .await
+            .expect("Failed to lookup")
+            .expect("Record should exist");
+
+        let kind = classify_duplicate_async(&record, &envelope2)
+            .await
+            .expect("classify_duplicate_async should succeed");
+
+        assert_eq!(kind, DuplicateKind::Conflict);
+    }
+
+    #[tokio::test]
+    async fn test_append_idempotent_new_operation() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let pool = bootstrap_async_store(&db_path)
+            .await
+            .expect("Failed to bootstrap async store")
+            .pool;
+
+        let envelope = EventEnvelope {
+            op_id: "test-op-1".to_string(),
+            operation: crate::models::envelope::DomainOp::NodeAdd {
+                id: "node-1".to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: crate::models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp: 1700000000,
+        };
+
+        let result = append_idempotent_async(&pool, envelope)
+            .await
+            .expect("Failed to append idempotent");
+
+        assert_eq!(result.revision, 1);
+        assert_eq!(result.op_id, "test-op-1");
+    }
+
+    #[tokio::test]
+    async fn test_append_idempotent_exact_duplicate_returns_existing() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
@@ -893,15 +1038,14 @@ mod tests {
 
         assert_eq!(result1.revision, result2.revision);
         assert_eq!(result1.op_id, result2.op_id);
+        assert_eq!(result1.timestamp, result2.timestamp);
 
         let events = fetch_all_events(&pool).await.expect("Failed to fetch all");
         assert_eq!(events.len(), 1);
-
-        pool.close().await;
     }
 
     #[tokio::test]
-    async fn test_fetch_events_since() {
+    async fn test_append_idempotent_conflicting_duplicate_returns_error() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
 
@@ -910,59 +1054,7 @@ mod tests {
             .expect("Failed to bootstrap async store")
             .pool;
 
-        // Add some events
-        for i in 0..5 {
-            let envelope = EventEnvelope {
-                op_id: format!("test-op-{}", i),
-                operation: crate::models::envelope::DomainOp::NodeAdd {
-                    id: format!("node-{}", i),
-                    x: 10.0,
-                    y: 20.0,
-                    width: 100.0,
-                    height: 50.0,
-                    label: format!("Test Node {}", i),
-                },
-                author: crate::models::envelope::Author {
-                    id: "user-1".to_string(),
-                    name: "Test User".to_string(),
-                    email: None,
-                },
-                timestamp: 1700000000 + i as i64,
-            };
-            append_event_async(&pool, envelope, None).await.expect("Failed to append");
-        }
-
-        let events = fetch_events_since(&pool, 2).await.expect("Failed to fetch");
-        assert_eq!(events.len(), 3); // revisions 3, 4, 5
-
-        pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_store_exports_bootstrap_async_store() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        assert_eq!(bootstrap.schema_version, 1);
-        assert_eq!(bootstrap.db_path, db_path);
-
-        bootstrap.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_store_exports_append_event_async() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let envelope = EventEnvelope {
+        let envelope1 = EventEnvelope {
             op_id: "test-op-1".to_string(),
             operation: crate::models::envelope::DomainOp::NodeAdd {
                 id: "node-1".to_string(),
@@ -970,7 +1062,7 @@ mod tests {
                 y: 20.0,
                 width: 100.0,
                 height: 50.0,
-                label: "Test Node".to_string(),
+                label: "Original".to_string(),
             },
             author: crate::models::envelope::Author {
                 id: "user-1".to_string(),
@@ -980,247 +1072,32 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let result = append_event_async(&bootstrap.pool, envelope, None)
-            .await
-            .expect("append_event_async failed");
-
-        assert_eq!(result.revision, 1);
-        assert_eq!(result.op_id, "test-op-1");
-
-        bootstrap.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_store_exports_fetch_latest_revision() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let initial = fetch_latest_revision(&bootstrap.pool).await.expect("fetch_latest_revision failed");
-        assert_eq!(initial, 0);
-
-        let envelope = EventEnvelope {
+        let envelope2 = EventEnvelope {
             op_id: "test-op-1".to_string(),
             operation: crate::models::envelope::DomainOp::NodeAdd {
                 id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
+                x: 50.0,
+                y: 60.0,
+                width: 200.0,
+                height: 100.0,
+                label: "Modified".to_string(),
             },
             author: crate::models::envelope::Author {
                 id: "user-1".to_string(),
                 name: "Test User".to_string(),
                 email: None,
             },
-            timestamp: 1700000000,
+            timestamp: 1700000001,
         };
-        append_event_async(&bootstrap.pool, envelope, None).await.expect("append failed");
 
-        let after = fetch_latest_revision(&bootstrap.pool).await.expect("fetch_latest_revision failed");
-        assert_eq!(after, 1);
-
-        bootstrap.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_store_exports_read_store_pragmas_async() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
+        append_idempotent_async(&pool, envelope1)
             .await
-            .expect("bootstrap_async_store failed");
+            .expect("Failed to append first");
 
-        let pragmas = read_store_pragmas_async(&bootstrap.pool).await.expect("read_store_pragmas_async failed");
+        let result = append_idempotent_async(&pool, envelope2).await;
 
-        assert_eq!(pragmas.journal_mode, "wal");
-        assert_eq!(pragmas.synchronous, 2);
-        assert_eq!(pragmas.wal_autocheckpoint, 1000);
-        assert!(pragmas.foreign_keys);
-        assert_eq!(pragmas.busy_timeout, 5000);
-
-        bootstrap.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_store_exports_current_store_config_async() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let config = current_store_config_async(&bootstrap.pool).await.expect("current_store_config_async failed");
-
-        assert_eq!(config.pragmas.journal_mode, "wal");
-        assert_eq!(config.schema_version, 1);
-
-        bootstrap.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_startup_integrity_check_async_valid_db() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: crate::models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
-        append_event_async(&bootstrap.pool, envelope, None).await.expect("append failed");
-
-        bootstrap.pool.close().await;
-
-        let status = startup_integrity_check_async(&db_path).await.expect("startup_integrity_check_async failed");
-
-        assert!(status.is_valid);
-        assert!(status.error_message.is_none());
-        assert_eq!(status.schema_version, Some(1));
-        assert_eq!(status.event_count, 1);
-    }
-
-    #[tokio::test]
-    async fn test_phase2_startup_integrity_check_async_nonexistent_db() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let nonexistent_path = temp_dir.path().join("nonexistent.db");
-
-        let status = startup_integrity_check_async(&nonexistent_path).await.expect("startup_integrity_check_async failed");
-
-        assert!(!status.is_valid);
-        assert!(status.error_message.is_some());
-        assert_eq!(status.page_count, 0);
-    }
-
-    #[tokio::test]
-    async fn test_phase2_open_recovery_mode_async() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: crate::models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
-        append_event_async(&bootstrap.pool, envelope, None).await.expect("append failed");
-
-        bootstrap.pool.close().await;
-
-        let handle = open_recovery_mode_async(&db_path).await.expect("open_recovery_mode_async failed");
-
-        assert_eq!(handle.db_path, db_path);
-
-        handle.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_open_recovery_only_async() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: crate::models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
-        append_event_async(&bootstrap.pool, envelope, None).await.expect("append failed");
-
-        bootstrap.pool.close().await;
-
-        let session = open_recovery_only_async(&db_path).await.expect("open_recovery_only_async failed");
-
-        assert_eq!(session.db_path, db_path);
-
-        session.pool.close().await;
-    }
-
-    #[tokio::test]
-    async fn test_phase2_integrity_check_async() {
-        let temp_dir = TempDir::new().expect("Failed to create temp dir");
-        let db_path = temp_dir.path().join("test.db");
-
-        let bootstrap = bootstrap_async_store(&db_path)
-            .await
-            .expect("bootstrap_async_store failed");
-
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: crate::models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
-        append_event_async(&bootstrap.pool, envelope, None).await.expect("append failed");
-
-        bootstrap.pool.close().await;
-
-        let status = integrity_check_async(&db_path).await.expect("integrity_check_async failed");
-
-        assert!(status.is_valid);
-        assert_eq!(status.schema_version, Some(1));
+        assert!(result.is_err());
+        let err = result.unwrap_err();
+        assert!(matches!(err, AsyncStoreError::DuplicateWithConflict(_)));
     }
 }

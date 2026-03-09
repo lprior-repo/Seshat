@@ -45,6 +45,10 @@ pub mod sync;
 pub mod validation;
 
 #[cfg(test)]
+#[cfg(not(target_arch = "wasm32"))]
+pub mod io_tests;
+
+#[cfg(test)]
 pub mod subgraph_persistence_tests;
 
 #[cfg(test)]

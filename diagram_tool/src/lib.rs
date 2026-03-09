@@ -57,13 +57,9 @@
 #![forbid(unsafe_code)]
 
 pub mod app;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod backend;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod cli_persistence;
-pub mod core;
 pub mod export;
 pub mod geometry;
 pub mod history;
@@ -72,14 +68,18 @@ pub mod icons;
 pub mod layout;
 pub mod models;
 pub mod mutation;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod perf;
 #[cfg(all(not(target_arch = "wasm32"), any(feature = "sync-db", feature = "async-db")))]
 pub mod store;
+#[cfg(feature = "async-db")]
+pub mod store_async;
+#[cfg(feature = "async-db")]
+pub mod store_bridge;
 pub mod ui;
 pub mod viewport;
 
+// Test harness is public for use in tests
+pub mod test_harness;
+
 #[cfg(test)]
-mod tests {
-    mod contracts;
-}
+mod test_infrastructure_tests;

@@ -14,3 +14,7 @@
 {"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:12:40Z","event_type":"created","id":14,"issue_id":"seshat-wzu","new_value":"","old_value":""}
 {"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:12:40Z","event_type":"created","id":15,"issue_id":"seshat-8em","new_value":"","old_value":""}
 {"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:16:54Z","event_type":"closed","id":16,"issue_id":"seshat-ec3","new_value":"Completed in commit f972a95: Phase 1-4: Add sqlx/tokio async database support","old_value":""}
+{"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:16:54Z","event_type":"closed","id":17,"issue_id":"seshat-6z9","new_value":"Completed in commit f972a95: Core async DB operations implemented in store_async.rs","old_value":""}
+{"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:16:55Z","event_type":"closed","id":18,"issue_id":"seshat-an8","new_value":"Completed in commit f972a95: Async transaction patterns with OCC in store_async.rs","old_value":""}
+{"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:16:55Z","event_type":"closed","id":19,"issue_id":"seshat-1rg","new_value":"Completed in commit f972a95: Async bridge and sync wrappers in store_bridge.rs","old_value":""}
+{"actor":"Stak Release Bot","comment":null,"created_at":"2026-03-07T06:16:55Z","event_type":"closed","id":20,"issue_id":"seshat-8em","new_value":"Completed in commit f972a95: FP violations fixed in io_tests.rs and test_infrastructure_tests.rs","old_value":""}
