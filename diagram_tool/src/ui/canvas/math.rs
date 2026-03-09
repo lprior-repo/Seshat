@@ -7,6 +7,18 @@
 #![allow(dead_code)]
 
 #[must_use]
+pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
+    let valid = safe_zoom(zoom)?;
+    if valid < min {
+        Some(min)
+    } else if valid > max {
+        Some(max)
+    } else {
+        Some(valid)
+    }
+}
+
+#[must_use]
 pub fn safe_zoom(zoom: f64) -> Option<f64> {
     (zoom.is_finite() && zoom >= f64::EPSILON).then_some(zoom)
 }
@@ -21,6 +33,25 @@ pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
     } else {
         Some(valid)
     }
+}
+
+#[must_use]
+pub fn canvas_to_screen(
+    canvas_x: f64,
+    canvas_y: f64,
+    camera_x: f64,
+    camera_y: f64,
+    zoom: f64,
+) -> Option<(f64, f64)> {
+    let valid_zoom = safe_zoom(zoom)?;
+    let sx = (canvas_x - camera_x) * valid_zoom;
+    let sy = (canvas_y - camera_y) * valid_zoom;
+    Some((sx, sy))
+}
+
+#[must_use]
+pub fn safe_zoom_clamped(zoom: f64, min: f64, max: f64) -> Option<f64> {
+    safe_zoom(zoom).map(|z| z.clamp(min, max))
 }
 
 #[must_use]
