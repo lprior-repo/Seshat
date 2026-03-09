@@ -1508,7 +1508,7 @@ pub fn Canvas() -> Element {
 
                 doc_signal.with_mut(|doc| {
                     let coords = evt.data.coordinates().client();
-                    let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                    let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                     let local_x = coords.x - origin.0;
                     let local_y = coords.y - origin.1;
                     let (x, y) = to_canvas_coords(
@@ -1613,7 +1613,7 @@ pub fn Canvas() -> Element {
             },
             ondoubleclick: move |evt| {
                 let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 let doc = doc_signal.read().clone();
@@ -1718,7 +1718,7 @@ pub fn Canvas() -> Element {
                     WheelDelta::Pages(v) => (v.x, v.y, false),
                 };
                 let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 pending_wheel_sample.set(Some(WheelSample {
@@ -1748,7 +1748,7 @@ pub fn Canvas() -> Element {
                 let coords = evt.data.coordinates().client();
                 // Use origin from the signal - it should be fresh now because the JS pointerdown
                 // handler sends a 'resize' message first to update it
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
@@ -1869,7 +1869,7 @@ pub fn Canvas() -> Element {
 
             onmousemove: move |evt| {
                 let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                 let local_x = coords.x - origin.0;
                 let local_y = coords.y - origin.1;
                 interaction_mode.with_mut(|mode| {
@@ -1921,7 +1921,7 @@ pub fn Canvas() -> Element {
                     match mode {
                         InteractionMode::DrawingEdge { from_node, .. } => {
                             let coords = evt.data.coordinates().client();
-                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                            let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                             let local_x = coords.x - origin.0;
                             let local_y = coords.y - origin.1;
                             let doc = doc_signal.read().clone();
@@ -2210,6 +2210,7 @@ pub fn Canvas() -> Element {
                                 rsx! {
                                     path {
                                         key: "{id:?}",
+                                        "data-node-kind": "edge",
                                         d: "{d}",
                                         fill: "none",
                                         stroke: "{stroke_color}",
@@ -2402,7 +2403,7 @@ pub fn Canvas() -> Element {
                                 let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
                                 let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
                                 let coords = evt.data.coordinates().client();
-                                let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                                let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                                 let local_x = coords.x - origin.0;
                                 let local_y = coords.y - origin.1;
                                 let pos = to_canvas_coords(
@@ -2508,7 +2509,7 @@ pub fn Canvas() -> Element {
                                         if *tool_signal.read() == ToolMode::Edge {
                                             let doc_now = doc_signal.read().clone();
                                             let coords = evt.data.coordinates().client();
-                                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                                            let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                                             let local_x = coords.x - origin.0;
                                             let local_y = coords.y - origin.1;
                                             let pos = to_canvas_coords(
@@ -2673,7 +2674,7 @@ pub fn Canvas() -> Element {
                                                             }
                                                             evt.stop_propagation();
                                                             let coords = evt.data.coordinates().client();
-                                                            let origin = sync_canvas_origin().unwrap_or(*canvas_origin.read());
+                                                            let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
                                                             let local_x = coords.x - origin.0;
                                                             let local_y = coords.y - origin.1;
                                                             let doc = doc_signal.read().clone();
