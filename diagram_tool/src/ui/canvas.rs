@@ -1340,8 +1340,10 @@ pub fn Canvas() -> Element {
                         InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_)
-                        | InteractionMode::Select => {}
+                        | InteractionMode::Resizing(_) => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
+                        InteractionMode::Select => {}
                     });
                     continue;
                 }
@@ -1492,8 +1494,10 @@ pub fn Canvas() -> Element {
                         InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_)
-                        | InteractionMode::Select => {}
+                        | InteractionMode::Resizing(_) => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::Select => {}
                     });
                     space_pan_active.set(false);
                 }
@@ -1920,8 +1924,10 @@ pub fn Canvas() -> Element {
                         InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_)
-                        | InteractionMode::Select => {}
+                        | InteractionMode::Resizing(_) => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
+                        InteractionMode::Select => {}
                     }
                 });
             },
@@ -2074,8 +2080,10 @@ pub fn Canvas() -> Element {
                         InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_)
-                        | InteractionMode::Select => *mode = InteractionMode::Select,
+                        | InteractionMode::Resizing(_) => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::Select => *mode = InteractionMode::Select,
                     }
                 });
                 space_pan_active.set(false);
