@@ -66,6 +66,12 @@ pub(super) enum InteractionMode {
         current: (f64, f64),
     },
     DragPending(DragPendingState),
+    DraggingSelection {
+        anchor_canvas: (f64, f64),
+        anchor_client: (f64, f64),
+        original_positions: HashMap<NodeId, (f64, f64)>,
+        did_move: bool,
+    },
     Dragging(DragState),
     DrawingEdge {
         from_node: NodeId,
@@ -76,6 +82,13 @@ pub(super) enum InteractionMode {
         current: (f64, f64),
     },
     ResizePending(ResizeState),
+    ResizingSelection {
+        handle: ResizeHandle,
+        original_bounds: (f64, f64, f64, f64),
+        originals: HashMap<NodeId, (f64, f64, f64, f64)>,
+        anchor: (f64, f64),
+        did_resize: bool,
+    },
     Resizing(ResizeState),
     DraggingSelection {
         anchor_canvas: (f64, f64),
@@ -208,6 +221,8 @@ pub(super) fn finalize_motion_release(
 ) -> bool {
     let should_increment = match mode {
         InteractionMode::Dragging(_) | InteractionMode::Resizing(_) => true,
+        InteractionMode::DraggingSelection { did_move, .. } => *did_move,
+        InteractionMode::ResizingSelection { did_resize, .. } => *did_resize,
         InteractionMode::DragPending(_) | InteractionMode::ResizePending(_) => {
             *mode = InteractionMode::Select;
             return true;
