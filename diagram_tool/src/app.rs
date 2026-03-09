@@ -68,6 +68,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
+    use_context_provider(|| Signal::new(Option::<Clipboard>::None));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
     use_context_provider(|| Signal::new(Option::<Clipboard>::None));
