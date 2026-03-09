@@ -12,13 +12,12 @@ name = "diagram_tool"
 path = "src/lib.rs"
 
 [features]
-default = ["desktop", "server", "async-db"]
+default = ["desktop", "server"]
 web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 server = ["dioxus/server"]
 fullstack = ["web", "server"]
 async-db = ["dep:sqlx", "dep:tokio"]
-sync-db = ["dep:rusqlite"]
 
 [dependencies]
 dioxus          = { version = "0.7" }
@@ -55,7 +54,6 @@ num_cpus = "1.16"
 
 sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"], optional = true }
 tokio = { version = "1.1", features = ["rt", "sync"], optional = true }
-rusqlite = { version = "0.32", features = ["bundled"], optional = true }
 
 [build-dependencies]
 serde = { version = "1.0", features = ["derive"] }
@@ -81,7 +79,7 @@ js-sys = "0.3"
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rfd = "0.15"
 fs2 = "0.4"
-# rusqlite = { version = "0.32", features = ["bundled"] }
+rusqlite = { version = "0.32", features = ["bundled"] }
 notify = "7.0"
 
 [target.wasm32-unknown-unknown.dependencies]
