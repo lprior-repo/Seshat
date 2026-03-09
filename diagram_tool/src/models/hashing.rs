@@ -6,6 +6,8 @@
 //! - Detecting state changes
 //! - Caching and optimization
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]

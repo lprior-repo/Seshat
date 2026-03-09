@@ -3,6 +3,8 @@
 //! This module establishes the boundary between the persistence/DTO layer (`DiagramDocument`)
 //! and the domain model layer (`DiagramProjection`).
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]

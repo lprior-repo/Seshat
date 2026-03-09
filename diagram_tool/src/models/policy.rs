@@ -19,6 +19,8 @@
 //! - I1: `CyclePolicy` is always either `Allow` or `Deny` (no invalid state)
 //! - I2: `enforce_cycle_policy` does not modify the projection state
 
+#![allow(dead_code)]
+#![allow(unused_imports)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]

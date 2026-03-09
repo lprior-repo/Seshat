@@ -2,7 +2,7 @@
 //!
 //! This module provides pure functions for edge operations including connect,
 //! disconnect, and tolerance verification. All functions follow the functional
-//! pattern: input state + parameters -> Result<new_state, error>.
+//! pattern: input state + parameters -> Result<`new_state`, error>.
 //!
 //! ## Design by Contract
 //!
@@ -61,7 +61,7 @@ pub enum EdgeOpsError {
 ///
 /// This is a pure data structure representing the complete diagram state
 /// after replaying a sequence of events.
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct DiagramProjection {
     /// Schema version for compatibility checking
     pub version: u32,
@@ -383,14 +383,12 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), EdgeOpsErr
         // Verify edge geometry is valid
         if !edge.label_offset_t.0.is_finite() {
             return Err(EdgeOpsError::InvariantViolation(format!(
-                "edge {} has invalid label_offset_t",
-                edge_id
+                "edge {edge_id} has invalid label_offset_t"
             )));
         }
         if !edge.thickness.0.is_finite() {
             return Err(EdgeOpsError::InvariantViolation(format!(
-                "edge {} has invalid thickness",
-                edge_id
+                "edge {edge_id} has invalid thickness"
             )));
         }
     }
