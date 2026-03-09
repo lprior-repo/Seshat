@@ -74,7 +74,7 @@ pub mod models;
 pub mod mutation;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod perf;
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(all(not(target_arch = "wasm32"), any(feature = "sync-db", feature = "async-db")))]
 pub mod store;
 pub mod ui;
 pub mod viewport;
