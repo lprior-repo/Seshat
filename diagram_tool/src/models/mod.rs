@@ -7,50 +7,33 @@
 //! ### Preconditions
 //! - P1: Node positions must be finite (not NaN/Infinite)
 //! - P2: Node dimensions must be positive (width > 0, height > 0)
-//! - P3: Edge references must point to valid `NodeId`s
+//! - P3: Edge references must point to valid NodeIds
 //! - P4: Document revision must be non-negative
 //!
 //! ### Postconditions
 //! - Q1: NodeId/EdgeId newtypes wrap non-empty strings
-//! - Q2: `OrderedFloat` maintains total ordering for collections
+//! - Q2: OrderedFloat maintains total ordering for collections
 //! - Q3: Serialization roundtrips preserve document equality
 //!
 //! ### Invariants
-//! - I1: Each Node has unique `NodeId`
-//! - I2: Each Edge has unique `EdgeId`
+//! - I1: Each Node has unique NodeId
+//! - I2: Each Edge has unique EdgeId
 //! - I3: Node positions in world coordinates (independent of viewport)
 //! - I4: Document revision monotonically increases
 
 pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
-pub mod dispatcher;
 pub mod document;
-pub mod edge_ops;
 pub mod envelope;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod events;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod export;
-#[cfg(not(target_arch = "wasm32"))]
 pub mod harness;
-pub mod hashing;
-pub mod mapping;
-pub mod policy;
 pub mod projection;
 pub mod schema;
-pub mod schema_defs; // Single source of truth for SQLite schemas
-#[cfg(not(target_arch = "wasm32"))]
+pub mod schema_defs;  // Single source of truth for SQLite schemas
+pub mod snapshot;
 pub mod sync;
 pub mod validation;
 
 #[cfg(test)]
-#[cfg(not(target_arch = "wasm32"))]
-pub mod io_tests;
-
-#[cfg(test)]
 pub mod subgraph_persistence_tests;
-
-#[cfg(test)]
-#[cfg(not(target_arch = "wasm32"))]
-pub mod io_tests;
