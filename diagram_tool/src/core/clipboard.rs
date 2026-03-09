@@ -2,7 +2,7 @@
 
 use crate::models::document::OrderedFloat;
 use crate::models::document::{DiagramDocument, EdgeId, NodeId};
-use crate::ui::commands::Clipboard;
+use crate::ui::commands::ClipboardData;
 use im::HashMap;
 use thiserror::Error;
 use uuid::Uuid;
@@ -23,7 +23,7 @@ pub enum ClipboardError {
 /// # Errors
 ///
 /// Returns `ClipboardError::EmptySelection` if no items are selected.
-pub fn copy_selection(doc: &DiagramDocument) -> Result<Clipboard, ClipboardError> {
+pub fn copy_selection(doc: &DiagramDocument) -> Result<ClipboardData, ClipboardError> {
     let selected = &doc.editor_state.selected_items;
 
     if selected.is_empty() {
@@ -46,7 +46,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Result<Clipboard, ClipboardError
         }
     }
 
-    Ok(Clipboard {
+    Ok(ClipboardData {
         nodes,
         edges,
         paste_serial: 0,
@@ -63,9 +63,9 @@ fn remap_pasted_parent(parent: Option<NodeId>, id_map: &HashMap<NodeId, NodeId>)
 ///
 /// Returns `ClipboardError::EmptyClipboard` if clipboard has no nodes.
 pub fn paste_contents(
-    mut clipboard: Clipboard,
+    mut clipboard: ClipboardData,
     doc: &mut DiagramDocument,
-) -> Result<Clipboard, ClipboardError> {
+) -> Result<ClipboardData, ClipboardError> {
     if clipboard.nodes.is_empty() {
         return Err(ClipboardError::EmptyClipboard);
     }
@@ -77,8 +77,10 @@ pub fn paste_contents(
     let id_map = clipboard
         .nodes
         .iter()
-        .map(|(old_id, _)| (old_id.clone(), NodeId::new(Uuid::new_v4().to_string())))
-        .collect::<HashMap<_, _>>();
+        .map(|(old_id, _): &(NodeId, crate::models::document::Node)| {
+            (old_id.clone(), NodeId::new(Uuid::new_v4().to_string()))
+        })
+        .collect::<HashMap<NodeId, NodeId>>();
     let mut selected = im::HashSet::new();
 
     for (old_id, node) in &clipboard.nodes {

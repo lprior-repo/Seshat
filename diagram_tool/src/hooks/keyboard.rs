@@ -9,7 +9,7 @@ use crate::history::History;
 use crate::models::document::DiagramDocument;
 use crate::ui::commands::{
     apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
-    apply_redo, apply_select_all, apply_undo, apply_ungroup_selection, Clipboard,
+    apply_redo, apply_select_all, apply_undo, apply_ungroup_selection, ClipboardData,
 };
 use dioxus::prelude::*;
 
@@ -20,7 +20,7 @@ use dioxus::prelude::*;
 pub fn use_global_keyboard() {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
+    let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
 
     use_effect(move || {
         let mut eval = document::eval(

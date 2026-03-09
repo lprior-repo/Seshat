@@ -6,7 +6,8 @@ use crate::ui::commands::{
     apply_align_selection, apply_bring_forward, apply_bring_to_front, apply_copy_selection,
     apply_delete_selected, apply_distribute_selection, apply_paste_selection, apply_redo,
     apply_send_backward, apply_send_to_back, apply_undo, apply_zoom_in, apply_zoom_out,
-    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, DistributionAxis, Clipboard,
+    apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, ClipboardData,
+    DistributionAxis,
 };
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
@@ -74,17 +75,17 @@ pub fn delete_selection(doc_signal: Signal<DiagramDocument>, history_signal: Sig
 }
 
 pub fn copy_selection(doc_signal: Signal<DiagramDocument>) {
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
+    let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
     let _ = apply_copy_selection(doc_signal, clipboard_signal);
 }
 
 pub fn paste_selection(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
+    let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
     let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
 }
 
 pub fn can_paste() -> bool {
-    let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
+    let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
     let clipboard = clipboard_signal.read();
     clipboard_has_content(&clipboard)
 }

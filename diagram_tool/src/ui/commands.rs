@@ -48,7 +48,7 @@ pub enum DistributionAxis {
 /// This replaces the mutable `thread_local` RefCell-based clipboard with
 /// a pure functional approach where clipboard state is passed explicitly.
 #[derive(Clone, Debug, PartialEq, Eq)]
-pub struct Clipboard {
+pub struct ClipboardData {
     /// The nodes that were copied to the clipboard
     pub nodes: Vec<(NodeId, Node)>,
     /// The edges that were copied to the clipboard
@@ -57,7 +57,7 @@ pub struct Clipboard {
     pub paste_serial: u32,
 }
 
-impl Clipboard {
+impl ClipboardData {
     /// Creates a new empty clipboard
     #[must_use]
     pub const fn new() -> Self {
@@ -82,7 +82,7 @@ impl Clipboard {
     }
 }
 
-impl Default for Clipboard {
+impl Default for ClipboardData {
     fn default() -> Self {
         Self::new()
     }
@@ -90,16 +90,16 @@ impl Default for Clipboard {
 
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]
-pub fn clipboard_has_content(clipboard: &Option<Clipboard>) -> bool {
-    clipboard.as_ref().is_some_and(Clipboard::has_content)
+pub fn clipboard_has_content(clipboard: &Option<ClipboardData>) -> bool {
+    clipboard.as_ref().is_some_and(ClipboardData::has_content)
 }
 
 /// Pure function: Creates a clipboard with the selected nodes and edges from the document.
 ///
-/// Returns `None` if no nodes are selected, otherwise returns a new `Clipboard` with the
+/// Returns `None` if no nodes are selected, otherwise returns a new `ClipboardData` with the
 /// selected content.
 #[must_use]
-pub fn copy_selection(doc: &DiagramDocument) -> Option<Clipboard> {
+pub fn copy_selection(doc: &DiagramDocument) -> Option<ClipboardData> {
     let selected_nodes = selected_node_ids(doc);
     if selected_nodes.is_empty() {
         return None;
@@ -125,7 +125,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Option<Clipboard> {
         .map(|(_, edge)| edge.clone())
         .collect();
 
-    Some(Clipboard {
+    Some(ClipboardData {
         nodes,
         edges,
         paste_serial: 0,
@@ -137,7 +137,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Option<Clipboard> {
 /// Unlike `copy_selection`, this sets `paste_serial` to 1 to indicate
 /// the content should be pasted with an offset.
 #[must_use]
-pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> {
+pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<ClipboardData> {
     let selected_nodes = selected_node_ids(doc);
     if selected_nodes.is_empty() {
         return None;
@@ -163,7 +163,7 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> 
         .map(|(_, edge)| edge.clone())
         .collect();
 
-    Some(Clipboard {
+    Some(ClipboardData {
         nodes,
         edges,
         paste_serial: 1,
@@ -176,9 +176,9 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<Clipboard> 
 /// Otherwise returns a tuple of (`updated_document`, `updated_clipboard`).
 #[must_use]
 pub fn paste_contents(
-    mut clipboard: Clipboard,
+    mut clipboard: ClipboardData,
     doc: DiagramDocument,
-) -> Option<(DiagramDocument, Clipboard)> {
+) -> Option<(DiagramDocument, ClipboardData)> {
     if clipboard.nodes.is_empty() {
         return None;
     }
@@ -229,10 +229,10 @@ pub fn paste_contents(
 ///
 /// This function maintains backward compatibility with the existing API
 /// by using a Dioxus signal for clipboard state management.
-#[must_use] 
+#[must_use]
 pub fn apply_copy_selection(
     doc_signal: Signal<DiagramDocument>,
-    mut clipboard_signal: Signal<Option<Clipboard>>,
+    mut clipboard_signal: Signal<Option<ClipboardData>>,
 ) -> bool {
     let doc = doc_signal.read().clone();
     if let Some(clipboard) = copy_selection(&doc) {
@@ -246,10 +246,10 @@ pub fn apply_copy_selection(
 /// Public API: Applies paste operation using a clipboard signal.
 ///
 /// Returns true if paste was successful, false otherwise.
-#[must_use] 
+#[must_use]
 pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
-    mut clipboard_signal: Signal<Option<Clipboard>>,
+    mut clipboard_signal: Signal<Option<ClipboardData>>,
     history_signal: Signal<History>,
 ) -> bool {
     let current = doc_signal.read().clone();
@@ -273,10 +273,10 @@ pub fn apply_paste_selection(
 ///
 /// This is equivalent to copy followed by paste, but uses `paste_serial=1`
 /// to ensure the duplicated content is offset from the original.
-#[must_use] 
+#[must_use]
 pub fn apply_duplicate_selection(
     mut doc_signal: Signal<DiagramDocument>,
-    mut clipboard_signal: Signal<Option<Clipboard>>,
+    mut clipboard_signal: Signal<Option<ClipboardData>>,
     history_signal: Signal<History>,
 ) -> bool {
     let doc = doc_signal.read().clone();
@@ -468,7 +468,7 @@ fn apply_z_order_operation(
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_bring_forward(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -476,7 +476,7 @@ pub fn apply_bring_forward(
     apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringForward)
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_send_backward(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -484,7 +484,7 @@ pub fn apply_send_backward(
     apply_z_order_operation(doc_signal, history_signal, ZOrderOp::SendBackward)
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_bring_to_front(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -492,7 +492,7 @@ pub fn apply_bring_to_front(
     apply_z_order_operation(doc_signal, history_signal, ZOrderOp::BringToFront)
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_send_to_back(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -518,7 +518,7 @@ pub fn apply_clear_selection(mut doc_signal: Signal<DiagramDocument>) {
     });
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_delete_selected(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -563,7 +563,7 @@ pub fn apply_delete_selected(
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_nudge_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -597,7 +597,7 @@ pub fn apply_nudge_selection(
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_group_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -687,7 +687,7 @@ pub fn apply_group_selection(
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_ungroup_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -911,7 +911,7 @@ pub fn apply_align_selection(
 /// - Horizontal distribution preserves Y positions
 /// - Vertical distribution preserves X positions
 /// - Z-order is preserved
-#[must_use] 
+#[must_use]
 pub fn apply_distribute_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -1066,7 +1066,7 @@ fn zoom_to_center(doc: &mut DiagramDocument, factor: f64, viewport_size: (f64, f
     set_zoom_centered(doc, old_zoom * factor, viewport_size)
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_zoom_in(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -1089,7 +1089,7 @@ pub fn apply_zoom_in(
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_zoom_out(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -1111,7 +1111,7 @@ pub fn apply_zoom_out(
     true
 }
 
-#[must_use] 
+#[must_use]
 pub fn apply_zoom_reset(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -1357,7 +1357,7 @@ mod tests {
 
     #[test]
     fn given_empty_clipboard_when_paste_then_returns_none() {
-        let clipboard = Clipboard::new();
+        let clipboard = ClipboardData::new();
         let doc = DiagramDocument::default();
         let node_count_before = doc.document.nodes.len();
 
@@ -1365,7 +1365,7 @@ mod tests {
 
         assert!(result.is_none());
         // Document should not be modified
-        let (returned_doc, _) = result.unwrap_or((doc.clone(), Clipboard::new()));
+        let (returned_doc, _) = result.unwrap_or((doc.clone(), ClipboardData::new()));
         assert_eq!(returned_doc.document.nodes.len(), node_count_before);
     }
 
