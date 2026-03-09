@@ -582,14 +582,12 @@ fn flush_pending_pointer_update(
         }
         InteractionMode::Select
         | InteractionMode::RubberBand { .. }
+        | InteractionMode::DrawingEdge { .. }
+        | InteractionMode::DrawingSubgraph { .. }
         | InteractionMode::DragPending(_)
         | InteractionMode::Dragging(_)
-        | InteractionMode::DraggingSelection { .. }
-        | InteractionMode::ResizingSelection { .. }
         | InteractionMode::ResizePending(_)
-        | InteractionMode::Resizing(_)
-        | InteractionMode::DrawingEdge { .. }
-        | InteractionMode::DrawingSubgraph { .. } => {}
+        | InteractionMode::Resizing(_) => {}
     });
 }
 
@@ -1339,11 +1337,11 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::Select
-                        | InteractionMode::DragPending(_)
+                        InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {}
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::Select => {}
                     });
                     continue;
                 }
@@ -1491,11 +1489,11 @@ pub fn Canvas() -> Element {
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::Select
-                        | InteractionMode::DragPending(_)
+                        InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {}
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::Select => {}
                     });
                     space_pan_active.set(false);
                 }
@@ -1919,11 +1917,11 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::Select
-                        | InteractionMode::DragPending(_)
+                        InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => {}
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::Select => {}
                     }
                 });
             },
@@ -2073,11 +2071,11 @@ pub fn Canvas() -> Element {
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::Select => *mode = InteractionMode::Select,
                         InteractionMode::DragPending(_)
                         | InteractionMode::Dragging(_)
                         | InteractionMode::ResizePending(_)
-                        | InteractionMode::Resizing(_) => *mode = InteractionMode::Select,
+                        | InteractionMode::Resizing(_)
+                        | InteractionMode::Select => *mode = InteractionMode::Select,
                     }
                 });
                 space_pan_active.set(false);
