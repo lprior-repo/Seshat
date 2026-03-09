@@ -75,12 +75,7 @@ impl Percentiles {
 
         let len = sorted.len();
         let percentile = |p: f64| -> f64 {
-            #[allow(
-                clippy::cast_precision_loss,
-                clippy::cast_sign_loss,
-                clippy::cast_possible_truncation
-            )]
-            // Cast f64 to usize - p is in [0,1], len fits in usize, truncation is safe
+            #[allow(clippy::cast_precision_loss)]
             let idx = ((len - 1) as f64 * p).round() as usize;
             sorted[idx.min(len - 1)]
         };
@@ -157,8 +152,7 @@ impl Statistics {
         // Compute variance
         #[allow(clippy::cast_precision_loss)]
         let variance = if count > 1 {
-            let sum_sq_diff: f64 = samples.iter().map(|x| (x - mean).powi(2)).sum();
-            sum_sq_diff / (count - 1) as f64
+            samples.iter().map(|x| (x - mean).powi(2)).sum::<f64>() / (count - 1) as f64
         } else {
             0.0
         };
@@ -191,7 +185,7 @@ impl Statistics {
 
     /// Validates all invariants.
     #[must_use]
-    pub const fn is_valid(&self) -> bool {
+    pub fn is_valid(&self) -> bool {
         // INV-1: No NaN/Infinity
         let values_finite = self.mean.is_finite()
             && self.std_dev.is_finite()
@@ -211,10 +205,10 @@ impl Statistics {
     /// Returns the coefficient of variation (CV).
     #[must_use]
     pub fn coefficient_of_variation(&self) -> f64 {
-        if self.mean.abs() < f64::EPSILON {
-            0.0
-        } else {
+        if self.mean != 0.0 {
             self.std_dev / self.mean.abs()
+        } else {
+            0.0
         }
     }
 }
