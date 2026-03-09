@@ -11,7 +11,6 @@ use crate::ui::commands::{
     apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
     apply_redo, apply_select_all, apply_undo, apply_ungroup_selection, Clipboard,
 };
-use crate::ui::toast::use_toast;
 use dioxus::prelude::*;
 
 /// Global keyboard hook that handles document-wide modifier shortcuts.
@@ -22,7 +21,6 @@ pub fn use_global_keyboard() {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
     let clipboard_signal = use_context::<Signal<Option<Clipboard>>>();
-    let toast = use_toast();
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -74,39 +72,28 @@ pub fn use_global_keyboard() {
                 if modifier {
                     match (shift, lowered.as_str()) {
                         (true, "z") | (_, "y") => {
-                            apply_redo(doc_signal, history_signal, Some(toast));
+                            apply_redo(doc_signal, history_signal);
                         }
                         (false, "z") => {
-                            apply_undo(doc_signal, history_signal, Some(toast));
+                            apply_undo(doc_signal, history_signal);
                         }
                         (_, "a") => {
                             apply_select_all(doc_signal);
                         }
                         (_, "c") => {
-                            let _ = apply_copy_selection(doc_signal, clipboard_signal, Some(toast));
+                            let _ = apply_copy_selection(doc_signal, clipboard_signal);
                         }
                         (_, "v") => {
-                            let _ = apply_paste_selection(
-                                doc_signal,
-                                clipboard_signal,
-                                history_signal,
-                                Some(toast),
-                            );
+                            let _ = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
                         }
                         (_, "d") => {
-                            let _ = apply_duplicate_selection(
-                                doc_signal,
-                                clipboard_signal,
-                                history_signal,
-                                Some(toast),
-                            );
+                            let _ = apply_duplicate_selection(doc_signal, clipboard_signal, history_signal);
                         }
                         (true, "g") => {
-                            let _ =
-                                apply_ungroup_selection(doc_signal, history_signal, Some(toast));
+                            let _ = apply_ungroup_selection(doc_signal, history_signal);
                         }
                         (false, "g") => {
-                            let _ = apply_group_selection(doc_signal, history_signal, Some(toast));
+                            let _ = apply_group_selection(doc_signal, history_signal);
                         }
                         _ => {}
                     }
