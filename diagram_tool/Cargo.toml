@@ -45,13 +45,17 @@ petgraph        = "0.8"
 tempfile        = "3.10"
 num_cpus        = "1.16"
 dirs            = "5.0"
+sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-rustls"] }
+tokio = { version = "1.50.0", features = ["full"] }
 
 [features]
-default = ["web"]
+default = ["web", "sync-db", "async-db"]
 web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
 server = ["dioxus/server"]
 fullstack = ["web", "server"]
+sync-db = []
+async-db = []
 
 [build-dependencies]
 serde = { version = "1.0", features = ["derive"] }

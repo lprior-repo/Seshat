@@ -33,7 +33,7 @@ pub mod harness;
 pub mod projection;
 pub mod schema;
 pub mod schema_defs;  // Single source of truth for SQLite schemas
-#[cfg(not(target_arch = "wasm32"))]
+
 pub mod sync;
 pub mod validation;
 

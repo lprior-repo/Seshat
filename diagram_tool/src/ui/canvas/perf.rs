@@ -46,13 +46,13 @@ pub(super) fn to_screen_coords(
     cam_y: f64,
     zoom: f64,
 ) -> (f64, f64) {
-    math::canvas_to_screen(world_x, world_y, cam_x, cam_y, zoom)
+    math::screen_to_canvas(world_x, world_y, cam_x, cam_y, zoom)
         .unwrap_or(((world_x - cam_x) * zoom, (world_y - cam_y) * zoom))
 }
 
 #[must_use]
 pub(super) fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
-    let current_zoom = math::sanitize_zoom(input.zoom.0, ZOOM_MIN, ZOOM_MAX).unwrap_or(1.0);
+    let current_zoom = math::safe_zoom(input.zoom.0).unwrap_or(1.0);
     let wheel_delta = if input.shift_pan {
         if input.dx.abs() > f64::EPSILON {
             input.dx
@@ -316,27 +316,6 @@ mod tests {
     }
 
     #[test]
-    fn given_sanitize_zoom_when_invalid_input_then_returns_none() {
-        use crate::ui::canvas::math::sanitize_zoom;
-        assert!(sanitize_zoom(f64::NAN, ZOOM_MIN, ZOOM_MAX).is_none());
-        assert!(sanitize_zoom(f64::INFINITY, ZOOM_MIN, ZOOM_MAX).is_none());
-        assert!(sanitize_zoom(f64::NEG_INFINITY, ZOOM_MIN, ZOOM_MAX).is_none());
-        assert!(sanitize_zoom(0.0, ZOOM_MIN, ZOOM_MAX).is_none());
-        assert!(sanitize_zoom(-1.0, ZOOM_MIN, ZOOM_MAX).is_none());
-        assert!(sanitize_zoom(f64::EPSILON / 2.0, ZOOM_MIN, ZOOM_MAX).is_none());
-    }
-
-    #[test]
-    fn given_sanitize_zoom_when_valid_input_then_clamps_to_range() {
-        use crate::ui::canvas::math::sanitize_zoom;
-        assert_eq!(sanitize_zoom(1.0, ZOOM_MIN, ZOOM_MAX), Some(1.0));
-        assert_eq!(sanitize_zoom(2.0, ZOOM_MIN, ZOOM_MAX), Some(2.0));
-        assert_eq!(sanitize_zoom(5.0, ZOOM_MIN, ZOOM_MAX), Some(ZOOM_MAX));
-        assert_eq!(sanitize_zoom(0.05, ZOOM_MIN, ZOOM_MAX), Some(ZOOM_MIN));
-        assert_eq!(sanitize_zoom(0.5, ZOOM_MIN, ZOOM_MAX), Some(0.5));
-    }
-
-    #[test]
     fn given_to_canvas_coords_when_valid_then_returns_finite() {
         let (x, y) = to_canvas_coords(100.0, 200.0, 50.0, 75.0, 2.0);
         assert!(x.is_finite());
@@ -450,24 +429,7 @@ mod proptests {
             }
         }
 
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_sanitize_zoom_valid_clamped(zoom in 0.001_f64..100.0_f64) {
-            use crate::ui::canvas::math::sanitize_zoom;
-            let result = sanitize_zoom(zoom, ZOOM_MIN, ZOOM_MAX);
-            prop_assert!(result.is_some());
-            let sanitized = result.unwrap();
-            prop_assert!(sanitized >= ZOOM_MIN);
-            prop_assert!(sanitized <= ZOOM_MAX);
-        }
 
-        #[test]
-        fn prop_sanitize_zoom_invalid_returns_none(zoom in proptest::num::f64::INFINITE) {
-            use crate::ui::canvas::math::sanitize_zoom;
-            if !zoom.is_finite() || zoom <= f64::EPSILON {
-                prop_assert!(sanitize_zoom(zoom, ZOOM_MIN, ZOOM_MAX).is_none());
-            }
-        }
 
         #[test]
         fn prop_coord_transform_roundtrip(

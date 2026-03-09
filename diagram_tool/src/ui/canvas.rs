@@ -1333,6 +1333,10 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
+                        InteractionMode::DraggingSelection { .. }
+                        | InteractionMode::ResizingSelection { .. } => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
                         InteractionMode::Select => {}
                     });
                     continue;
@@ -1479,6 +1483,10 @@ pub fn Canvas() -> Element {
                             });
                         }
                         InteractionMode::Panning { .. } => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::DraggingSelection { .. }
+                        | InteractionMode::ResizingSelection { .. } => {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => {}
@@ -1905,6 +1913,10 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
+                        InteractionMode::DraggingSelection { .. }
+                        | InteractionMode::ResizingSelection { .. } => {
+                            pending_pointer_sample.set(Some((local_x, local_y)));
+                        }
                         InteractionMode::Select => {}
                     }
                 });
@@ -2053,6 +2065,10 @@ pub fn Canvas() -> Element {
                             });
                         }
                         InteractionMode::Panning { .. } => {
+                            *mode = InteractionMode::Select;
+                        }
+                        InteractionMode::DraggingSelection { .. }
+                        | InteractionMode::ResizingSelection { .. } => {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => *mode = InteractionMode::Select,
