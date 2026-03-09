@@ -664,7 +664,7 @@ pub async fn open_recovery_mode_async(db_path: &Path) -> Result<SqlitePool, Asyn
         .await
         .map_err(AsyncStoreError::Sqlx)?;
 
-    sqlx::query("PRAGMA journal_mode=DELETE")
+    sqlx::query("PRAGMA journal_mode=Delete")
         .execute(&pool)
         .await
         .map_err(AsyncStoreError::Sqlx)?;
