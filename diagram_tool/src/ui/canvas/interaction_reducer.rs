@@ -372,20 +372,43 @@ mod tests {
         let inside = NodeId::new(String::from("inside"));
         let outside = NodeId::new(String::from("outside"));
 
+        // Create a helper for unlocked nodes
+        fn unlocked_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+            Node {
+                kind,
+                icon: String::new(),
+                label: String::from("n"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(w),
+                height: OrderedFloat(h),
+                font_size: None,
+                font_weight: None,
+                locked: false, // Unlocked so selected_node_ids includes them
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            }
+        }
+
         doc.document.nodes = doc
             .document
             .nodes
             .update(
                 subgraph.clone(),
-                node(NodeKind::Subgraph, 100.0, 100.0, 300.0, 220.0),
+                unlocked_node(NodeKind::Subgraph, 100.0, 100.0, 300.0, 220.0),
             )
             .update(
                 inside.clone(),
-                node(NodeKind::Node, 140.0, 140.0, 80.0, 60.0),
+                unlocked_node(NodeKind::Node, 140.0, 140.0, 80.0, 60.0),
             )
             .update(
                 outside.clone(),
-                node(NodeKind::Node, 450.0, 300.0, 80.0, 60.0),
+                unlocked_node(NodeKind::Node, 450.0, 300.0, 80.0, 60.0),
             );
         let _ = doc.editor_state.selected_items.insert(subgraph.to_string());
 
@@ -576,18 +599,41 @@ mod tests {
         let normal_id = NodeId::new(String::from("normal"));
         let rotated_bound_id = NodeId::new(String::from("rotated_bound"));
 
+        // Use unlocked nodes since selected_node_ids filters out locked nodes
+        fn unlocked_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+            Node {
+                kind,
+                icon: String::new(),
+                label: String::from("n"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(w),
+                height: OrderedFloat(h),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            }
+        }
+
         // Normal node: 100x100 at origin
         doc.document.nodes = doc
             .document
             .nodes
             .update(
                 normal_id.clone(),
-                node(NodeKind::Node, 0.0, 0.0, 100.0, 100.0),
+                unlocked_node(NodeKind::Node, 0.0, 0.0, 100.0, 100.0),
             )
             // Rotated item's bounding box is larger (e.g., 45deg rotation of 100x100 gives ~141x141)
             .update(
                 rotated_bound_id.clone(),
-                node(NodeKind::Node, 150.0, 0.0, 141.0, 141.0),
+                unlocked_node(NodeKind::Node, 150.0, 0.0, 141.0, 141.0),
             );
 
         let _ = doc
@@ -617,16 +663,39 @@ mod tests {
         let shape_id = NodeId::new(String::from("shape"));
         let text_id = NodeId::new(String::from("text"));
 
+        // Use unlocked nodes since selected_node_ids filters out locked nodes
+        fn unlocked_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+            Node {
+                kind,
+                icon: String::new(),
+                label: String::from("n"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(w),
+                height: OrderedFloat(h),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            }
+        }
+
         doc.document.nodes = doc
             .document
             .nodes
             .update(
                 shape_id.clone(),
-                node(NodeKind::Node, 0.0, 0.0, 100.0, 80.0),
+                unlocked_node(NodeKind::Node, 0.0, 0.0, 100.0, 80.0),
             )
             .update(
                 text_id.clone(),
-                node(NodeKind::Text, 120.0, 20.0, 80.0, 30.0),
+                unlocked_node(NodeKind::Text, 120.0, 20.0, 80.0, 30.0),
             );
 
         let _ = doc.editor_state.selected_items.insert(shape_id.to_string());
@@ -656,17 +725,40 @@ mod tests {
         let shape_id = NodeId::new(String::from("shape"));
         let line_like_id = NodeId::new(String::from("line_like"));
 
+        // Use unlocked nodes since selected_node_ids filters out locked nodes
+        fn unlocked_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+            Node {
+                kind,
+                icon: String::new(),
+                label: String::from("n"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(w),
+                height: OrderedFloat(h),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            }
+        }
+
         doc.document.nodes = doc
             .document
             .nodes
             .update(
                 shape_id.clone(),
-                node(NodeKind::Node, 0.0, 0.0, 100.0, 100.0),
+                unlocked_node(NodeKind::Node, 0.0, 0.0, 100.0, 100.0),
             )
             // A "2-point line" can be represented as a very thin rectangle
             .update(
                 line_like_id.clone(),
-                node(NodeKind::Node, 120.0, 45.0, 80.0, 2.0),
+                unlocked_node(NodeKind::Node, 120.0, 45.0, 80.0, 2.0),
             );
 
         let _ = doc.editor_state.selected_items.insert(shape_id.to_string());
@@ -714,16 +806,39 @@ mod tests {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
 
+        // Use unlocked nodes since selected_node_ids filters out locked nodes
+        fn unlocked_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+            Node {
+                kind,
+                icon: String::new(),
+                label: String::from("n"),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(w),
+                height: OrderedFloat(h),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: Some(NodeStyle::default()),
+                collapsed: None,
+            }
+        }
+
         doc.document.nodes = doc
             .document
             .nodes
             .update(
                 source_id.clone(),
-                node(NodeKind::Node, 0.0, 0.0, 60.0, 40.0),
+                unlocked_node(NodeKind::Node, 0.0, 0.0, 60.0, 40.0),
             )
             .update(
                 target_id.clone(),
-                node(NodeKind::Node, 150.0, 50.0, 60.0, 40.0),
+                unlocked_node(NodeKind::Node, 150.0, 50.0, 60.0, 40.0),
             );
 
         let _ = doc

@@ -1447,9 +1447,12 @@ mod tests {
             .selected_items
             .insert("ghost-id".to_string());
 
-        let result = Ok::<(), ()>(());
+        let result = copy_selection(&doc);
 
-        assert!(result.is_err());
+        assert!(
+            result.is_none(),
+            "Copy should return None for nonexistent selection"
+        );
         crate::ui::commands::CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
     }
 
@@ -1476,17 +1479,12 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
 
-        let result = Ok::<(), ()>(());
+        let result = copy_selection(&doc);
 
-        assert!(result.is_ok());
-        crate::ui::commands::CLIPBOARD.with(|s| {
-            let clip = s.borrow();
-            if let Some(c) = clip.as_ref() {
-                assert_eq!(c.nodes.len(), 3);
-            } else {
-                panic!("clipboard should have content");
-            }
-        });
+        assert!(result.is_some(), "Copy should succeed");
+        if let Some(clipboard) = result {
+            assert_eq!(clipboard.nodes.len(), 3);
+        }
     }
 
     #[test]
@@ -1496,21 +1494,16 @@ mod tests {
         // Only select source node, not target
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
 
-        let result = Ok::<(), ()>(());
+        let result = copy_selection(&doc);
 
-        assert!(result.is_ok());
-        crate::ui::commands::CLIPBOARD.with(|s| {
-            let clip = s.borrow();
-            if let Some(c) = clip.as_ref() {
-                assert_eq!(c.nodes.len(), 1, "should copy one node");
-                assert!(
-                    c.edges.is_empty(),
-                    "edge should be excluded when target not selected"
-                );
-            } else {
-                panic!("clipboard should have content");
-            }
-        });
+        assert!(result.is_some(), "Copy should succeed");
+        if let Some(clipboard) = result {
+            assert_eq!(clipboard.nodes.len(), 1, "should copy one node");
+            assert!(
+                clipboard.edges.is_empty(),
+                "edge should be excluded when target not selected"
+            );
+        }
     }
 
     fn make_doc_with_parent_child(
@@ -1540,28 +1533,26 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("parent".to_string());
         let _ = doc.editor_state.selected_items.insert("child".to_string());
 
-        let result = Ok::<(), ()>(());
+        let result = copy_selection(&doc);
 
-        assert!(result.is_ok());
-        crate::ui::commands::CLIPBOARD.with(|s| {
-            let clip = s.borrow();
-            if let Some(c) = clip.as_ref() {
-                assert_eq!(c.nodes.len(), 2);
-                // Find the child node in clipboard
-                let child_in_clipboard = c.nodes.iter().find(|(id, _)| id.to_string() == "child");
-                if let Some((_, node)) = child_in_clipboard {
-                    assert_eq!(
-                        node.parent,
-                        Some(parent_id),
-                        "parent reference preserved during copy"
-                    );
-                } else {
-                    panic!("child should be in clipboard");
-                }
+        assert!(result.is_some(), "Copy should succeed");
+        if let Some(clipboard) = result {
+            assert_eq!(clipboard.nodes.len(), 2);
+            // Find the child node in clipboard
+            let child_in_clipboard = clipboard
+                .nodes
+                .iter()
+                .find(|(id, _)| id.to_string() == "child");
+            if let Some((_, node)) = child_in_clipboard {
+                assert_eq!(
+                    node.parent,
+                    Some(parent_id),
+                    "parent reference preserved during copy"
+                );
             } else {
-                panic!("clipboard should have content");
+                panic!("child should be in clipboard");
             }
-        });
+        }
     }
 
     #[test]
@@ -1572,16 +1563,25 @@ mod tests {
 
         // Set clipboard with empty nodes vector
         crate::ui::commands::CLIPBOARD.with(|s| {
-            *s.borrow_mut() = Some(Clipboard {
+            *s.borrow_mut() = Some(ClipboardData {
                 nodes: vec![],
                 edges: vec![],
                 paste_serial: 0,
             });
         });
 
-        let result = Ok::<(), ()>(());
+        // Try to paste - should return None because clipboard is empty
+        let clipboard = ClipboardData {
+            nodes: vec![],
+            edges: vec![],
+            paste_serial: 0,
+        };
+        let result = paste_contents(clipboard, doc.clone());
 
-        assert!(result.is_err());
+        assert!(
+            result.is_none(),
+            "Paste should return None for empty clipboard"
+        );
         assert_eq!(doc.document.nodes.len(), node_count_before);
     }
 
@@ -1594,16 +1594,28 @@ mod tests {
             .selected_items
             .insert("original-node".to_string());
 
-        let _ = Ok::<(), ()>(());
+        // Copy the selection
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
 
         // First paste
-        let _ = Ok::<(), ()>(());
-        // Second paste
-        let _ = Ok::<(), ()>(());
+        let Some((doc_after_first_paste, clipboard_after_first)) =
+            paste_contents(clipboard.clone(), doc.clone())
+        else {
+            panic!("First paste should succeed");
+        };
+
+        // Second paste - use the updated clipboard from first paste
+        let Some((doc_after_second_paste, _)) =
+            paste_contents(clipboard_after_first, doc_after_first_paste.clone())
+        else {
+            panic!("Second paste should succeed");
+        };
 
         let original_id = NodeId::new("original-node".to_string());
         // Find the second pasted node (there should be 2 pasted nodes now)
-        let pasted_nodes: Vec<_> = doc
+        let pasted_nodes: Vec<_> = doc_after_second_paste
             .document
             .nodes
             .iter()
@@ -1645,14 +1657,19 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
         let _ = doc.editor_state.selected_items.insert("node-c".to_string());
 
-        let _ = Ok::<(), ()>(());
-        let _ = Ok::<(), ()>(());
+        // Copy and paste
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+        let Some((doc_after_paste, _)) = paste_contents(clipboard, doc.clone()) else {
+            panic!("Paste should succeed");
+        };
 
         // Should have 6 nodes now (3 original + 3 pasted)
-        assert_eq!(doc.document.nodes.len(), 6);
+        assert_eq!(doc_after_paste.document.nodes.len(), 6);
 
         // All IDs should be unique
-        let ids: std::collections::HashSet<_> = doc.document.nodes.keys().collect();
+        let ids: std::collections::HashSet<_> = doc_after_paste.document.nodes.keys().collect();
         assert_eq!(ids.len(), 6, "all node IDs should be unique");
     }
 
@@ -1663,16 +1680,21 @@ mod tests {
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
 
-        let _ = Ok::<(), ()>(());
-        let _ = Ok::<(), ()>(());
+        // Copy and paste
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+        let Some((doc_after_paste, _)) = paste_contents(clipboard, doc.clone()) else {
+            panic!("Paste should succeed");
+        };
 
         // Should have 2 edges now
-        assert_eq!(doc.document.edges.len(), 2);
+        assert_eq!(doc_after_paste.document.edges.len(), 2);
 
         // Find the pasted edge (the one whose source/target are not the originals)
         let original_a = NodeId::new("node-a".to_string());
         let original_b = NodeId::new("node-b".to_string());
-        let pasted_edge = doc
+        let pasted_edge = doc_after_paste
             .document
             .edges
             .iter()
@@ -1687,8 +1709,8 @@ mod tests {
             assert_ne!(edge.source, original_a);
             assert_ne!(edge.target, original_b);
             // And they should be actual node IDs in the document
-            assert!(doc.document.nodes.contains_key(&edge.source));
-            assert!(doc.document.nodes.contains_key(&edge.target));
+            assert!(doc_after_paste.document.nodes.contains_key(&edge.source));
+            assert!(doc_after_paste.document.nodes.contains_key(&edge.target));
         }
     }
 
@@ -1701,11 +1723,16 @@ mod tests {
 
         let original_parent_id = NodeId::new("parent".to_string());
 
-        let _ = Ok::<(), ()>(());
-        let _ = Ok::<(), ()>(());
+        // Copy and paste
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+        let Some((doc_after_paste, _)) = paste_contents(clipboard, doc.clone()) else {
+            panic!("Paste should succeed");
+        };
 
         // Find the pasted child node
-        let pasted_child = doc
+        let pasted_child = doc_after_paste
             .document
             .nodes
             .iter()
@@ -1721,7 +1748,7 @@ mod tests {
                 );
                 // The new parent should exist in the document
                 assert!(
-                    doc.document.nodes.contains_key(parent_ref),
+                    doc_after_paste.document.nodes.contains_key(parent_ref),
                     "remapped parent should exist in document"
                 );
             } else {
@@ -1737,11 +1764,16 @@ mod tests {
         // Only select and copy the child, not the parent
         let _ = doc.editor_state.selected_items.insert("child".to_string());
 
-        let _ = Ok::<(), ()>(());
-        let _ = Ok::<(), ()>(());
+        // Copy and paste
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
+        let Some((doc_after_paste, _)) = paste_contents(clipboard, doc.clone()) else {
+            panic!("Paste should succeed");
+        };
 
         // Find the pasted child node
-        let pasted_child = doc
+        let pasted_child = doc_after_paste
             .document
             .nodes
             .iter()
@@ -1767,17 +1799,25 @@ mod tests {
             .selected_items
             .insert("original-node".to_string());
 
-        let _ = Ok::<(), ()>(());
+        // Copy selection first
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
 
         // Clear selection before paste to test that paste updates it
-        doc.editor_state.selected_items.clear();
-        let _ = Ok::<(), ()>(());
+        let mut doc_for_paste = doc.clone();
+        doc_for_paste.editor_state.selected_items.clear();
+
+        // Paste
+        let Some((doc_after_paste, _)) = paste_contents(clipboard, doc_for_paste.clone()) else {
+            panic!("Paste should succeed");
+        };
 
         // Selection should contain only the new pasted node
-        assert_eq!(doc.editor_state.selected_items.len(), 1);
+        assert_eq!(doc_after_paste.editor_state.selected_items.len(), 1);
 
         // The selected item should NOT be the original node
-        let selected_id = doc.editor_state.selected_items.iter().next();
+        let selected_id = doc_after_paste.editor_state.selected_items.iter().next();
         assert!(selected_id.is_some());
         if let Some(id) = selected_id {
             assert_ne!(
@@ -1796,13 +1836,20 @@ mod tests {
             .selected_items
             .insert("original-node".to_string());
 
-        let _ = Ok::<(), ()>(());
+        // Copy selection first
+        let Some(clipboard) = copy_selection(&doc) else {
+            panic!("Copy should succeed");
+        };
 
         let revision_before = doc.revision;
-        let _ = Ok::<(), ()>(());
+
+        // Paste
+        let Some((doc_after_paste, _)) = paste_contents(clipboard, doc.clone()) else {
+            panic!("Paste should succeed");
+        };
 
         assert_eq!(
-            doc.revision,
+            doc_after_paste.revision,
             revision_before.increment(),
             "revision should be incremented after successful paste"
         );
@@ -1810,7 +1857,7 @@ mod tests {
 
     #[test]
     fn given_clipboard_when_has_content_then_returns_true() {
-        let clipboard = Clipboard {
+        let clipboard = ClipboardData {
             nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
@@ -1820,7 +1867,7 @@ mod tests {
 
     #[test]
     fn given_empty_clipboard_when_has_content_then_returns_false() {
-        let clipboard = Clipboard::new();
+        let clipboard = ClipboardData::new();
         assert!(!clipboard.has_content());
     }
 
@@ -1844,7 +1891,7 @@ mod tests {
 
     #[test]
     fn given_clipboard_when_prepare_paste_then_increments_serial() {
-        let clipboard = Clipboard {
+        let clipboard = ClipboardData {
             nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,

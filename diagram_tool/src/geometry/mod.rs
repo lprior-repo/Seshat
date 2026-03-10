@@ -4941,10 +4941,10 @@ mod tests {
         // When: Simplify is called with epsilon = 0.0
         let result = simplify_path(&points, PathSimplificationConfig::new(0.0, 2).unwrap());
 
-        // Then: The output should have 2 points (endpoints)
+        // Then: With epsilon = 0, the path is returned as-is (no simplification)
         assert!(result.is_ok());
         let simplified = result.unwrap();
-        assert_eq!(simplified.len(), 2);
+        assert_eq!(simplified.len(), 3);
     }
 
     #[test]

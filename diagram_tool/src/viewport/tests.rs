@@ -351,7 +351,7 @@ fn cam_009_fit_content_to_viewport() {
     let fit = viewport.fit_to_content(&content, 20.0);
 
     // Then: fit transform is calculated
-    assert!(fit.is_some());
+    assert!(fit.is_ok());
     let fit = fit.unwrap();
 
     // Available: 760 x 560, Content: 500 x 400
@@ -369,7 +369,7 @@ fn cam_009_fit_content_empty() {
     let fit = viewport.fit_to_content(&content, 20.0);
 
     // Then: no valid fit
-    assert!(fit.is_none());
+    assert!(fit.is_err());
 }
 
 #[test]
@@ -382,7 +382,7 @@ fn cam_009_fit_content_preserves_aspect_ratio() {
     let fit = viewport.fit_to_content(&content, 0.0);
 
     // Then: scale fits width (smaller dimension)
-    assert!(fit.is_some());
+    assert!(fit.is_ok());
     let fit = fit.unwrap();
     // 100/200 = 0.5 fits width, 100/100 = 1.0 fits height
     // Use minimum to fit both
