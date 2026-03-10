@@ -6,7 +6,7 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
-use crate::models::dag::validate_dag;
+use crate::models::dag::{validate_dag, CycleError};
 use crate::models::document::{DiagramDocument, DocumentData, NodeKind};
 
 /// Severity of a validation issue.
@@ -137,11 +137,26 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
             .chain(dimension_issue)
     });
 
-    let dag_issues = validate_dag(nodes, edges).err().map(|_| ValidationIssue {
-        severity: ValidationSeverity::Error,
-        code: "dag-cycle",
-        message: String::from("Document contains a cycle — DAGs must be acyclic"),
-        subject: None,
+    let dag_issues = validate_dag(nodes, edges).err().map(|e| {
+        let (code, message) = match e {
+            CycleError::CycleDetected(_) => (
+                "dag-cycle",
+                "Document contains a cycle — DAGs must be acyclic",
+            ),
+            CycleError::DisconnectedGraph(n) => (
+                "dag-disconnected",
+                &*format!(
+                    "Graph has {} disconnected components — all nodes must be connected",
+                    n
+                ),
+            ),
+        };
+        ValidationIssue {
+            severity: ValidationSeverity::Error,
+            code,
+            message: message.to_string(),
+            subject: None,
+        }
     });
 
     edge_issues.chain(node_issues).chain(dag_issues).collect()

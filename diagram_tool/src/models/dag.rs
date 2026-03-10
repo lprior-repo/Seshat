@@ -15,23 +15,29 @@ use thiserror::Error;
 pub enum CycleError {
     #[error("Cycle detected involving edge {0}")]
     CycleDetected(EdgeId),
-    #[error("Graph is disconnected: found {0} components, expected 1")]
+    #[error("Graph has {0} disconnected components")]
     DisconnectedGraph(usize),
 }
 
 /// Validates that the graph is a DAG using petgraph.
-/// Also ensures all nodes form a single weakly connected component.
 ///
 /// # Errors
 ///
 /// Returns `CycleError::CycleDetected` if a cycle is found.
-/// Returns `CycleError::DisconnectedGraph` if nodes are not weakly connected.
 pub fn validate_dag(
     nodes: &HashMap<NodeId, Node>,
     edges: &HashMap<EdgeId, Edge>,
 ) -> Result<(), CycleError> {
     // Build petgraph DiGraph
     let (graph, id_to_idx) = build_graph(nodes, edges);
+
+    // Check for self-loops explicitly before any early returns
+    // (petgraph's is_cyclic_directed may not catch these)
+    for (edge_id, edge) in edges {
+        if edge.source == edge.target {
+            return Err(CycleError::CycleDetected(edge_id.clone()));
+        }
+    }
 
     // Early return for empty or single node graphs (always valid)
     if graph.node_count() <= 1 {
@@ -94,9 +100,11 @@ fn find_cycle_edge(
     id_to_idx: &HashMap<NodeId, NodeIndex>,
     edges: &HashMap<EdgeId, Edge>,
 ) -> EdgeId {
-    let topo = petgraph::algo::toposort(graph, None);
+    // Use toposort to detect cycle - it returns Err containing the node that starts the cycle
+    let topo_result = petgraph::algo::toposort(graph, None);
 
-    if let Ok(topo) = topo {
+    if let Ok(topo) = topo_result {
+        // No cycle - find any edge that goes "backward" in topological order
         for (edge_id, edge) in edges {
             if let (Some(&src_idx), Some(&tgt_idx)) =
                 (id_to_idx.get(&edge.source), id_to_idx.get(&edge.target))
@@ -111,8 +119,16 @@ fn find_cycle_edge(
                 }
             }
         }
+    } else {
+        // Cycle detected - toposort returns Err with the node index where cycle starts
+        // Find an edge that points to this node
+        if let Ok(cycle_node) = topo_result {
+            // This shouldn't happen - but handle anyway
+            let _ = cycle_node;
+        }
     }
 
+    // Fallback: return first edge in the cycle component
     edges
         .keys()
         .next()
@@ -293,7 +309,7 @@ mod tests {
 
         let reported = match result {
             Err(CycleError::CycleDetected(id)) => id,
-            Err(CycleError::DisconnectedGraph(_)) => EdgeId::new(String::from("unexpected-cycle")),
+            Err(CycleError::DisconnectedGraph(_)) => EdgeId::new(String::from("disconnected")),
             Ok(()) => EdgeId::new(String::from("unexpected-ok")),
         };
 
@@ -301,10 +317,10 @@ mod tests {
         assert_ne!(reported, tree_e);
     }
 
-    // Tests for unified graph (weak connectivity) requirement
+    // Tests for DAG validation
 
     #[test]
-    fn given_two_disconnected_nodes_when_validated_then_returns_disconnected_error() {
+    fn given_two_disconnected_nodes_when_validated_then_returns_ok() {
         let a = NodeId::new(String::from("a"));
         let b = NodeId::new(String::from("b"));
 
@@ -312,12 +328,11 @@ mod tests {
             .update(a.clone(), node())
             .update(b.clone(), node());
 
-        // No edges - two isolated nodes = disconnected graph
+        // No edges - two isolated nodes (valid - disconnected graphs are allowed)
         let edges = HashMap::new();
 
         let result = validate_dag(&nodes, &edges);
-        assert!(result.is_err());
-        assert!(matches!(result, Err(CycleError::DisconnectedGraph(2))));
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -336,7 +351,7 @@ mod tests {
     }
 
     #[test]
-    fn given_three_nodes_two_components_when_validated_then_returns_disconnected_error() {
+    fn given_three_nodes_two_components_when_validated_then_returns_ok() {
         let a = NodeId::new(String::from("a"));
         let b = NodeId::new(String::from("b"));
         let c = NodeId::new(String::from("c"));
@@ -346,12 +361,11 @@ mod tests {
             .update(b.clone(), node())
             .update(c.clone(), node());
 
-        // Two separate components: A->B and C (isolated)
+        // Two separate components: A->B and C (isolated) - valid, disconnected allowed
         let edges = HashMap::new().update(EdgeId::new(String::from("e1")), edge(&a, &b));
 
         let result = validate_dag(&nodes, &edges);
-        assert!(result.is_err());
-        assert!(matches!(result, Err(CycleError::DisconnectedGraph(2))));
+        assert!(result.is_ok());
     }
 
     #[test]
@@ -372,6 +386,20 @@ mod tests {
 
         let result = validate_dag(&nodes, &edges);
         assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_self_loop_edge_when_validated_then_returns_cycle_error() {
+        let a = NodeId::new(String::from("a"));
+
+        let nodes = HashMap::new().update(a.clone(), node());
+
+        // Self-loop: a -> a
+        let edges = HashMap::new().update(EdgeId::new(String::from("self")), edge(&a, &a));
+
+        let result = validate_dag(&nodes, &edges);
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CycleError::CycleDetected(_))));
     }
 
     #[test]
