@@ -11,7 +11,9 @@
 
 use crate::geometry::AABB;
 
-use super::{FitTransform, ViewportState, MAX_ZOOM, MIN_ZOOM, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR};
+use super::{
+    FitTransform, ViewportError, ViewportState, MAX_ZOOM, MIN_ZOOM, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR,
+};
 
 /// Apply a pan operation to a viewport
 ///
@@ -102,16 +104,18 @@ pub fn apply_center_on(viewport: &mut ViewportState, world_x: f64, world_y: f64)
 /// * `padding` - Padding around content
 ///
 /// # Returns
-/// The fit transform if successful, None if content is invalid
-#[must_use]
+/// The fit transform if successful
+///
+/// # Errors
+/// Returns error if padding is negative, content bounds are invalid, or coordinates overflow
 pub fn apply_fit_to_content(
     viewport: &mut ViewportState,
     content: &AABB,
     padding: f64,
-) -> Option<FitTransform> {
+) -> Result<FitTransform, ViewportError> {
     let fit = viewport.fit_to_content(content, padding)?;
     viewport.apply_fit(fit);
-    Some(fit)
+    Ok(fit)
 }
 
 /// Calculate zoom level to fit content

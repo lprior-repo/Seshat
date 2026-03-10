@@ -61,11 +61,28 @@ pub const MAX_ZOOM: f64 = 4.0;
 /// Maximum pan distance from origin in world units
 pub const MAX_PAN_DISTANCE: f64 = 10000.0;
 
+/// Maximum safe coordinate magnitude before overflow risk
+/// Coordinates beyond this magnitude may cause float overflow in calculations
+const MAX_SAFE_COORDINATE: f64 = 1e15;
+
 /// Default zoom factor for zoom in operations
 pub const ZOOM_IN_FACTOR: f64 = 1.25;
 
 /// Default zoom factor for zoom out operations
 pub const ZOOM_OUT_FACTOR: f64 = 0.8;
+
+/// Errors that can occur during viewport operations
+#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+pub enum ViewportError {
+    #[error("Invalid padding: padding must be non-negative, got {0}")]
+    InvalidPadding(f64),
+    #[error("Invalid content bounds: width or height must be positive")]
+    InvalidContentBounds,
+    #[error("Content bounds overflow: coordinates too large for safe calculation")]
+    CoordinateOverflow,
+    #[error("Invalid viewport dimensions: width and height must be positive")]
+    InvalidViewport,
+}
 
 /// Viewport state representing camera position and zoom level
 ///
@@ -293,29 +310,81 @@ impl ViewportState {
 
     /// Fit content bounds to viewport with padding
     ///
+    /// Handles huge coordinates safely without float overflow.
+    ///
+    /// # Arguments
+    /// * `content` - Axis-aligned bounding box of content to fit
+    /// * `padding` - Padding around content in screen pixels (must be >= 0)
+    ///
     /// # Returns
-    /// FitTransform with scale and offset, or None if content is invalid
-    #[must_use]
-    pub fn fit_to_content(&self, content: &AABB, padding: f64) -> Option<FitTransform> {
+    /// FitTransform with scale and offset, or Error if input is invalid
+    ///
+    /// # Errors
+    /// Returns `ViewportError::InvalidPadding` if padding is negative
+    /// Returns `ViewportError::InvalidContentBounds` if content width/height <= 0
+    /// Returns `ViewportError::CoordinateOverflow` if coordinates are too large
+    /// Returns `ViewportError::InvalidViewport` if viewport dimensions <= 0
+    pub fn fit_to_content(
+        &self,
+        content: &AABB,
+        padding: f64,
+    ) -> Result<FitTransform, ViewportError> {
+        // P1: Validate padding is non-negative
+        if padding < 0.0 {
+            return Err(ViewportError::InvalidPadding(padding));
+        }
+
+        // P4: Validate viewport dimensions
+        if self.viewport_width <= 0.0 || self.viewport_height <= 0.0 {
+            return Err(ViewportError::InvalidViewport);
+        }
+
+        // P2/P3: Validate content bounds
         let content_width = content.width();
         let content_height = content.height();
 
         if content_width <= 0.0 || content_height <= 0.0 {
-            return None;
+            return Err(ViewportError::InvalidContentBounds);
         }
 
-        let available_width = 2.0f64.mul_add(-padding, self.viewport_width).max(1.0);
-        let available_height = 2.0f64.mul_add(-padding, self.viewport_height).max(1.0);
+        // Q6: Check for coordinate overflow risk
+        // Check if any coordinate is too large for safe arithmetic
+        let coords = [content.min_x, content.min_y, content.max_x, content.max_y];
+        if coords.iter().any(|c| c.abs() > MAX_SAFE_COORDINATE) {
+            return Err(ViewportError::CoordinateOverflow);
+        }
 
+        // Calculate available space with padding
+        let available_width = (self.viewport_width - 2.0 * padding).max(1.0);
+        let available_height = (self.viewport_height - 2.0 * padding).max(1.0);
+
+        // Calculate scale - check for invalid results
         let scale_x = available_width / content_width;
         let scale_y = available_height / content_height;
+
+        if !scale_x.is_finite() || !scale_y.is_finite() {
+            return Err(ViewportError::CoordinateOverflow);
+        }
+
         let scale = scale_x.min(scale_y).clamp(MIN_ZOOM, MAX_ZOOM);
 
+        // Calculate center and offsets - verify all results are finite
         let content_center = content.center();
+
+        // Check center coordinates
+        if !content_center.x.is_finite() || !content_center.y.is_finite() {
+            return Err(ViewportError::CoordinateOverflow);
+        }
+
         let offset_x = self.viewport_width / 2.0 - content_center.x * scale;
         let offset_y = self.viewport_height / 2.0 - content_center.y * scale;
 
-        Some(FitTransform {
+        // Q1, Q2: Verify all output values are finite
+        if !scale.is_finite() || !offset_x.is_finite() || !offset_y.is_finite() {
+            return Err(ViewportError::CoordinateOverflow);
+        }
+
+        Ok(FitTransform {
             scale,
             offset_x,
             offset_y,
