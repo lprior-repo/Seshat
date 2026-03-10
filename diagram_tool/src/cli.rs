@@ -9,6 +9,8 @@ use std::{fs::File, io::Write, path::Path};
 
 use anyhow::{anyhow, Context, Result};
 use clap::{Parser, Subcommand};
+use im::HashMap;
+use regex_lite::Regex;
 use serde::{Deserialize, Serialize};
 
 use crate::{
@@ -17,7 +19,10 @@ use crate::{
         StageDetails,
     },
     export::{png::export_png, svg::generate_svg_string},
-    models::document::{DiagramDocument, NodeId},
+    models::document::{
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, OrderedFloat,
+        Revision,
+    },
     mutation::{ops::apply_layout, pipeline::run_mutation},
 };
 
