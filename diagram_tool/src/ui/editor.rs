@@ -15,6 +15,7 @@ pub enum ToolMode {
     Edge,
     Subgraph,
     Text,
+    Draw,
 }
 
 impl ToolMode {
@@ -26,6 +27,7 @@ impl ToolMode {
             Self::Edge => "Edge",
             Self::Subgraph => "Subgraph",
             Self::Text => "Text",
+            Self::Draw => "Draw",
         }
     }
 
@@ -38,6 +40,7 @@ impl ToolMode {
             Self::Edge => "edge",
             Self::Subgraph => "subgraph",
             Self::Text => "text",
+            Self::Draw => "draw",
         }
     }
 
@@ -51,6 +54,7 @@ impl ToolMode {
             "edge" => Some(Self::Edge),
             "subgraph" => Some(Self::Subgraph),
             "text" => Some(Self::Text),
+            "draw" => Some(Self::Draw),
             _ => None,
         }
     }

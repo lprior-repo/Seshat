@@ -26,8 +26,16 @@ use thiserror::Error;
 use crate::models::envelope::{Author, DomainOp, EventEnvelope};
 use crate::models::projection::{replay_events, DiagramProjection, EventRecord};
 use crate::store_async::{
-    append_event_async as append_event, bootstrap_async_store as bootstrap_store, fetch_latest_revision, integrity_check_async as startup_integrity_check, AsyncStoreError as StoreError,
+    append_event_async as append_event, bootstrap_async_store as bootstrap_store,
+    envelope_to_valid_event, fetch_latest_revision,
+    integrity_check_async as startup_integrity_check, AsyncStoreError as StoreError,
 };
+
+/// Helper to convert EventEnvelope to ValidEvent with error mapping
+#[allow(clippy::unwrap_used)]
+fn to_valid_event(envelope: EventEnvelope) -> Result<crate::store::types::ValidEvent, VerifyError> {
+    envelope_to_valid_event(&envelope).map_err(|e| VerifyError::TestHarness(e.to_string()))
+}
 
 #[allow(clippy::unwrap_used)]
 fn block_on<T>(fut: impl std::future::Future<Output = T>) -> T {
@@ -790,7 +798,8 @@ fn test_fresh_database_recovery(_db_path: &Path) -> Result<TestReport, VerifyErr
             },
             timestamp: 1700000000 + i,
         };
-        block_on(append_event(&bootstrap.pool, envelope, None))?;
+        let event = to_valid_event(envelope)?;
+        block_on(append_event(&bootstrap.pool, event, None))?;
     }
 
     // Verify we can read all events back
@@ -839,7 +848,8 @@ fn test_append_only_invariant(_db_path: &Path) -> Result<TestReport, VerifyError
             },
             timestamp: 1700000000 + i,
         };
-        block_on(append_event(&bootstrap.pool, envelope, None))?;
+        let event = to_valid_event(envelope)?;
+        block_on(append_event(&bootstrap.pool, event, None))?;
     }
 
     // Verify all events are still present and in order
@@ -965,7 +975,8 @@ fn test_crash_after_append_before_memory_apply() -> Result<TestReport, VerifyErr
         timestamp: 1700000000,
     };
 
-    let result = block_on(append_event(&bootstrap.pool, envelope, None))?;
+    let event = to_valid_event(envelope)?;
+    let result = block_on(append_event(&bootstrap.pool, event, None))?;
 
     // Verify event was persisted (revision should be 1)
     if result.revision != 1 {
@@ -1621,11 +1632,10 @@ mod tests {
 
     #[tokio::test]
     async fn test_happy_path_valid_operation_appends_and_returns_revision() {
+        // Setup
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
-        let bootstrap = bootstrap_store(&db_path)
-            .await
-            .expect("Failed to bootstrap store");
+        let bootstrap = bootstrap_store(&db_path).await.expect("Failed to bootstrap");
 
         // Submit a valid operation
         let envelope = EventEnvelope {
@@ -1646,7 +1656,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let result = append_event(&bootstrap.pool, envelope, None).await;
+        let event = to_valid_event(envelope).expect("Failed to convert envelope");
+        let result = append_event(&bootstrap.pool, event, None).await;
 
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let outcome = result.expect("Checked is_ok");
@@ -1693,7 +1704,8 @@ mod tests {
                 },
                 timestamp: 1700000000 + i as i64,
             };
-            append_event(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).expect("Failed to convert envelope");
+            append_event(&bootstrap.pool, event, None)
                 .await
                 .expect("Failed to append");
         }
@@ -1788,7 +1800,8 @@ mod tests {
             },
             timestamp: 1700000000,
         };
-        append_event(&bootstrap.pool, envelope1, None)
+        let event1 = to_valid_event(envelope1).expect("Failed to convert envelope1");
+        append_event(&bootstrap.pool, event1, None)
             .await
             .expect("Failed to append initial");
 
@@ -1810,8 +1823,9 @@ mod tests {
             },
             timestamp: 1700000001,
         };
+        let event2 = to_valid_event(envelope2).expect("Failed to convert envelope2");
 
-        let result = append_event(&bootstrap.pool, envelope2, Some(0)).await;
+        let result = append_event(&bootstrap.pool, event2, Some(crate::store::types::Revision::new(0).expect("Failed to create revision"))).await;
 
         // Should fail with revision mismatch
         assert!(result.is_err(), "Expected error for stale revision");
@@ -1862,8 +1876,8 @@ mod tests {
             },
             timestamp: 1700000000,
         };
-
-        let result1 = append_event(&bootstrap.pool, envelope1, None).await;
+        let event1 = to_valid_event(envelope1).expect("Failed to convert envelope1");
+        let result1 = append_event(&bootstrap.pool, event1, None).await;
         assert!(result1.is_ok(), "First append should succeed");
         let outcome1 = result1.expect("Checked is_ok");
 
@@ -1885,8 +1899,9 @@ mod tests {
             },
             timestamp: 1700000001,
         };
+        let event2 = to_valid_event(envelope2).expect("Failed to convert envelope2");
 
-        let result2 = append_event(&bootstrap.pool, envelope2, None).await;
+        let result2 = append_event(&bootstrap.pool, event2, None).await;
 
         // Should fail with SQLite constraint violation (UNIQUE constraint on operation_id)
         assert!(result2.is_err(), "Duplicate op_id should be rejected");

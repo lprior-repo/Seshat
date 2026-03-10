@@ -21,6 +21,13 @@ use crate::models::document::DiagramDocument;
 use crate::models::envelope::{parse_event_envelope, Author as EnvelopeAuthor, EventEnvelope};
 use crate::models::projection::{DiagramProjection, EventRecord};
 use crate::models::schema::validate_schema;
+use crate::store_async::envelope_to_valid_event;
+
+/// Helper to convert EventEnvelope to ValidEvent (for testing)
+#[allow(clippy::unwrap_used)]
+fn to_valid_event(envelope: EventEnvelope) -> Result<crate::store::types::ValidEvent, crate::store_async::AsyncStoreError> {
+    envelope_to_valid_event(&envelope)
+}
 
 /// Errors that can occur during export/import operations
 #[derive(Debug, Error, Clone)]
@@ -590,10 +597,12 @@ mod tests {
             timestamp: 1700000001,
         };
 
-        crate::store_async::append_event_async(&bootstrap.pool, envelope1, None)
+        let event1 = to_valid_event(envelope1).unwrap();
+        let event2 = to_valid_event(envelope2).unwrap();
+        crate::store_async::append_event_async(&bootstrap.pool, event1, None)
             .await
             .unwrap();
-        crate::store_async::append_event_async(&bootstrap.pool, envelope2, None)
+        crate::store_async::append_event_async(&bootstrap.pool, event2, None)
             .await
             .unwrap();
 
@@ -667,7 +676,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+        let event = to_valid_event(envelope).unwrap();
+        crate::store_async::append_event_async(&bootstrap.pool, event, None)
             .await
             .unwrap();
 
@@ -741,7 +751,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        crate::store_async::append_event_async(conn, envelope, None).await.unwrap();
+        let event = to_valid_event(envelope).unwrap();
+        crate::store_async::append_event_async(conn, event, None).await.unwrap();
 
         // Now try to import with events starting at revision 0 (should be revision 1)
         let input = r#"{
@@ -1010,7 +1021,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+        let event = to_valid_event(envelope).unwrap();
+        crate::store_async::append_event_async(&bootstrap.pool, event, None)
             .await
             .unwrap();
 
@@ -1298,7 +1310,8 @@ mod tests {
                 },
                 timestamp: 1700000000 + i,
             };
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }

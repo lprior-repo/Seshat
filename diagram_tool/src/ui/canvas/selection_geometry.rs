@@ -13,7 +13,12 @@ pub(super) fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
         .iter()
         .filter_map(|id| {
             let nid = NodeId::new(id.clone());
-            doc.document.nodes.contains_key(&nid).then_some(nid)
+            // Filter out locked nodes: GEO-024
+            doc.document
+                .nodes
+                .get(&nid)
+                .filter(|n| !n.locked)
+                .map(|_| nid)
         })
         .collect()
 }
@@ -50,6 +55,10 @@ mod tests {
     };
 
     fn make_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
+        make_node_with_lock(kind, x, y, w, h, false)
+    }
+
+    fn make_node_with_lock(kind: NodeKind, x: f64, y: f64, w: f64, h: f64, locked: bool) -> Node {
         Node {
             kind,
             icon: String::new(),
@@ -60,7 +69,7 @@ mod tests {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            locked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -359,5 +368,111 @@ mod tests {
             !node.label.is_empty() || node.label.is_empty(),
             "Label is accessible for editing"
         );
+    }
+
+    // ============== GEO-024: Locked node exclusion from selection ==============
+
+    #[test]
+    fn given_locked_and_unlocked_nodes_when_selection_bounds_then_exclude_locked() {
+        // Given: A document with one unlocked node and one locked node
+        let mut doc = DiagramDocument::default();
+        let unlocked_id = NodeId::new(String::from("unlocked"));
+        let locked_id = NodeId::new(String::from("locked"));
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(
+                unlocked_id.clone(),
+                make_node_with_lock(NodeKind::Node, 10.0, 10.0, 50.0, 50.0, false),
+            )
+            .update(
+                locked_id.clone(),
+                make_node_with_lock(NodeKind::Node, 100.0, 100.0, 50.0, 50.0, true),
+            );
+
+        // Both nodes are selected
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(unlocked_id.to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(locked_id.to_string());
+
+        // When: selection_bounds is called
+        let bounds = selection_bounds(&doc);
+
+        // Then: bounds should only include the unlocked node
+        assert_eq!(bounds, Some((10.0, 10.0, 50.0, 50.0)));
+    }
+
+    #[test]
+    fn given_all_locked_nodes_when_selection_bounds_then_none() {
+        // Given: A document with only locked nodes selected
+        let mut doc = DiagramDocument::default();
+        let locked_a = NodeId::new(String::from("locked_a"));
+        let locked_b = NodeId::new(String::from("locked_b"));
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(
+                locked_a.clone(),
+                make_node_with_lock(NodeKind::Node, 10.0, 10.0, 50.0, 50.0, true),
+            )
+            .update(
+                locked_b.clone(),
+                make_node_with_lock(NodeKind::Node, 100.0, 100.0, 50.0, 50.0, true),
+            );
+
+        // Both locked nodes are selected
+        let _ = doc.editor_state.selected_items.insert(locked_a.to_string());
+        let _ = doc.editor_state.selected_items.insert(locked_b.to_string());
+
+        // When: selection_bounds is called
+        let bounds = selection_bounds(&doc);
+
+        // Then: return None (no unlocked nodes in selection)
+        assert_eq!(bounds, None);
+    }
+
+    #[test]
+    fn given_mixed_selection_when_selected_node_ids_then_exclude_locked() {
+        // Given: A document with mixed locked/unlocked nodes
+        let mut doc = DiagramDocument::default();
+        let unlocked_id = NodeId::new(String::from("unlocked"));
+        let locked_id = NodeId::new(String::from("locked"));
+
+        doc.document.nodes = doc
+            .document
+            .nodes
+            .update(
+                unlocked_id.clone(),
+                make_node_with_lock(NodeKind::Node, 10.0, 10.0, 50.0, 50.0, false),
+            )
+            .update(
+                locked_id.clone(),
+                make_node_with_lock(NodeKind::Node, 100.0, 100.0, 50.0, 50.0, true),
+            );
+
+        // Both nodes are selected
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(unlocked_id.to_string());
+        let _ = doc
+            .editor_state
+            .selected_items
+            .insert(locked_id.to_string());
+
+        // When: selected_node_ids is called
+        let ids = selected_node_ids(&doc);
+
+        // Then: only unlocked node is returned
+        assert_eq!(ids.len(), 1);
+        assert!(ids.contains(&unlocked_id));
+        assert!(!ids.contains(&locked_id));
     }
 }

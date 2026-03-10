@@ -128,7 +128,7 @@ impl Rectangle {
         }
     }
 
-    #[must_use] 
+    #[must_use]
     pub fn corners(&self) -> [Point; 4] {
         let cx = self.x + self.width / 2.0;
         let cy = self.y + self.height / 2.0;
@@ -146,7 +146,12 @@ impl Rectangle {
         let cos = self.rotation.cos();
         let sin = self.rotation.sin();
 
-        local_corners.map(|p| Point::new(p.x.mul_add(cos, -(p.y * sin)) + cx, p.x.mul_add(sin, p.y * cos) + cy))
+        local_corners.map(|p| {
+            Point::new(
+                p.x.mul_add(cos, -(p.y * sin)) + cx,
+                p.x.mul_add(sin, p.y * cos) + cy,
+            )
+        })
     }
 }
 
@@ -274,7 +279,8 @@ impl ExtendedText {
     pub fn bounds(&self) -> AABB {
         let emoji_count = self.count_emoji() as f64;
         let regular_count = self.grapheme_count() as f64 - emoji_count;
-        let width = (regular_count * self.font_size).mul_add(0.6, emoji_count * self.font_size * 1.2);
+        let width =
+            (regular_count * self.font_size).mul_add(0.6, emoji_count * self.font_size * 1.2);
         match self.direction {
             TextDirection::LeftToRight => {
                 AABB::new(self.x, self.y, self.x + width, self.y + self.font_size)

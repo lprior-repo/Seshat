@@ -13,10 +13,11 @@ use tokio::runtime::Runtime;
 use tokio::sync::Mutex;
 
 use crate::models::envelope::EventEnvelope;
+use crate::store::types::ValidEvent;
 use crate::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,
-    fetch_events_since, AsyncAppendResult, AsyncBatchAppendResult, AsyncStoreError,
-    AsyncStoreBootstrap, EventRecord,
+    envelope_to_valid_event, fetch_events_since, parse_revision, AsyncAppendResult,
+    AsyncBatchAppendResult, AsyncStoreError, AsyncStoreBootstrap, EventRecord,
 };
 
 #[derive(Debug, Error)]
@@ -74,7 +75,18 @@ impl StoreBridge {
                 let pool_guard = pool.lock().await;
                 pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
             };
-            append_event_async(&p, envelope, expected_revision)
+            
+            // Parse at boundary: convert envelope to ValidEvent
+            let event = envelope_to_valid_event(&envelope)
+                .map_err(BridgeError::AsyncStore)?;
+            
+            // Parse at boundary: convert expected_revision to Option<Revision>
+            let expected = match expected_revision {
+                Some(rev) => Some(parse_revision(rev).map_err(BridgeError::AsyncStore)?),
+                None => None,
+            };
+            
+            append_event_async(&p, event, expected)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
@@ -96,7 +108,25 @@ impl StoreBridge {
                 let pool_guard = pool.lock().await;
                 pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
             };
-            append_batch_async(&p, ops, expected_revision)
+            
+            // Parse at boundary: convert envelopes to ValidEvents
+            let events: Result<Vec<ValidEvent>, _> = ops
+                .iter()
+                .map(envelope_to_valid_event)
+                .collect();
+            let events = events.map_err(BridgeError::AsyncStore)?;
+            
+            // Parse at boundary: convert to BoundedBatch (MIN=1, MAX=1000)
+            let batch = crate::store_async::parse_bounded_batch::<1, 1000>(events)
+                .map_err(BridgeError::AsyncStore)?;
+            
+            // Parse at boundary: convert expected_revision to Option<Revision>
+            let expected = match expected_revision {
+                Some(rev) => Some(parse_revision(rev).map_err(BridgeError::AsyncStore)?),
+                None => None,
+            };
+            
+            append_batch_async(&p, batch, expected)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })

@@ -11,6 +11,9 @@ use std::path::{Path, PathBuf};
 use thiserror::Error;
 
 use crate::models::envelope::{encode_event_envelope, EventEnvelope};
+use crate::store::types::{
+    BoundedBatch, Revision, ValidEvent, ValidOperationId, ValidPayload, ValidTimestamp,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum DuplicateKind {
@@ -57,6 +60,84 @@ pub enum AsyncStoreError {
     OperationIdTooLong,
     #[error("Payload too large: cannot exceed 100MB")]
     PayloadTooLarge,
+}
+
+/// Converts an EventEnvelope to a ValidEvent for testing and migration purposes.
+///
+/// This helper encodes the envelope as JSON payload and creates a ValidEvent.
+/// It preserves the original envelope structure in the payload field.
+///
+/// # Errors
+/// Returns an error if encoding fails or validation fails.
+pub fn envelope_to_valid_event(envelope: &EventEnvelope) -> Result<ValidEvent, AsyncStoreError> {
+    let payload = encode_event_envelope(envelope)
+        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
+    
+    let timestamp = u64::try_from(envelope.timestamp).map_err(|_| {
+        AsyncStoreError::InvalidTimestamp
+    })?;
+    
+    parse_valid_event(
+        envelope.op_id.clone(),
+        timestamp,
+        payload,
+    )
+}
+
+/// Converts a batch of EventEnvelopes to a BoundedBatch for testing.
+///
+/// # Errors
+/// Returns an error if any envelope conversion fails or batch bounds are violated.
+pub fn envelope_batch_to_bounded_batch<const MIN: usize, const MAX: usize>(
+    envelopes: Vec<EventEnvelope>,
+) -> Result<BoundedBatch<MIN, MAX>, AsyncStoreError> {
+    let events: Result<Vec<ValidEvent>, _> = envelopes
+        .iter()
+        .map(envelope_to_valid_event)
+        .collect();
+    
+    let events = events?;
+    parse_bounded_batch::<MIN, MAX>(events)
+}
+
+/// Parse raw inputs into ValidEvent at boundary.
+///
+/// This is the entry point for converting external primitive inputs
+/// into the validated DDD type.
+///
+/// # Errors
+/// Returns an error if any of the inputs fail validation.
+pub fn parse_valid_event(
+    op_id: String,
+    timestamp: u64,
+    payload: String,
+) -> Result<ValidEvent, AsyncStoreError> {
+    let op_id = ValidOperationId::new(op_id)?;
+    let timestamp = ValidTimestamp::new(timestamp)?;
+    let payload = ValidPayload::new(payload)?;
+    Ok(ValidEvent {
+        op_id,
+        timestamp,
+        payload,
+    })
+}
+
+/// Parse events into BoundedBatch at boundary.
+///
+/// # Errors
+/// Returns an error if the batch size is outside the MIN/MAX bounds.
+pub fn parse_bounded_batch<const MIN: usize, const MAX: usize>(
+    events: Vec<ValidEvent>,
+) -> Result<BoundedBatch<MIN, MAX>, AsyncStoreError> {
+    BoundedBatch::try_from(events)
+}
+
+/// Parse raw revision input into Revision type.
+///
+/// # Errors
+/// Returns an error if the revision is negative.
+pub fn parse_revision(rev: i64) -> Result<Revision, AsyncStoreError> {
+    Revision::new(rev)
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -304,8 +385,8 @@ pub async fn next_revision(pool: &SqlitePool) -> Result<i64, AsyncStoreError> {
 /// Returns an error on serialization or database failure.
 pub async fn append_event_async(
     pool: &SqlitePool,
-    envelope: EventEnvelope,
-    expected_revision: Option<i64>,
+    event: ValidEvent,
+    expected_revision: Option<Revision>,
 ) -> Result<AsyncAppendResult, AsyncStoreError> {
     let mut tx = pool.begin().await.map_err(AsyncStoreError::Sqlx)?;
 
@@ -315,9 +396,9 @@ pub async fn append_event_async(
         .map_err(AsyncStoreError::Sqlx)?;
 
     if let Some(expected) = expected_revision {
-        if current_revision != expected {
+        if current_revision != expected.get() {
             return Err(AsyncStoreError::RevisionMismatch {
-                expected,
+                expected: expected.get(),
                 found: current_revision,
             });
         }
@@ -325,16 +406,16 @@ pub async fn append_event_async(
 
     let new_revision = current_revision + 1;
 
-    let payload = encode_event_envelope(&envelope)
-        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
+    // The payload in ValidEvent is stored as a JSON string that represents the envelope
+    let payload = event.payload.as_str();
 
     sqlx::query(
         "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
     )
-    .bind(&envelope.op_id)
+    .bind(event.op_id.as_str())
     .bind(new_revision)
-    .bind(&payload)
-    .bind(envelope.timestamp.to_string())
+    .bind(payload)
+    .bind(event.timestamp.get().to_string())
     .execute(&mut *tx)
     .await
     .map_err(AsyncStoreError::Sqlx)?;
@@ -343,8 +424,8 @@ pub async fn append_event_async(
 
     Ok(AsyncAppendResult {
         revision: new_revision,
-        op_id: envelope.op_id,
-        timestamp: envelope.timestamp,
+        op_id: event.op_id.as_str().to_string(),
+        timestamp: event.timestamp.get() as i64,
     })
 }
 
@@ -352,14 +433,12 @@ pub async fn append_event_async(
 ///
 /// # Errors
 /// Returns an error if any append fails.
-pub async fn append_batch_async(
+pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
     pool: &SqlitePool,
-    ops: Vec<EventEnvelope>,
-    expected_revision: Option<i64>,
+    batch: BoundedBatch<MIN, MAX>,
+    expected_revision: Option<Revision>,
 ) -> Result<AsyncBatchAppendResult, AsyncStoreError> {
-    if ops.is_empty() {
-        return Err(AsyncStoreError::EmptyBatch);
-    }
+    let events = batch.into_inner();
 
     let mut tx = pool.begin().await.map_err(AsyncStoreError::Sqlx)?;
 
@@ -369,39 +448,43 @@ pub async fn append_batch_async(
         .map_err(AsyncStoreError::Sqlx)?;
 
     if let Some(expected) = expected_revision {
-        if current_revision != expected {
+        if current_revision != expected.get() {
             return Err(AsyncStoreError::RevisionMismatch {
-                expected,
+                expected: expected.get(),
                 found: current_revision,
             });
         }
     }
 
-    let batch_size = ops.len();
+    let batch_size = events.len();
     let start_revision = current_revision + 1;
-    let end_revision = current_revision + i64::try_from(batch_size).unwrap_or(0);
+    let end_revision = current_revision + i64::try_from(batch_size).map_err(|_| {
+        AsyncStoreError::ValidationFailed("Batch too large for revision calculation".to_string())
+    })?;
     let mut op_ids = Vec::with_capacity(batch_size);
-    let mut last_timestamp = 0i64;
+    let mut last_timestamp: u64 = 0;
 
-    for (idx, envelope) in ops.into_iter().enumerate() {
-        let new_revision = current_revision + 1 + i64::try_from(idx).unwrap_or(0);
+    for (idx, event) in events.into_iter().enumerate() {
+        let new_revision = current_revision + 1 + i64::try_from(idx).map_err(|_| {
+            AsyncStoreError::ValidationFailed("Index overflow in batch".to_string())
+        })?;
 
-        let payload = encode_event_envelope(&envelope)
-            .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
+        // The payload in ValidEvent is stored as a JSON string
+        let payload = event.payload.as_str();
 
         sqlx::query(
             "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
         )
-        .bind(&envelope.op_id)
+        .bind(event.op_id.as_str())
         .bind(new_revision)
-        .bind(&payload)
-        .bind(envelope.timestamp.to_string())
+        .bind(payload)
+        .bind(event.timestamp.get().to_string())
         .execute(&mut *tx)
         .await
         .map_err(AsyncStoreError::Sqlx)?;
 
-        op_ids.push(envelope.op_id);
-        last_timestamp = envelope.timestamp;
+        op_ids.push(event.op_id.as_str().to_string());
+        last_timestamp = event.timestamp.get();
     }
 
     tx.commit().await.map_err(AsyncStoreError::Sqlx)?;
@@ -411,7 +494,7 @@ pub async fn append_batch_async(
         end_revision,
         count: batch_size,
         op_ids,
-        last_timestamp,
+        last_timestamp: last_timestamp as i64,
     })
 }
 
@@ -746,7 +829,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let result = append_event_async(&pool, envelope, None)
+        let event = envelope_to_valid_event(&envelope).expect("Failed to convert envelope");
+        let result = append_event_async(&pool, event, None)
             .await
             .expect("Failed to append event");
 
@@ -828,10 +912,12 @@ mod tests {
             timestamp: 1700000002,
         };
 
-        append_event_async(&pool, envelope1, None)
+        let event1 = envelope_to_valid_event(&envelope1).expect("Failed to convert envelope1");
+        let event2 = envelope_to_valid_event(&envelope2).expect("Failed to convert envelope2");
+        append_event_async(&pool, event1, None)
             .await
             .expect("Failed to append event 1");
-        append_event_async(&pool, envelope2, None)
+        append_event_async(&pool, event2, None)
             .await
             .expect("Failed to append event 2");
 
@@ -874,7 +960,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        append_event_async(&pool, envelope, None)
+        let event = envelope_to_valid_event(&envelope).expect("Failed to convert envelope");
+        append_event_async(&pool, event, None)
             .await
             .expect("Failed to append event");
 
@@ -962,7 +1049,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let _result = append_event_async(&pool, envelope.clone(), None)
+        let event = envelope_to_valid_event(&envelope).expect("Failed to convert envelope");
+        let _result = append_event_async(&pool, event, None)
             .await
             .expect("Failed to append event");
 
@@ -1005,7 +1093,8 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        append_event_async(&pool, envelope1.clone(), None)
+        let event1 = envelope_to_valid_event(&envelope1).expect("Failed to convert envelope1");
+        append_event_async(&pool, event1, None)
             .await
             .expect("Failed to append event");
 

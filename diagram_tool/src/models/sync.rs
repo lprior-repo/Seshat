@@ -55,6 +55,13 @@ use thiserror::Error;
 
 use crate::models::envelope::parse_event_envelope;
 use crate::models::projection::EventRecord;
+use crate::store_async::envelope_to_valid_event;
+
+/// Helper to convert EventEnvelope to ValidEvent (for testing)
+#[allow(clippy::unwrap_used)]
+fn to_valid_event(envelope: crate::models::envelope::EventEnvelope) -> Result<crate::store::types::ValidEvent, crate::store_async::AsyncStoreError> {
+    envelope_to_valid_event(&envelope)
+}
 
 /// Errors that can occur during sync operations
 #[derive(Debug, Error, Clone)]
@@ -717,7 +724,8 @@ mod tests {
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -737,7 +745,8 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -754,7 +763,8 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -779,7 +789,8 @@ mod tests {
         // Add some events
         for i in 1..=5 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -836,7 +847,8 @@ mod tests {
 
         // Modify the database
         let envelope = make_test_envelope("op-new", 1);
-        crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+        let event = to_valid_event(envelope).unwrap();
+        crate::store_async::append_event_async(&bootstrap.pool, event, None)
             .await
             .unwrap();
 
@@ -866,7 +878,8 @@ mod tests {
         // Add events
         for i in 1..=10 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -900,7 +913,8 @@ mod tests {
             },
         };
 
-        crate::store_async::append_event_async(&bootstrap.pool, envelope.clone(), None)
+        let event = to_valid_event(envelope).unwrap();
+        crate::store_async::append_event_async(&bootstrap.pool, event, None)
             .await
             .unwrap();
 
@@ -964,7 +978,8 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -1066,7 +1081,8 @@ mod tests {
         // Add some events
         for i in 1..=3 {
             let envelope = make_test_envelope(&format!("op-{i}"), i);
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }
@@ -1135,7 +1151,8 @@ mod tests {
                 },
                 operation: operation.clone(),
             };
-            crate::store_async::append_event_async(&bootstrap.pool, envelope, None)
+            let event = to_valid_event(envelope).unwrap();
+            crate::store_async::append_event_async(&bootstrap.pool, event, None)
                 .await
                 .unwrap();
         }

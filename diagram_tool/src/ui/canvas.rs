@@ -1873,6 +1873,7 @@ pub fn Canvas() -> Element {
                         }
                     }
                     ToolMode::Pan => {}
+                    ToolMode::Draw => {}
                 }
             },
 

@@ -89,7 +89,7 @@ pub fn Toolbar() -> Element {
             class: "toolbar",
             style: "height: 56px; background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_ELEVATED} 100%); color: {TEXT_MAIN}; display: flex; align-items: center; padding: 0 12px; gap: 8px; border-bottom: 1px solid {BORDER_SUBTLE}; box-shadow: 0 4px 16px color-mix(in oklch, black 22%, transparent); overflow-x: auto;",
 
-            for mode in [ToolMode::Select, ToolMode::Pan, ToolMode::Edge, ToolMode::Subgraph, ToolMode::Text] {
+            for mode in [ToolMode::Select, ToolMode::Pan, ToolMode::Edge, ToolMode::Subgraph, ToolMode::Text, ToolMode::Draw] {
                 {
                     let active = *tool_signal.read() == mode;
                     let bg = if active { ACCENT_SOFT } else { "transparent" };
@@ -100,6 +100,7 @@ pub fn Toolbar() -> Element {
                         ToolMode::Edge => "tool-edge",
                         ToolMode::Subgraph => "tool-subgraph",
                         ToolMode::Text => "tool-text",
+                        ToolMode::Draw => "tool-draw",
                     };
                     rsx! {
                         button {
