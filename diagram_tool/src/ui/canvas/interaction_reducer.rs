@@ -85,6 +85,7 @@ pub(super) enum InteractionMode {
         originals: HashMap<NodeId, (f64, f64, f64, f64)>,
         anchor: (f64, f64),
         did_resize: bool,
+        aspect_ratio: Option<f64>,
     },
     Panning {
         last_pos: (f64, f64),
@@ -210,6 +211,7 @@ pub(super) fn start_resize_interaction(
     handle: ResizeHandle,
     client_x: f64,
     client_y: f64,
+    aspect_lock_enabled: bool,
 ) {
     let doc = doc_signal.read().clone();
     if let Some(bounds) = selection_bounds(&doc) {
@@ -229,12 +231,20 @@ pub(super) fn start_resize_interaction(
                 }
             });
 
+        // Calculate aspect ratio from bounds if lock is enabled
+        let aspect_ratio = if aspect_lock_enabled && bounds.2 > 0.0 && bounds.3 > 0.0 {
+            Some(bounds.2 / bounds.3) // width / height
+        } else {
+            None
+        };
+
         interaction_mode.set(InteractionMode::ResizingSelection {
             handle,
             original_bounds: bounds,
             originals,
             anchor: (cx, cy),
             did_resize: false,
+            aspect_ratio,
         });
     }
 }
@@ -321,6 +331,7 @@ mod tests {
             originals: HashMap::new(),
             anchor: (0.0, 0.0),
             did_resize: false,
+            aspect_ratio: None,
         };
 
         let finalized = finalize_motion_release(&mut mode, &mut doc);
@@ -339,6 +350,7 @@ mod tests {
             originals: HashMap::new(),
             anchor: (0.0, 0.0),
             did_resize: true,
+            aspect_ratio: None,
         };
 
         let first = finalize_motion_release(&mut mode, &mut doc);
@@ -462,6 +474,7 @@ mod tests {
             originals: HashMap::new(),
             anchor: (50.0, 50.0),
             did_resize: true,
+            aspect_ratio: None,
         };
 
         let first_result = finalize_motion_release(&mut mode, &mut doc);
@@ -532,6 +545,7 @@ mod tests {
             originals: HashMap::new(),
             anchor: (50.0, 50.0),
             did_resize: true,
+            aspect_ratio: None,
         };
         let result = finalize_motion_release(&mut mode, &mut doc);
         assert!(result);
@@ -812,6 +826,7 @@ mod tests {
             originals,
             anchor: (150.0, 150.0), // Anchor at SE corner
             did_resize: true,
+            aspect_ratio: None,
         };
 
         // When: Finalizing the resize (even with inversion potential)
@@ -853,6 +868,7 @@ mod tests {
             originals,
             anchor: (25.0, 25.0),
             did_resize: true,
+            aspect_ratio: None,
         };
 
         // When: Finalizing
@@ -1044,6 +1060,7 @@ mod proptests {
                 originals: HashMap::new(),
                 anchor: (f64::NAN, f64::NAN),
                 did_resize: true,
+                aspect_ratio: None,
             };
             let result = finalize_motion_release(&mut mode, &mut doc);
             assert!(result);
@@ -1067,6 +1084,7 @@ mod proptests {
                 originals: HashMap::new(),
                 anchor: (f64::INFINITY, f64::NEG_INFINITY),
                 did_resize: true,
+                aspect_ratio: None,
             };
             let result = finalize_motion_release(&mut mode, &mut doc);
             assert!(result);
@@ -1209,6 +1227,7 @@ mod proptests {
                 originals: HashMap::new(),
                 anchor: (50.0, 50.0),
                 did_resize: true,
+                aspect_ratio: None,
             };
             let result = finalize_motion_release(&mut mode, &mut doc);
             prop_assert!(result);
@@ -1351,6 +1370,7 @@ mod proptests {
                 originals: HashMap::new(),
                 anchor: (coord, coord),
                 did_resize: false,
+                aspect_ratio: None,
             };
             let mut doc = DiagramDocument::default();
             let result = finalize_motion_release(&mut mode, &mut doc);
@@ -1387,6 +1407,7 @@ mod proptests {
                 originals: HashMap::new(),
                 anchor: (50.0, 50.0),
                 did_resize: false,
+                aspect_ratio: None,
             };
             let _ = finalize_motion_release(&mut mode, &mut doc);
             assert_eq!(doc.revision, initial);
@@ -1465,6 +1486,7 @@ mod proptests {
                         originals: HashMap::new(),
                         anchor: (5.0, 5.0),
                         did_resize: false,
+                        aspect_ratio: None,
                     },
                     6 => InteractionMode::Panning { last_pos: (0.0, 0.0) },
                     _ => {
@@ -2738,6 +2760,7 @@ mod inp_mobile_touch_tests {
             originals: HashMap::new(),
             anchor: (100.0, 100.0),
             did_resize: false,
+            aspect_ratio: None,
         };
 
         assert_ne!(
@@ -2793,6 +2816,7 @@ mod inp_mobile_touch_tests {
                 originals: HashMap::new(),
                 anchor: (21.0, 12.0),
                 did_resize: false,
+                aspect_ratio: None,
             },
         ];
 

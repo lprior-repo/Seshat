@@ -466,6 +466,7 @@ fn flush_pending_pointer_update(
             originals,
             anchor,
             did_resize,
+            aspect_ratio,
         } => {
             let doc_for_mouse = doc_signal.read().clone();
             let (mx, my) = to_canvas_coords(
@@ -544,6 +545,42 @@ fn flush_pending_pointer_update(
                     obh
                 }
                 .max(24.0);
+
+                // Apply aspect ratio constraint if locked
+                let (nw, nh) = if let Some(ratio) = aspect_ratio {
+                    let ratio = *ratio;
+                    // Determine handle type
+                    let is_corner_handle = matches!(
+                        handle,
+                        ResizeHandle::Nw
+                            | ResizeHandle::Ne
+                            | ResizeHandle::Sw
+                            | ResizeHandle::Se
+                    );
+                    let is_north_south = matches!(handle, ResizeHandle::N | ResizeHandle::S);
+                    
+                    if is_corner_handle {
+                        // Corner handles: constrain both dimensions to maintain ratio
+                        // Use the larger change to determine which dimension to adjust
+                        let constrained_nw = nh * ratio;
+                        let constrained_nh = nw / ratio;
+                        
+                        // Use whichever keeps size closer to dragged amount
+                        if (constrained_nw - nw).abs() < (constrained_nh - nh).abs() {
+                            (constrained_nw.max(24.0), nh)
+                        } else {
+                            (nw, constrained_nh.max(24.0))
+                        }
+                    } else if is_north_south {
+                        // N/S handles: constrain width based on height
+                        (nh * ratio, nh)
+                    } else {
+                        // E/W handles: constrain height based on width
+                        (nw, nw / ratio)
+                    }
+                } else {
+                    (nw, nh)
+                };
 
                 let scale_x = if obw > 0.0 { nw / obw } else { 1.0 };
                 let scale_y = if obh > 0.0 { nh / obh } else { 1.0 };

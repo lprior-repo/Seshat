@@ -334,6 +334,7 @@ pub(super) fn selection_handles_overlay(
                                 handle,
                                 c.x - origin.0,
                                 c.y - origin.1,
+                                false, // aspect_lock_enabled - TODO: connect to Shift key
                             );
                         },
                         div { style: "position:absolute; inset:0; pointer-events:none; opacity:0;" }
