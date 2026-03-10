@@ -62,19 +62,33 @@ impl std::fmt::Display for DiagramId {
     }
 }
 
-impl From<String> for DiagramId {
-    fn from(s: String) -> Self {
-        // NOTE: Uses unchecked for backwards compatibility
-        // In production code, prefer DiagramId::new() which validates
-        Self::new_unchecked(s)
+// REMOVED: From<String> and From<&str> implementations that bypassed validation
+// Security fix: Users must use TryFrom or DiagramId::new() which validates
+// impl From<String> for DiagramId {
+//     fn from(s: String) -> Self {
+//         Self::new_unchecked(s)  // VULNERABILITY: bypasses validation
+//     }
+// }
+
+// Use this instead:
+impl TryFrom<String> for DiagramId {
+    type Error = DiagramIdError;
+    fn try_from(s: String) -> Result<Self, Self::Error> {
+        DiagramId::new(s)
     }
 }
 
-impl From<&str> for DiagramId {
-    fn from(s: &str) -> Self {
-        // NOTE: Uses unchecked for backwards compatibility
-        // In production code, prefer DiagramId::new() which validates
-        Self::new_unchecked(s.to_string())
+// REMOVED: From<&str> - use TryFrom instead
+// impl From<&str> for DiagramId {
+//     fn from(s: &str) -> Self {
+//         Self::new_unchecked(s.to_string())  // VULNERABILITY
+//     }
+// }
+
+impl TryFrom<&str> for DiagramId {
+    type Error = DiagramIdError;
+    fn try_from(s: &str) -> Result<Self, Self::Error> {
+        DiagramId::new(s)
     }
 }
 

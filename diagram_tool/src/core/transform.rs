@@ -129,7 +129,8 @@ pub fn align_selection(
                         AlignmentMode::Center => center_val - (node.width.0 / 2.0),
                         AlignmentMode::End => max_val - node.width.0,
                     };
-                    node.x = OrderedFloat::new_unchecked(new_x);
+                    node.x = OrderedFloat::new(new_x)
+                        .expect("align_selection: computed x must be finite");
                 }
                 AlignmentAxis::Vertical => {
                     let new_y = match mode {
@@ -137,7 +138,8 @@ pub fn align_selection(
                         AlignmentMode::Center => center_val - (node.height.0 / 2.0),
                         AlignmentMode::End => max_val - node.height.0,
                     };
-                    node.y = OrderedFloat::new_unchecked(new_y);
+                    node.y = OrderedFloat::new(new_y)
+                        .expect("align_selection: computed y must be finite");
                 }
             }
         }
@@ -200,10 +202,12 @@ pub fn distribute_selection(
         if let Some(node) = doc.document.nodes.get_mut(&id) {
             match axis {
                 AlignmentAxis::Horizontal => {
-                    node.x = OrderedFloat::new_unchecked(current_pos);
+                    node.x = OrderedFloat::new(current_pos)
+                        .expect("distribute_selection: x must be finite");
                 }
                 AlignmentAxis::Vertical => {
-                    node.y = OrderedFloat::new_unchecked(current_pos);
+                    node.y = OrderedFloat::new(current_pos)
+                        .expect("distribute_selection: y must be finite");
                 }
             }
             current_pos += extent + spacing;

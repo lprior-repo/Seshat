@@ -32,10 +32,10 @@ impl FileLock {
             std::fs::create_dir_all(parent).map_err(LockError::IoError)?;
         }
 
-        // Open or create the lock file
+        // Open or create the lock file (DO NOT truncate - would lose data from concurrent lock holder)
         let file = OpenOptions::new()
             .create(true)
-            .truncate(true)
+            .truncate(false) // FIXED: was true which could truncate data from lock holder
             .read(true)
             .write(true)
             .open(&path)

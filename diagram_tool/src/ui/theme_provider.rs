@@ -53,7 +53,10 @@ pub fn ThemeProvider(children: Element) -> Element {
                     }
                 } else if msg["kind"].as_str() == Some("system") {
                     if let Some(value) = msg["value"].as_str() {
-                        system_theme.set(ThemeScheme::from_str(value));
+                        if let Some(scheme) = ThemeScheme::from_str(value) {
+                            system_theme.set(scheme);
+                        }
+                        // FIXED: Invalid theme strings now silently do nothing (no silent fallback to Dark)
                     }
                 }
             }

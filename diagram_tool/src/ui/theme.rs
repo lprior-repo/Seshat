@@ -58,13 +58,14 @@ pub enum ThemeScheme {
 }
 
 impl ThemeScheme {
+    /// Parse theme from string. Returns None for invalid inputs instead of silent fallback.
     #[must_use]
     #[cfg(target_arch = "wasm32")]
-    pub fn from_str(value: &str) -> Self {
-        if value == "light" {
-            Self::Light
-        } else {
-            Self::Dark
+    pub fn from_str(value: &str) -> Option<Self> {
+        match value {
+            "light" => Some(Self::Light),
+            "dark" => Some(Self::Dark),
+            _ => None, // FIXED: Return None instead of silent fallback to Dark
         }
     }
 }

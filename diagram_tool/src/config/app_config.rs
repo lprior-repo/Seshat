@@ -63,11 +63,35 @@ impl AppConfig {
         }
 
         if let Ok(synchronous) = std::env::var("DIAGRAM_TOOL_SYNCHRONOUS") {
-            config.database.synchronous = synchronous.parse().unwrap_or(2);
+            // FIXED: Parse with error handling instead of silent fallback
+            match synchronous.parse::<i32>() {
+                Ok(val) if val >= 0 && val <= 3 => config.database.synchronous = val,
+                Ok(val) => {
+                    eprintln!(
+                        "WARNING: DIAGRAM_TOOL_SYNCHRONOUS={} out of range (0-3), using default 2",
+                        val
+                    );
+                    config.database.synchronous = 2;
+                }
+                Err(e) => {
+                    eprintln!(
+                        "WARNING: Failed to parse DIAGRAM_TOOL_SYNCHRONOUS={}: {}, using default 2",
+                        synchronous, e
+                    );
+                    config.database.synchronous = 2;
+                }
+            }
         }
 
         if let Ok(checkpoint) = std::env::var("DIAGRAM_TOOL_WAL_AUTOCHECKPOINT") {
-            config.database.wal_autocheckpoint = checkpoint.parse().unwrap_or(1000);
+            // FIXED: Parse with error handling instead of silent fallback
+            match checkpoint.parse::<i32>() {
+                Ok(val) => config.database.wal_autocheckpoint = val,
+                Err(e) => {
+                    eprintln!("WARNING: Failed to parse DIAGRAM_TOOL_WAL_AUTOCHECKPOINT={}: {}, using default 1000", checkpoint, e);
+                    config.database.wal_autocheckpoint = 1000;
+                }
+            }
         }
 
         if let Ok(level) = std::env::var("DIAGRAM_TOOL_LOG_LEVEL") {
