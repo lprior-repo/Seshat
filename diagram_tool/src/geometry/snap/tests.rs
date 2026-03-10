@@ -424,7 +424,7 @@ mod tests {
         let start = Point::new(40.0, 40.0);
         let current = Point::new(47.0, 53.0);
 
-        let (preview, final_pos) = drag_with_snap(start, current, 10.0, true);
+        let (preview, final_pos) = drag_with_snap(start, current, 10.0, SnapMode::Enabled);
 
         assert_eq!(preview, Point::new(50.0, 50.0));
         assert_eq!(final_pos, Point::new(50.0, 50.0));
@@ -435,7 +435,7 @@ mod tests {
         let start = Point::new(40.0, 40.0);
         let current = Point::new(47.0, 53.0);
 
-        let (preview, final_pos) = drag_with_snap(start, current, 10.0, false);
+        let (preview, final_pos) = drag_with_snap(start, current, 10.0, SnapMode::Disabled);
 
         assert_eq!(preview, current);
         assert_eq!(final_pos, current);
@@ -449,7 +449,7 @@ mod tests {
         ];
         let drag_delta = Point::new(10.0, 10.0);
 
-        let results = drag_multi_with_snap(&nodes, drag_delta, 10.0, true);
+        let results = drag_multi_with_snap(&nodes, drag_delta, 10.0, SnapMode::Enabled);
 
         assert_eq!(results[0], Point::new(50.0, 50.0));
         assert_eq!(results[1], Point::new(150.0, 150.0));
@@ -571,12 +571,12 @@ mod tests {
 
     #[test]
     fn story_toggle_from_disabled_to_enabled() {
-        assert_eq!(toggle_snap(false), true);
+        assert_eq!(toggle_snap(ToggleState::Off), ToggleState::On);
     }
 
     #[test]
     fn story_toggle_from_enabled_to_disabled() {
-        assert_eq!(toggle_snap(true), false);
+        assert_eq!(toggle_snap(ToggleState::On), ToggleState::Off);
     }
 
     #[test]
@@ -589,10 +589,10 @@ mod tests {
     fn story_toggle_during_drag_commits_at_current_position() {
         let position = Point::new(47.0, 53.0);
 
-        let (new_pos, committed) = toggle_during_drag(position, true, 10.0);
+        let (new_pos, committed) = toggle_during_drag(position, SnapMode::Enabled, 10.0);
 
         assert_eq!(new_pos, position);
-        assert_eq!(committed, false);
+        assert_eq!(committed, SnapMode::Disabled);
     }
 
     #[test]

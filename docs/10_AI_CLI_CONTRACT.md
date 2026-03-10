@@ -37,12 +37,17 @@ The core atomic units are `Node` and `Edge`. The full schema aligns with `Diagra
 ```
 
 ## CLI Interactions
-AI agents should use the `seshat` CLI to read/write state without touching the database directly. 
-*(Note: Refer to `diagram_tool/src/cli.rs` for exact subcommands currently implemented)*.
+AI agents should use the `seshat` CLI to read/write state without touching the database directly. All interactions are backed by a single WAL and durable Restate orchestration.
 
 ### Exporting Graph State
 ```bash
 seshat export --format json > current_state.json
+```
+
+### Validating Changes Pre-Flight
+AI can validate a patch before applying it to ensure it does not conflict with recent Human UI edits:
+```bash
+seshat validate my_proposal.json
 ```
 
 ### Applying Changes
@@ -51,5 +56,33 @@ AI proposes architectural changes by supplying a patch or a full sub-graph:
 seshat apply my_proposal.json
 ```
 
-## Conflict Resolution
-If an AI proposes a change that violates constraints (e.g., creating a cycle in a strictly DAG subgraph), the CLI will reject the patch and return a structured JSON error. The AI must parse this error and correct its proposal.
+## Conflict Resolution & Rich Diffing
+Seshat implements a strict **Human Priority** concurrency model. If a Human modifies the diagram while the AI is calculating its patch, the backend's conditional log append will fail.
+
+When a conflict occurs, the CLI rejects the patch and returns a **Rich Diff** structured JSON error. The AI must parse this diff to understand the exact delta and correct its proposal.
+
+### Rich Diff JSON Example
+```json
+{
+  "status": "rejected",
+  "reason": "Human Priority Block",
+  "conflict_context": {
+    "expected_revision": 42,
+    "actual_revision": 44,
+    "conflicting_entities": ["node-123"],
+    "diff": {
+      "node-123": {
+        "human_state": {
+          "x": 500.0,
+          "y": 200.0
+        },
+        "ai_proposed_state": {
+          "x": 100.0,
+          "y": 200.0
+        }
+      }
+    }
+  }
+}
+```
+*Note: The AI agent should read this diff, adjust its routing or placement logic based on the `human_state` coordinates, and re-run the `seshat apply` command.*

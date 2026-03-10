@@ -10,8 +10,8 @@ pub struct FitTransform {
 #[must_use]
 pub fn scale_around_anchor(point: Point, anchor: Point, factor: f64) -> Point {
     Point::new(
-        (point.x - anchor.x).mul_add(factor, anchor.x),
-        (point.y - anchor.y).mul_add(factor, anchor.y),
+        (point.x - anchor.x) * factor + anchor.x,
+        (point.y - anchor.y) * factor + anchor.y,
     )
 }
 
@@ -23,8 +23,8 @@ pub fn rotate_around_center(point: Point, center: Point, angle_radians: f64) -> 
     let dy = point.y - center.y;
 
     Point::new(
-        dx.mul_add(cos, (-dy).mul_add(sin, center.x)),
-        dx.mul_add(sin, dy.mul_add(cos, center.y)),
+        dx * cos - dy * sin + center.x,
+        dx * sin + dy * cos + center.y,
     )
 }
 

@@ -1,7 +1,12 @@
 use crate::geometry::primitives::{Point, Rectangle, AABB};
 
-#[must_use]
-pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Option<AABB> {
+#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+pub enum BoundsError {
+    #[error("Invalid coordinate: NaN or Infinity")]
+    InvalidCoordinate,
+}
+
+pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AABB, BoundsError> {
     if min_x.is_nan()
         || min_y.is_nan()
         || max_x.is_nan()
@@ -11,7 +16,7 @@ pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Option<AAB
         || max_x.is_infinite()
         || max_y.is_infinite()
     {
-        return None;
+        return Err(BoundsError::InvalidCoordinate);
     }
 
     let (final_min_x, final_max_x) = if min_x <= max_x {
@@ -25,7 +30,7 @@ pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Option<AAB
         (max_y, min_y)
     };
 
-    Some(AABB::new(
+    Ok(AABB::new(
         final_min_x,
         final_min_y,
         final_max_x,
@@ -101,41 +106,29 @@ pub fn segment_intersects_aabb(p1: Point, p2: Point, aabb: &AABB) -> bool {
 pub fn orthogonal_route_avoiding(from: Point, to: Point, obstacle: &AABB) -> OrthogonalRoute {
     let direct = orthogonal_route(from, to);
 
-    let needs_detour = direct
+    if !direct
         .points
         .windows(2)
-        .any(|seg| segment_intersects_aabb(seg[0], seg[1], obstacle));
-
-    if !needs_detour {
+        .any(|seg| segment_intersects_aabb(seg[0], seg[1], obstacle))
+    {
         return direct;
     }
 
-    let go_above = from.y < obstacle.max_y && to.y < obstacle.max_y;
-
-    if go_above {
-        let detour_y = obstacle.min_y - 10.0;
-        OrthogonalRoute {
-            points: vec![
-                from,
-                Point::new(obstacle.min_x - 10.0, from.y),
-                Point::new(obstacle.min_x - 10.0, detour_y),
-                Point::new(obstacle.max_x + 10.0, detour_y),
-                Point::new(obstacle.max_x + 10.0, to.y),
-                to,
-            ],
-        }
+    let detour_y = if from.y < obstacle.max_y && to.y < obstacle.max_y {
+        obstacle.min_y - 10.0
     } else {
-        let detour_y = obstacle.max_y + 10.0;
-        OrthogonalRoute {
-            points: vec![
-                from,
-                Point::new(obstacle.min_x - 10.0, from.y),
-                Point::new(obstacle.min_x - 10.0, detour_y),
-                Point::new(obstacle.max_x + 10.0, detour_y),
-                Point::new(obstacle.max_x + 10.0, to.y),
-                to,
-            ],
-        }
+        obstacle.max_y + 10.0
+    };
+
+    OrthogonalRoute {
+        points: vec![
+            from,
+            Point::new(obstacle.min_x - 10.0, from.y),
+            Point::new(obstacle.min_x - 10.0, detour_y),
+            Point::new(obstacle.max_x + 10.0, detour_y),
+            Point::new(obstacle.max_x + 10.0, to.y),
+            to,
+        ],
     }
 }
 

@@ -145,12 +145,7 @@ impl Rectangle {
         let cos = self.rotation.cos();
         let sin = self.rotation.sin();
 
-        local_corners.map(|p| {
-            Point::new(
-                p.x.mul_add(cos, (-p.y).mul_add(sin, cx)),
-                p.x.mul_add(sin, p.y.mul_add(cos, cy)),
-            )
-        })
+        local_corners.map(|p| Point::new(p.x * cos - p.y * sin + cx, p.x * sin + p.y * cos + cy))
     }
 }
 
@@ -179,12 +174,15 @@ impl StrokedShape<Rectangle> {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, Default)]
+pub struct TextContent(pub String);
+
 /// Represents text with position and font metrics
 #[derive(Debug, Clone, PartialEq)]
 pub struct Text {
     pub x: f64,
     pub y: f64,
-    pub content: String,
+    pub content: TextContent,
     pub font_size: f64,
 }
 
@@ -194,14 +192,14 @@ impl Text {
         Self {
             x,
             y,
-            content: content.to_string(),
+            content: TextContent(content.to_string()),
             font_size,
         }
     }
 
     #[must_use]
     pub fn bounds(&self) -> AABB {
-        let char_count = self.content.chars().count() as f64;
+        let char_count = self.content.0.chars().count() as f64;
         let width = self.font_size * 0.6 * char_count;
         let height = self.font_size;
         AABB::new(self.x, self.y, self.x + width, self.y + height)
@@ -218,7 +216,7 @@ pub enum TextDirection {
 pub struct ExtendedText {
     pub x: f64,
     pub y: f64,
-    pub content: String,
+    pub content: TextContent,
     pub font_size: f64,
     pub direction: TextDirection,
 }
@@ -229,7 +227,7 @@ impl ExtendedText {
         Self {
             x,
             y,
-            content: content.to_string(),
+            content: TextContent(content.to_string()),
             font_size,
             direction: TextDirection::LeftToRight,
         }
@@ -242,7 +240,7 @@ impl ExtendedText {
     }
 
     fn grapheme_count(&self) -> usize {
-        let s = &self.content;
+        let s = &self.content.0;
         let mut count = 0;
         let mut chars = s.chars().peekable();
 
@@ -273,25 +271,21 @@ impl ExtendedText {
 
     #[must_use]
     pub fn bounds(&self) -> AABB {
-        let grapheme_count = self.grapheme_count() as f64;
         let emoji_count = self.count_emoji() as f64;
-        let regular_count = grapheme_count - emoji_count;
-
+        let regular_count = self.grapheme_count() as f64 - emoji_count;
         let width = regular_count * self.font_size * 0.6 + emoji_count * self.font_size * 1.2;
-        let height = self.font_size;
-
         match self.direction {
             TextDirection::LeftToRight => {
-                AABB::new(self.x, self.y, self.x + width, self.y + height)
+                AABB::new(self.x, self.y, self.x + width, self.y + self.font_size)
             }
             TextDirection::RightToLeft => {
-                AABB::new(self.x - width, self.y, self.x, self.y + height)
+                AABB::new(self.x - width, self.y, self.x, self.y + self.font_size)
             }
         }
     }
 
     fn count_emoji(&self) -> usize {
-        let s = &self.content;
+        let s = &self.content.0;
         let mut count = 0;
         let chars: Vec<char> = s.chars().collect();
         let mut i = 0;

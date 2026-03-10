@@ -8,6 +8,18 @@ pub use mod_types::*;
 
 use crate::geometry::primitives::Point;
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SnapMode {
+    Enabled,
+    Disabled,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum ToggleState {
+    On,
+    Off,
+}
+
 #[must_use]
 pub fn should_snap(distance: f64, threshold: f64) -> bool {
     if !distance.is_finite() || !threshold.is_finite() || threshold < 0.0 {
@@ -20,9 +32,9 @@ pub fn drag_with_snap(
     _start: Point,
     current: Point,
     grid_size: f64,
-    snap_enabled: bool,
+    snap_mode: SnapMode,
 ) -> (Point, Point) {
-    if !snap_enabled || grid_size <= 0.0 {
+    if snap_mode == SnapMode::Disabled || grid_size <= 0.0 {
         return (current, current);
     }
 
@@ -34,36 +46,31 @@ pub fn drag_multi_with_snap(
     nodes: &[SnapNode],
     drag_delta: Point,
     grid_size: f64,
-    snap_enabled: bool,
+    snap_mode: SnapMode,
 ) -> Vec<Point> {
     if nodes.is_empty() {
         return Vec::new();
     }
 
-    if !snap_enabled || grid_size <= 0.0 {
+    if snap_mode == SnapMode::Disabled || grid_size <= 0.0 {
         return nodes
             .iter()
             .map(|n| Point::new(n.x + drag_delta.x, n.y + drag_delta.y))
             .collect();
     }
 
-    let primary = &nodes[0];
-    let primary_new = Point::new(primary.x + drag_delta.x, primary.y + drag_delta.y);
-    let primary_snapped = grid::snap_to_grid(primary_new, grid_size);
-
-    let snap_offset = Point::new(
-        primary_snapped.x - primary_new.x,
-        primary_snapped.y - primary_new.y,
+    let primary_snapped = grid::snap_to_grid(
+        Point::new(nodes[0].x + drag_delta.x, nodes[0].y + drag_delta.y),
+        grid_size,
+    );
+    let offset = Point::new(
+        primary_snapped.x - (nodes[0].x + drag_delta.x),
+        primary_snapped.y - (nodes[0].y + drag_delta.y),
     );
 
     nodes
         .iter()
-        .map(|n| {
-            Point::new(
-                n.x + drag_delta.x + snap_offset.x,
-                n.y + drag_delta.y + snap_offset.y,
-            )
-        })
+        .map(|n| Point::new(n.x + drag_delta.x + offset.x, n.y + drag_delta.y + offset.y))
         .collect()
 }
 
@@ -102,8 +109,11 @@ pub fn snap_multi_to_primary(
 }
 
 #[must_use]
-pub fn toggle_snap(state: bool) -> bool {
-    !state
+pub fn toggle_snap(state: ToggleState) -> ToggleState {
+    match state {
+        ToggleState::On => ToggleState::Off,
+        ToggleState::Off => ToggleState::On,
+    }
 }
 
 #[must_use]
@@ -113,14 +123,14 @@ pub const fn is_snap_enabled(state: SnapState) -> bool {
 
 pub fn toggle_during_drag(
     position: Point,
-    snap_was_enabled: bool,
+    snap_mode: SnapMode,
     grid_size: f64,
-) -> (Point, bool) {
-    if snap_was_enabled {
-        (position, false)
+) -> (Point, SnapMode) {
+    if snap_mode == SnapMode::Enabled {
+        (position, SnapMode::Disabled)
     } else {
         let snapped = grid::snap_to_grid(position, grid_size);
-        (snapped, true)
+        (snapped, SnapMode::Enabled)
     }
 }
 
