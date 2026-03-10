@@ -7,104 +7,117 @@
 
 use crate::models::document::{Edge, EdgeId, Node, NodeId};
 use im::HashMap;
-use std::collections::{HashSet, VecDeque};
-use tap::Tap;
+use petgraph::algo::connected_components;
+use petgraph::graph::{DiGraph, NodeIndex};
 use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum CycleError {
     #[error("Cycle detected involving edge {0}")]
     CycleDetected(EdgeId),
+    #[error("Graph is disconnected: found {0} components, expected 1")]
+    DisconnectedGraph(usize),
 }
 
-/// Validates that the graph is a DAG (directed acyclic graph) using Kahn's algorithm.
+/// Validates that the graph is a DAG using petgraph.
+/// Also ensures all nodes form a single weakly connected component.
 ///
 /// # Errors
 ///
-/// Returns `CycleError::CycleDetected` if a cycle is found in the graph.
+/// Returns `CycleError::CycleDetected` if a cycle is found.
+/// Returns `CycleError::DisconnectedGraph` if nodes are not weakly connected.
 pub fn validate_dag(
     nodes: &HashMap<NodeId, Node>,
     edges: &HashMap<EdgeId, Edge>,
 ) -> Result<(), CycleError> {
-    let in_degree_init = nodes
-        .keys()
-        .map(|id| (id.clone(), 0))
-        .collect::<HashMap<NodeId, usize>>();
+    // Build petgraph DiGraph
+    let (graph, id_to_idx) = build_graph(nodes, edges);
 
-    let (adjacency, in_degree) = edges
-        .values()
-        .filter(|e| nodes.contains_key(&e.source) && nodes.contains_key(&e.target))
-        .fold(
-            (HashMap::<NodeId, Vec<NodeId>>::new(), in_degree_init),
-            |(adj, deg), edge| {
-                (
-                    adj.get(&edge.source).map_or_else(
-                        || adj.update(edge.source.clone(), vec![edge.target.clone()]),
-                        |neighbors| {
-                            adj.update(
-                                edge.source.clone(),
-                                neighbors.clone().tap_mut(|n| n.push(edge.target.clone())),
-                            )
-                        },
-                    ),
-                    deg.get(&edge.target).map_or_else(
-                        || deg.update(edge.target.clone(), 1),
-                        |&count| deg.update(edge.target.clone(), count + 1),
-                    ),
-                )
-            },
-        );
-
-    let initial_queue = in_degree
-        .iter()
-        .filter(|&(_, &deg)| deg == 0)
-        .map(|(id, _)| id.clone())
-        .collect::<VecDeque<NodeId>>();
-
-    let final_state = (0..nodes.len()).fold(
-        (initial_queue, in_degree, 0),
-        |(mut q, degs, count), _| match q.pop_front() {
-            Some(node_id) => {
-                let neighbors = adjacency.get(&node_id).map_or_else(Vec::new, Clone::clone);
-                let (next_q, next_degs) =
-                    neighbors
-                        .into_iter()
-                        .fold((q, degs), |(mut cq, cd), neighbor| {
-                            let next_count = cd
-                                .get(&neighbor)
-                                .copied()
-                                .map_or(0, |c| c.saturating_sub(1));
-                            if next_count == 0 {
-                                cq.push_back(neighbor.clone());
-                            }
-                            (cq, cd.update(neighbor, next_count))
-                        });
-                (next_q, next_degs, count + 1)
-            }
-            None => (q, degs, count),
-        },
-    );
-
-    if final_state.2 == nodes.len() {
-        Ok(())
-    } else {
-        let cycle_nodes: HashSet<NodeId> = final_state
-            .1
-            .iter()
-            .filter_map(|(id, &deg)| (deg != 0).then_some(id.clone()))
-            .collect();
-
-        Err(
-            match edges.iter().find(|(_, edge)| {
-                let endpoints_in_cycle = usize::from(cycle_nodes.contains(&edge.source))
-                    + usize::from(cycle_nodes.contains(&edge.target));
-                endpoints_in_cycle == 2
-            }) {
-                Some((id, _)) => CycleError::CycleDetected(id.clone()),
-                None => CycleError::CycleDetected(EdgeId::new(String::from("unknown"))),
-            },
-        )
+    // Early return for empty or single node graphs (always valid)
+    if graph.node_count() <= 1 {
+        return Ok(());
     }
+
+    // Check for cycles using petgraph's algorithm
+    if petgraph::algo::is_cyclic_directed(&graph) {
+        let cycle_edge = find_cycle_edge(&graph, &id_to_idx, edges);
+        return Err(CycleError::CycleDetected(cycle_edge));
+    }
+
+    // Check weak connectivity (unified graph requirement)
+    let components = connected_components(&graph);
+
+    if components > 1 {
+        return Err(CycleError::DisconnectedGraph(components));
+    }
+
+    Ok(())
+}
+
+/// Build a petgraph DiGraph from nodes and edges.
+fn build_graph(
+    nodes: &HashMap<NodeId, Node>,
+    edges: &HashMap<EdgeId, Edge>,
+) -> (DiGraph<NodeId, ()>, HashMap<NodeId, NodeIndex>) {
+    let sorted_nodes: Vec<NodeId> = {
+        let mut v: Vec<NodeId> = nodes.keys().cloned().collect();
+        v.sort();
+        v
+    };
+
+    let id_to_idx: HashMap<NodeId, NodeIndex> = sorted_nodes
+        .iter()
+        .enumerate()
+        .map(|(i, id)| (id.clone(), NodeIndex::new(i)))
+        .collect();
+
+    let mut graph = DiGraph::with_capacity(nodes.len(), edges.len());
+
+    for id in &sorted_nodes {
+        graph.add_node(id.clone());
+    }
+
+    for edge in edges.values() {
+        if let (Some(&src_idx), Some(&tgt_idx)) =
+            (id_to_idx.get(&edge.source), id_to_idx.get(&edge.target))
+        {
+            graph.add_edge(src_idx, tgt_idx, ());
+        }
+    }
+
+    (graph, id_to_idx)
+}
+
+/// Find an edge that's part of a cycle in the graph.
+fn find_cycle_edge(
+    graph: &DiGraph<NodeId, ()>,
+    id_to_idx: &HashMap<NodeId, NodeIndex>,
+    edges: &HashMap<EdgeId, Edge>,
+) -> EdgeId {
+    let topo = petgraph::algo::toposort(graph, None);
+
+    if let Ok(topo) = topo {
+        for (edge_id, edge) in edges {
+            if let (Some(&src_idx), Some(&tgt_idx)) =
+                (id_to_idx.get(&edge.source), id_to_idx.get(&edge.target))
+            {
+                let src_pos = topo.iter().position(|&n| n == src_idx);
+                let tgt_pos = topo.iter().position(|&n| n == tgt_idx);
+
+                if let (Some(sp), Some(tp)) = (src_pos, tgt_pos) {
+                    if tp < sp {
+                        return edge_id.clone();
+                    }
+                }
+            }
+        }
+    }
+
+    edges
+        .keys()
+        .next()
+        .cloned()
+        .unwrap_or_else(|| EdgeId::new(String::from("unknown")))
 }
 
 #[cfg(test)]
@@ -280,10 +293,106 @@ mod tests {
 
         let reported = match result {
             Err(CycleError::CycleDetected(id)) => id,
+            Err(CycleError::DisconnectedGraph(_)) => EdgeId::new(String::from("unexpected-cycle")),
             Ok(()) => EdgeId::new(String::from("unexpected-ok")),
         };
 
         assert!(reported == cycle_e1 || reported == cycle_e2);
         assert_ne!(reported, tree_e);
+    }
+
+    // Tests for unified graph (weak connectivity) requirement
+
+    #[test]
+    fn given_two_disconnected_nodes_when_validated_then_returns_disconnected_error() {
+        let a = NodeId::new(String::from("a"));
+        let b = NodeId::new(String::from("b"));
+
+        let nodes = HashMap::new()
+            .update(a.clone(), node())
+            .update(b.clone(), node());
+
+        // No edges - two isolated nodes = disconnected graph
+        let edges = HashMap::new();
+
+        let result = validate_dag(&nodes, &edges);
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CycleError::DisconnectedGraph(2))));
+    }
+
+    #[test]
+    fn given_two_connected_nodes_when_validated_then_returns_ok() {
+        let a = NodeId::new(String::from("a"));
+        let b = NodeId::new(String::from("b"));
+
+        let nodes = HashMap::new()
+            .update(a.clone(), node())
+            .update(b.clone(), node());
+
+        let edges = HashMap::new().update(EdgeId::new(String::from("e1")), edge(&a, &b));
+
+        let result = validate_dag(&nodes, &edges);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_three_nodes_two_components_when_validated_then_returns_disconnected_error() {
+        let a = NodeId::new(String::from("a"));
+        let b = NodeId::new(String::from("b"));
+        let c = NodeId::new(String::from("c"));
+
+        let nodes = HashMap::new()
+            .update(a.clone(), node())
+            .update(b.clone(), node())
+            .update(c.clone(), node());
+
+        // Two separate components: A->B and C (isolated)
+        let edges = HashMap::new().update(EdgeId::new(String::from("e1")), edge(&a, &b));
+
+        let result = validate_dag(&nodes, &edges);
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CycleError::DisconnectedGraph(2))));
+    }
+
+    #[test]
+    fn given_empty_graph_when_validated_then_returns_ok() {
+        let nodes = HashMap::new();
+        let edges = HashMap::new();
+
+        let result = validate_dag(&nodes, &edges);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_single_node_when_validated_then_returns_ok() {
+        let a = NodeId::new(String::from("a"));
+
+        let nodes = HashMap::new().update(a.clone(), node());
+        let edges = HashMap::new();
+
+        let result = validate_dag(&nodes, &edges);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_cycle_takes_precedence_over_disconnected_when_validated_then_returns_cycle_error() {
+        let a = NodeId::new(String::from("a"));
+        let b = NodeId::new(String::from("b"));
+        let c = NodeId::new(String::from("c"));
+
+        let nodes = HashMap::new()
+            .update(a.clone(), node())
+            .update(b.clone(), node())
+            .update(c.clone(), node());
+
+        // A->B, B->A (cycle), C is disconnected
+        let edges = HashMap::new()
+            .update(EdgeId::new(String::from("e1")), edge(&a, &b))
+            .update(EdgeId::new(String::from("e2")), edge(&b, &a));
+
+        let result = validate_dag(&nodes, &edges);
+        // Cycle detection runs first, so we should get CycleDetected
+        assert!(result.is_err());
+        assert!(matches!(result, Err(CycleError::CycleDetected(_))));
     }
 }

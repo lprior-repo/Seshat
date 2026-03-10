@@ -4,5 +4,5 @@
 #
 # It is recommended to check this file in to source control so that
 # everyone who runs the test benefits from these saved cases.
-cc 27e86f31101b2acaf0369e897890bbf3d9c3f4f23ee3e4dfb4dcddd7e2c90ddb # shrinks to id_a = NodeId("a"), id_b = NodeId("b"), id_c = NodeId("c")
-cc 6b669fa93f206957c02fcd984a4b0c5b88cdfea024b97a44890aeaf4c54add9f # shrinks to child_id = NodeId("a"), parent_id = NodeId("b"), parent_kind = Subgraph
+cc abf0dfa1527603e87705dfd2d10b806e7c8add50fa7f99ff6665ce9e4d7d5e6f # shrinks to _should_be_valid = false
+cc fc7bb55635c82575974bad51b22bb1ad357c99befcfc96c1158afd096c555fae # shrinks to node_count = 100
