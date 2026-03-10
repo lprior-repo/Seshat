@@ -68,8 +68,8 @@ impl AABB {
 
     /// Compute the union of two AABBs
     #[must_use]
-    pub fn union(&self, other: &AABB) -> AABB {
-        AABB::new(
+    pub const fn union(&self, other: &Self) -> Self {
+        Self::new(
             self.min_x.min(other.min_x),
             self.min_y.min(other.min_y),
             self.max_x.max(other.max_x),
@@ -128,6 +128,7 @@ impl Rectangle {
         }
     }
 
+    #[must_use] 
     pub fn corners(&self) -> [Point; 4] {
         let cx = self.x + self.width / 2.0;
         let cy = self.y + self.height / 2.0;
@@ -145,7 +146,7 @@ impl Rectangle {
         let cos = self.rotation.cos();
         let sin = self.rotation.sin();
 
-        local_corners.map(|p| Point::new(p.x * cos - p.y * sin + cx, p.x * sin + p.y * cos + cy))
+        local_corners.map(|p| Point::new(p.x.mul_add(cos, -(p.y * sin)) + cx, p.x.mul_add(sin, p.y * cos) + cy))
     }
 }
 
@@ -206,7 +207,7 @@ impl Text {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -262,7 +263,7 @@ impl ExtendedText {
         count
     }
 
-    fn is_emoji_modifier(c: char) -> bool {
+    const fn is_emoji_modifier(c: char) -> bool {
         matches!(
             c,
             '\u{FE00}'..='\u{FE0F}' | '\u{1F3FB}'..='\u{1F3FF}' | '\u{200D}'
@@ -273,7 +274,7 @@ impl ExtendedText {
     pub fn bounds(&self) -> AABB {
         let emoji_count = self.count_emoji() as f64;
         let regular_count = self.grapheme_count() as f64 - emoji_count;
-        let width = regular_count * self.font_size * 0.6 + emoji_count * self.font_size * 1.2;
+        let width = (regular_count * self.font_size).mul_add(0.6, emoji_count * self.font_size * 1.2);
         match self.direction {
             TextDirection::LeftToRight => {
                 AABB::new(self.x, self.y, self.x + width, self.y + self.font_size)
@@ -315,7 +316,7 @@ impl ExtendedText {
         count
     }
 
-    fn is_emoji_base(c: char) -> bool {
+    const fn is_emoji_base(c: char) -> bool {
         matches!(
             c,
             '\u{1F600}'..='\u{1F64F}' | '\u{1F300}'..='\u{1F5FF}' | '\u{1F680}'..='\u{1F6FF}' | '\u{1F1E0}'..='\u{1F1FF}' | '\u{2600}'..='\u{26FF}' | '\u{2700}'..='\u{27BF}' | '\u{1F900}'..='\u{1F9FF}' | '\u{1FA00}'..='\u{1FA6F}' | '\u{1FA70}'..='\u{1FAFF}'

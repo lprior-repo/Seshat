@@ -37,11 +37,31 @@ The core atomic units are `Node` and `Edge`. The full schema aligns with `Diagra
 ```
 
 ## CLI Interactions
-AI agents should use the `seshat` CLI to read/write state without touching the database directly. All interactions are backed by a single WAL and durable Restate orchestration.
+AI agents should use the `diagram_tool` CLI to read/write state without touching the database directly. All interactions are backed by a single SQLite WAL and durable execution patterns (Step Journals, Conditional Appends).
 
-### Exporting Graph State
+### Validating Changes Pre-Flight
+AI can validate a JSON document to ensure it does not violate core constraints (like DAG cycles):
 ```bash
-seshat export --format json > current_state.json
+diagram_tool validate --input my_proposal.json
+```
+
+### Applying Changes via Patch
+AI proposes architectural changes by supplying a JSON Patch file against an input document:
+```bash
+diagram_tool patch --input current_state.json --patch my_patch.json --output new_state.json
+```
+*Note: Your patch MUST start with a `test` operation for `/revision` to enforce optimistic concurrency control. If the revision doesn't match, the patch will be rejected.*
+
+### Exporting and Rendering
+AI can render the graph to a PNG or SVG programmatically:
+```bash
+diagram_tool render --input current_state.json --output diagram.png
+```
+
+### Layout Generation
+AI can invoke the auto-arrange DAG layout engine:
+```bash
+diagram_tool layout --input current_state.json --output laid_out_state.json
 ```
 
 ### Validating Changes Pre-Flight

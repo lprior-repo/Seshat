@@ -17,7 +17,7 @@ To learn more about this project, refer to the core documentation in `docs/`:
 - `docs/07_TESTING_STRATEGY.md`: Test rigor and protected files.
 - `docs/10_AI_CLI_CONTRACT.md`: The JSON spec and CLI agent boundary.
 - `docs/11_FEATURE_SET.md`: Frontend UI vs. Backend CLI capabilities.
-- `docs/12_RESTATE_LOG_ARCHITECTURE.md`: Single-log WAL, Restate orchestration, and conflict diffs.
+- `docs/12_SINGLE_LOG_ARCHITECTURE.md`: Single-log WAL, durable execution patterns, and conflict diffs.
 
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)

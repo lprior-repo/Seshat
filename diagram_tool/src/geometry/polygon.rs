@@ -8,7 +8,7 @@ pub struct Polygon {
 
 impl Polygon {
     #[must_use]
-    pub fn new(points: Vec<Point>) -> Self {
+    pub const fn new(points: Vec<Point>) -> Self {
         Self { points }
     }
 }

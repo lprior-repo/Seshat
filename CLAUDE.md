@@ -44,4 +44,4 @@ Before starting tasks, ensure you understand the project's architecture by consu
 - `docs/07_TESTING_STRATEGY.md` - Testing rigor (Proptest, E2E).
 - `docs/10_AI_CLI_CONTRACT.md` - Interaction schemas for JSON API.
 - `docs/11_FEATURE_SET.md` - Frontend UI vs. Backend CLI capabilities.
-- `docs/12_RESTATE_LOG_ARCHITECTURE.md` - Single-log WAL, Restate orchestration, and conflict diffs.
+- `docs/12_SINGLE_LOG_ARCHITECTURE.md` - Single-log WAL, durable execution patterns, and conflict diffs.

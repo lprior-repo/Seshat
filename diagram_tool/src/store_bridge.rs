@@ -80,6 +80,10 @@ impl StoreBridge {
         })
     }
 
+    /// Appends a batch of events synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the append fails.
     pub fn append_batch_sync(
         &self,
         ops: Vec<EventEnvelope>,
@@ -89,13 +93,18 @@ impl StoreBridge {
         
         self.runtime.block_on(async {
             let pool_guard = pool.lock().await;
-            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
-            append_batch_async(pool, ops, expected_revision)
+            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone();
+            drop(pool_guard);
+            append_batch_async(&pool, ops, expected_revision)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
     }
 
+    /// Appends an idempotent event synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the append fails.
     pub fn append_idempotent_sync(
         &self,
         envelope: EventEnvelope,
@@ -104,13 +113,18 @@ impl StoreBridge {
         
         self.runtime.block_on(async {
             let pool_guard = pool.lock().await;
-            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
-            append_idempotent_async(pool, envelope)
+            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone();
+            drop(pool_guard);
+            append_idempotent_async(&pool, envelope)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
     }
 
+    /// Fetches events since a given revision synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the fetch fails.
     pub fn fetch_events_since_sync(
         &self,
         revision: i64,
@@ -119,17 +133,23 @@ impl StoreBridge {
         
         self.runtime.block_on(async {
             let pool_guard = pool.lock().await;
-            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
-            fetch_events_since(pool, revision)
+            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone();
+            drop(pool_guard);
+            fetch_events_since(&pool, revision)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
     }
 
+    /// Shuts down the store bridge.
+    ///
+    /// # Errors
+    /// Currently never returns an error, but kept for future expansion.
     pub fn shutdown(self) -> Result<(), BridgeError> {
         self.runtime.block_on(async {
             let mut pool_guard = self.pool.lock().await;
             if let Some(pool) = pool_guard.take() {
+                drop(pool_guard);
                 pool.close().await;
             }
             Ok(())

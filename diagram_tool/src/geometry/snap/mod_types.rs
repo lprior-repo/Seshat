@@ -1,6 +1,16 @@
 use crate::geometry::primitives::Point;
 use thiserror::Error;
 
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct NodeId(pub String);
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum SnapMode {
+    #[default]
+    Disabled,
+    Enabled,
+}
+
 #[derive(Debug, Clone, PartialEq, Error)]
 pub enum SnapError {
     #[error("invalid grid size: {0} (must be > 0)")]
@@ -21,7 +31,7 @@ pub enum SnapError {
 
 #[derive(Debug, Clone, PartialEq)]
 pub struct SnapNode {
-    pub id: String,
+    pub id: NodeId,
     pub x: f64,
     pub y: f64,
     pub width: f64,
@@ -30,7 +40,7 @@ pub struct SnapNode {
 
 impl SnapNode {
     #[must_use]
-    pub const fn new(id: String, x: f64, y: f64, width: f64, height: f64) -> Self {
+    pub const fn new(id: NodeId, x: f64, y: f64, width: f64, height: f64) -> Self {
         Self {
             id,
             x,
@@ -78,16 +88,16 @@ impl SnapNode {
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct SnapState {
-    pub enabled: bool,
+    pub mode: SnapMode,
     pub grid_size: f64,
     pub threshold: f64,
 }
 
 impl SnapState {
     #[must_use]
-    pub const fn new(enabled: bool, grid_size: f64, threshold: f64) -> Self {
+    pub const fn new(mode: SnapMode, grid_size: f64, threshold: f64) -> Self {
         Self {
-            enabled,
+            mode,
             grid_size,
             threshold,
         }
@@ -95,13 +105,16 @@ impl SnapState {
 
     #[must_use]
     pub const fn is_enabled(&self) -> bool {
-        self.enabled
+        matches!(self.mode, SnapMode::Enabled)
     }
 
     #[must_use]
-    pub fn toggle(&self) -> Self {
+    pub const fn toggle(&self) -> Self {
         Self {
-            enabled: !self.enabled,
+            mode: match self.mode {
+                SnapMode::Enabled => SnapMode::Disabled,
+                SnapMode::Disabled => SnapMode::Enabled,
+            },
             ..*self
         }
     }

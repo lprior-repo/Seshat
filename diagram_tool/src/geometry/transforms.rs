@@ -10,8 +10,8 @@ pub struct FitTransform {
 #[must_use]
 pub fn scale_around_anchor(point: Point, anchor: Point, factor: f64) -> Point {
     Point::new(
-        (point.x - anchor.x) * factor + anchor.x,
-        (point.y - anchor.y) * factor + anchor.y,
+        (point.x - anchor.x).mul_add(factor, anchor.x),
+        (point.y - anchor.y).mul_add(factor, anchor.y),
     )
 }
 
@@ -23,8 +23,8 @@ pub fn rotate_around_center(point: Point, center: Point, angle_radians: f64) -> 
     let dy = point.y - center.y;
 
     Point::new(
-        dx * cos - dy * sin + center.x,
-        dx * sin + dy * cos + center.y,
+        dx.mul_add(cos, -(dy * sin)) + center.x,
+        dx.mul_add(sin, dy * cos) + center.y,
     )
 }
 
@@ -66,16 +66,16 @@ pub fn fit_to_viewport(
         };
     }
 
-    let available_width = viewport_width - 2.0 * padding;
-    let available_height = viewport_height - 2.0 * padding;
+    let available_width = 2.0f64.mul_add(-padding, viewport_width);
+    let available_height = 2.0f64.mul_add(-padding, viewport_height);
 
     let scale_x = available_width / content_width;
     let scale_y = available_height / content_height;
     let scale = scale_x.min(scale_y);
 
     let content_center = content.center();
-    let offset_x = viewport_width / 2.0 - content_center.x * scale;
-    let offset_y = viewport_height / 2.0 - content_center.y * scale;
+    let offset_x = content_center.x.mul_add(-scale, viewport_width / 2.0);
+    let offset_y = content_center.y.mul_add(-scale, viewport_height / 2.0);
 
     FitTransform {
         scale,
@@ -84,18 +84,21 @@ pub fn fit_to_viewport(
     }
 }
 
-pub fn clamp_to_min_size(width: f64, height: f64, min_size: f64) -> (f64, f64) {
+#[must_use] 
+pub const fn clamp_to_min_size(width: f64, height: f64, min_size: f64) -> (f64, f64) {
     let clamped_width = width.max(min_size);
     let clamped_height = height.max(min_size);
     (clamped_width, clamped_height)
 }
 
+#[must_use] 
 pub fn scale_with_flip(width: f64, height: f64, scale_x: f64, scale_y: f64) -> (f64, f64) {
     let new_width = (width * scale_x).abs();
     let new_height = (height * scale_y).abs();
     (new_width, new_height)
 }
 
+#[must_use] 
 pub fn scale_with_clamp(
     width: f64,
     height: f64,
@@ -116,7 +119,7 @@ pub fn scale_with_clamp(
     (new_width, new_height)
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Corner {
     NorthWest,
     NorthEast,
@@ -124,6 +127,7 @@ pub enum Corner {
     SouthWest,
 }
 
+#[must_use] 
 pub fn get_corner_point(rect: &Rectangle, corner: Corner) -> Point {
     match corner {
         Corner::NorthWest => Point::new(rect.x, rect.y),
@@ -133,6 +137,7 @@ pub fn get_corner_point(rect: &Rectangle, corner: Corner) -> Point {
     }
 }
 
+#[must_use] 
 pub fn scale_rect_around_corner(rect: &Rectangle, corner: Corner, factor: f64) -> Rectangle {
     let anchor = get_corner_point(rect, corner);
     let nw = scale_around_anchor(get_corner_point(rect, Corner::NorthWest), anchor, factor);

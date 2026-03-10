@@ -1,11 +1,15 @@
 use crate::geometry::primitives::{Point, Rectangle, AABB};
 
-#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum BoundsError {
     #[error("Invalid coordinate: NaN or Infinity")]
     InvalidCoordinate,
 }
 
+/// Creates a bounding box safely.
+///
+/// # Errors
+/// Returns an error if any coordinate is NaN or infinite.
 pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AABB, BoundsError> {
     if min_x.is_nan()
         || min_y.is_nan()
@@ -41,8 +45,8 @@ pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AAB
 #[must_use]
 pub fn zoom_at_pointer(view_center: Point, pointer: Point, factor: f64) -> Point {
     Point::new(
-        pointer.x + (view_center.x - pointer.x) * factor,
-        pointer.y + (view_center.y - pointer.y) * factor,
+        (view_center.x - pointer.x).mul_add(factor, pointer.x),
+        (view_center.y - pointer.y).mul_add(factor, pointer.y),
     )
 }
 
@@ -69,11 +73,7 @@ pub struct OrthogonalRoute {
 #[must_use]
 pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
     let tolerance = 1e-10;
-    if (from.x - to.x).abs() < tolerance {
-        OrthogonalRoute {
-            points: vec![from, to],
-        }
-    } else if (from.y - to.y).abs() < tolerance {
+    if (from.x - to.x).abs() < tolerance || (from.y - to.y).abs() < tolerance {
         OrthogonalRoute {
             points: vec![from, to],
         }
@@ -85,6 +85,7 @@ pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
     }
 }
 
+#[must_use]
 pub fn segment_intersects_aabb(p1: Point, p2: Point, aabb: &AABB) -> bool {
     let tolerance = 1e-10;
     if (p1.y - p2.y).abs() < tolerance {
@@ -153,14 +154,17 @@ pub fn hit_test_rotated_rect(point: Point, rect: &Rectangle) -> bool {
     hit_test_rect(local_point, &local_rect, 0.0)
 }
 
+#[must_use]
 pub fn world_to_screen(world: Point, camera: Point, zoom: f64) -> Point {
     Point::new((world.x - camera.x) * zoom, (world.y - camera.y) * zoom)
 }
 
+#[must_use]
 pub fn screen_to_world(screen: Point, camera: Point, zoom: f64) -> Point {
     Point::new(screen.x / zoom + camera.x, screen.y / zoom + camera.y)
 }
 
+#[must_use]
 pub fn selection_center(points: &[Point]) -> Point {
     if points.is_empty() {
         return Point::origin();

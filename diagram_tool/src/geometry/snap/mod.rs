@@ -9,12 +9,6 @@ pub use mod_types::*;
 use crate::geometry::primitives::Point;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum SnapMode {
-    Enabled,
-    Disabled,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToggleState {
     On,
     Off,
@@ -28,6 +22,7 @@ pub fn should_snap(distance: f64, threshold: f64) -> bool {
     distance <= threshold
 }
 
+#[must_use]
 pub fn drag_with_snap(
     _start: Point,
     current: Point,
@@ -42,6 +37,7 @@ pub fn drag_with_snap(
     (snapped, snapped)
 }
 
+#[must_use]
 pub fn drag_multi_with_snap(
     nodes: &[SnapNode],
     drag_delta: Point,
@@ -74,6 +70,7 @@ pub fn drag_multi_with_snap(
         .collect()
 }
 
+#[must_use]
 pub fn snap_multi_nodes(nodes: &[SnapNode], grid_size: f64) -> Vec<Point> {
     if nodes.is_empty() || grid_size <= 0.0 {
         return nodes.iter().map(|n| Point::new(n.x, n.y)).collect();
@@ -85,6 +82,7 @@ pub fn snap_multi_nodes(nodes: &[SnapNode], grid_size: f64) -> Vec<Point> {
         .collect()
 }
 
+#[must_use]
 pub fn snap_multi_to_primary(
     nodes: &[SnapNode],
     primary_index: usize,
@@ -94,9 +92,8 @@ pub fn snap_multi_to_primary(
         return nodes.iter().map(|n| Point::new(n.x, n.y)).collect();
     }
 
-    let primary = match nodes.get(primary_index) {
-        Some(p) => p,
-        None => return nodes.iter().map(|n| Point::new(n.x, n.y)).collect(),
+    let Some(primary) = nodes.get(primary_index) else {
+        return nodes.iter().map(|n| Point::new(n.x, n.y)).collect();
     };
 
     let primary_snapped = grid::snap_to_grid(Point::new(primary.x, primary.y), grid_size);
@@ -109,7 +106,7 @@ pub fn snap_multi_to_primary(
 }
 
 #[must_use]
-pub fn toggle_snap(state: ToggleState) -> ToggleState {
+pub const fn toggle_snap(state: ToggleState) -> ToggleState {
     match state {
         ToggleState::On => ToggleState::Off,
         ToggleState::Off => ToggleState::On,
@@ -118,9 +115,10 @@ pub fn toggle_snap(state: ToggleState) -> ToggleState {
 
 #[must_use]
 pub const fn is_snap_enabled(state: SnapState) -> bool {
-    state.enabled
+    state.is_enabled()
 }
 
+#[must_use]
 pub fn toggle_during_drag(
     position: Point,
     snap_mode: SnapMode,

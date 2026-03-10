@@ -2,55 +2,54 @@
 
 ## Critical Issues (Must Fix)
 
-### Phase 2: Farley Rigor Violations
+### Phase 2: Farley Rigor Violations (STILL PRESENT)
 
-1. **EXCEEDS 25-LINE LIMIT** - `apply_group_selection` (mod.rs:123-214)
-   - 92 lines - 368% over limit
-   - Contains: filtering, bounds calculation, node creation, reparenting
-   - **FIX:** Break into: `collect_group_bounds()`, `create_group_node()`, `reparent_children()`
+1. **EXCEEDS 25-LINE LIMIT** - `apply_align_selection` (alignment.rs:59-84)
+   - 26 lines - exceeds by 1 line
+   - **FIX:** Reduce by 1 line
 
-2. **EXCEEDS 25-LINE LIMIT** - `apply_align_selection` (alignment.rs:50-181)
-   - 132 lines - 528% over limit
-   - Contains: node filtering, bounding box calc (duplicated for H/V), alignment logic
-   - **FIX:** Extract `compute_horizontal_bounds()`, `compute_vertical_bounds()`, `compute_alignment_target()`
+2. **EXCEEDS 25-LINE LIMIT** - `create_group_node` (mod.rs:214-252)
+   - 39 lines - 156% over limit
+   - **FIX:** Break into smaller helpers
 
-3. **EXCEEDS 25-LINE LIMIT** - `apply_distribute_selection` (alignment.rs:202-314)
-   - 113 lines - 452% over limit
-   - **FIX:** Extract `collect_node_data()`, `compute_distribution_spacing()`, `apply_distribution()`
+3. **EXCEEDS 25-LINE LIMIT** - `collect_group_bounds` (mod.rs:181-212)
+   - 32 lines - 128% over limit
+   - **FIX:** Extract fold logic into separate function
 
-4. **EXCEEDS 25-LINE LIMIT** - `apply_ungroup_selection` (mod.rs:216-264)
-   - 49 lines - 196% over limit
+4. **EXCEEDS 25-LINE LIMIT** - `apply_alignment_to_nodes` (alignment.rs:157-190)
+   - 34 lines - 136% over limit
+   - **FIX:** Extract match arms into separate functions
 
-5. **EXCEEDS 25-LINE LIMIT** - `apply_delete_selected` (mod.rs:76-121)
-   - 46 lines - 184% over limit
+5. **EXCEEDS 25-LINE LIMIT** - `apply_z_order_operation` (z_order.rs:63-120)
+   - 58 lines - 232% over limit (HIGHEST PRIORITY)
+   - **FIX:** Break into: filter logic, z-order calculation, apply logic
 
-### Phase 3: Types as Documentation Violation
+6. **EXCEEDS 25-LINE LIMIT** - `apply_z_order_to_ids` (z_order.rs:122-165)
+   - 44 lines - 176% over limit
+   - **FIX:** Extract each match arm into separate functions
 
-6. **BOOLEAN PARAMETER FLAG** - `apply_nudge_selection` (nudge.rs:33)
-   ```rust
-   pub fn apply_nudge_selection(..., push_undo: bool) -> bool
-   ```
-   - Control flag creates invisible state branches
-   - **FIX:** Either split into two functions or use enum `enum UndoBehavior { WithUndo, WithoutUndo }`
+7. **EXCEEDS 25-LINE LIMIT** - `set_zoom_centered` (mod.rs:416-444)
+   - 29 lines - 116% over limit
+   - **FIX:** Extract clamping logic
 
-### Phase 4: I/O Mixed with Calculations
+8. **EXCEEDS 25-LINE LIMIT** - `compute_horizontal_bounds` (alignment.rs:99-126)
+   - 28 lines
+   - **FIX:** Extract min/max fold into helper
 
-7. **HISTORY PUSH EMBEDDED IN CALC** - Multiple files
-   - `nudge.rs`:44, `alignment.rs`:137, `z_order.rs`:117, `clipboard.rs`:240,268
-   - `push_history()` is called inside pure calculation functions
-   - **FIX:** Move history push to shell layer, pass pure functions to caller
+9. **EXCEEDS 25-LINE LIMIT** - `compute_vertical_bounds` (alignment.rs:128-155)
+   - 28 lines
+   - **FIX:** Extract min/max fold into helper
 
 ---
 
-## Moderate Issues
+## Fixed Issues ✅
 
-8. **DUPLICATED ZOOM LOGIC** (mod.rs:266-328)
-   - Three functions with identical bounds-checking patterns
-   - **FIX:** Extract `zoom_by_factor(doc, factor, viewport) -> bool`
-
-9. **INTERNAL MODULE BLOAT** (mod.rs:364-411)
-   - `zoom` module contains only two 15-line functions
-   - **FIX:** Inline or merge with main module
+1. ~~BOOLEAN PARAMETER FLAG~~ - Now uses `UndoBehavior` enum
+2. ~~HISTORY PUSH IN CALC~~ - Now in shell layer
+3. ~~apply_distribute_selection~~ - Now 16 lines
+4. ~~apply_ungroup_selection~~ - Now 15 lines  
+5. ~~apply_delete_selected~~ - Now 14 lines
+6. Pure calculation functions extracted: `calculate_alignment()`, `calculate_distribution()`
 
 ---
 
@@ -58,7 +57,13 @@
 
 | Severity | Count | Phase |
 |----------|-------|-------|
-| Critical | 7 | Phase 2-3 |
-| Moderate | 2 | Phase 5 |
+| Critical | 9 | Phase 2 |
+| Fixed | 6 | Phase 2-3 |
 
-**Root Cause:** The refactoring extracted code into submodules but did NOT refactor the extracted code to follow the 25-line limit. Functions were simply moved, not decomposed.
+**Root Cause:** The refactoring extracted code into submodules but did NOT decompose the extracted code to meet the 25-line limit. Functions were simply moved, not refactored.
+
+**Next Steps:**
+1. Decompose `apply_z_order_operation` (58 lines) - highest priority
+2. Decompose `create_group_node` (39 lines)
+3. Decompose `apply_alignment_to_nodes` (34 lines)
+4. Fix remaining 5 functions that exceed 25 lines

@@ -280,7 +280,9 @@ mod rejection_path_tests {
     fn given_invalid_primary_and_valid_lkg_when_loading_then_uses_lkg() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
         let primary_path = temp_dir.path().join("diagram.json");
-        let lkg_path = temp_dir.path().join("diagram.json.lkg");
+        let lkg_dir = temp_dir.path().join(".lkg");
+        fs::create_dir_all(&lkg_dir).expect("Should create .lkg dir");
+        let lkg_path = lkg_dir.join("diagram.json.lkg");
 
         // Write invalid primary
         fs::write(&primary_path, b"not valid json").expect("Should write invalid primary");
@@ -347,7 +349,9 @@ mod rejection_path_tests {
     fn given_rejection_during_mutation_then_lkg_preserved() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
         let path = temp_dir.path().join("test.json");
-        let lkg_path = temp_dir.path().join("test.json.lkg");
+        let lkg_dir = temp_dir.path().join(".lkg");
+        fs::create_dir_all(&lkg_dir).expect("Should create .lkg dir");
+        let lkg_path = lkg_dir.join("test.json.lkg");
 
         // Save valid document as primary
         let valid_doc = create_valid_document();
@@ -422,10 +426,17 @@ mod revision_feedback_tests {
     /// Test: Revision policy preserve should not increment
     #[test]
     fn given_preserve_policy_when_mutation_runs_then_revision_unchanged() {
-        use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
+        use crate::mutation::pipeline::{
+            run_mutation_with_policy, RevisionPolicy, ValidationPolicy,
+        };
 
         let doc = DiagramDocument::default();
-        let result = run_mutation_with_policy(&doc, RevisionPolicy::Preserve, ValidationPolicy::default(), |d| Ok(d.clone()));
+        let result = run_mutation_with_policy(
+            &doc,
+            RevisionPolicy::Preserve,
+            ValidationPolicy::default(),
+            |d| Ok(d.clone()),
+        );
 
         assert!(result.is_ok(), "Mutation should succeed");
         let mutated = result.expect("Should have result");

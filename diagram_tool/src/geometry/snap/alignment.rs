@@ -27,7 +27,7 @@ impl Guide {
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlignmentAnchor {
     Left,
     Center,
@@ -39,17 +39,17 @@ pub enum AlignmentAnchor {
 
 impl AlignmentAnchor {
     #[must_use]
-    pub const fn is_horizontal(&self) -> bool {
+    pub const fn is_horizontal(self) -> bool {
         matches!(self, Self::Left | Self::Center | Self::Right)
     }
 
     #[must_use]
-    pub const fn is_vertical(&self) -> bool {
+    pub const fn is_vertical(self) -> bool {
         matches!(self, Self::Top | Self::Middle | Self::Bottom)
     }
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ResizeHandle {
     North,
     South,
@@ -59,6 +59,12 @@ pub enum ResizeHandle {
     NorthWest,
     SouthEast,
     SouthWest,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum AspectConstraint {
+    Locked,
+    Unlocked,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
@@ -91,51 +97,43 @@ impl Rect {
     }
 }
 
+fn closest_guide(val: f64, guides: &[&Guide], threshold: f64, is_horiz: bool) -> Option<f64> {
+    guides
+        .iter()
+        .filter(|g| {
+            if is_horiz {
+                g.is_horizontal()
+            } else {
+                g.is_vertical()
+            }
+        })
+        .map(|g| g.coordinate())
+        .filter(|&c| (val - c).abs() <= threshold)
+        .min_by(|a, b| {
+            (val - a)
+                .abs()
+                .partial_cmp(&(val - b).abs())
+                .unwrap_or(std::cmp::Ordering::Equal)
+        })
+}
+
 #[must_use]
 pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<Point> {
     if threshold < 0.0 || !threshold.is_finite() {
         return None;
     }
-
     let valid_guides: Vec<&Guide> = guides
         .iter()
         .filter(|g| g.coordinate().is_finite())
         .collect();
-
     if valid_guides.is_empty() {
         return None;
     }
 
-    let mut snapped_x: Option<f64> = None;
-    let mut snapped_y: Option<f64> = None;
+    let snap_y = closest_guide(point.y, &valid_guides, threshold, true);
+    let snap_x = closest_guide(point.x, &valid_guides, threshold, false);
 
-    for guide in valid_guides.iter().filter(|g| g.is_horizontal()) {
-        let target = guide.coordinate();
-        let distance = (point.y - target).abs();
-
-        if distance <= threshold {
-            let should_snap =
-                snapped_y.map_or(true, |current| distance < (point.y - current).abs());
-            if should_snap {
-                snapped_y = Some(target);
-            }
-        }
-    }
-
-    for guide in valid_guides.iter().filter(|g| g.is_vertical()) {
-        let target = guide.coordinate();
-        let distance = (point.x - target).abs();
-
-        if distance <= threshold {
-            let should_snap =
-                snapped_x.map_or(true, |current| distance < (point.x - current).abs());
-            if should_snap {
-                snapped_x = Some(target);
-            }
-        }
-    }
-
-    match (snapped_x, snapped_y) {
+    match (snap_x, snap_y) {
         (Some(x), Some(y)) => Some(Point::new(x, y)),
         (Some(x), None) => Some(Point::new(x, point.y)),
         (None, Some(y)) => Some(Point::new(point.x, y)),
@@ -143,12 +141,31 @@ pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<
     }
 }
 
+fn closest_node_x(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<(f64, f64)> {
+    targets
+        .iter()
+        .filter(|t| t.id != active.id)
+        .flat_map(|t| [t.left(), t.center_x(), t.right()])
+        .map(|x| (x, (active.center_x() - x).abs()))
+        .filter(|&(_, dist)| dist <= threshold)
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+}
+
+fn closest_node_y(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<(f64, f64)> {
+    targets
+        .iter()
+        .filter(|t| t.id != active.id)
+        .flat_map(|t| [t.top(), t.center_y(), t.bottom()])
+        .map(|y| (y, (active.center_y() - y).abs()))
+        .filter(|&(_, dist)| dist <= threshold)
+        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
+}
+
 #[must_use]
 pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<Point> {
     if threshold < 0.0 || !threshold.is_finite() || targets.is_empty() {
         return None;
     }
-
     if !active.x.is_finite()
         || !active.y.is_finite()
         || !targets.iter().all(|t| t.x.is_finite() && t.y.is_finite())
@@ -156,47 +173,14 @@ pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) ->
         return None;
     }
 
-    let mut snap_x = None;
-    let mut snap_y = None;
-    let mut min_dist_x = f64::MAX;
-    let mut min_dist_y = f64::MAX;
+    let snap_x = closest_node_x(active, targets, threshold);
+    let snap_y = closest_node_y(active, targets, threshold);
 
-    for target in targets {
-        if target.id == active.id {
-            continue;
-        }
-
-        for target_x in [target.left(), target.center_x(), target.right()] {
-            let dist = (active.center_x() - target_x).abs();
-            if dist <= threshold && dist < min_dist_x {
-                min_dist_x = dist;
-                snap_x = Some(target_x);
-            }
-        }
-
-        for target_y in [target.top(), target.center_y(), target.bottom()] {
-            let dist = (active.center_y() - target_y).abs();
-            if dist <= threshold && dist < min_dist_y {
-                min_dist_y = dist;
-                snap_y = Some(target_y);
-            }
-        }
-    }
-
-    let should_snap_x = snap_x.is_some() && min_dist_x <= threshold;
-    let should_snap_y = snap_y.is_some() && min_dist_y <= threshold;
-
-    match (should_snap_x, should_snap_y) {
-        (true, true) => {
-            if let (Some(x), Some(y)) = (snap_x, snap_y) {
-                Some(Point::new(x, y))
-            } else {
-                None
-            }
-        }
-        (true, false) => snap_x.map(|x| Point::new(x, active.y)),
-        (false, true) => snap_y.map(|y| Point::new(active.x, y)),
-        (false, false) => None,
+    match (snap_x, snap_y) {
+        (Some((x, _)), Some((y, _))) => Some(Point::new(x, y)),
+        (Some((x, _)), None) => Some(Point::new(x, active.y)),
+        (None, Some((y, _))) => Some(Point::new(active.x, y)),
+        (None, None) => None,
     }
 }
 
@@ -269,7 +253,7 @@ pub fn align_middle(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let avg_middle: f64 = nodes
         .iter()
-        .map(|n| n.center_y())
+        .map(super::mod_types::SnapNode::center_y)
         .filter(|y| y.is_finite())
         .sum::<f64>()
         / nodes.len() as f64;
@@ -286,7 +270,7 @@ pub fn align_bottom(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let max_bottom = nodes
         .iter()
-        .map(|n| n.bottom())
+        .map(super::mod_types::SnapNode::bottom)
         .filter(|y| y.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
@@ -296,6 +280,7 @@ pub fn align_bottom(nodes: &[SnapNode]) -> Vec<Point> {
         .collect()
 }
 
+#[must_use]
 pub fn align(nodes: &[SnapNode], anchor: AlignmentAnchor) -> Vec<Point> {
     match anchor {
         AlignmentAnchor::Left => align_left(nodes),
@@ -307,225 +292,227 @@ pub fn align(nodes: &[SnapNode], anchor: AlignmentAnchor) -> Vec<Point> {
     }
 }
 
+/// Distribute nodes horizontally evenly.
+///
+/// # Errors
+/// Returns an error if less than 3 nodes are selected.
 pub fn distribute_horizontally(nodes: &[SnapNode]) -> Result<Vec<Point>, SnapError> {
     if nodes.len() < 3 {
         return Err(SnapError::InsufficientNodesForDistribution(nodes.len()));
     }
-
-    let mut sorted_indices: Vec<usize> = (0..nodes.len()).collect();
-    sorted_indices.sort_by(|&a, &b| {
+    let mut sorted: Vec<usize> = (0..nodes.len()).collect();
+    sorted.sort_by(|&a, &b| {
         nodes[a]
             .x
             .partial_cmp(&nodes[b].x)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-
-    let first_idx = sorted_indices.first().copied().unwrap_or(0);
-    let last_idx = sorted_indices.last().copied().unwrap_or(0);
-    let first_x = nodes[first_idx].x;
-    let last_x = nodes[last_idx].x;
-
-    let spacing = (last_x - first_x) / (sorted_indices.len() - 1) as f64;
-
-    let mut result = Vec::with_capacity(nodes.len());
-    for (i, &idx) in sorted_indices.iter().enumerate() {
-        let new_x = first_x + (i as f64 * spacing);
-        result.push((idx, Point::new(new_x, nodes[idx].y)));
-    }
-
+    let (first_x, last_x) = (nodes[sorted[0]].x, nodes[sorted[sorted.len() - 1]].x);
+    let spacing = (last_x - first_x) / (sorted.len() - 1) as f64;
+    let mut result: Vec<(usize, Point)> = sorted
+        .iter()
+        .enumerate()
+        .map(|(i, &idx)| {
+            (
+                idx,
+                Point::new((i as f64).mul_add(spacing, first_x), nodes[idx].y),
+            )
+        })
+        .collect();
     result.sort_by_key(|(idx, _)| *idx);
     Ok(result.into_iter().map(|(_, p)| p).collect())
 }
 
+/// Distribute nodes vertically evenly.
+///
+/// # Errors
+/// Returns an error if less than 3 nodes are selected.
 pub fn distribute_vertically(nodes: &[SnapNode]) -> Result<Vec<Point>, SnapError> {
     if nodes.len() < 3 {
         return Err(SnapError::InsufficientNodesForDistribution(nodes.len()));
     }
-
-    let mut sorted_indices: Vec<usize> = (0..nodes.len()).collect();
-    sorted_indices.sort_by(|&a, &b| {
+    let mut sorted: Vec<usize> = (0..nodes.len()).collect();
+    sorted.sort_by(|&a, &b| {
         nodes[a]
             .y
             .partial_cmp(&nodes[b].y)
             .unwrap_or(std::cmp::Ordering::Equal)
     });
-
-    let first_idx = sorted_indices.first().copied().unwrap_or(0);
-    let last_idx = sorted_indices.last().copied().unwrap_or(0);
-    let first_y = nodes[first_idx].y;
-    let last_y = nodes[last_idx].y;
-
-    let spacing = (last_y - first_y) / (sorted_indices.len() - 1) as f64;
-
-    let mut result = Vec::with_capacity(nodes.len());
-    for (i, &idx) in sorted_indices.iter().enumerate() {
-        let new_y = first_y + (i as f64 * spacing);
-        result.push((idx, Point::new(nodes[idx].x, new_y)));
-    }
-
+    let (first_y, last_y) = (nodes[sorted[0]].y, nodes[sorted[sorted.len() - 1]].y);
+    let spacing = (last_y - first_y) / (sorted.len() - 1) as f64;
+    let mut result: Vec<(usize, Point)> = sorted
+        .iter()
+        .enumerate()
+        .map(|(i, &idx)| {
+            (
+                idx,
+                Point::new(nodes[idx].x, (i as f64).mul_add(spacing, first_y)),
+            )
+        })
+        .collect();
     result.sort_by_key(|(idx, _)| *idx);
     Ok(result.into_iter().map(|(_, p)| p).collect())
 }
 
-pub fn resize_with_snap(
-    original: Rect,
-    delta: Point,
-    grid_size: f64,
-    handle: ResizeHandle,
-) -> Rect {
-    if grid_size <= 0.0 {
-        return match handle {
-            ResizeHandle::East => Rect {
-                width: original.width + delta.x,
-                ..original
-            },
-            ResizeHandle::West => Rect {
-                x: original.x + delta.x,
-                width: original.width - delta.x,
-                ..original
-            },
-            ResizeHandle::South => Rect {
-                height: original.height + delta.y,
-                ..original
-            },
-            ResizeHandle::North => Rect {
-                y: original.y + delta.y,
-                height: original.height - delta.y,
-                ..original
-            },
-            ResizeHandle::NorthEast => Rect {
-                y: original.y + delta.y,
-                width: original.width + delta.x,
-                height: original.height - delta.y,
-                ..original
-            },
-            ResizeHandle::NorthWest => Rect {
-                x: original.x + delta.x,
-                y: original.y + delta.y,
-                width: original.width - delta.x,
-                height: original.height - delta.y,
-            },
-            ResizeHandle::SouthEast => Rect {
-                width: original.width + delta.x,
-                height: original.height + delta.y,
-                ..original
-            },
-            ResizeHandle::SouthWest => Rect {
-                x: original.x + delta.x,
-                width: original.width - delta.x,
-                height: original.height + delta.y,
-                ..original
-            },
-        };
-    }
-
+fn resize_unconstrained(orig: Rect, delta: Point, handle: ResizeHandle) -> Rect {
     match handle {
-        ResizeHandle::East => {
-            let new_width = original.width + delta.x;
-            Rect {
-                width: ((new_width / grid_size).round() * grid_size).max(1.0),
-                ..original
-            }
-        }
-        ResizeHandle::West => {
-            let new_x = original.x + delta.x;
-            let snapped_x = snap_to_grid(Point::new(new_x, 0.0), grid_size).x;
-            Rect {
-                x: snapped_x,
-                width: (original.x + original.width - snapped_x).max(1.0),
-                ..original
-            }
-        }
-        ResizeHandle::South => {
-            let new_height = original.height + delta.y;
-            Rect {
-                height: ((new_height / grid_size).round() * grid_size).max(1.0),
-                ..original
-            }
-        }
-        ResizeHandle::North => {
-            let new_y = original.y + delta.y;
-            let snapped_y = snap_to_grid(Point::new(0.0, new_y), grid_size).y;
-            Rect {
-                y: snapped_y,
-                height: (original.y + original.height - snapped_y).max(1.0),
-                ..original
-            }
-        }
-        ResizeHandle::NorthEast => {
-            let new_width = original.width + delta.x;
-            let snapped_width = (new_width / grid_size).round() * grid_size;
-            let snapped_y = snap_to_grid(Point::new(0.0, original.y + delta.y), grid_size).y;
-            Rect {
-                y: snapped_y,
-                width: snapped_width.max(1.0),
-                height: (original.y + original.height - snapped_y).max(1.0),
-                ..original
-            }
-        }
-        ResizeHandle::NorthWest => {
-            let snapped = snap_to_grid(
-                Point::new(original.x + delta.x, original.y + delta.y),
-                grid_size,
-            );
-            Rect {
-                x: snapped.x,
-                y: snapped.y,
-                width: (original.x + original.width - snapped.x).max(1.0),
-                height: (original.y + original.height - snapped.y).max(1.0),
-            }
-        }
-        ResizeHandle::SouthEast => {
-            let new_width = original.width + delta.x;
-            let new_height = original.height + delta.y;
-            Rect {
-                width: ((new_width / grid_size).round() * grid_size).max(1.0),
-                height: ((new_height / grid_size).round() * grid_size).max(1.0),
-                ..original
-            }
-        }
-        ResizeHandle::SouthWest => {
-            let new_x = original.x + delta.x;
-            let new_height = original.height + delta.y;
-            let snapped_x = snap_to_grid(Point::new(new_x, 0.0), grid_size).x;
-            Rect {
-                x: snapped_x,
-                width: (original.x + original.width - snapped_x).max(1.0),
-                height: ((new_height / grid_size).round() * grid_size).max(1.0),
-                ..original
-            }
-        }
+        ResizeHandle::East => Rect {
+            width: orig.width + delta.x,
+            ..orig
+        },
+        ResizeHandle::West => Rect {
+            x: orig.x + delta.x,
+            width: orig.width - delta.x,
+            ..orig
+        },
+        ResizeHandle::South => Rect {
+            height: orig.height + delta.y,
+            ..orig
+        },
+        ResizeHandle::North => Rect {
+            y: orig.y + delta.y,
+            height: orig.height - delta.y,
+            ..orig
+        },
+        ResizeHandle::NorthEast => Rect {
+            y: orig.y + delta.y,
+            width: orig.width + delta.x,
+            height: orig.height - delta.y,
+            ..orig
+        },
+        ResizeHandle::NorthWest => Rect {
+            x: orig.x + delta.x,
+            y: orig.y + delta.y,
+            width: orig.width - delta.x,
+            height: orig.height - delta.y,
+        },
+        ResizeHandle::SouthEast => Rect {
+            width: orig.width + delta.x,
+            height: orig.height + delta.y,
+            ..orig
+        },
+        ResizeHandle::SouthWest => Rect {
+            x: orig.x + delta.x,
+            width: orig.width - delta.x,
+            height: orig.height + delta.y,
+            ..orig
+        },
     }
 }
 
+fn resize_east_west(orig: Rect, delta: Point, grid: f64, handle: ResizeHandle) -> Rect {
+    match handle {
+        ResizeHandle::East => Rect {
+            width: (((orig.width + delta.x) / grid).round() * grid).max(1.0),
+            ..orig
+        },
+        ResizeHandle::West => {
+            let s_x = snap_to_grid(Point::new(orig.x + delta.x, 0.0), grid).x;
+            Rect {
+                x: s_x,
+                width: (orig.x + orig.width - s_x).max(1.0),
+                ..orig
+            }
+        }
+        _ => orig,
+    }
+}
+
+fn resize_north_south(orig: Rect, delta: Point, grid: f64, handle: ResizeHandle) -> Rect {
+    match handle {
+        ResizeHandle::South => Rect {
+            height: (((orig.height + delta.y) / grid).round() * grid).max(1.0),
+            ..orig
+        },
+        ResizeHandle::North => {
+            let s_y = snap_to_grid(Point::new(0.0, orig.y + delta.y), grid).y;
+            Rect {
+                y: s_y,
+                height: (orig.y + orig.height - s_y).max(1.0),
+                ..orig
+            }
+        }
+        _ => orig,
+    }
+}
+
+fn resize_corners(orig: Rect, delta: Point, grid: f64, handle: ResizeHandle) -> Rect {
+    match handle {
+        ResizeHandle::NorthEast => {
+            let s_w = (((orig.width + delta.x) / grid).round() * grid).max(1.0);
+            let s_y = snap_to_grid(Point::new(0.0, orig.y + delta.y), grid).y;
+            Rect {
+                y: s_y,
+                width: s_w,
+                height: (orig.y + orig.height - s_y).max(1.0),
+                ..orig
+            }
+        }
+        ResizeHandle::NorthWest => {
+            let s = snap_to_grid(Point::new(orig.x + delta.x, orig.y + delta.y), grid);
+            Rect {
+                x: s.x,
+                y: s.y,
+                width: (orig.x + orig.width - s.x).max(1.0),
+                height: (orig.y + orig.height - s.y).max(1.0),
+            }
+        }
+        ResizeHandle::SouthEast => {
+            let s_w = (((orig.width + delta.x) / grid).round() * grid).max(1.0);
+            let s_h = (((orig.height + delta.y) / grid).round() * grid).max(1.0);
+            Rect {
+                width: s_w,
+                height: s_h,
+                ..orig
+            }
+        }
+        ResizeHandle::SouthWest => {
+            let s_x = snap_to_grid(Point::new(orig.x + delta.x, 0.0), grid).x;
+            let s_h = (((orig.height + delta.y) / grid).round() * grid).max(1.0);
+            Rect {
+                x: s_x,
+                width: (orig.x + orig.width - s_x).max(1.0),
+                height: s_h,
+                ..orig
+            }
+        }
+        _ => orig,
+    }
+}
+
+#[must_use]
+pub fn resize_with_snap(orig: Rect, delta: Point, grid: f64, handle: ResizeHandle) -> Rect {
+    if grid <= 0.0 {
+        return resize_unconstrained(orig, delta, handle);
+    }
+    match handle {
+        ResizeHandle::East | ResizeHandle::West => resize_east_west(orig, delta, grid, handle),
+        ResizeHandle::North | ResizeHandle::South => resize_north_south(orig, delta, grid, handle),
+        _ => resize_corners(orig, delta, grid, handle),
+    }
+}
+
+#[must_use]
 pub fn resize_with_aspect_lock(
     original: Rect,
     delta: Point,
     grid_size: f64,
     handle: ResizeHandle,
-    lock_aspect: bool,
+    constraint: AspectConstraint,
 ) -> Rect {
-    if !lock_aspect {
+    if constraint == AspectConstraint::Unlocked {
         return resize_with_snap(original, delta, grid_size, handle);
     }
-    let aspect_ratio = original.width / original.height;
-    let result = resize_with_snap(original, delta, grid_size, handle);
+    let ratio = original.width / original.height;
+    let res = resize_with_snap(original, delta, grid_size, handle);
     match handle {
-        ResizeHandle::East | ResizeHandle::West => Rect {
-            height: result.width / aspect_ratio,
-            ..result
-        },
         ResizeHandle::North | ResizeHandle::South => Rect {
-            width: result.height * aspect_ratio,
-            ..result
+            width: res.height * ratio,
+            ..res
         },
-        ResizeHandle::NorthEast | ResizeHandle::SouthEast => Rect {
-            height: result.width / aspect_ratio,
-            ..result
-        },
-        ResizeHandle::NorthWest | ResizeHandle::SouthWest => Rect {
-            height: result.width / aspect_ratio,
-            ..result
+        _ => Rect {
+            height: res.width / ratio,
+            ..res
         },
     }
 }

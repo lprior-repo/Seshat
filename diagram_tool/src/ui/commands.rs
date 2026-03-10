@@ -90,8 +90,8 @@ impl Default for ClipboardData {
 
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]
-pub fn clipboard_has_content(clipboard: &Option<ClipboardData>) -> bool {
-    clipboard.as_ref().is_some_and(ClipboardData::has_content)
+pub fn clipboard_has_content(clipboard: Option<&ClipboardData>) -> bool {
+    clipboard.is_some_and(ClipboardData::has_content)
 }
 
 /// Pure function: Creates a clipboard with the selected nodes and edges from the document.
@@ -235,12 +235,10 @@ pub fn apply_copy_selection(
     mut clipboard_signal: Signal<Option<ClipboardData>>,
 ) -> bool {
     let doc = doc_signal.read().clone();
-    if let Some(clipboard) = copy_selection(&doc) {
+    copy_selection(&doc).is_some_and(|clipboard| {
         clipboard_signal.set(Some(clipboard));
         true
-    } else {
-        false
-    }
+    })
 }
 
 /// Public API: Applies paste operation using a clipboard signal.
