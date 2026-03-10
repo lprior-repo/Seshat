@@ -35,3 +35,12 @@ When running `dx build --platform web` or building for `wasm32-unknown-unknown`,
 - **ALWAYS** wrap server/database dependencies in `Cargo.toml` with `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`.
 - **NEVER** set `default = ["desktop", "server"]` or enable `fullstack` by default in `Cargo.toml`. You must use `default = ["web"]` to ensure `dx build` does not accidentally pull in `dioxus-server` and `tokio`.
 - **ALWAYS** wrap domain functions that take `SqlitePool` with `#[cfg(not(target_arch = "wasm32"))]`.
+
+## Documentation Map
+Before starting tasks, ensure you understand the project's architecture by consulting:
+- `docs/00_CODEBASE_MAP.md` - Where files live.
+- `docs/04_DATA_CALC_ACTIONS.md` - Functional Rust implementation.
+- `docs/06_DIOXUS_PATTERNS.md` - Frontend UI state management.
+- `docs/07_TESTING_STRATEGY.md` - Testing rigor (Proptest, E2E).
+- `docs/10_AI_CLI_CONTRACT.md` - Interaction schemas for JSON API.
+- `docs/11_FEATURE_SET.md` - Frontend UI vs. Backend CLI capabilities.

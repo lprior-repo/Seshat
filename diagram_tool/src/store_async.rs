@@ -310,7 +310,7 @@ pub async fn append_event_async(
     let new_revision = current_revision + 1;
 
     let payload = encode_event_envelope(&envelope)
-        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
 
     sqlx::query(
         "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
@@ -371,7 +371,7 @@ pub async fn append_batch_async(
         let new_revision = current_revision + 1 + i64::try_from(idx).unwrap_or(0);
 
         let payload = encode_event_envelope(&envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
 
         sqlx::query(
             "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
@@ -448,7 +448,7 @@ pub fn classify_duplicate_async(
     incoming: &EventEnvelope,
 ) -> Result<DuplicateKind, AsyncStoreError> {
     let incoming_payload = encode_event_envelope(incoming)
-        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
 
     if existing.payload == incoming_payload {
         Ok(DuplicateKind::Exact)
@@ -473,7 +473,7 @@ pub async fn append_idempotent_async(
         .map_err(AsyncStoreError::Sqlx)?;
 
     let payload = encode_event_envelope(&envelope)
-        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
 
     let new_revision = current_revision + 1;
     let insert_result = sqlx::query(

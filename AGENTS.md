@@ -10,7 +10,13 @@
 {"workflow": "jj new main → codanna serve --watch → moon run :check --force → implement → jj commit → jj git push → /land", "stack": "codanna + moon + functional-rust + go-skill + dioxus-wasm-constraints"}
 ```
 
-To learn more about this project, see `docs/`.
+To learn more about this project, refer to the core documentation in `docs/`:
+- `docs/00_CODEBASE_MAP.md`: Where things live (UI, Models, CLI).
+- `docs/04_DATA_CALC_ACTIONS.md`: The Functional Rust pattern (Data -> Calc -> Actions).
+- `docs/06_DIOXUS_PATTERNS.md`: Frontend Dioxus 0.7 architecture and constraints.
+- `docs/07_TESTING_STRATEGY.md`: Test rigor and protected files.
+- `docs/10_AI_CLI_CONTRACT.md`: The JSON spec and CLI agent boundary.
+- `docs/11_FEATURE_SET.md`: Frontend UI vs. Backend CLI capabilities.
 
 <!-- BEGIN BEADS INTEGRATION -->
 ## Issue Tracking with bd (beads)
