@@ -271,6 +271,7 @@ pub(super) fn finalize_motion_release(
 }
 
 #[cfg(test)]
+#[allow(clippy::panic)]
 mod tests {
     use super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
     use crate::models::document::{
@@ -996,6 +997,7 @@ mod tests {
 }
 
 #[cfg(test)]
+#[allow(clippy::panic)]
 mod proptests {
     use super::{
         finalize_motion_release, resize_target_ids, safe_zoom, within, InteractionMode,
@@ -1685,6 +1687,7 @@ mod proptests {
 /// - Locked container with unlocked children
 /// - Parent-child relationship preservation
 #[cfg(test)]
+#[allow(clippy::panic)]
 mod subgraph_tests {
     use super::{resize_target_ids, within, InteractionMode};
     use crate::models::document::{
@@ -2749,6 +2752,7 @@ mod subgraph_tests {
 // =============================================================================
 
 #[cfg(test)]
+#[allow(clippy::panic)]
 mod inp_mobile_touch_tests {
     use super::{InteractionMode, ResizeHandle};
     use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};

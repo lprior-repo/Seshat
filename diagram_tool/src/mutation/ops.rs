@@ -10,6 +10,10 @@ use crate::models::document::DiagramDocument;
 
 #[must_use]
 pub fn apply_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
+    // Validate cell_size - return original document if invalid to avoid panic
+    if !cell_size.is_finite() || cell_size <= 0.0 {
+        return doc.clone();
+    }
     calculate_grid_layout(doc, cell_size)
 }
 
@@ -59,20 +63,22 @@ mod tests {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
         #[test]
-        #[should_panic(expected = "cell_size must be positive and finite")]
-        fn prop_apply_layout_zero_cell_size(_ in Just(())) {
+        fn prop_apply_layout_zero_cell_size_returns_unchanged(_ in Just(())) {
             let doc = make_doc_with_nodes(vec![
                 ("a".into(), 100.0, 100.0, false),
                 ("b".into(), 200.0, 200.0, false),
             ]);
-            let _result = apply_layout(&doc, 0.0);
+            let result = apply_layout(&doc, 0.0);
+            // Should return unchanged document instead of panicking
+            prop_assert_eq!(result.document.nodes.len(), doc.document.nodes.len());
         }
 
         #[test]
-        #[should_panic(expected = "cell_size must be positive and finite")]
-        fn prop_apply_layout_negative_cell_size(cell_size in -1e10_f64..-0.001) {
+        fn prop_apply_layout_negative_cell_size_returns_unchanged(cell_size in -1e10_f64..-0.001) {
             let doc = make_doc_with_nodes(vec![("a".into(), 100.0, 100.0, false)]);
-            let _result = apply_layout(&doc, cell_size);
+            let result = apply_layout(&doc, cell_size);
+            // Should return unchanged document instead of panicking
+            prop_assert_eq!(result.document.nodes.len(), doc.document.nodes.len());
         }
 
         #[test]
@@ -119,11 +125,12 @@ mod tests {
         }
 
         #[test]
-        #[should_panic(expected = "cell_size must be positive and finite")]
-        fn prop_apply_layout_inf_cell_size(sign in -1_i32..=1) {
+        fn prop_apply_layout_inf_cell_size_returns_unchanged(sign in -1_i32..=1) {
             let cell_size = if sign < 0 { f64::NEG_INFINITY } else { f64::INFINITY };
             let doc = make_doc_with_nodes(vec![("a".into(), 100.0, 100.0, false)]);
-            let _result = apply_layout(&doc, cell_size);
+            let result = apply_layout(&doc, cell_size);
+            // Should return unchanged document instead of panicking
+            prop_assert_eq!(result.document.nodes.len(), doc.document.nodes.len());
         }
 
         #[test]
