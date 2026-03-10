@@ -6,22 +6,11 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-pub mod append;
-pub mod error;
-pub mod read;
-pub mod recovery;
-pub mod session;
 pub mod types;
-
-pub use append::*;
-pub use error::*;
-pub use read::*;
-pub use recovery::*;
-pub use session::*;
 pub use types::*;
 
 #[cfg(all(not(target_arch = "wasm32"), feature = "async-db"))]
 pub use crate::store_async::{
-    append_event_async, bootstrap_async_store, integrity_check_async, open_recovery_mode_async,
-    AsyncStoreBootstrap, AsyncStoreError,
+    append_event_async, bootstrap_async_store, fetch_all_events, fetch_events_since,
+    integrity_check_async, open_recovery_mode_async, AsyncStoreBootstrap, AsyncStoreError,
 };

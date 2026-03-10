@@ -1,4 +1,4 @@
-use crate::store::error::StoreError;
+use crate::store_async::AsyncStoreError as StoreError;
 use std::num::NonZeroU64;
 
 #[derive(Debug, Clone, PartialEq)]

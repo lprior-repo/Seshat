@@ -47,6 +47,16 @@ pub enum AsyncStoreError {
     DuplicateWithConflict(String),
     #[error("Empty batch: cannot append zero events")]
     EmptyBatch,
+    #[error("Batch too large: cannot exceed max batch size")]
+    BatchTooLarge,
+    #[error("Invalid timestamp: must be non-zero")]
+    InvalidTimestamp,
+    #[error("Invalid operation ID: cannot be empty or contain null bytes")]
+    InvalidOperationId,
+    #[error("Operation ID too long: cannot exceed 255 bytes")]
+    OperationIdTooLong,
+    #[error("Payload too large: cannot exceed 100MB")]
+    PayloadTooLarge,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq, Serialize)]
@@ -78,7 +88,13 @@ pub const fn map_error_code(err: &AsyncStoreError) -> CliErrorCode {
         AsyncStoreError::RevisionMismatch { .. }
         | AsyncStoreError::RevisionGap { .. }
         | AsyncStoreError::DuplicateWithConflict(_) => CliErrorCode::RevisionMismatch,
-        AsyncStoreError::ValidationFailed(_) | AsyncStoreError::EmptyBatch => CliErrorCode::ValidationFailed,
+        AsyncStoreError::ValidationFailed(_)
+        | AsyncStoreError::EmptyBatch
+        | AsyncStoreError::BatchTooLarge
+        | AsyncStoreError::InvalidTimestamp
+        | AsyncStoreError::InvalidOperationId
+        | AsyncStoreError::OperationIdTooLong
+        | AsyncStoreError::PayloadTooLarge => CliErrorCode::ValidationFailed,
         AsyncStoreError::Sqlx(_)
         | AsyncStoreError::Io(_)
         | AsyncStoreError::InvalidPragma(_)

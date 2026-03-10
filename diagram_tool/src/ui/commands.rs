@@ -5,7 +5,7 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-thread_local! { pub static CLIPBOARD: std::cell::RefCell<Option<crate::ui::commands::Clipboard>> = std::cell::RefCell::new(None); }
+thread_local! { pub static CLIPBOARD: std::cell::RefCell<Option<crate::ui::commands::ClipboardData>> = std::cell::RefCell::new(None); }
 
 use crate::history::History;
 use crate::models::document::{
@@ -1429,7 +1429,6 @@ mod tests {
     }
 
     // =============================================================================
-\\\\\\\        to: ozopryly a24e86b4 (rebased revision)
     // Additional copy/paste tests (bd-2b4)
     // =============================================================================
 
@@ -1827,20 +1826,20 @@ mod tests {
 
     #[test]
     fn given_none_clipboard_when_clipboard_has_content_then_returns_false() {
-        assert!(!clipboard_has_content(&None));
+        assert!(!clipboard_has_content(None));
     }
 
     #[test]
     fn given_some_clipboard_when_clipboard_has_content_then_reflects_content() {
-        let empty = Clipboard::new();
-        assert!(!clipboard_has_content(&Some(empty)));
+        let empty = ClipboardData::new();
+        assert!(!clipboard_has_content(Some(&empty)));
 
-        let with_content = Clipboard {
+        let with_content = ClipboardData {
             nodes: vec![(NodeId::new("test".to_string()), make_node("test", 0.0, 0.0))],
             edges: Vec::new(),
             paste_serial: 0,
         };
-        assert!(clipboard_has_content(&Some(with_content)));
+        assert!(clipboard_has_content(Some(&with_content)));
     }
 
     #[test]

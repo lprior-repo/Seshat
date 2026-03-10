@@ -80,19 +80,10 @@ impl StoreBridge {
         })
     }
 
-<<<<<<< conflict 1 of 8
-+++++++ ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
     /// Appends a batch of events synchronously.
     ///
     /// # Errors
     /// Returns an error if the store is not initialized or the append fails.
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
-+    /// Appends a batch of events synchronously.
-+    ///
-+    /// # Errors
-+    /// Returns an error if the store fails to append the events.
->>>>>>> conflict 1 of 8 ends
     pub fn append_batch_sync(
         &self,
         ops: Vec<EventEnvelope>,
@@ -101,40 +92,20 @@ impl StoreBridge {
         let pool = self.pool.clone();
         
         self.runtime.block_on(async {
-<<<<<<< conflict 2 of 8
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
-             let pool_guard = pool.lock().await;
--            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
--            append_batch_async(pool, ops, expected_revision)
-+            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone();
-+            drop(pool_guard);
-+            append_batch_async(&pool, ops, expected_revision)
-+++++++ xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
             let p = {
                 let pool_guard = pool.lock().await;
                 pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
             };
             append_batch_async(&p, ops, expected_revision)
->>>>>>> conflict 2 of 8 ends
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
     }
 
-<<<<<<< conflict 3 of 8
-+++++++ ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
-    /// Appends an idempotent event synchronously.
+    /// Appends a single event idempotently, synchronously.
     ///
     /// # Errors
     /// Returns an error if the store is not initialized or the append fails.
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
-+    /// Appends a single event idempotently, synchronously.
-+    ///
-+    /// # Errors
-+    /// Returns an error if the store fails to append the event.
->>>>>>> conflict 3 of 8 ends
     pub fn append_idempotent_sync(
         &self,
         envelope: EventEnvelope,
@@ -142,40 +113,20 @@ impl StoreBridge {
         let pool = self.pool.clone();
         
         self.runtime.block_on(async {
-<<<<<<< conflict 4 of 8
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
-             let pool_guard = pool.lock().await;
--            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
--            append_idempotent_async(pool, envelope)
-+            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone();
-+            drop(pool_guard);
-+            append_idempotent_async(&pool, envelope)
-+++++++ xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
             let p = {
                 let pool_guard = pool.lock().await;
                 pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
             };
             append_idempotent_async(&p, envelope)
->>>>>>> conflict 4 of 8 ends
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
     }
 
-<<<<<<< conflict 5 of 8
-+++++++ ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
     /// Fetches events since a given revision synchronously.
     ///
     /// # Errors
     /// Returns an error if the store is not initialized or the fetch fails.
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
-+    /// Fetches events since a given revision synchronously.
-+    ///
-+    /// # Errors
-+    /// Returns an error if the store fails to fetch the events.
->>>>>>> conflict 5 of 8 ends
     pub fn fetch_events_since_sync(
         &self,
         revision: i64,
@@ -183,55 +134,27 @@ impl StoreBridge {
         let pool = self.pool.clone();
         
         self.runtime.block_on(async {
-<<<<<<< conflict 6 of 8
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
-             let pool_guard = pool.lock().await;
--            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
--            fetch_events_since(pool, revision)
-+            let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone();
-+            drop(pool_guard);
-+            fetch_events_since(&pool, revision)
-+++++++ xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
             let p = {
                 let pool_guard = pool.lock().await;
                 pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
             };
             fetch_events_since(&p, revision)
->>>>>>> conflict 6 of 8 ends
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
     }
 
-<<<<<<< conflict 7 of 8
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
-+    /// Shuts down the store bridge.
-+    ///
-+    /// # Errors
-+    /// Currently never returns an error, but kept for future expansion.
-+++++++ xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
     /// Shuts down the store bridge.
     ///
     /// # Errors
     /// Never returns an error currently, but signature is kept for symmetry.
->>>>>>> conflict 7 of 8 ends
     pub fn shutdown(self) -> Result<(), BridgeError> {
         self.runtime.block_on(async {
-<<<<<<< conflict 8 of 8
-%%%%%%% diff from: kzssywqk cad5af6f "bd: backup 2026-03-10 00:19" (parents of rebased revision)
-\\\\\\\        to: ozopryly fda186e0 "refactor: apply strict DDD types to store.rs (seshat-6sl)" (rebase destination)
-             let mut pool_guard = self.pool.lock().await;
-             if let Some(pool) = pool_guard.take() {
-+                drop(pool_guard);
-+++++++ xmmqkotr c61a8cb9 "Fix syntax error and test issues" (rebased revision)
             let p_opt = {
                 let mut pool_guard = self.pool.lock().await;
                 pool_guard.take()
             };
             if let Some(pool) = p_opt {
->>>>>>> conflict 8 of 8 ends
                 pool.close().await;
             }
             Ok(())
