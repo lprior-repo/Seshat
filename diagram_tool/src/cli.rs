@@ -64,6 +64,30 @@ pub enum Commands {
         #[arg(long)]
         output: String,
     },
+    Apply {
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        subgraph: String,
+        #[arg(long)]
+        output: String,
+    },
+    Export {
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        format: String,
+        #[arg(long)]
+        output: String,
+    },
+    Import {
+        #[arg(long)]
+        input: String,
+        #[arg(long)]
+        format: String,
+        #[arg(long)]
+        output: String,
+    },
 }
 
 pub fn run_cli(cli: &Cli) {
@@ -142,12 +166,14 @@ fn command_name(cmd: &Commands) -> String {
         Commands::Validate { .. } => String::from("validate"),
         Commands::Patch { .. } => String::from("patch"),
         Commands::GenerateScene { .. } => String::from("generate_scene"),
+        Commands::Apply { .. } => String::from("apply"),
+        Commands::Export { .. } => String::from("export"),
+        Commands::Import { .. } => String::from("import"),
     }
 }
 
 pub fn error_code(err: &anyhow::Error) -> String {
     let msg = err.to_string().to_lowercase();
-    // Check more specific patterns before general ones
     if msg.contains("dag") || msg.contains("cycle") {
         String::from("dag_violation")
     } else if msg.contains("dangling") || msg.contains("edge-dangling") {
@@ -191,7 +217,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
         Commands::Render { input, output } => {
             let doc = load_doc(input)?;
 
-            // Validate output path to prevent path traversal attacks
             let output_path = Path::new(output);
             let output_parent = output_path.parent().filter(|p| !p.as_os_str().is_empty());
             let output_base_dir = output_parent.unwrap_or_else(|| Path::new("."));
@@ -234,7 +259,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 &StageDetails::new().with_path(Path::new(input)),
             );
             let doc = load_doc(input)?;
-            // Run full validation pipeline
             let issues = crate::models::validation::validate_document(&doc);
             if !issues.is_empty() {
                 return Err(anyhow!(
@@ -259,11 +283,8 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     .with_code("started"),
             );
 
-            // Load the document
             let current_doc = load_doc(input)?;
 
-            // Save LKG (Last Known Good) before any patch operations
-            // This ensures we have a recovery point regardless of how the patch fails
             let input_path = Path::new(input);
             let lkg_dir = input_path.parent().unwrap_or(Path::new(".")).join(".lkg");
             if let Err(e) = std::fs::create_dir_all(&lkg_dir) {
@@ -301,20 +322,17 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 );
             }
 
-            // Validate patch file path to prevent path traversal attacks
             let patch_path = Path::new(patch);
             let patch_parent = patch_path.parent().filter(|p| !p.as_os_str().is_empty());
             let patch_base_dir = patch_parent.unwrap_or_else(|| Path::new("."));
             validate_safe_path(patch_path, patch_base_dir)
                 .map_err(|e| anyhow!("Invalid patch path: {e}"))?;
 
-            // Read and parse the patch file
             let patch_content = std::fs::read_to_string(patch)
                 .map_err(|e| anyhow!("Failed to read patch file: {e}"))?;
             let patch_ops: Vec<serde_json::Value> = serde_json::from_str(&patch_content)
                 .map_err(|e| anyhow!("Failed to parse patch JSON: {e}"))?;
 
-            // Check that first operation is a test for /revision (optimistic locking)
             let has_revision_test = patch_ops.first().is_some_and(|op| {
                 op.get("op").and_then(|v| v.as_str()) == Some("test")
                     && op.get("path").and_then(|v| v.as_str()) == Some("/revision")
@@ -325,7 +343,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 ));
             }
 
-            // Apply patch operations
             let mut doc = current_doc.clone();
             for op in &patch_ops {
                 let op_type = op.get("op").and_then(|v| v.as_str()).unwrap_or("");
@@ -333,15 +350,12 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 
                 match op_type {
                     "test" => {
-                        // Test operation - verify value matches before proceeding
-                        // Note: LKG was already saved before any patch operations
                         let expected = op.get("value");
                         let actual = json_pointer_get(&doc, path);
                         let test_passed = expected
                             .and_then(|e| actual.as_ref().map(|a| e == a))
                             .unwrap_or(false);
                         if !test_passed {
-                            // Determine error code based on path
                             let err_code = if path == "/revision" {
                                 "stale_revision"
                             } else {
@@ -382,11 +396,9 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 }
             }
 
-            // Run validation pipeline
             let validated_doc = run_mutation(&doc, |d| Ok(d.clone()))
                 .map_err(|err| anyhow!("Patch validation failed: {err}"))?;
 
-            // Save the result
             save_workspace_atomic(&validated_doc, Path::new(output))
                 .map_err(|e| anyhow!("Failed to save patched document: {e}"))?;
 
@@ -421,6 +433,15 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     .with_code("success"),
             );
         }
+        Commands::Apply { .. } => {
+            return Err(anyhow!("apply command not yet implemented"));
+        }
+        Commands::Export { .. } => {
+            return Err(anyhow!("export command not yet implemented"));
+        }
+        Commands::Import { .. } => {
+            return Err(anyhow!("import command not yet implemented"));
+        }
     }
     Ok(())
 }
@@ -430,7 +451,6 @@ fn load_doc(path: &str) -> Result<DiagramDocument> {
         .map_err(|e| anyhow!("Failed to load document from {path}: {e}"))
 }
 
-/// Get a value from the document using a simple JSON Pointer path
 fn json_pointer_get(doc: &DiagramDocument, path: &str) -> Option<serde_json::Value> {
     let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
     match parts.as_slice() {
@@ -444,19 +464,12 @@ fn json_pointer_get(doc: &DiagramDocument, path: &str) -> Option<serde_json::Val
     }
 }
 
-/// Set a value in the document using a simple JSON Pointer path
-///
-/// Returns an error if attempting to write to `/revision` (only test operations are allowed).
 fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Value) -> Result<()> {
     let parts: Vec<&str> = path.trim_start_matches('/').split('/').collect();
     match parts.as_slice() {
-        ["revision"] => {
-            // Disallow direct revision writes via patch to preserve optimistic locking semantics.
-            // Revision must only be set via test operations (which verify the expected value).
-            Err(anyhow!(
-                "cannot write to /revision via patch: revision is computed from input document"
-            ))
-        }
+        ["revision"] => Err(anyhow!(
+            "cannot write to /revision via patch: revision is computed from input document"
+        )),
         ["document", "nodes", node_id, "label"] => {
             let node_id = NodeId::new(node_id.to_string());
             if let Some(node) = doc.document.nodes.get_mut(&node_id) {
@@ -474,7 +487,6 @@ fn json_pointer_set(doc: &mut DiagramDocument, path: &str, value: serde_json::Va
     }
 }
 
-/// Remove a value from the document using a simple JSON Pointer path
 fn json_pointer_remove(_doc: &mut DiagramDocument, _path: &str) -> Result<()> {
     Err(anyhow!("remove operation not implemented"))
 }

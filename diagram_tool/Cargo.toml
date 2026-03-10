@@ -45,6 +45,7 @@ petgraph        = "0.8"
 tempfile        = "3.10"
 num_cpus        = "1.16"
 dirs            = "5.0"
+regex-lite      = "0.1"
 sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-rustls"] }
 tokio = { version = "1.50.0", features = ["full"] }
 
