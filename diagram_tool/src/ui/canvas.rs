@@ -10,6 +10,7 @@ mod canvas_view;
 pub mod drag_math;
 mod interaction_reducer;
 pub mod math;
+pub mod domain;
 mod perf;
 mod selection_geometry;
 
