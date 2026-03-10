@@ -81,15 +81,15 @@ pub enum RoutingError {
     DuplicateEdge(EdgeId),
 }
 
-/// Validates edge endpoints - returns error if invalid
+/// Validates edge endpoints - returns error if invalid.
+///
+/// Note: Self-loop validation is handled at the policy level (CyclePolicy).
+/// This function only validates node existence.
 fn validate_edge_endpoints(
     doc: &DiagramDocument,
     source: &NodeId,
     target: &NodeId,
 ) -> Result<(), RoutingError> {
-    if source == target {
-        return Err(RoutingError::SelfLoop(source.clone()));
-    }
     if !doc.document.nodes.contains_key(source) {
         return Err(RoutingError::SourceNotFound(source.clone()));
     }

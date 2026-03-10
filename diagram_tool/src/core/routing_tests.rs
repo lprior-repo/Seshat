@@ -45,19 +45,29 @@ mod tests {
     }
 
     #[test]
-    fn test_returns_error_when_attempting_self_loop() {
+    fn test_allows_self_loop_at_routing_layer() {
+        // Self-loop validation is now handled at the policy layer (CyclePolicy).
+        // At the routing layer, self-loops are allowed - the policy layer
+        // enforces rejection in Deny mode and allows in Allow mode.
         let mut doc = DiagramDocument::default();
         let s1 = NodeId::new("s1".to_string());
         doc.document.nodes.insert(s1.clone(), test_node());
 
-        let err = create_edge(
+        // Self-loop should now succeed at routing layer
+        let result = create_edge(
             &mut doc,
             s1.clone(),
             s1.clone(),
             EdgeId::new("e1".to_string()),
-        )
-        .unwrap_err();
-        assert_eq!(err, RoutingError::SelfLoop(s1));
+        );
+        assert!(
+            result.is_ok(),
+            "Self-loop should be allowed at routing layer"
+        );
+
+        // Verify edge was created
+        let edge = doc.document.edges.get(&EdgeId::new("e1".to_string()));
+        assert!(edge.is_some(), "Edge should exist in document");
     }
 
     #[test]
