@@ -3,8 +3,8 @@
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::models::projection::{replay_events_from, DiagramProjection, EventRecord};
 use diagram_tool::store_async::{
-    append_event_async, bootstrap_async_store, fetch_all_events, fetch_events_since, AsyncAppendResult,
-    AsyncStoreError,
+    append_event_async, bootstrap_async_store, fetch_all_events, fetch_events_since,
+    AsyncAppendResult, AsyncStoreError,
 };
 use sqlx::SqlitePool;
 use std::path::Path;
@@ -107,7 +107,10 @@ mod test_events_module {
         for i in 1..=5 {
             let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
             let result = append_event_async(&pool, envelope, None).await?;
-            assert_eq!(result.revision, i as i64, "Revision should match event number");
+            assert_eq!(
+                result.revision, i as i64,
+                "Revision should match event number"
+            );
         }
 
         Ok(())
@@ -172,7 +175,10 @@ mod test_snapshot_module {
         let projection = replay_events_from(DiagramProjection::empty(), &parsed_events)
             .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
 
-        assert_eq!(projection.revision, 3, "Projection should have revision 3 after 3 events");
+        assert_eq!(
+            projection.revision, 3,
+            "Projection should have revision 3 after 3 events"
+        );
         assert_eq!(projection.nodes.len(), 3, "Should have 3 nodes");
 
         Ok(())
@@ -196,10 +202,17 @@ mod test_sync_module {
         }
 
         let events_after_2 = fetch_events_since(&pool, 2).await?;
-        assert_eq!(events_after_2.len(), 3, "Should have 3 events after revision 2");
+        assert_eq!(
+            events_after_2.len(),
+            3,
+            "Should have 3 events after revision 2"
+        );
 
         let events_after_5 = fetch_events_since(&pool, 5).await?;
-        assert!(events_after_5.is_empty(), "Should have no events after revision 5");
+        assert!(
+            events_after_5.is_empty(),
+            "Should have no events after revision 5"
+        );
 
         Ok(())
     }
@@ -257,7 +270,10 @@ mod test_no_rusqlite_in_models {
         };
 
         let result: AsyncAppendResult = append_event_async(&pool, envelope, None).await?;
-        assert_eq!(result.revision, 1, "Should append successfully using async store");
+        assert_eq!(
+            result.revision, 1,
+            "Should append successfully using async store"
+        );
 
         Ok(())
     }
@@ -294,7 +310,10 @@ mod test_append_event_async_full_roundtrip {
 
         let append_result = append_event_async(&pool, original_envelope.clone(), None).await?;
         assert_eq!(append_result.revision, 1, "Should have revision 1");
-        assert_eq!(append_result.op_id, "op-roundtrip-1", "Operation ID should match");
+        assert_eq!(
+            append_result.op_id, "op-roundtrip-1",
+            "Operation ID should match"
+        );
 
         let fetched_events = fetch_events_since(&pool, 0).await?;
         assert_eq!(fetched_events.len(), 1, "Should fetch exactly one event");
@@ -302,7 +321,10 @@ mod test_append_event_async_full_roundtrip {
         let fetched_record = &fetched_events[0];
         assert_eq!(fetched_record.op_id, "op-roundtrip-1", "Op ID should match");
         assert_eq!(fetched_record.revision, 1, "Revision should be 1");
-        assert_eq!(fetched_record.timestamp, 1700000000, "Timestamp should match");
+        assert_eq!(
+            fetched_record.timestamp, 1700000000,
+            "Timestamp should match"
+        );
 
         let parsed = diagram_tool::models::envelope::parse_event_envelope(&fetched_record.payload)
             .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
@@ -323,7 +345,8 @@ mod test_append_event_async_full_roundtrip {
     }
 
     #[tokio::test]
-    async fn test_batch_append_and_replay_produces_correct_projection() -> Result<(), AsyncStoreError> {
+    async fn test_batch_append_and_replay_produces_correct_projection(
+    ) -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
         let db_path = temp_dir.path().join("test.db");
 
@@ -490,10 +513,18 @@ mod test_edge_cases {
         }
 
         let all_events = fetch_all_events(&pool).await?;
-        assert_eq!(all_events.len(), batch_size, "Should have all {} events", batch_size);
+        assert_eq!(
+            all_events.len(),
+            batch_size,
+            "Should have all {} events",
+            batch_size
+        );
 
         let last_event = &all_events[batch_size - 1];
-        assert_eq!(last_event.revision, batch_size as i64, "Last revision should be batch_size");
+        assert_eq!(
+            last_event.revision, batch_size as i64,
+            "Last revision should be batch_size"
+        );
 
         Ok(())
     }

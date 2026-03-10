@@ -281,17 +281,23 @@ fn remove_subgraphs_and_reparent(
     target_subgraphs: &BTreeSet<NodeId>,
     subgraph_parents: &im::HashMap<NodeId, Option<NodeId>>,
 ) -> BTreeSet<NodeId> {
-    let (new_nodes, orphaned): (im::HashMap<NodeId, Node>, BTreeSet<NodeId>) =
-        doc.document.nodes.iter()
+    let (new_nodes, orphaned): (im::HashMap<NodeId, Node>, BTreeSet<NodeId>) = doc
+        .document
+        .nodes
+        .iter()
         .filter(|(id, _)| !target_subgraphs.contains(id))
-        .fold((im::HashMap::new(), BTreeSet::new()),
+        .fold(
+            (im::HashMap::new(), BTreeSet::new()),
             |(mut nodes, mut orphans), (id, node)| {
                 let (new_node, is_orphaned) =
                     reposition_node(id, node, target_subgraphs, subgraph_parents);
-                if is_orphaned { orphans.insert(id.clone()); }
+                if is_orphaned {
+                    orphans.insert(id.clone());
+                }
                 nodes.insert(id.clone(), new_node);
                 (nodes, orphans)
-            });
+            },
+        );
     doc.document.nodes = new_nodes;
     orphaned
 }

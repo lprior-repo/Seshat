@@ -5,7 +5,7 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-thread_local! { pub static CLIPBOARD: std::cell::RefCell<Option<crate::ui::commands::ClipboardData>> = std::cell::RefCell::new(None); }
+thread_local! { pub static CLIPBOARD: std::cell::RefCell<Option<crate::ui::commands::ClipboardData>> = const { std::cell::RefCell::new(None) }; }
 
 use crate::history::History;
 use crate::models::document::{

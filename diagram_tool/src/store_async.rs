@@ -44,7 +44,9 @@ pub enum AsyncStoreError {
         #[source]
         source: Box<dyn std::error::Error + Send + Sync>,
     },
-    #[error("Revision gap detected: expected sequential revision {expected}, but found gap at {found}")]
+    #[error(
+        "Revision gap detected: expected sequential revision {expected}, but found gap at {found}"
+    )]
     RevisionGap { expected: i64, found: i64 },
     #[error("Duplicate op_id with conflict: {0}")]
     DuplicateWithConflict(String),
@@ -62,45 +64,40 @@ pub enum AsyncStoreError {
     PayloadTooLarge,
 }
 
-/// Converts an EventEnvelope to a ValidEvent for testing and migration purposes.
+/// Converts an `EventEnvelope` to a `ValidEvent` for testing and migration purposes.
 ///
-/// This helper encodes the envelope as JSON payload and creates a ValidEvent.
+/// This helper encodes the envelope as JSON payload and creates a `ValidEvent`.
 /// It preserves the original envelope structure in the payload field.
 ///
 /// # Errors
 /// Returns an error if encoding fails or validation fails.
 pub fn envelope_to_valid_event(envelope: &EventEnvelope) -> Result<ValidEvent, AsyncStoreError> {
-    let payload = encode_event_envelope(envelope)
-        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
-    
-    let timestamp = u64::try_from(envelope.timestamp).map_err(|_| {
-        AsyncStoreError::InvalidTimestamp
-    })?;
-    
-    parse_valid_event(
-        envelope.op_id.clone(),
-        timestamp,
-        payload,
-    )
+    let payload =
+        encode_event_envelope(envelope).map_err(|e: crate::models::envelope::ContractError| {
+            AsyncStoreError::Serialization(e.to_string())
+        })?;
+
+    let timestamp =
+        u64::try_from(envelope.timestamp).map_err(|_| AsyncStoreError::InvalidTimestamp)?;
+
+    parse_valid_event(envelope.op_id.clone(), timestamp, payload)
 }
 
-/// Converts a batch of EventEnvelopes to a BoundedBatch for testing.
+/// Converts a batch of `EventEnvelopes` to a `BoundedBatch` for testing.
 ///
 /// # Errors
 /// Returns an error if any envelope conversion fails or batch bounds are violated.
 pub fn envelope_batch_to_bounded_batch<const MIN: usize, const MAX: usize>(
     envelopes: Vec<EventEnvelope>,
 ) -> Result<BoundedBatch<MIN, MAX>, AsyncStoreError> {
-    let events: Result<Vec<ValidEvent>, _> = envelopes
-        .iter()
-        .map(envelope_to_valid_event)
-        .collect();
-    
+    let events: Result<Vec<ValidEvent>, _> =
+        envelopes.iter().map(envelope_to_valid_event).collect();
+
     let events = events?;
     parse_bounded_batch::<MIN, MAX>(events)
 }
 
-/// Parse raw inputs into ValidEvent at boundary.
+/// Parse raw inputs into `ValidEvent` at boundary.
 ///
 /// This is the entry point for converting external primitive inputs
 /// into the validated DDD type.
@@ -122,7 +119,7 @@ pub fn parse_valid_event(
     })
 }
 
-/// Parse events into BoundedBatch at boundary.
+/// Parse events into `BoundedBatch` at boundary.
 ///
 /// # Errors
 /// Returns an error if the batch size is outside the MIN/MAX bounds.
@@ -163,7 +160,7 @@ impl CliErrorCode {
     }
 }
 
-#[must_use] 
+#[must_use]
 pub const fn map_error_code(err: &AsyncStoreError) -> CliErrorCode {
     match err {
         AsyncStoreError::RevisionMismatch { .. }
@@ -221,7 +218,7 @@ pub struct AsyncStorePragmas {
 /// Returns an error if the connection fails or pragmas cannot be set.
 pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
-    
+
     let pool = SqlitePoolOptions::new()
         .max_connections(10)
         .connect(&connection_string)
@@ -230,19 +227,17 @@ pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreE
     sqlx::query("PRAGMA journal_mode=WAL")
         .execute(&pool)
         .await?;
-    
+
     sqlx::query("PRAGMA synchronous=FULL")
         .execute(&pool)
         .await?;
-    
+
     sqlx::query("PRAGMA wal_autocheckpoint=1000")
         .execute(&pool)
         .await?;
-    
-    sqlx::query("PRAGMA foreign_keys=ON")
-        .execute(&pool)
-        .await?;
-    
+
+    sqlx::query("PRAGMA foreign_keys=ON").execute(&pool).await?;
+
     sqlx::query("PRAGMA busy_timeout=5000")
         .execute(&pool)
         .await?;
@@ -256,7 +251,7 @@ pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreE
 /// Returns an error if the connection fails or migrations fail.
 pub async fn bootstrap_async_store(db_path: &Path) -> Result<AsyncStoreBootstrap, AsyncStoreError> {
     let pool = create_async_pool(db_path).await?;
-    
+
     run_async_schema_migration(&pool).await?;
 
     let schema_version = sqlx::query_scalar::<_, i32>("SELECT version FROM schema_version")
@@ -273,7 +268,7 @@ pub async fn bootstrap_async_store(db_path: &Path) -> Result<AsyncStoreBootstrap
 
 async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreError> {
     let table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'"
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'",
     )
     .fetch_one(pool)
     .await
@@ -283,7 +278,7 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
         sqlx::query(
             "CREATE TABLE IF NOT EXISTS schema_version (
                 version INTEGER NOT NULL DEFAULT 1
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -293,12 +288,11 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
             .await?;
     }
 
-    let events_table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events'"
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(AsyncStoreError::Sqlx)?;
+    let events_table_exists: (i32,) =
+        sqlx::query_as("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events'")
+            .fetch_one(pool)
+            .await
+            .map_err(AsyncStoreError::Sqlx)?;
 
     if events_table_exists.0 == 0 {
         sqlx::query(
@@ -308,7 +302,7 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
                 revision INTEGER NOT NULL,
                 payload TEXT NOT NULL,
                 timestamp TEXT NOT NULL
-            )"
+            )",
         )
         .execute(pool)
         .await?;
@@ -323,7 +317,7 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     }
 
     let snapshot_table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='snapshots'"
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='snapshots'",
     )
     .fetch_one(pool)
     .await
@@ -336,14 +330,16 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
                 revision INTEGER NOT NULL UNIQUE,
                 payload TEXT NOT NULL,
                 created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )"
+            )",
         )
         .execute(pool)
         .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)")
-            .execute(pool)
-            .await?;
+        sqlx::query(
+            "CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)",
+        )
+        .execute(pool)
+        .await?;
     }
 
     Ok(())
@@ -410,7 +406,7 @@ pub async fn append_event_async(
     let payload = event.payload.as_str();
 
     sqlx::query(
-        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind(event.op_id.as_str())
     .bind(new_revision)
@@ -458,16 +454,21 @@ pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
 
     let batch_size = events.len();
     let start_revision = current_revision + 1;
-    let end_revision = current_revision + i64::try_from(batch_size).map_err(|_| {
-        AsyncStoreError::ValidationFailed("Batch too large for revision calculation".to_string())
-    })?;
+    let end_revision = current_revision
+        + i64::try_from(batch_size).map_err(|_| {
+            AsyncStoreError::ValidationFailed(
+                "Batch too large for revision calculation".to_string(),
+            )
+        })?;
     let mut op_ids = Vec::with_capacity(batch_size);
     let mut last_timestamp: u64 = 0;
 
     for (idx, event) in events.into_iter().enumerate() {
-        let new_revision = current_revision + 1 + i64::try_from(idx).map_err(|_| {
-            AsyncStoreError::ValidationFailed("Index overflow in batch".to_string())
-        })?;
+        let new_revision = current_revision
+            + 1
+            + i64::try_from(idx).map_err(|_| {
+                AsyncStoreError::ValidationFailed("Index overflow in batch".to_string())
+            })?;
 
         // The payload in ValidEvent is stored as a JSON string
         let payload = event.payload.as_str();
@@ -515,7 +516,7 @@ pub async fn lookup_existing_op_async(
     op_id: &str,
 ) -> Result<Option<EventRecord>, AsyncStoreError> {
     let result = sqlx::query_as::<_, (String, i64, String, String)>(
-        "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1"
+        "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1",
     )
     .bind(op_id)
     .fetch_optional(pool)
@@ -546,8 +547,10 @@ pub fn classify_duplicate_async(
     existing: &EventRecord,
     incoming: &EventEnvelope,
 ) -> Result<DuplicateKind, AsyncStoreError> {
-    let incoming_payload = encode_event_envelope(incoming)
-        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
+    let incoming_payload =
+        encode_event_envelope(incoming).map_err(|e: crate::models::envelope::ContractError| {
+            AsyncStoreError::Serialization(e.to_string())
+        })?;
 
     if existing.payload == incoming_payload {
         Ok(DuplicateKind::Exact)
@@ -571,12 +574,14 @@ pub async fn append_idempotent_async(
         .await
         .map_err(AsyncStoreError::Sqlx)?;
 
-    let payload = encode_event_envelope(&envelope)
-        .map_err(|e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()))?;
+    let payload =
+        encode_event_envelope(&envelope).map_err(|e: crate::models::envelope::ContractError| {
+            AsyncStoreError::Serialization(e.to_string())
+        })?;
 
     let new_revision = current_revision + 1;
     let insert_result = sqlx::query(
-        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind(&envelope.op_id)
     .bind(new_revision)
@@ -607,13 +612,11 @@ pub async fn append_idempotent_async(
                         let kind = classify_duplicate_async(&record, &envelope)?;
 
                         match kind {
-                            DuplicateKind::Exact => {
-                                Ok(AsyncAppendResult {
-                                    revision: record.revision,
-                                    op_id: record.op_id,
-                                    timestamp: record.timestamp,
-                                })
-                            }
+                            DuplicateKind::Exact => Ok(AsyncAppendResult {
+                                revision: record.revision,
+                                op_id: record.op_id,
+                                timestamp: record.timestamp,
+                            }),
                             DuplicateKind::Conflict => {
                                 Err(AsyncStoreError::DuplicateWithConflict(envelope.op_id))
                             }
@@ -646,9 +649,9 @@ pub async fn fetch_events_since(
 
     let mut events = Vec::with_capacity(rows.len());
     for (op_id, revision, timestamp_str, payload) in rows {
-        let timestamp: i64 = timestamp_str.parse().map_err(|_| {
-            AsyncStoreError::Serialization("Invalid timestamp format".to_string())
-        })?;
+        let timestamp: i64 = timestamp_str
+            .parse()
+            .map_err(|_| AsyncStoreError::Serialization("Invalid timestamp format".to_string()))?;
         events.push(EventRecord {
             op_id,
             revision,
@@ -666,7 +669,7 @@ pub async fn fetch_events_since(
 /// Returns an error on query failure.
 pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, AsyncStoreError> {
     let rows = sqlx::query_as::<_, (String, i64, String, String)>(
-        "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC"
+        "SELECT operation_id, revision, timestamp, payload FROM events ORDER BY revision ASC",
     )
     .fetch_all(pool)
     .await
@@ -674,9 +677,9 @@ pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, Asy
 
     let mut events = Vec::with_capacity(rows.len());
     for (op_id, revision, timestamp_str, payload) in rows {
-        let timestamp: i64 = timestamp_str.parse().map_err(|_| {
-            AsyncStoreError::Serialization("Invalid timestamp format".to_string())
-        })?;
+        let timestamp: i64 = timestamp_str
+            .parse()
+            .map_err(|_| AsyncStoreError::Serialization("Invalid timestamp format".to_string()))?;
         events.push(EventRecord {
             op_id,
             revision,
@@ -692,7 +695,9 @@ pub async fn fetch_all_events(pool: &SqlitePool) -> Result<Vec<EventRecord>, Asy
 ///
 /// # Errors
 /// Returns an error if any pragma query fails.
-pub async fn read_store_pragmas_async(pool: &SqlitePool) -> Result<AsyncStorePragmas, AsyncStoreError> {
+pub async fn read_store_pragmas_async(
+    pool: &SqlitePool,
+) -> Result<AsyncStorePragmas, AsyncStoreError> {
     let journal_mode: String = sqlx::query_scalar("PRAGMA journal_mode")
         .fetch_one(pool)
         .await
@@ -733,7 +738,7 @@ pub async fn read_store_pragmas_async(pool: &SqlitePool) -> Result<AsyncStorePra
 /// Returns an error if the query fails.
 pub async fn integrity_check_async(db_path: &Path) -> Result<Vec<String>, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=ro", db_path.display());
-    
+
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
         .connect(&connection_string)
@@ -756,7 +761,7 @@ pub async fn integrity_check_async(db_path: &Path) -> Result<Vec<String>, AsyncS
 /// Returns an error if the connection fails or pragmas cannot be set.
 pub async fn open_recovery_mode_async(db_path: &Path) -> Result<SqlitePool, AsyncStoreError> {
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
-    
+
     let pool = SqlitePoolOptions::new()
         .max_connections(1)
         .connect(&connection_string)
@@ -795,10 +800,7 @@ mod tests {
             .await
             .expect("Failed to bootstrap async store");
 
-        assert_eq!(
-            bootstrap.schema_version,
-            CURRENT_SCHEMA_VERSION
-        );
+        assert_eq!(bootstrap.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
     #[tokio::test]
@@ -848,7 +850,9 @@ mod tests {
             .expect("Failed to bootstrap async store")
             .pool;
 
-        let rev = current_revision(&pool).await.expect("Failed to get revision");
+        let rev = current_revision(&pool)
+            .await
+            .expect("Failed to get revision");
         assert_eq!(rev, 0);
     }
 
@@ -862,7 +866,9 @@ mod tests {
             .expect("Failed to bootstrap async store")
             .pool;
 
-        let events = fetch_events_since(&pool, 0).await.expect("Failed to fetch events");
+        let events = fetch_events_since(&pool, 0)
+            .await
+            .expect("Failed to fetch events");
         assert!(events.is_empty());
     }
 
@@ -921,11 +927,15 @@ mod tests {
             .await
             .expect("Failed to append event 2");
 
-        let events = fetch_events_since(&pool, 1).await.expect("Failed to fetch events");
+        let events = fetch_events_since(&pool, 1)
+            .await
+            .expect("Failed to fetch events");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].op_id, "test-op-2");
 
-        let all_events = fetch_events_since(&pool, 0).await.expect("Failed to fetch all events");
+        let all_events = fetch_events_since(&pool, 0)
+            .await
+            .expect("Failed to fetch all events");
         assert_eq!(all_events.len(), 2);
     }
 
@@ -939,7 +949,9 @@ mod tests {
             .expect("Failed to bootstrap async store")
             .pool;
 
-        let events = fetch_all_events(&pool).await.expect("Failed to fetch all events");
+        let events = fetch_all_events(&pool)
+            .await
+            .expect("Failed to fetch all events");
         assert!(events.is_empty());
 
         let envelope = EventEnvelope {
@@ -965,7 +977,9 @@ mod tests {
             .await
             .expect("Failed to append event");
 
-        let events = fetch_all_events(&pool).await.expect("Failed to fetch all events");
+        let events = fetch_all_events(&pool)
+            .await
+            .expect("Failed to fetch all events");
         assert_eq!(events.len(), 1);
         assert_eq!(events[0].op_id, "test-op-1");
     }
@@ -980,8 +994,10 @@ mod tests {
             .expect("Failed to bootstrap async store")
             .pool;
 
-        let pragmas = read_store_pragmas_async(&pool).await.expect("Failed to read pragmas");
-        
+        let pragmas = read_store_pragmas_async(&pool)
+            .await
+            .expect("Failed to read pragmas");
+
         assert_eq!(pragmas.journal_mode, "wal");
         assert_eq!(pragmas.synchronous, 2); // FULL = 2
         assert_eq!(pragmas.wal_autocheckpoint, 1000);
@@ -998,8 +1014,10 @@ mod tests {
             .await
             .expect("Failed to bootstrap async store");
 
-        let results = integrity_check_async(&db_path).await.expect("Failed to run integrity check");
-        
+        let results = integrity_check_async(&db_path)
+            .await
+            .expect("Failed to run integrity check");
+
         assert_eq!(results.len(), 1);
         assert_eq!(results[0], "ok");
     }
@@ -1013,11 +1031,15 @@ mod tests {
             .await
             .expect("Failed to bootstrap async store");
 
-        let pool = open_recovery_mode_async(&db_path).await.expect("Failed to open recovery mode");
-        
-        let pragmas = read_store_pragmas_async(&pool).await.expect("Failed to read pragmas");
+        let pool = open_recovery_mode_async(&db_path)
+            .await
+            .expect("Failed to open recovery mode");
+
+        let pragmas = read_store_pragmas_async(&pool)
+            .await
+            .expect("Failed to read pragmas");
         assert_eq!(pragmas.journal_mode, "delete");
-        
+
         pool.close().await;
     }
 

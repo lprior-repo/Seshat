@@ -59,7 +59,9 @@ use crate::store_async::envelope_to_valid_event;
 
 /// Helper to convert EventEnvelope to ValidEvent (for testing)
 #[allow(clippy::unwrap_used)]
-fn to_valid_event(envelope: crate::models::envelope::EventEnvelope) -> Result<crate::store::types::ValidEvent, crate::store_async::AsyncStoreError> {
+fn to_valid_event(
+    envelope: crate::models::envelope::EventEnvelope,
+) -> Result<crate::store::types::ValidEvent, crate::store_async::AsyncStoreError> {
     envelope_to_valid_event(&envelope)
 }
 
@@ -685,7 +687,9 @@ mod tests {
     async fn create_test_db() -> (TempDir, PathBuf, store::AsyncStoreBootstrap) {
         let temp_dir = TempDir::new().unwrap();
         let db_path = temp_dir.path().join("test.db");
-        let bootstrap = crate::store_async::bootstrap_async_store(&db_path).await.unwrap();
+        let bootstrap = crate::store_async::bootstrap_async_store(&db_path)
+            .await
+            .unwrap();
         (temp_dir, db_path, bootstrap)
     }
 

@@ -296,7 +296,10 @@ mod test_harness_tests {
 
         // Then: Path includes test name
         let path_str = path.to_string_lossy();
-        assert!(path_str.contains(test_name), "Path should contain test name");
+        assert!(
+            path_str.contains(test_name),
+            "Path should contain test name"
+        );
     }
 
     #[test]

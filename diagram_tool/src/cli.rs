@@ -621,8 +621,9 @@ fn execute_command(cmd: &Commands) -> Result<()> {
 
                     let node_re =
                         Regex::new(r#"^\s*"?(\w+)"?\s*\[.*label\s*=\s*"?([^"\]]+)"?\].*$"#)
-                            .unwrap();
-                    let edge_re = Regex::new(r#"^\s*"?(\w+)"?\s*->\s*"?(\w+)"?\s*;?\s*$"#).unwrap();
+                            .map_err(|e| anyhow!("Invalid node regex: {e}"))?;
+                    let edge_re = Regex::new(r#"^\s*"?(\w+)"?\s*->\s*"?(\w+)"?\s*;?\s*$"#)
+                        .map_err(|e| anyhow!("Invalid edge regex: {e}"))?;
 
                     for line in content.lines() {
                         if let Some(caps) = node_re.captures(line) {
@@ -692,9 +693,10 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     doc.version = 2;
                     doc.revision = Revision::new(0);
 
-                    let node_re =
-                        Regex::new(r#"(?:card|rectangle|node)\s+(\w+)\s+as\s+"([^"]+)""#).unwrap();
-                    let edge_re = Regex::new(r#"(\w+)\s*(--|->|<-|<--)\s*(\w+)"#).unwrap();
+                    let node_re = Regex::new(r#"(?:card|rectangle|node)\s+(\w+)\s+as\s+"([^"]+)""#)
+                        .map_err(|e| anyhow!("Invalid plantuml node regex: {e}"))?;
+                    let edge_re = Regex::new(r#"(\w+)\s*(--|->|<-|<--)\s*(\w+)"#)
+                        .map_err(|e| anyhow!("Invalid plantuml edge regex: {e}"))?;
 
                     for line in content.lines() {
                         if let Some(caps) = node_re.captures(line) {

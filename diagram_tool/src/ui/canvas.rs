@@ -7,10 +7,10 @@
 #![forbid(unsafe_code)]
 
 mod canvas_view;
+pub mod domain;
 pub mod drag_math;
 mod interaction_reducer;
 pub mod math;
-pub mod domain;
 mod perf;
 mod selection_geometry;
 
@@ -552,19 +552,16 @@ fn flush_pending_pointer_update(
                     // Determine handle type
                     let is_corner_handle = matches!(
                         handle,
-                        ResizeHandle::Nw
-                            | ResizeHandle::Ne
-                            | ResizeHandle::Sw
-                            | ResizeHandle::Se
+                        ResizeHandle::Nw | ResizeHandle::Ne | ResizeHandle::Sw | ResizeHandle::Se
                     );
                     let is_north_south = matches!(handle, ResizeHandle::N | ResizeHandle::S);
-                    
+
                     if is_corner_handle {
                         // Corner handles: constrain both dimensions to maintain ratio
                         // Use the larger change to determine which dimension to adjust
                         let constrained_nw = nh * ratio;
                         let constrained_nh = nw / ratio;
-                        
+
                         // Use whichever keeps size closer to dragged amount
                         if (constrained_nw - nw).abs() < (constrained_nh - nh).abs() {
                             (constrained_nw.max(24.0), nh)
@@ -1371,10 +1368,6 @@ pub fn Canvas() -> Element {
                         | InteractionMode::Panning { .. } => {
                             pending_pointer_sample.set(Some((local_x, local_y)));
                         }
-                        InteractionMode::DraggingSelection { .. }
-                        | InteractionMode::ResizingSelection { .. } => {
-                            pending_pointer_sample.set(Some((local_x, local_y)));
-                        }
                         InteractionMode::Select => {}
                     });
                     continue;
@@ -1519,12 +1512,9 @@ pub fn Canvas() -> Element {
                             doc_signal.with_mut(|doc| {
                                 let _ = finalize_motion_release(mode, doc);
                             });
-                        }
-                        InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
                         }
-                        InteractionMode::DraggingSelection { .. }
-                        | InteractionMode::ResizingSelection { .. } => {
+                        InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
                         }
                         InteractionMode::Select => {}
@@ -1909,8 +1899,7 @@ pub fn Canvas() -> Element {
                             });
                         }
                     }
-                    ToolMode::Pan => {}
-                    ToolMode::Draw => {}
+                    ToolMode::Pan | ToolMode::Draw => {}
                 }
             },
 

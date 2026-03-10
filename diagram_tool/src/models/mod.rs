@@ -32,7 +32,7 @@ pub mod export;
 pub mod harness;
 pub mod projection;
 pub mod schema;
-pub mod schema_defs;  // Single source of truth for SQLite schemas
+pub mod schema_defs; // Single source of truth for SQLite schemas
 
 pub mod sync;
 pub mod validation;

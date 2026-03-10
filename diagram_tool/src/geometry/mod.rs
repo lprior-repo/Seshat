@@ -67,7 +67,7 @@ impl PathSimplificationConfig {
         })
     }
 
-    /// Default configuration with epsilon=1.0 and min_points=2
+    /// Default configuration with epsilon=1.0 and `min_points=2`
     #[must_use]
     pub const fn default_config() -> Self {
         Self {
@@ -82,20 +82,20 @@ fn point_to_line_distance(point: Point, line_start: Point, line_end: Point) -> f
     // Handle degenerate case where line start equals end
     let dx = line_end.x - line_start.x;
     let dy = line_end.y - line_start.y;
-    let line_length_sq = dx * dx + dy * dy;
+    let line_length_sq = dx.mul_add(dx, dy * dy);
 
     if line_length_sq < f64::EPSILON {
         // Line is a point, return distance to that point
         let px = point.x - line_start.x;
         let py = point.y - line_start.y;
-        return (px * px + py * py).sqrt();
+        return px.hypot(py);
     }
 
     // Calculate perpendicular distance using cross product formula
     // Distance = |(P - A) x (B - A)| |B - A|
     let px = point.x - line_start.x;
     let py = point.y - line_start.y;
-    let cross = px * dy - py * dx;
+    let cross = px.mul_add(dy, -(py * dx));
     cross.abs() / line_length_sq.sqrt()
 }
 
@@ -178,11 +178,11 @@ fn segments_intersect(p1: Point, p2: Point, p3: Point, p4: Point) -> bool {
 /// Calculate orientation of three points
 /// Returns positive if counter-clockwise, negative if clockwise, 0 if collinear
 fn orientation(p1: Point, p2: Point, p3: Point) -> f64 {
-    (p2.y - p1.y) * (p3.x - p2.x) - (p2.x - p1.x) * (p3.y - p2.y)
+    (p2.y - p1.y).mul_add(p3.x - p2.x, -((p2.x - p1.x) * (p3.y - p2.y)))
 }
 
 /// Validate a point is valid (not NaN or Infinity)
-fn is_valid_point(point: &Point) -> bool {
+const fn is_valid_point(point: &Point) -> bool {
     point.x.is_finite() && point.y.is_finite()
 }
 

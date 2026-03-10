@@ -1502,7 +1502,7 @@ fn test_rejection_observability() -> Result<TestReport, VerifyError> {
         ConflictDecision::Reject { ref reason, .. } => {
             // Verify we can record the rejection for audit/observability
             record_conflict_rejection(&mut state, &ai_envelope, &decision);
-            
+
             // Verify the error is serializable for observability
             let json_result = serde_json::to_string(reason);
             match json_result {
@@ -1635,7 +1635,9 @@ mod tests {
         // Setup
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
         let db_path = temp_dir.path().join("test.db");
-        let bootstrap = bootstrap_store(&db_path).await.expect("Failed to bootstrap");
+        let bootstrap = bootstrap_store(&db_path)
+            .await
+            .expect("Failed to bootstrap");
 
         // Submit a valid operation
         let envelope = EventEnvelope {
@@ -1825,7 +1827,12 @@ mod tests {
         };
         let event2 = to_valid_event(envelope2).expect("Failed to convert envelope2");
 
-        let result = append_event(&bootstrap.pool, event2, Some(crate::store::types::Revision::new(0).expect("Failed to create revision"))).await;
+        let result = append_event(
+            &bootstrap.pool,
+            event2,
+            Some(crate::store::types::Revision::new(0).expect("Failed to create revision")),
+        )
+        .await;
 
         // Should fail with revision mismatch
         assert!(result.is_err(), "Expected error for stale revision");

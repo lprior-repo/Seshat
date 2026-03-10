@@ -88,14 +88,14 @@ where
 {
     let current = doc_signal.read().clone();
     let next = transform(current.clone())?;
-    
+
     crate::models::schema::validate_schema(&next.0).map_err(MutationError::from)?;
-    
+
     let issues = crate::models::validation::validate_document(&next.0);
     if let Some(issue) = issues.first() {
         return Err(MutationError::from_issue(issue).into());
     }
-    
+
     let new_history = history_signal.read().push(current);
     *history_signal.write() = new_history;
     *doc_signal.write() = next.0;

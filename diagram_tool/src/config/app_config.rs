@@ -3,8 +3,7 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct AppConfig {
     pub database: DatabaseConfig,
     pub logging: LogConfig,
@@ -25,8 +24,7 @@ pub struct LogConfig {
     pub format: String,
 }
 
-#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
-#[derive(Default)]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
 pub struct DebugConfig {
     pub enable_validation_panel: bool,
     pub enable_perf_metrics: bool,
@@ -51,8 +49,6 @@ impl Default for LogConfig {
         }
     }
 }
-
-
 
 impl AppConfig {
     pub fn load_from_environment() -> Result<Self, super::ConfigError> {

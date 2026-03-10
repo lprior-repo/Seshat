@@ -17,7 +17,7 @@ use crate::store::types::ValidEvent;
 use crate::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,
     envelope_to_valid_event, fetch_events_since, parse_revision, AsyncAppendResult,
-    AsyncBatchAppendResult, AsyncStoreError, AsyncStoreBootstrap, EventRecord,
+    AsyncBatchAppendResult, AsyncStoreBootstrap, AsyncStoreError, EventRecord,
 };
 
 #[derive(Debug, Error)]
@@ -50,7 +50,8 @@ impl StoreBridge {
             .build()
             .map_err(|e| BridgeError::RuntimeSpawn(e.to_string()))?;
 
-        let bootstrap: AsyncStoreBootstrap = runtime.block_on(bootstrap_async_store(db_path))
+        let bootstrap: AsyncStoreBootstrap = runtime
+            .block_on(bootstrap_async_store(db_path))
             .map_err(BridgeError::AsyncStore)?;
 
         Ok(Self {
@@ -69,23 +70,25 @@ impl StoreBridge {
         expected_revision: Option<i64>,
     ) -> Result<AsyncAppendResult, BridgeError> {
         let pool = self.pool.clone();
-        
+
         self.runtime.block_on(async {
             let p = {
                 let pool_guard = pool.lock().await;
-                pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
+                pool_guard
+                    .as_ref()
+                    .ok_or(BridgeError::PoolNotInitialized)?
+                    .clone()
             };
-            
+
             // Parse at boundary: convert envelope to ValidEvent
-            let event = envelope_to_valid_event(&envelope)
-                .map_err(BridgeError::AsyncStore)?;
-            
+            let event = envelope_to_valid_event(&envelope).map_err(BridgeError::AsyncStore)?;
+
             // Parse at boundary: convert expected_revision to Option<Revision>
             let expected = match expected_revision {
                 Some(rev) => Some(parse_revision(rev).map_err(BridgeError::AsyncStore)?),
                 None => None,
             };
-            
+
             append_event_async(&p, event, expected)
                 .await
                 .map_err(BridgeError::AsyncStore)
@@ -102,30 +105,31 @@ impl StoreBridge {
         expected_revision: Option<i64>,
     ) -> Result<AsyncBatchAppendResult, BridgeError> {
         let pool = self.pool.clone();
-        
+
         self.runtime.block_on(async {
             let p = {
                 let pool_guard = pool.lock().await;
-                pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
+                pool_guard
+                    .as_ref()
+                    .ok_or(BridgeError::PoolNotInitialized)?
+                    .clone()
             };
-            
+
             // Parse at boundary: convert envelopes to ValidEvents
-            let events: Result<Vec<ValidEvent>, _> = ops
-                .iter()
-                .map(envelope_to_valid_event)
-                .collect();
+            let events: Result<Vec<ValidEvent>, _> =
+                ops.iter().map(envelope_to_valid_event).collect();
             let events = events.map_err(BridgeError::AsyncStore)?;
-            
+
             // Parse at boundary: convert to BoundedBatch (MIN=1, MAX=1000)
             let batch = crate::store_async::parse_bounded_batch::<1, 1000>(events)
                 .map_err(BridgeError::AsyncStore)?;
-            
+
             // Parse at boundary: convert expected_revision to Option<Revision>
             let expected = match expected_revision {
                 Some(rev) => Some(parse_revision(rev).map_err(BridgeError::AsyncStore)?),
                 None => None,
             };
-            
+
             append_batch_async(&p, batch, expected)
                 .await
                 .map_err(BridgeError::AsyncStore)
@@ -141,11 +145,14 @@ impl StoreBridge {
         envelope: EventEnvelope,
     ) -> Result<AsyncAppendResult, BridgeError> {
         let pool = self.pool.clone();
-        
+
         self.runtime.block_on(async {
             let p = {
                 let pool_guard = pool.lock().await;
-                pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
+                pool_guard
+                    .as_ref()
+                    .ok_or(BridgeError::PoolNotInitialized)?
+                    .clone()
             };
             append_idempotent_async(&p, envelope)
                 .await
@@ -157,16 +164,16 @@ impl StoreBridge {
     ///
     /// # Errors
     /// Returns an error if the store is not initialized or the fetch fails.
-    pub fn fetch_events_since_sync(
-        &self,
-        revision: i64,
-    ) -> Result<Vec<EventRecord>, BridgeError> {
+    pub fn fetch_events_since_sync(&self, revision: i64) -> Result<Vec<EventRecord>, BridgeError> {
         let pool = self.pool.clone();
-        
+
         self.runtime.block_on(async {
             let p = {
                 let pool_guard = pool.lock().await;
-                pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?.clone()
+                pool_guard
+                    .as_ref()
+                    .ok_or(BridgeError::PoolNotInitialized)?
+                    .clone()
             };
             fetch_events_since(&p, revision)
                 .await
@@ -231,7 +238,9 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        let result = bridge.append_event_sync(envelope, None).expect("Failed to append");
+        let result = bridge
+            .append_event_sync(envelope, None)
+            .expect("Failed to append");
         assert_eq!(result.revision, 1);
 
         bridge.shutdown().expect("Failed to shutdown");
@@ -262,7 +271,9 @@ mod tests {
             timestamp: 1700000000,
         };
 
-        bridge.append_event_sync(envelope, None).expect("Failed to append");
+        bridge
+            .append_event_sync(envelope, None)
+            .expect("Failed to append");
 
         let events = bridge.fetch_events_since_sync(0).expect("Failed to fetch");
         assert_eq!(events.len(), 1);
