@@ -3,9 +3,10 @@
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::models::projection::{replay_events_from, DiagramProjection, EventRecord};
 use diagram_tool::store_async::{
-    append_event_async, bootstrap_async_store, fetch_all_events, fetch_events_since,
+    append_event_async, bootstrap_async_store, envelope_to_valid_event, fetch_all_events, fetch_events_since,
     AsyncAppendResult, AsyncStoreError,
 };
+use diagram_tool::store::Revision;
 use sqlx::SqlitePool;
 use std::path::Path;
 use std::sync::Arc;
@@ -74,7 +75,8 @@ mod test_events_module {
         let pool = pool_guard.pool();
 
         let envelope = create_test_envelope("op-1", 1);
-        let result = append_event_async(&pool, envelope, None).await?;
+        let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        let result = append_event_async(&pool, valid_event, None).await?;
 
         assert_eq!(result.revision, 1, "First event should have revision 1");
         assert_eq!(result.op_id, "op-1", "Operation ID should match");
@@ -106,7 +108,8 @@ mod test_events_module {
 
         for i in 1..=5 {
             let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            let result = append_event_async(&pool, envelope, None).await?;
+            let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            let result = append_event_async(&pool, valid_event, None).await?;
             assert_eq!(
                 result.revision, i as i64,
                 "Revision should match event number"
@@ -129,7 +132,8 @@ mod test_snapshot_module {
         let pool = pool_guard.pool();
 
         let envelope1 = create_test_envelope("op-1", 1);
-        append_event_async(&pool, envelope1, None).await?;
+        let valid_event1 = envelope_to_valid_event(&envelope1).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        append_event_async(&pool, valid_event1, None).await?;
 
         let events = fetch_events_since(&pool, 0).await?;
         assert_eq!(events.len(), 1, "Should have one event");
@@ -147,7 +151,8 @@ mod test_snapshot_module {
 
         for i in 1..=3 {
             let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            append_event_async(&pool, envelope, None).await?;
+            let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            append_event_async(&pool, valid_event, None).await?;
         }
 
         let event_records = fetch_events_since(&pool, 0).await?;
@@ -198,7 +203,8 @@ mod test_sync_module {
 
         for i in 1..=5 {
             let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            append_event_async(&pool, envelope, None).await?;
+            let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            append_event_async(&pool, valid_event, None).await?;
         }
 
         let events_after_2 = fetch_events_since(&pool, 2).await?;
@@ -230,7 +236,8 @@ mod test_sync_module {
 
         for i in 1..=3 {
             let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            append_event_async(&pool, envelope, None).await?;
+            let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            append_event_async(&pool, valid_event, None).await?;
         }
 
         let all_after = fetch_all_events(&pool).await?;
@@ -269,7 +276,8 @@ mod test_no_rusqlite_in_models {
             },
         };
 
-        let result: AsyncAppendResult = append_event_async(&pool, envelope, None).await?;
+        let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        let result: AsyncAppendResult = append_event_async(&pool, valid_event, None).await?;
         assert_eq!(
             result.revision, 1,
             "Should append successfully using async store"
@@ -308,7 +316,8 @@ mod test_append_event_async_full_roundtrip {
             },
         };
 
-        let append_result = append_event_async(&pool, original_envelope.clone(), None).await?;
+        let valid_event = envelope_to_valid_event(&original_envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        let append_result = append_event_async(&pool, valid_event, None).await?;
         assert_eq!(append_result.revision, 1, "Should have revision 1");
         assert_eq!(
             append_result.op_id, "op-roundtrip-1",
@@ -405,7 +414,8 @@ mod test_append_event_async_full_roundtrip {
         ];
 
         for envelope in envelopes {
-            append_event_async(&pool, envelope, None).await?;
+            let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            append_event_async(&pool, valid_event, None).await?;
         }
 
         let event_records = fetch_events_since(&pool, 0).await?;
@@ -449,10 +459,12 @@ mod test_append_event_async_full_roundtrip {
         let pool = pool_guard.pool();
 
         let envelope = create_test_envelope("op-1", 1);
-        append_event_async(&pool, envelope, None).await?;
+        let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        append_event_async(&pool, valid_event, None).await?;
 
         let wrong_envelope = create_test_envelope("op-2", 2);
-        let mismatch_result = append_event_async(&pool, wrong_envelope, Some(5)).await;
+        let valid_wrong = envelope_to_valid_event(&wrong_envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        let mismatch_result = append_event_async(&pool, valid_wrong, Some(Revision::new(5).unwrap())).await;
 
         match mismatch_result {
             Err(AsyncStoreError::RevisionMismatch { expected, found }) => {
@@ -488,11 +500,13 @@ mod test_edge_cases {
         let pool = pool_guard.pool();
 
         let envelope = create_test_envelope("op-dup", 1);
-        let first_result = append_event_async(&pool, envelope.clone(), None).await?;
+        let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        let first_result = append_event_async(&pool, valid_event, None).await?;
         assert_eq!(first_result.revision, 1);
 
         // Idempotent append not implemented - should return error on duplicate
-        let duplicate_result = append_event_async(&pool, envelope, None).await;
+        let valid_event_dup = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+        let duplicate_result = append_event_async(&pool, valid_event_dup, None).await;
         assert!(duplicate_result.is_err(), "Duplicate should return error");
 
         Ok(())
@@ -509,7 +523,8 @@ mod test_edge_cases {
         let batch_size = 100;
         for i in 1..=batch_size {
             let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            append_event_async(&pool, envelope, None).await?;
+            let valid_event = envelope_to_valid_event(&envelope).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+            append_event_async(&pool, valid_event, None).await?;
         }
 
         let all_events = fetch_all_events(&pool).await?;
