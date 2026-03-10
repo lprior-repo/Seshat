@@ -37,6 +37,20 @@ impl AABB {
         }
     }
 
+    /// Creates a new AABB with validation.
+    ///
+    /// # Errors
+    /// Returns an error if min_x > max_x or min_y > max_y.
+    #[cfg(feature = "strict")]
+    pub fn new_checked(
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    ) -> Result<Self, super::operations::BoundsError> {
+        super::operations::safe_bounds(min_x, min_y, max_x, max_y)
+    }
+
     #[must_use]
     pub fn width(&self) -> f64 {
         self.max_x - self.min_x
@@ -64,6 +78,27 @@ impl AABB {
             self.max_x + amount,
             self.max_y + amount,
         )
+    }
+
+    /// Expand the AABB by a given amount on all sides, validating amount >= 0.
+    ///
+    /// # Errors
+    /// Returns an error if amount is negative.
+    #[cfg(feature = "strict")]
+    pub fn expand_checked(&self, amount: f64) -> Result<Self, super::operations::BoundsError> {
+        if amount < 0.0 {
+            return Err(super::operations::BoundsError::NegativeExpansion(amount));
+        }
+        Ok(self.expand(amount))
+    }
+
+    /// Expand the AABB by a hit margin for hit testing purposes.
+    ///
+    /// This is equivalent to `expand(margin)` but semantically indicates
+    /// the use case is for making click/selection more forgiving.
+    #[must_use]
+    pub fn expand_by_hit_margin(&self, margin: f64) -> Self {
+        self.expand(margin)
     }
 
     /// Compute the union of two AABBs

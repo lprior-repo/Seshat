@@ -1,15 +1,24 @@
 use crate::geometry::primitives::{Point, Rectangle, AABB};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
+#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
 pub enum BoundsError {
     #[error("Invalid coordinate: NaN or Infinity")]
     InvalidCoordinate,
+    #[error("Invalid bounds: min ({min_x}, {min_y}) > max ({max_x}, {max_y})")]
+    InvalidBounds {
+        min_x: f64,
+        min_y: f64,
+        max_x: f64,
+        max_y: f64,
+    },
+    #[error("Negative expansion amount: {0} (must be >= 0)")]
+    NegativeExpansion(f64),
 }
 
 /// Creates a bounding box safely.
 ///
 /// # Errors
-/// Returns an error if any coordinate is NaN or infinite.
+/// Returns an error if any coordinate is NaN or infinite, or if min > max.
 pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AABB, BoundsError> {
     if min_x.is_nan()
         || min_y.is_nan()
@@ -23,23 +32,25 @@ pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AAB
         return Err(BoundsError::InvalidCoordinate);
     }
 
-    let (final_min_x, final_max_x) = if min_x <= max_x {
-        (min_x, max_x)
-    } else {
-        (max_x, min_x)
-    };
-    let (final_min_y, final_max_y) = if min_y <= max_y {
-        (min_y, max_y)
-    } else {
-        (max_y, min_y)
-    };
+    // Check for invalid bounds (min > max)
+    if min_x > max_x {
+        return Err(BoundsError::InvalidBounds {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+        });
+    }
+    if min_y > max_y {
+        return Err(BoundsError::InvalidBounds {
+            min_x,
+            min_y,
+            max_x,
+            max_y,
+        });
+    }
 
-    Ok(AABB::new(
-        final_min_x,
-        final_min_y,
-        final_max_x,
-        final_max_y,
-    ))
+    Ok(AABB::new(min_x, min_y, max_x, max_y))
 }
 
 #[must_use]
