@@ -4571,4 +4571,296 @@ mod tests {
         let new_height = resize_with_aspect_lock(0.0, 50.0, 200.0);
         assert!((new_height - 200.0).abs() < TOLERANCE);
     }
+
+    // ============== GEO-026: Nested Container Bounds Propagation ==============
+
+    // Import the functions to test
+    use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat};
+    use crate::models::projection::ops::node_ops::{
+        compute_bounding_box, find_all_descendants, find_direct_children, get_parent_containers,
+        propagate_bounds_to_ancestors, recompute_container_bounds, CONTAINER_PADDING,
+    };
+    use im::HashMap as ImHashMap;
+
+    fn make_test_node(
+        id: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        parent: Option<NodeId>,
+    ) -> (NodeId, Node) {
+        let node_id = NodeId::new(id.to_string());
+        let node = Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: id.to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(width),
+            height: OrderedFloat(height),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: ImHashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        };
+        (node_id, node)
+    }
+
+    fn make_test_subgraph(
+        id: &str,
+        x: f64,
+        y: f64,
+        width: f64,
+        height: f64,
+        parent: Option<NodeId>,
+    ) -> (NodeId, Node) {
+        let node_id = NodeId::new(id.to_string());
+        let node = Node {
+            kind: NodeKind::Subgraph,
+            icon: String::new(),
+            label: id.to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(width),
+            height: OrderedFloat(height),
+            font_size: None,
+            font_weight: None,
+            locked: true,
+            parent,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: ImHashMap::new(),
+            z_index: -1,
+            style: Some(crate::models::document::NodeStyle::Box),
+            collapsed: Some(false),
+        };
+        (node_id, node)
+    }
+
+    #[test]
+    fn test_find_direct_children() {
+        // Given: a container with children
+        let container_id = NodeId::new("container".to_string());
+        let child1_id = NodeId::new("child1".to_string());
+        let child2_id = NodeId::new("child2".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new()
+            .update(
+                container_id.clone(),
+                make_test_subgraph("container", 0.0, 0.0, 100.0, 100.0, None).1,
+            )
+            .update(
+                child1_id.clone(),
+                make_test_node("child1", 10.0, 10.0, 20.0, 20.0, Some(container_id.clone())).1,
+            )
+            .update(
+                child2_id.clone(),
+                make_test_node("child2", 50.0, 50.0, 30.0, 30.0, Some(container_id.clone())).1,
+            );
+
+        // When: finding direct children
+        let children = find_direct_children(&nodes, &container_id);
+
+        // Then: should find both children
+        assert_eq!(children.len(), 2);
+        assert!(children.contains(&child1_id));
+        assert!(children.contains(&child2_id));
+    }
+
+    #[test]
+    fn test_find_all_descendants_nested() {
+        // Given: nested containers
+        let outer_id = NodeId::new("outer".to_string());
+        let inner_id = NodeId::new("inner".to_string());
+        let child_id = NodeId::new("child".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new()
+            .update(
+                outer_id.clone(),
+                make_test_subgraph("outer", 0.0, 0.0, 200.0, 200.0, None).1,
+            )
+            .update(
+                inner_id.clone(),
+                make_test_subgraph("inner", 50.0, 50.0, 100.0, 100.0, Some(outer_id.clone())).1,
+            )
+            .update(
+                child_id.clone(),
+                make_test_node("child", 60.0, 60.0, 20.0, 20.0, Some(inner_id.clone())).1,
+            );
+
+        // When: finding all descendants of outer
+        let descendants = find_all_descendants(&nodes, &outer_id);
+
+        // Then: should find inner and child
+        assert_eq!(descendants.len(), 2);
+        assert!(descendants.contains(&inner_id));
+        assert!(descendants.contains(&child_id));
+    }
+
+    #[test]
+    fn test_compute_bounding_box() {
+        // Given: multiple nodes
+        let child1_id = NodeId::new("child1".to_string());
+        let child2_id = NodeId::new("child2".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new()
+            .update(
+                child1_id.clone(),
+                make_test_node("child1", 10.0, 10.0, 20.0, 20.0, None).1,
+            )
+            .update(
+                child2_id.clone(),
+                make_test_node("child2", 50.0, 50.0, 30.0, 30.0, None).1,
+            );
+
+        // When: computing bounding box
+        let bounds: Option<(f64, f64, f64, f64)> =
+            compute_bounding_box(&nodes, &[child1_id.clone(), child2_id.clone()]);
+
+        // Then: should return correct bounds
+        assert!(bounds.is_some());
+        let (min_x, min_y, max_x, max_y) = bounds.unwrap();
+        assert!((min_x - 10.0).abs() < TOLERANCE);
+        assert!((min_y - 10.0).abs() < TOLERANCE);
+        assert!((max_x - 80.0).abs() < TOLERANCE); // 50 + 30
+        assert!((max_y - 80.0).abs() < TOLERANCE); // 50 + 30
+    }
+
+    #[test]
+    fn test_recompute_container_bounds_single_child() {
+        // Given: a container with a single child
+        let container_id = NodeId::new("container".to_string());
+        let child_id = NodeId::new("child".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new()
+            .update(
+                container_id.clone(),
+                make_test_subgraph("container", 0.0, 0.0, 100.0, 100.0, None).1,
+            )
+            .update(
+                child_id.clone(),
+                make_test_node("child", 20.0, 20.0, 30.0, 30.0, Some(container_id.clone())).1,
+            );
+
+        // When: recomputing container bounds
+        let updated = recompute_container_bounds(&nodes, &container_id);
+
+        // Then: container should expand to encompass child with padding
+        assert!(updated.is_some());
+        let container = updated.unwrap();
+        // Child is at (20,20) with size (30,30), so child extends to (50, 50)
+        // Container should be at (20 - padding, 20 - padding) with size (30 + 2*padding, 30 + 2*padding)
+        assert!((container.x.0 - (20.0 - CONTAINER_PADDING)).abs() < TOLERANCE);
+        assert!((container.y.0 - (20.0 - CONTAINER_PADDING)).abs() < TOLERANCE);
+        assert!((container.width.0 - (30.0 + 2.0 * CONTAINER_PADDING)).abs() < TOLERANCE);
+        assert!((container.height.0 - (30.0 + 2.0 * CONTAINER_PADDING)).abs() < TOLERANCE);
+    }
+
+    #[test]
+    fn test_get_parent_containers() {
+        // Given: nested containers
+        let outer_id = NodeId::new("outer".to_string());
+        let inner_id = NodeId::new("inner".to_string());
+        let child_id = NodeId::new("child".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new()
+            .update(
+                outer_id.clone(),
+                make_test_subgraph("outer", 0.0, 0.0, 200.0, 200.0, None).1,
+            )
+            .update(
+                inner_id.clone(),
+                make_test_subgraph("inner", 50.0, 50.0, 100.0, 100.0, Some(outer_id.clone())).1,
+            )
+            .update(
+                child_id.clone(),
+                make_test_node("child", 60.0, 60.0, 20.0, 20.0, Some(inner_id.clone())).1,
+            );
+
+        // When: getting parent containers
+        let parents = get_parent_containers(&nodes, &child_id);
+
+        // Then: should find both inner and outer (closest first)
+        assert_eq!(parents.len(), 2);
+        assert_eq!(parents[0], inner_id);
+        assert_eq!(parents[1], outer_id);
+    }
+
+    #[test]
+    fn test_propagate_bounds_to_ancestors() {
+        // Given: nested containers with a child
+        let outer_id = NodeId::new("outer".to_string());
+        let inner_id = NodeId::new("inner".to_string());
+        let child_id = NodeId::new("child".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new()
+            .update(
+                outer_id.clone(),
+                make_test_subgraph("outer", 0.0, 0.0, 50.0, 50.0, None).1,
+            )
+            .update(
+                inner_id.clone(),
+                make_test_subgraph("inner", 0.0, 0.0, 40.0, 40.0, Some(outer_id.clone())).1,
+            )
+            .update(
+                child_id.clone(),
+                make_test_node("child", 5.0, 5.0, 10.0, 10.0, Some(inner_id.clone())).1,
+            );
+
+        // When: propagating bounds after child move
+        let new_nodes = propagate_bounds_to_ancestors(nodes, &child_id);
+
+        // Then: both containers should have updated bounds
+        let inner = new_nodes.get(&inner_id).unwrap();
+        let outer = new_nodes.get(&outer_id).unwrap();
+
+        // Inner should encompass child at (5,5) to (15,15) with padding
+        assert!(inner.x.0 < 5.0);
+        assert!(inner.y.0 < 5.0);
+
+        // Outer should encompass inner with padding
+        assert!(outer.x.0 < inner.x.0);
+        assert!(outer.y.0 < inner.y.0);
+    }
+
+    #[test]
+    fn test_propagate_bounds_no_parent() {
+        // Given: a node without parent
+        let node_id = NodeId::new("orphan".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new().update(
+            node_id.clone(),
+            make_test_node("orphan", 10.0, 10.0, 20.0, 20.0, None).1,
+        );
+
+        // When: propagating bounds for node without parent
+        let new_nodes = propagate_bounds_to_ancestors(nodes, &node_id);
+
+        // Then: nodes should remain unchanged (no containers to update)
+        assert_eq!(new_nodes.len(), 1);
+    }
+
+    #[test]
+    fn test_recompute_container_bounds_empty() {
+        // Given: an empty container
+        let container_id = NodeId::new("empty_container".to_string());
+
+        let nodes: ImHashMap<NodeId, Node> = im::HashMap::new().update(
+            container_id.clone(),
+            make_test_subgraph("empty_container", 0.0, 0.0, 100.0, 100.0, None).1,
+        );
+
+        // When: recomputing bounds for empty container
+        let updated = recompute_container_bounds(&nodes, &container_id);
+
+        // Then: should return original container (keeps current bounds)
+        assert!(updated.is_some());
+    }
 }
