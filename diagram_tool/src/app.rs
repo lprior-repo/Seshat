@@ -28,6 +28,8 @@ use crate::ui::ValidationPanel;
 use auto_save::AUTO_SAVE_KEY;
 use dioxus::prelude::*;
 use std::collections::HashMap;
+#[cfg(feature = "async-db")]
+use futures_util::stream::StreamExt;
 
 const VALIDATION_IDLE_MS: u64 = 220;
 
@@ -81,6 +83,77 @@ pub fn App() -> Element {
     let sidebar_ui = use_context::<Signal<SidebarUiState>>();
     let panels = use_context::<Signal<PanelVisibility>>();
     let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
+
+    #[cfg(feature = "async-db")]
+    let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
+
+    #[cfg(feature = "async-db")]
+    let store_bridge_tx = store_bridge.clone();
+    #[cfg(feature = "async-db")]
+    let db_tx = use_coroutine({
+        let store_bridge_tx = store_bridge_tx.clone();
+        move |mut rx: UnboundedReceiver<crate::models::envelope::EventEnvelope>| {
+            let store_bridge = store_bridge_tx.clone();
+            async move {
+                while let Some(env) = rx.next().await {
+                    let _ = store_bridge.append_event_sync(&env, None);
+                }
+            }
+        }
+    });
+
+    #[cfg(feature = "async-db")]
+    use_context_provider(|| db_tx);
+
+    #[cfg(feature = "async-db")]
+    let last_sync_revision = use_signal(|| 0_i64);
+
+    #[cfg(feature = "async-db")]
+    use_future(move || {
+        let store_bridge = store_bridge.clone();
+        let mut doc_signal = doc_signal.clone();
+        let mut last_sync_revision = last_sync_revision.clone();
+        async move {
+            loop {
+                tokio::time::sleep(std::time::Duration::from_millis(500)).await;
+                let current_rev = *last_sync_revision.read();
+                if let Ok(events) = store_bridge.fetch_events_since_sync(current_rev) {
+                    if !events.is_empty() {
+                        let mut next_rev = current_rev;
+                        doc_signal.with_mut(|doc| {
+                            for event in events {
+                                next_rev = next_rev.max(event.revision);
+                                if let Ok(envelope) = crate::models::envelope::parse_event_envelope(&event.payload) {
+                                    let proj_event = crate::models::projection::EventRecord {
+                                        op_id: event.op_id.clone(),
+                                        revision: doc.revision.value(),
+                                        operation: envelope.operation,
+                                        author: envelope.author,
+                                        timestamp: event.timestamp,
+                                    };
+                                    let proj = crate::models::projection::DiagramProjection {
+                                        version: doc.version,
+                                        revision: doc.revision.value(),
+                                        nodes: doc.document.nodes.clone(),
+                                        edges: doc.document.edges.clone(),
+                                        author_priority: im::HashMap::new(),
+                                        cycle_policy: crate::models::projection::CyclePolicy::default(),
+                                    };
+                                    if let Ok(new_proj) = crate::models::projection::apply_event(proj, &proj_event) {
+                                        doc.document.nodes = new_proj.nodes;
+                                        doc.document.edges = new_proj.edges;
+                                        doc.revision = crate::models::document::Revision::new(new_proj.revision);
+                                        doc.version = new_proj.version;
+                                    }
+                                }
+                            }
+                        });
+                        last_sync_revision.set(next_rev);
+                    }
+                }
+            }
+        }
+    });
 
     // Multi-Diagram State
     let mut active_tab_id = use_signal(|| "default".to_string());

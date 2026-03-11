@@ -23,16 +23,10 @@ pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AAB
         return Err(BoundsError::InvalidCoordinate);
     }
 
-    let (final_min_x, final_max_x) = if min_x <= max_x {
-        (min_x, max_x)
-    } else {
-        (max_x, min_x)
-    };
-    let (final_min_y, final_max_y) = if min_y <= max_y {
-        (min_y, max_y)
-    } else {
-        (max_y, min_y)
-    };
+    let final_min_x = min_x.min(max_x);
+    let final_max_x = min_x.max(max_x);
+    let final_min_y = min_y.min(max_y);
+    let final_max_y = min_y.max(max_y);
 
     Ok(AABB::new(
         final_min_x,
@@ -78,7 +72,9 @@ pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
             points: vec![from, to],
         }
     } else {
-        let mid = Point::new(to.x, from.y);
+        // EDG-031 FIX: Use symmetric corner - min x, max y
+        // This ensures swapping source/target produces reversed path, not different geometry
+        let mid = Point::new(from.x.min(to.x), from.y.max(to.y));
         OrthogonalRoute {
             points: vec![from, mid, to],
         }

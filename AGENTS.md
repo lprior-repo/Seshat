@@ -142,7 +142,7 @@ Certain test files are CONTRACT TESTS and MUST NEVER be overwritten:
 |------|------|----------|
 | `diagram_tool/src/models/io_tests.rs` | seshat-4uc | IO-001 to IO-015 |
 | `diagram_tool/src/test_infrastructure_tests.rs` | seshat-wcb | P1-P4, Q1-Q3 |
-| `diagram_tool/src/geometry/mod.rs` (tests) | seshat-pnn | GEO-001 to GEO-030 |
+| `diagram_tool/src/geometry/**/*.rs` (tests) | seshat-pnn | GEO-001 to GEO-030 |
 
 **RULE**: Before modifying ANY test file, check `.beads/TEST_PROTECTION.md`
 
@@ -150,7 +150,7 @@ Certain test files are CONTRACT TESTS and MUST NEVER be overwritten:
 # Verify protected tests exist
 test -f diagram_tool/src/models/io_tests.rs
 test -f diagram_tool/src/test_infrastructure_tests.rs
-grep -q "GEO-0" diagram_tool/src/geometry/mod.rs
+grep -r "GEO-0" diagram_tool/src/geometry/ | wc -l
 ```
 
 **DO NOT**: Delete, replace, merge, or "clean up" protected test files without explicit permission.

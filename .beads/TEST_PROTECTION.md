@@ -19,7 +19,7 @@ Before modifying, deleting, or overwriting ANY test file, you MUST verify the ex
 - **Created**: 2026-03-06
 
 ### 3. Geometry Tests (GEO-001 to GEO-030)
-- **File**: `diagram_tool/src/geometry/mod.rs` (tests section)
+- **File**: `diagram_tool/src/geometry/**/*.rs` (tests)
 - **Bead**: seshat-pnn
 - **Tests**: GEO-001 through GEO-030 (30 test categories, 225+ individual tests)
 - **Purpose**: Contract tests for geometry math operations
@@ -37,7 +37,7 @@ test -f diagram_tool/src/models/io_tests.rs && wc -l diagram_tool/src/models/io_
 test -f diagram_tool/src/test_infrastructure_tests.rs && wc -l diagram_tool/src/test_infrastructure_tests.rs
 
 # Verify geometry tests exist (look for GEO markers)
-grep -c "GEO-0" diagram_tool/src/geometry/mod.rs
+grep -r "GEO-0" diagram_tool/src/geometry/ | wc -l
 ```
 
 ## Rule: DO NOT OVERWRITE

@@ -379,6 +379,7 @@ fn flush_pending_pointer_update(
     mut history_signal: Signal<History>,
     mut interaction_mode: Signal<InteractionMode>,
     mut pending_pointer_sample: Signal<Option<(f64, f64)>>,
+    db_tx: Option<dioxus::prelude::Coroutine<crate::models::envelope::EventEnvelope>>,
 ) {
     let pending = pending_pointer_sample.read().as_ref().copied();
     let Some((client_x, client_y)) = pending else {
@@ -454,6 +455,22 @@ fn flush_pending_pointer_update(
                                     },
                                     id.clone(),
                                 );
+                                if let Some(tx) = &db_tx {
+                                    tx.send(crate::models::envelope::EventEnvelope {
+                                        op_id: uuid::Uuid::new_v4().to_string(),
+                                        operation: crate::models::envelope::DomainOp::NodeMove {
+                                            id: id.to_string(),
+                                            x: *nx,
+                                            y: *ny,
+                                        },
+                                        author: crate::models::envelope::Author {
+                                            id: "local-user".to_string(),
+                                            name: "Local User".to_string(),
+                                            email: None,
+                                        },
+                                        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64,
+                                    });
+                                }
                             }
                         }
                     });
@@ -652,6 +669,7 @@ pub fn Canvas() -> Element {
     let mut canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let mut ordered_node_cache = use_signal(Vec::<NodeId>::new);
     let mut ordered_node_revision = use_signal(|| Option::<Revision>::None);
+    let db_tx = use_context::<Option<Coroutine<crate::models::envelope::EventEnvelope>>>();
 
     use_effect(move || {
         let doc = doc_signal.read();
@@ -967,6 +985,7 @@ pub fn Canvas() -> Element {
             ",
         );
 
+        let db_tx = db_tx.clone();
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 if json["type"].as_str() == Some("raf") {
@@ -976,6 +995,7 @@ pub fn Canvas() -> Element {
                             history_signal,
                             interaction_mode,
                             pending_pointer_sample,
+                            db_tx.clone(),
                         );
                     }
                     if pending_wheel_sample.read().is_some() {
@@ -1380,6 +1400,7 @@ pub fn Canvas() -> Element {
                         history_signal,
                         interaction_mode,
                         pending_pointer_sample,
+                        db_tx.clone(),
                     );
 
                     interaction_mode.with_mut(|mode| match mode {
@@ -1953,6 +1974,7 @@ pub fn Canvas() -> Element {
                     history_signal,
                     interaction_mode,
                     pending_pointer_sample,
+                    db_tx.clone(),
                 );
                 interaction_mode.with_mut(|mode| {
                     match mode {
@@ -2503,6 +2525,7 @@ pub fn Canvas() -> Element {
                                     history_signal,
                                     interaction_mode,
                                     pending_pointer_sample,
+                                    db_tx.clone(),
                                 );
                                 let mode = interaction_mode.read().clone();
                                 match mode {

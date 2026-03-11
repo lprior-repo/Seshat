@@ -1373,6 +1373,7 @@ dependencies = [
  "dioxus",
  "dirs 5.0.1",
  "fs2",
+ "futures-util",
  "getrandom 0.3.4",
  "im",
  "image",

@@ -1558,7 +1558,7 @@ mod tests {
     #[test]
     fn given_clipboard_with_empty_nodes_when_paste_then_returns_false() {
         crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
-        let mut doc = DiagramDocument::default();
+        let doc = DiagramDocument::default();
         let node_count_before = doc.document.nodes.len();
 
         // Set clipboard with empty nodes vector
@@ -2385,7 +2385,7 @@ mod tests {
             )
             // Inner subgraph inside outer
             .update(inner_id.clone(), {
-                let mut n =
+                let n =
                     make_subgraph_node("inner", 100.0, 100.0, 350.0, 250.0, Some(outer_id.clone()));
                 n
             })

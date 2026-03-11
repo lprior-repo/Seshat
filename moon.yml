@@ -76,10 +76,16 @@ tasks:
     script: |
       /usr/bin/cargo clippy --lib --bins --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -F unsafe_code
 
+  arch-audit:
+    script: |
+      ./scripts/enforce_file_lengths.sh
+      ./scripts/enforce_boundaries.sh
+
   ci-source:
     script: |
       moon run :fmt
       moon run :clippy-source
+      moon run :arch-audit
       moon run :test-rust
 
   fmt:

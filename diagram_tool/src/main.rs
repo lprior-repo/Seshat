@@ -59,7 +59,15 @@ fn main() {
         }
     }
 
-    dioxus::LaunchBuilder::new()
-        .with_context(server_only! { ServeConfig::builder() })
-        .launch(App);
+    let mut builder = dioxus::LaunchBuilder::new()
+        .with_context(server_only! { ServeConfig::builder() });
+
+    #[cfg(feature = "async-db")]
+    {
+        let db_path = std::path::PathBuf::from("diagram.db");
+        let bridge = std::sync::Arc::new(crate::store_bridge::StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn async pool"));
+        builder = builder.with_context(bridge);
+    }
+
+    builder.launch(App);
 }
