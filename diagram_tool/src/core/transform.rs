@@ -1,5 +1,5 @@
 use crate::geometry::operations::compute_subgraph_bounds;
-use crate::models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -8,6 +8,8 @@ pub enum TransformError {
     EmptySelection,
     #[error("Locked nodes cannot be transformed: {0}")]
     LockedNode(NodeId),
+    #[error("Translation delta is not a finite number")]
+    InvalidDelta,
 }
 
 pub enum AlignmentAxis {
@@ -211,6 +213,67 @@ pub fn distribute_selection(
     }
 
     // Recompute container bounds after distribution (GEO-025)
+    let _ = recompute_container_bounds(doc, &transformed_ids);
+
+    Ok(())
+}
+
+/// Translates selected nodes by `dx` and `dy`.
+///
+/// # Errors
+///
+/// Returns `TransformError::InvalidDelta` if `dx` or `dy` is not finite.
+/// Returns `TransformError::EmptySelection` if no nodes are selected.
+/// Returns `TransformError::LockedNode` if any selected node is locked.
+pub fn translate_selection(
+    doc: &mut DiagramDocument,
+    dx: f64,
+    dy: f64,
+) -> Result<(), TransformError> {
+    if !dx.is_finite() || !dy.is_finite() {
+        return Err(TransformError::InvalidDelta);
+    }
+
+    if doc.editor_state.selected_items.is_empty() {
+        return Err(TransformError::EmptySelection);
+    }
+
+    let transformed_ids: Vec<NodeId> = doc
+        .editor_state
+        .selected_items
+        .iter()
+        .map(|id_str| NodeId::new(id_str.clone()))
+        .collect();
+
+    let locked_node = transformed_ids.iter().find(|id| {
+        doc.document
+            .nodes
+            .get(*id)
+            .map_or(false, |node| node.locked)
+    });
+
+    if let Some(id) = locked_node {
+        return Err(TransformError::LockedNode(id.clone()));
+    }
+
+    doc.document.nodes = transformed_ids
+        .iter()
+        .fold(doc.document.nodes.clone(), |nodes, id| {
+            nodes.get(id).map_or_else(
+                || nodes.clone(),
+                |node| {
+                    nodes.update(
+                        id.clone(),
+                        Node {
+                            x: OrderedFloat::new_unchecked(node.x.0 + dx),
+                            y: OrderedFloat::new_unchecked(node.y.0 + dy),
+                            ..node.clone()
+                        },
+                    )
+                },
+            )
+        });
+
     let _ = recompute_container_bounds(doc, &transformed_ids);
 
     Ok(())
