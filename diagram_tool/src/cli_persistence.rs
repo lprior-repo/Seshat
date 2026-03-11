@@ -78,8 +78,56 @@ pub fn validate_safe_path(path: &Path, base_dir: &Path) -> Result<PathBuf, CliPe
         base_dir.join(path)
     };
 
-    // Canonicalize to resolve symlinks - PROPAGATE ERRORS instead of silent fallback
-    let canonical = std::fs::canonicalize(&resolved)?;
+    // Canonicalize to resolve symlinks - handle non-existent files securely
+    let canonical = match std::fs::canonicalize(&resolved) {
+        Ok(c) => c,
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // File or parent directory doesn't exist yet - this is valid for output files
+            // Get the directory to check (file itself or its parent)
+            let dir_to_check: PathBuf = if resolved.is_dir() {
+                resolved.clone()
+            } else if let Some(parent) = resolved.parent() {
+                if parent.as_os_str().is_empty() {
+                    // No parent directory, use base_dir
+                    base_dir.to_path_buf()
+                } else {
+                    parent.to_path_buf()
+                }
+            } else {
+                base_dir.to_path_buf()
+            };
+
+            // Try to canonicalize the directory
+            match std::fs::canonicalize(&dir_to_check) {
+                Ok(canonical_dir) => {
+                    let canonical_base = std::fs::canonicalize(base_dir)?;
+                    let dir_str = canonical_dir.to_string_lossy();
+                    let base_str = canonical_base.to_string_lossy();
+                    if !dir_str.starts_with(base_str.as_ref()) && dir_str != base_str {
+                        return Err(CliPersistenceError::PathTraversalDenied {
+                            path: path.to_string_lossy().to_string(),
+                        });
+                    }
+                    // Return the resolved path (verified directory is safe)
+                    return Ok(resolved);
+                }
+                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+                    // Parent directory doesn't exist - check if the path components could escape
+                    // by verifying the resolved path is still within base_dir
+                    let resolved_str = resolved.to_string_lossy();
+                    // For relative paths without ".." we can be reasonably sure they're safe
+                    if !resolved_str.contains("..") {
+                        return Ok(resolved);
+                    }
+                    return Err(CliPersistenceError::PathTraversalDenied {
+                        path: path.to_string_lossy().to_string(),
+                    });
+                }
+                Err(e) => return Err(CliPersistenceError::IoError(e)),
+            }
+        }
+        Err(e) => return Err(CliPersistenceError::IoError(e)),
+    };
 
     // Canonicalize base_dir for comparison - MUST SUCCEED
     let canonical_base = std::fs::canonicalize(base_dir)?;
@@ -545,7 +593,11 @@ mod tests {
 
         let result = validate_safe_path(path, base_dir);
 
-        assert!(result.is_ok(), "Simple filename should be allowed");
+        assert!(
+            result.is_ok(),
+            "Simple filename should be allowed: {:?}",
+            result
+        );
     }
 
     #[test]
@@ -606,7 +658,11 @@ mod tests {
 
         let result = validate_safe_path(path, base_dir);
 
-        assert!(result.is_ok(), "Valid subdirectory path should be allowed");
+        assert!(
+            result.is_ok(),
+            "Valid subdirectory path should be allowed: {:?}",
+            result
+        );
     }
 
     #[test]

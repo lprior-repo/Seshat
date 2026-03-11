@@ -13,6 +13,9 @@ use im::HashMap;
 use regex_lite::Regex;
 use serde::{Deserialize, Serialize};
 
+#[cfg(feature = "async-db")]
+use tokio::runtime::Runtime;
+
 use crate::{
     cli_persistence::{
         emit_stage_event, load_workspace_with_lkg, save_workspace_atomic, validate_safe_path,
@@ -92,6 +95,87 @@ pub enum Commands {
         format: String,
         #[arg(long)]
         output: String,
+    },
+    // Database commands
+    DbInit {
+        #[arg(long)]
+        path: String,
+    },
+    DbStatus {
+        #[arg(long)]
+        path: String,
+    },
+    DbRevision {
+        #[arg(long)]
+        path: String,
+    },
+    DbEvents {
+        #[arg(long)]
+        path: String,
+        #[arg(long, default_value_t = 0)]
+        since: i64,
+    },
+    DbConflictDiff {
+        #[arg(long)]
+        path: String,
+        #[arg(long)]
+        assumed_revision: i64,
+    },
+    // Operation commands
+    OpStart {
+        #[arg(long)]
+        path: String,
+        #[arg(long)]
+        operation_id: String,
+        #[arg(long)]
+        total_steps: u32,
+        #[arg(long)]
+        author_id: String,
+        #[arg(long)]
+        description: String,
+    },
+    OpStatus {
+        #[arg(long)]
+        path: String,
+        #[arg(long)]
+        operation_id: String,
+    },
+    OpList {
+        #[arg(long)]
+        path: String,
+        #[arg(long, default_value_t = String::from("in_progress"))]
+        state: String,
+    },
+    OpComplete {
+        #[arg(long)]
+        path: String,
+        #[arg(long)]
+        operation_id: String,
+    },
+    OpFail {
+        #[arg(long)]
+        path: String,
+        #[arg(long)]
+        operation_id: String,
+        #[arg(long)]
+        error: String,
+    },
+    // Outbox commands
+    OutboxList {
+        #[arg(long)]
+        path: String,
+        #[arg(long, default_value_t = 10)]
+        limit: u32,
+    },
+    OutboxAdd {
+        #[arg(long)]
+        path: String,
+        #[arg(long)]
+        id: String,
+        #[arg(long)]
+        side_effect_type: String,
+        #[arg(long)]
+        payload: String,
     },
 }
 
@@ -174,6 +258,18 @@ fn command_name(cmd: &Commands) -> String {
         Commands::Apply { .. } => String::from("apply"),
         Commands::Export { .. } => String::from("export"),
         Commands::Import { .. } => String::from("import"),
+        Commands::DbInit { .. } => String::from("db_init"),
+        Commands::DbStatus { .. } => String::from("db_status"),
+        Commands::DbRevision { .. } => String::from("db_revision"),
+        Commands::DbEvents { .. } => String::from("db_events"),
+        Commands::DbConflictDiff { .. } => String::from("db_conflict_diff"),
+        Commands::OpStart { .. } => String::from("op_start"),
+        Commands::OpStatus { .. } => String::from("op_status"),
+        Commands::OpList { .. } => String::from("op_list"),
+        Commands::OpComplete { .. } => String::from("op_complete"),
+        Commands::OpFail { .. } => String::from("op_fail"),
+        Commands::OutboxList { .. } => String::from("outbox_list"),
+        Commands::OutboxAdd { .. } => String::from("outbox_add"),
     }
 }
 
@@ -790,6 +886,319 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     .with_path(Path::new(output))
                     .with_code("success"),
             );
+        }
+        // Database commands
+        Commands::DbInit { path } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            runtime.block_on(async {
+                use crate::store_durable::bootstrap_durable_store;
+                use crate::store_durable::DurableConfig;
+                bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!("Database initialized at {}", path);
+        }
+        Commands::DbStatus { path } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let status = runtime.block_on(async {
+                use crate::store_async::bootstrap_async_store;
+                use crate::store_async::read_store_pragmas_async;
+                let bootstrap = bootstrap_async_store(db_path)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                let pragmas = read_store_pragmas_async(&bootstrap.pool)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                Ok::<_, anyhow::Error>(pragmas)
+            })?;
+            println!(
+                "{}",
+                serde_json::json!({
+                    "path": path,
+                    "schema_version": 2,
+                    "journal_mode": status.journal_mode,
+                    "synchronous": status.synchronous,
+                    "wal_autocheckpoint": status.wal_autocheckpoint,
+                    "foreign_keys": status.foreign_keys,
+                    "busy_timeout": status.busy_timeout,
+                })
+            );
+        }
+        Commands::DbRevision { path } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let revision = runtime.block_on(async {
+                use crate::store_async::{bootstrap_async_store, fetch_latest_revision};
+                let bootstrap = bootstrap_async_store(db_path)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                fetch_latest_revision(&bootstrap.pool)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!("{}", revision);
+        }
+        Commands::DbEvents { path, since } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let events = runtime.block_on(async {
+                use crate::store_async::{bootstrap_async_store, fetch_events_since};
+                let bootstrap = bootstrap_async_store(db_path)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                fetch_events_since(&bootstrap.pool, *since)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            for event in events {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "op_id": event.op_id,
+                        "revision": event.revision,
+                        "timestamp": event.timestamp,
+                    })
+                );
+            }
+        }
+        Commands::DbConflictDiff {
+            path,
+            assumed_revision,
+        } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let diff = runtime.block_on(async {
+                use crate::store_durable::generate_conflict_diff;
+                use crate::store_async::create_async_pool;
+                let pool = create_async_pool(db_path)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                generate_conflict_diff(&pool, *assumed_revision)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!(
+                "{}",
+                serde_json::json!({
+                    "assumed_revision": diff.assumed_revision,
+                    "actual_revision": diff.actual_revision,
+                    "changes_count": diff.changes.len(),
+                    "first_change_timestamp": diff.first_change_timestamp,
+                    "first_change_author": diff.first_change_author,
+                })
+            );
+        }
+        // Operation commands
+        Commands::OpStart {
+            path,
+            operation_id,
+            total_steps,
+            author_id,
+            description,
+        } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            runtime.block_on(async {
+                use crate::store::types::OperationState;
+                use crate::store_durable::{start_operation, bootstrap_durable_store, DurableConfig};
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|e| anyhow!(e.to_string()))?
+                    .as_secs() as i64;
+                start_operation(
+                    &bootstrap.pool,
+                    operation_id.clone(),
+                    *total_steps,
+                    author_id.clone(),
+                    description.clone(),
+                    timestamp,
+                )
+                .await
+                .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!("Operation {} started", operation_id);
+        }
+        Commands::OpStatus {
+            path,
+            operation_id,
+        } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let op = runtime.block_on(async {
+                use crate::store_durable::{get_operation, bootstrap_durable_store, DurableConfig};
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                get_operation(&bootstrap.pool, operation_id)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!(
+                "{}",
+                serde_json::json!({
+                    "operation_id": op.operation_id,
+                    "state": op.state.as_str(),
+                    "current_step": op.current_step,
+                    "total_steps": op.total_steps,
+                    "started_at": op.started_at,
+                    "completed_at": op.completed_at,
+                    "final_revision": op.final_revision,
+                    "error_message": op.error_message,
+                })
+            );
+        }
+        Commands::OpList { path, state } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let ops = runtime.block_on(async {
+                use crate::store::types::OperationState;
+                use crate::store_durable::{get_operations_by_state, bootstrap_durable_store, DurableConfig};
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                let op_state = OperationState::from_str(state)
+                    .ok_or_else(|| anyhow!("Invalid state: {}", state))?;
+                get_operations_by_state(&bootstrap.pool, op_state)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            for op in ops {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "operation_id": op.operation_id,
+                        "state": op.state.as_str(),
+                        "current_step": op.current_step,
+                        "total_steps": op.total_steps,
+                    })
+                );
+            }
+        }
+        Commands::OpComplete {
+            path,
+            operation_id,
+        } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            runtime.block_on(async {
+                use crate::store::types::OperationState;
+                use crate::store_durable::{update_operation_state, bootstrap_durable_store, DurableConfig};
+                use crate::store_async::fetch_latest_revision;
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                let revision = fetch_latest_revision(&bootstrap.pool)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                update_operation_state(
+                    &bootstrap.pool,
+                    operation_id,
+                    OperationState::Completed,
+                    None,
+                    Some(revision),
+                    None,
+                )
+                .await
+                .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!("Operation {} completed", operation_id);
+        }
+        Commands::OpFail {
+            path,
+            operation_id,
+            error,
+        } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            runtime.block_on(async {
+                use crate::store::types::OperationState;
+                use crate::store_durable::{update_operation_state, bootstrap_durable_store, DurableConfig};
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                update_operation_state(
+                    &bootstrap.pool,
+                    operation_id,
+                    OperationState::Failed,
+                    None,
+                    None,
+                    Some(error.clone()),
+                )
+                .await
+                .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!("Operation {} failed: {}", operation_id, error);
+        }
+        // Outbox commands
+        Commands::OutboxList { path, limit } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            let entries = runtime.block_on(async {
+                use crate::store_durable::{get_pending_outbox, bootstrap_durable_store, DurableConfig};
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                get_pending_outbox(&bootstrap.pool, *limit)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            for entry in entries {
+                println!(
+                    "{}",
+                    serde_json::json!({
+                        "id": entry.id,
+                        "side_effect_type": entry.side_effect_type.as_str(),
+                        "status": entry.status.as_str(),
+                        "retry_count": entry.retry_count,
+                        "max_retries": entry.max_retries,
+                        "created_at": entry.created_at,
+                    })
+                );
+            }
+        }
+        Commands::OutboxAdd {
+            path,
+            id,
+            side_effect_type,
+            payload,
+        } => {
+            let db_path = Path::new(path);
+            let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
+            runtime.block_on(async {
+                use crate::store::types::SideEffectType;
+                use crate::store_durable::{add_outbox_entry, bootstrap_durable_store, DurableConfig};
+                use crate::store_async::fetch_latest_revision;
+                let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                let revision = fetch_latest_revision(&bootstrap.pool)
+                    .await
+                    .map_err(|e| anyhow!(e.to_string()))?;
+                let se_type = SideEffectType::from_str(side_effect_type)
+                    .ok_or_else(|| anyhow!("Invalid side effect type: {}", side_effect_type))?;
+                let timestamp = std::time::SystemTime::now()
+                    .duration_since(std::time::UNIX_EPOCH)
+                    .map_err(|e| anyhow!(e.to_string()))?
+                    .as_secs() as i64;
+                add_outbox_entry(
+                    &bootstrap.pool,
+                    id.clone(),
+                    se_type,
+                    payload.clone(),
+                    revision,
+                    3,
+                    timestamp,
+                )
+                .await
+                .map_err(|e| anyhow!(e.to_string()))
+            })?;
+            println!("Outbox entry {} added", id);
         }
     }
     Ok(())
