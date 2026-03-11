@@ -66,7 +66,7 @@ impl StoreBridge {
     /// Returns an error if the store fails to append the event.
     pub fn append_event_sync(
         &self,
-        envelope: EventEnvelope,
+        envelope: &EventEnvelope,
         expected_revision: Option<i64>,
     ) -> Result<AsyncAppendResult, BridgeError> {
         let pool = self.pool.clone();
@@ -101,7 +101,7 @@ impl StoreBridge {
     /// Returns an error if the store is not initialized or the append fails.
     pub fn append_batch_sync(
         &self,
-        ops: Vec<EventEnvelope>,
+        ops: &[EventEnvelope],
         expected_revision: Option<i64>,
     ) -> Result<AsyncBatchAppendResult, BridgeError> {
         let pool = self.pool.clone();
@@ -239,7 +239,7 @@ mod tests {
         };
 
         let result = bridge
-            .append_event_sync(envelope, None)
+            .append_event_sync(&envelope, None)
             .expect("Failed to append");
         assert_eq!(result.revision, 1);
 
@@ -272,7 +272,7 @@ mod tests {
         };
 
         bridge
-            .append_event_sync(envelope, None)
+            .append_event_sync(&envelope, None)
             .expect("Failed to append");
 
         let events = bridge.fetch_events_since_sync(0).expect("Failed to fetch");
@@ -329,7 +329,7 @@ mod tests {
         };
 
         let result = bridge
-            .append_batch_sync(vec![envelope1, envelope2], None)
+            .append_batch_sync(&[envelope1, envelope2], None)
             .expect("Failed to append batch");
 
         assert_eq!(result.start_revision, 1);

@@ -711,9 +711,11 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     doc
                 }
                 "dot" => {
-                    let mut doc = DiagramDocument::default();
-                    doc.version = 2;
-                    doc.revision = Revision::new(0);
+                    let mut doc = DiagramDocument {
+                        version: 2,
+                        revision: Revision::new(0),
+                        ..Default::default()
+                    };
 
                     let node_re =
                         Regex::new(r#"^\s*"?(\w+)"?\s*\[.*label\s*=\s*"?([^"\]]+)"?\].*$"#)
@@ -785,9 +787,11 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                     doc
                 }
                 "plantuml" => {
-                    let mut doc = DiagramDocument::default();
-                    doc.version = 2;
-                    doc.revision = Revision::new(0);
+                    let mut doc = DiagramDocument {
+                        version: 2,
+                        revision: Revision::new(0),
+                        ..Default::default()
+                    };
 
                     let node_re = Regex::new(r#"(?:card|rectangle|node)\s+(\w+)\s+as\s+"([^"]+)""#)
                         .map_err(|e| anyhow!("Invalid plantuml node regex: {e}"))?;
@@ -1002,7 +1006,6 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let db_path = Path::new(path);
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             runtime.block_on(async {
-                use crate::store::types::OperationState;
                 use crate::store_durable::{start_operation, bootstrap_durable_store, DurableConfig};
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await

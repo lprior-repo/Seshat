@@ -65,7 +65,7 @@ impl AppConfig {
         if let Ok(synchronous) = std::env::var("DIAGRAM_TOOL_SYNCHRONOUS") {
             // FIXED: Parse with error handling instead of silent fallback
             match synchronous.parse::<i32>() {
-                Ok(val) if val >= 0 && val <= 3 => config.database.synchronous = val,
+                Ok(val) if (0..=3).contains(&val) => config.database.synchronous = val,
                 Ok(val) => {
                     eprintln!(
                         "WARNING: DIAGRAM_TOOL_SYNCHRONOUS={} out of range (0-3), using default 2",

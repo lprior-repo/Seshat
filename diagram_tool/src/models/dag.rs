@@ -20,6 +20,9 @@ pub enum CycleError {
 }
 
 /// Validates that the graph is a DAG using petgraph.
+///
+/// # Errors
+/// Returns an error if the graph contains cycles or disconnected components.
 pub fn validate_dag(
     nodes: &HashMap<NodeId, Node>,
     edges: &HashMap<EdgeId, Edge>,
@@ -53,6 +56,7 @@ fn check_cycles(
     Ok(())
 }
 
+#[allow(dead_code)]
 fn check_connectivity(graph: &DiGraph<NodeId, ()>) -> Result<(), CycleError> {
     let components = connected_components(graph);
     if components > 1 {
@@ -61,7 +65,7 @@ fn check_connectivity(graph: &DiGraph<NodeId, ()>) -> Result<(), CycleError> {
     Ok(())
 }
 
-/// Build a petgraph DiGraph from nodes and edges.
+/// Build a petgraph `DiGraph` from nodes and edges.
 fn build_graph(
     nodes: &HashMap<NodeId, Node>,
     edges: &HashMap<EdgeId, Edge>,

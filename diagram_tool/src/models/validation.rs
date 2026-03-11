@@ -145,10 +145,7 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
             ),
             CycleError::DisconnectedGraph(n) => (
                 "dag-disconnected",
-                &*format!(
-                    "Graph has {} disconnected components — all nodes must be connected",
-                    n
-                ),
+                &*format!("Graph has {n} disconnected components — all nodes must be connected",),
             ),
         };
         ValidationIssue {

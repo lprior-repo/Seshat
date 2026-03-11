@@ -88,7 +88,7 @@ pub fn envelope_to_valid_event(envelope: &EventEnvelope) -> Result<ValidEvent, A
 /// # Errors
 /// Returns an error if any envelope conversion fails or batch bounds are violated.
 pub fn envelope_batch_to_bounded_batch<const MIN: usize, const MAX: usize>(
-    envelopes: Vec<EventEnvelope>,
+    envelopes: &[EventEnvelope],
 ) -> Result<BoundedBatch<MIN, MAX>, AsyncStoreError> {
     let events: Result<Vec<ValidEvent>, _> =
         envelopes.iter().map(envelope_to_valid_event).collect();
@@ -421,7 +421,7 @@ pub async fn append_event_async(
     Ok(AsyncAppendResult {
         revision: new_revision,
         op_id: event.op_id.as_str().to_string(),
-        timestamp: event.timestamp.get() as i64,
+        timestamp: event.timestamp.get().cast_signed(),
     })
 }
 
@@ -495,7 +495,7 @@ pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
         end_revision,
         count: batch_size,
         op_ids,
-        last_timestamp: last_timestamp as i64,
+        last_timestamp: last_timestamp.cast_signed(),
     })
 }
 

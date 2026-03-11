@@ -46,7 +46,8 @@ fn has_feature(content: &str, package: &str, feature: &str) -> bool {
         if let Some(block_start) = rest.find('{') {
             if let Some(block_end) = rest[block_start..].find('}') {
                 let block = &rest[block_start + 1..block_start + block_end];
-                return block.contains(feature);
+                // Check for exact feature match or "full" meta-feature which includes all
+                return block.contains(feature) || block.contains("full");
             }
         }
     }

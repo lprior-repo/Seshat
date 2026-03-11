@@ -14,19 +14,17 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-use serde::{Deserialize, Serialize};
-use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
+use sqlx::SqlitePool;
 use std::path::Path;
 use thiserror::Error;
 
 use crate::store::types::{
-    BoundedBatch, ConflictDiff, DiffDomainOp, EventCursor, EventPage, EventRecord, OperationRecord,
-    OperationState, OutboxRecord, OutboxStatus, Revision, SideEffectType, StepRecord, StepStatus,
-    ValidEvent, ValidOperationId, ValidPayload, ValidTimestamp,
+    ConflictDiff, DiffDomainOp, EventCursor, EventPage, EventRecord, OperationRecord,
+    OperationState, OutboxRecord, OutboxStatus, SideEffectType, StepRecord, StepStatus,
 };
 
 use crate::store_async::{
-    create_async_pool, envelope_to_valid_event, fetch_all_events, fetch_events_since,
+    create_async_pool, fetch_events_since,
     fetch_latest_revision, AsyncStoreError as StoreError,
 };
 
@@ -106,6 +104,7 @@ pub struct DurableStoreBootstrap {
 // =============================================================================
 
 /// Runs schema migration for durable workflow tables
+#[allow(clippy::too_many_lines)]
 pub async fn run_durable_migration(pool: &SqlitePool) -> Result<(), DurableError> {
     // Operations table - tracks multi-step AI operations
     let operations_table_exists: (i32,) = sqlx::query_as(
@@ -313,7 +312,7 @@ pub async fn get_operation(
             description,
         )) => {
             let state = OperationState::from_str(&state_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {}", state_str)))?;
+                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {state_str}")))?;
 
             let current_step_u32 = u32::try_from(current_step)
                 .map_err(|_| DurableError::ValidationFailed("current_step overflow".to_string()))?;
@@ -370,7 +369,8 @@ pub async fn update_operation_state(
                 std::time::SystemTime::now()
                     .duration_since(std::time::UNIX_EPOCH)
                     .map_err(|e| DurableError::ValidationFailed(e.to_string()))?
-                    .as_secs() as i64,
+                    .as_secs()
+                    .cast_signed(),
             )
         }
         _ => None,
@@ -397,6 +397,8 @@ pub async fn update_operation_state(
 }
 
 /// Validates state transitions
+#[allow(clippy::missing_const_for_fn)]
+#[allow(clippy::match_same_arms)]
 fn validate_state_transition(from: OperationState, to: OperationState) -> Result<(), DurableError> {
     match (from, to) {
         // Valid transitions
@@ -543,7 +545,7 @@ pub async fn get_step(
             error_message,
         )) => {
             let status = StepStatus::from_str(&status_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {}", status_str)))?;
+                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
 
             let step_index_u32 = u32::try_from(idx)
                 .map_err(|_| DurableError::ValidationFailed("step_index overflow".to_string()))?;
@@ -608,12 +610,13 @@ pub async fn update_step_status(
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| DurableError::ValidationFailed(e.to_string()))?
-        .as_secs() as i64;
+        .as_secs()
+        .cast_signed();
 
     let (started_at, completed_at) = match new_status {
         StepStatus::Running => (Some(timestamp), None),
         StepStatus::Completed | StepStatus::Skipped | StepStatus::Failed => (None, Some(timestamp)),
-        _ => (None, None),
+        StepStatus::Pending => (None, None),
     };
 
     sqlx::query(
@@ -776,9 +779,9 @@ pub async fn get_outbox_entry(pool: &SqlitePool, id: &str) -> Result<OutboxRecor
             last_error,
         )) => {
             let side_effect_type = SideEffectType::from_str(&type_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid type: {}", type_str)))?;
+                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid type: {type_str}")))?;
             let status = OutboxStatus::from_str(&status_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {}", status_str)))?;
+                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
 
             let retry_count_u32 = u32::try_from(retry_count)
                 .map_err(|_| DurableError::ValidationFailed("retry_count overflow".to_string()))?;
@@ -811,7 +814,8 @@ pub async fn mark_outbox_dispatched(
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| DurableError::ValidationFailed(e.to_string()))?
-        .as_secs() as i64;
+        .as_secs()
+        .cast_signed();
 
     sqlx::query(
         "UPDATE outbox SET status = 'dispatched', dispatched_at = ?1 WHERE id = ?2",
@@ -830,7 +834,8 @@ pub async fn acknowledge_outbox(pool: &SqlitePool, id: &str) -> Result<OutboxRec
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| DurableError::ValidationFailed(e.to_string()))?
-        .as_secs() as i64;
+        .as_secs()
+        .cast_signed();
 
     sqlx::query(
         "UPDATE outbox SET status = 'acknowledged', acknowledged_at = ?1 WHERE id = ?2",
@@ -1052,11 +1057,12 @@ pub fn serialize_cursor(cursor: &EventCursor) -> String {
 // =============================================================================
 
 /// Gets the current timestamp as i64 (Unix epoch seconds)
+#[allow(dead_code)]
 fn current_timestamp() -> Result<i64, DurableError> {
     std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_err(|e| DurableError::ValidationFailed(e.to_string()))
-        .map(|d| d.as_secs() as i64)
+        .map(|d| d.as_secs().cast_signed())
 }
 
 /// Checks if an operation can be resumed (has pending/failed steps)

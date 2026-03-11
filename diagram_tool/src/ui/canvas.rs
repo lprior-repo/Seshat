@@ -547,6 +547,7 @@ fn flush_pending_pointer_update(
                 .max(24.0);
 
                 // Apply aspect ratio constraint if locked
+                #[allow(clippy::option_if_let_else)]
                 let (nw, nh) = if let Some(ratio) = aspect_ratio {
                     let ratio = *ratio;
                     // Determine handle type
