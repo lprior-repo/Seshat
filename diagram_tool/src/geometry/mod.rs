@@ -11,12 +11,14 @@
 pub mod operations;
 pub mod polygon;
 pub mod primitives;
+pub mod routing;
 pub mod snap;
 pub mod transforms;
 
 pub use operations::*;
 pub use polygon::*;
 pub use primitives::*;
+pub use routing::*;
 pub use snap::{SnapError, SnapNode, SnapState};
 pub use transforms::*;
 

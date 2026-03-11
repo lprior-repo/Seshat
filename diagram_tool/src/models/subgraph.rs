@@ -285,6 +285,93 @@ pub fn create_subgraph_from_nodes(
     Ok(subgraph)
 }
 
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum GroupTransformError {
+    #[error("Selection cannot be empty")]
+    EmptySelection,
+    #[error("Node not found: {0}")]
+    NodeNotFound(NodeId),
+    #[error("Node locked: {0}")]
+    NodeLocked(NodeId),
+    #[error("Scale out of bounds")]
+    OutOfBounds,
+}
+
+pub type Subgraph = CanvasState;
+
+const MIN_DIMENSION: f64 = 1.0;
+const MAX_COORDINATE: f64 = 1_000_000.0;
+
+/// Scales a group of selected nodes relative to an anchor point.
+///
+/// # Errors
+/// Returns `GroupTransformError` if selection is empty, a node is not found,
+/// a node is locked, or if the resulting scale exceeds bounds.
+pub fn scale_group(
+    subgraph: &mut Subgraph,
+    selection: &[NodeId],
+    scale_factor: PositiveScale,
+    anchor: Point,
+) -> Result<(), GroupTransformError> {
+    if selection.is_empty() {
+        return Err(GroupTransformError::EmptySelection);
+    }
+
+    let scale = scale_factor.value();
+
+    let updates: Result<Vec<(NodeId, Node)>, GroupTransformError> = selection
+        .iter()
+        .map(|id| {
+            let node = subgraph
+                .nodes
+                .get(id)
+                .ok_or_else(|| GroupTransformError::NodeNotFound(id.clone()))?;
+
+            if node.locked {
+                return Err(GroupTransformError::NodeLocked(id.clone()));
+            }
+
+            let new_x = anchor.x.0 + (node.x.0 - anchor.x.0) * scale;
+            let new_y = anchor.y.0 + (node.y.0 - anchor.y.0) * scale;
+            let new_w = (node.width.0 * scale).max(MIN_DIMENSION);
+            let new_h = (node.height.0 * scale).max(MIN_DIMENSION);
+
+            if !new_x.is_finite() || !new_y.is_finite() || !new_w.is_finite() || !new_h.is_finite()
+            {
+                return Err(GroupTransformError::OutOfBounds);
+            }
+
+            if new_x.abs() > MAX_COORDINATE
+                || new_y.abs() > MAX_COORDINATE
+                || new_w > MAX_COORDINATE
+                || new_h > MAX_COORDINATE
+            {
+                return Err(GroupTransformError::OutOfBounds);
+            }
+
+            let updated_node = Node {
+                x: OrderedFloat::new_unchecked(new_x),
+                y: OrderedFloat::new_unchecked(new_y),
+                width: OrderedFloat::new_unchecked(new_w),
+                height: OrderedFloat::new_unchecked(new_h),
+                ..node.clone()
+            };
+
+            Ok((id.clone(), updated_node))
+        })
+        .collect();
+
+    let resolved_updates = updates?;
+
+    subgraph.nodes = resolved_updates
+        .into_iter()
+        .fold(subgraph.nodes.clone(), |nodes, (id, node)| {
+            nodes.update(id, node)
+        });
+
+    Ok(())
+}
+
 #[cfg(test)]
 #[path = "subgraph_tests.rs"]
 mod tests;

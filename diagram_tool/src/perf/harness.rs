@@ -342,8 +342,8 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
                 tags: im::vector![],
                 metadata: ImHashMap::new(),
                 font_size: None,
-            source_port: None,
-            target_port: None,
+                source_port: None,
+                target_port: None,
             };
 
             edges.insert(EdgeId::new(format!("edge-{i}")), edge);

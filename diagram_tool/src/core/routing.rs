@@ -122,8 +122,8 @@ fn make_default_edge(source: NodeId, target: NodeId) -> Edge {
         tags: im::Vector::new(),
         metadata: im::HashMap::new(),
         font_size: None,
-            source_port: None,
-            target_port: None,
+        source_port: None,
+        target_port: None,
     }
 }
 
