@@ -35,6 +35,11 @@ pub mod port;
 pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas
 pub mod selection;
+pub mod multi_select;
+
+#[cfg(test)]
+pub mod multi_select_tests;
+
 pub mod subgraph;
 
 pub mod selection_ops;
