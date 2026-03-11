@@ -111,6 +111,55 @@ pub fn paste_contents(
     Ok(clipboard)
 }
 
+/// Cuts the currently selected items from the document and returns them.
+/// Removes the items and any connected edges from the document.
+/// Leaves the document with an empty selection.
+///
+/// # Errors
+///
+/// Returns `ClipboardError::EmptySelection` if no items are selected.
+pub fn cut_selection(doc: &mut DiagramDocument) -> Result<ClipboardData, ClipboardError> {
+    let clipboard = copy_selection(doc)?;
+    let selected = &doc.editor_state.selected_items;
+
+    let new_nodes = doc
+        .document
+        .nodes
+        .iter()
+        .filter(|(id, _)| !selected.contains(id.as_str()))
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    let new_edges = doc
+        .document
+        .edges
+        .iter()
+        .filter(|(_, edge)| {
+            !selected.contains(edge.source.as_str()) && !selected.contains(edge.target.as_str())
+        })
+        .map(|(k, v)| (k.clone(), v.clone()))
+        .collect();
+
+    doc.document.nodes = new_nodes;
+    doc.document.edges = new_edges;
+    doc.editor_state.selected_items = im::HashSet::new();
+
+    Ok(clipboard)
+}
+
+/// Duplicates the currently selected items within the document.
+/// Bypasses the external clipboard entirely.
+/// Applies a spatial offset to the new nodes.
+///
+/// # Errors
+///
+/// Returns `ClipboardError::EmptySelection` if no items are selected.
+pub fn duplicate_selection(doc: &mut DiagramDocument) -> Result<(), ClipboardError> {
+    copy_selection(doc)
+        .and_then(|clipboard| paste_contents(clipboard, doc))
+        .map(|_| ())
+}
+
 #[cfg(test)]
 #[path = "clipboard_tests.rs"]
 mod tests;
