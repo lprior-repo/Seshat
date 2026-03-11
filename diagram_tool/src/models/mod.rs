@@ -37,6 +37,10 @@ pub mod selection;
 
 pub mod sync;
 pub mod validation;
+pub mod subgraph_events;
+
+#[cfg(test)]
+pub mod subgraph_events_tests;
 
 #[cfg(test)]
 pub mod subgraph_persistence_tests;
