@@ -1,0 +1,1158 @@
+warning: diagram_tool@0.1.0: Generated index for 2460 icons across 17 providers
+warning: variable `M1` should have a snake case name
+   --> diagram_tool/src/models/selection.rs:109:35
+    |
+109 |                         |(mx, my, M1, M2), &(px, py)| {
+    |                                   ^^ help: convert the identifier to snake case: `m1`
+    |
+    = note: `#[warn(non_snake_case)]` (part of `#[warn(nonstandard_style)]`) on by default
+
+warning: variable `M2` should have a snake case name
+   --> diagram_tool/src/models/selection.rs:109:39
+    |
+109 |                         |(mx, my, M1, M2), &(px, py)| {
+    |                                       ^^ help: convert the identifier to snake case: `m2`
+
+warning: `diagram_tool` (lib) generated 2 warnings
+warning: `diagram_tool` (bin "diagram_tool") generated 2 warnings (2 duplicates)
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_001_aabb_for_axis_aligned_rectangles.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+  |
+  = note: `#[warn(unused_imports)]` (part of `#[warn(unused)]`) on by default
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_002_aabb_for_rotated_rectangles.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_003_stroke_width_inclusion_in_bounds.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_004_text_bounds_calculation.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_005_image_bounds_calculation.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> diagram_tool/src/geometry/tests/geo_008_resize_with_aspect_ratio_lock.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+
+warning: unused import: `super::*`
+ --> diagram_tool/src/geometry/tests/geo_010_bounds_edge_cases.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_012_zoom_at_pointer.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_013_snap_lines_horizontal.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> diagram_tool/src/geometry/tests/geo_013_snap_lines_horizontal.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+
+warning: unused import: `super::*`
+ --> diagram_tool/src/geometry/tests/geo_014_snap_lines_vertical.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_015_grid_step.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_016_edge_routing_orthogonal.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_018_fit_to_content.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_019_hit_test_with_margin.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_021_world_to_screen_round_trip.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_022_aabb_at_various_angles.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_027_camera_constraints_min_zoom.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::*`
+ --> diagram_tool/src/geometry/tests/geo_027_camera_constraints_min_zoom.rs:2:5
+  |
+2 | use super::*;
+  |     ^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_028_camera_constraints_max_zoom.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_029_camera_pan_with_zoom.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_031_aabb_for_rotated_rectangle_at_cardinal_angles.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_032_aabb_includes_stroke_width_extended.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_033_line_bounds_include_arrowheads.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_034_cubic_bezier.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_034_quadratic_bezier.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_035_text_bounds_rtlemoji.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_trn_004_minimum_size_clamp.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `super::super::*`
+ --> diagram_tool/src/geometry/tests/geo_trn_005_negative_scaling_flip_vs_clamp.rs:1:5
+  |
+1 | use super::super::*;
+  |     ^^^^^^^^^^^^^^^
+
+warning: unused import: `SelectionBounds`
+   --> diagram_tool/src/models/selection.rs:280:34
+    |
+280 |         handle_long_press, Rect, SelectionBounds, SelectionError,
+    |                                  ^^^^^^^^^^^^^^^
+
+warning: `diagram_tool` (bin "diagram_tool" test) generated 2 warnings (2 duplicates)
+warning: `diagram_tool` (lib test) generated 32 warnings (2 duplicates) (run `cargo fix --lib -p diagram_tool --tests` to apply 30 suggestions)
+    Finished `test` profile [unoptimized + debuginfo] target(s) in 0.15s
+     Running unittests src/lib.rs (target/debug/deps/diagram_tool-a1dea582fb442f81)
+
+running 457 tests
+test ui::canvas::canvas_view::inp_mobile_tests::given_large_base_radius_when_touch_input_then_base_preserved_if_larger ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_double_tap_threshold_is_reasonable ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_mouse_input_when_calculating_hit_radius_then_base_unchanged ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_at_corner_when_hit_testing_then_expanded_area_covers_corners ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_same_timestamp_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_threshold_boundary_values_when_checked_then_boundary_correct ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_reversed_timestamps_when_checked_then_not_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_mouse_input_when_hit_testing_handle_then_visual_size_used ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_directly_on_handle_when_hit_testing_then_succeeds ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_when_calculating_hit_radius_then_uses_touch_minimum ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_when_hit_testing_handle_then_expanded_hit_area_used ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_outside_expanded_area_when_hit_testing_then_fails ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_minimum_matches_wcag_guideline ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_exactly_at_threshold_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_just_over_threshold_when_checked_then_not_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_far_apart_when_checked_then_not_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_within_threshold_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_zero_base_radius_when_touch_input_then_touch_minimum_used ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_zero_times_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_with_edge_when_clicking_far_from_edge_then_no_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_vertical_edge_when_clicking_along_edge_then_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_diagonal_edge_when_clicking_along_edge_then_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_edge_with_bend_points_when_clicking_on_bend_then_edge_selected ... ok
+test ui::canvas::canvas_view::tests::given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit ... ok
+test ui::canvas::canvas_view::tests::given_endpoint_tie_when_clicking_shared_target_then_selection_is_stable_by_edge_id ... ok
+test ui::canvas::canvas_view::tests::given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_radius ... ok
+test ui::canvas::canvas_view::tests::given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter ... ok
+test ui::canvas::canvas_view::tests::given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_edge_id ... ok
+test ui::canvas::canvas_view::tests::given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across_zooms ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_hovering_transitions ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_dragging_transitions ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_idle_transitions ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_selecting_transitions ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_p1_violation_returns_unparseable_event ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_p2_violation_returns_coordinate_out_of_bounds ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_p3_violation_returns_invalid_selection_bounds ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_precondition_parsed_boundaries ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_precondition_semantic_coordinates ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_q2_violation_returns_coordinate_out_of_bounds ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_q3_violation_returns_invalid_transition ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_dragging_state_when_mouse_down_event_then_returns_invalid_transition_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_hovering_state_when_mouse_move_event_then_returns_same_hovering_state ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_idle_state_when_drag_move_event_then_returns_invalid_transition_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_idle_state_when_mouse_down_then_transitions_to_selecting ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_idle_state_when_mouse_move_then_transitions_to_hovering ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_negative_area_when_creating_selection_bounds_then_returns_invalid_bounds_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_selecting_state_when_mouse_up_then_transitions_to_idle ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_unknown_raw_event_when_parsed_then_returns_unparseable_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_valid_drag_state_when_delta_applied_then_updates_cumulative_offset ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_valid_raw_event_when_parsed_then_returns_canvas_event ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_zero_delta_when_dragging_then_state_unchanged ... ok
+test ui::canvas::domain::tests::interaction_workflow_tests::given_full_drag_workflow_from_raw_inputs_when_executed_then_yields_correct_final_state ... ok
+test ui::canvas::domain::tests::interaction_workflow_tests::given_full_selection_workflow_from_raw_inputs_when_executed_then_yields_correct_selection_bounds ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_child_when_hit_testing_then_child_has_higher_z_index ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_children_when_resizing_then_parent_references_preserved ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_child_near_edge_when_resize_targets_then_both_included ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_children_when_selected_then_children_included_in_resize_targets ... ok
+test ui::canvas::drag_math::subgraph_tests::given_expanded_container_when_collapsed_then_children_remain_in_document ... ok
+test ui::canvas::drag_math::subgraph_tests::given_locked_container_when_selecting_unlocked_child_then_child_is_selectable ... ok
+test ui::canvas::drag_math::subgraph_tests::given_locked_container_with_unlocked_children_then_children_are_independently_unlocked ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_empty_returns_zero ... ok
+test ui::canvas::drag_math::subgraph_tests::given_mixed_lock_hierarchy_then_lock_states_are_per_node ... ok
+test ui::canvas::canvas_view::proptests::dist_to_segment_point_on_endpoint_returns_zero ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_collapsed_state_when_roundtripped_then_state_preserved ... ok
+test ui::canvas::drag_math::subgraph_tests::given_multiple_containers_when_collapsed_independently_then_states_are_independent ... ok
+test ui::canvas::drag_math::subgraph_tests::given_multiple_selected_nodes_when_drag_position_calculated_then_all_tracked ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_invariant_i4_edge_selection_does_not_mutate_nodes ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nested_container_with_children_when_middle_selected_then_descendants_included ... ok
+test ui::canvas::canvas_view::proptests::quadratic_bezier_point_t_one_returns_p2 ... ok
+test ui::canvas::canvas_view::proptests::quadratic_control_lies_on_perpendicular_through_midpoint ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_edge_is_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_invariant_i1_selection_contains_valid_ids ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q2_selection_contains_edge_id ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q5_selection_replaces_previous ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_selected ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_selected ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_empty_document_when_clicking_then_no_edge_selected ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nested_containers_then_parent_chain_is_correct ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_precondition_p4_coordinates_finite ... ok
+test ui::canvas::drag_math::subgraph_tests::given_partial_container_overlap_when_rubberband_then_only_overlapping_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_precondition_p1_document_contains_edge ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_compared_to_resizing_then_modes_differ ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q3_no_nodes_selected ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_compared_to_rubber_band_then_modes_differ ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_t_one_returns_last ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_horizontal_edge_when_clicking_at_endpoint_then_edge_selected ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_midpoint_two_points ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_all_interaction_modes_when_panning_is_active_then_only_panning_matches ... ok
+test ui::canvas::canvas_view::proptests::dist_to_segment_always_non_negative ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_two_finger_gesture_then_is_distinct_from_dragging ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_clamped_t_stays_in_bounds ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_single_point_returns_that_point ... ok
+test ui::canvas::canvas_view::proptests::dist_to_segment_zero_length_returns_distance_to_point ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_select_mode_when_compared_to_panning_then_modes_differ ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_t_zero_returns_first ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_last_pos_when_updated_then_tracks_movement ... ok
+test ui::canvas::canvas_view::proptests::quadratic_bezier_point_t_zero_returns_p0 ... ok
+test ui::canvas::canvas_view::proptests::quadratic_bezier_point_returns_finite_for_finite_inputs ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_compared_to_drawing_modes_then_modes_differ ... ok
+test ui::canvas::drag_math::subgraph_tests::given_two_containers_when_inner_positioned_in_outer_then_geometry_supports_nesting ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q1_selection_count_exactly_one ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_returns_finite ... ok
+test ui::canvas::drag_math::subgraph_tests::given_three_level_hierarchy_when_outer_selected_then_all_descendants_in_drag_positions ... ok
+test ui::canvas::canvas_view::proptests::quadratic_control_returns_finite_for_finite_input ... ok
+test ui::canvas::interaction_reducer::proptests::stress_finalize_idempotent_on_select ... ok
+test ui::canvas::interaction_reducer::proptests::stress_panning_nan ... ok
+test ui::canvas::interaction_reducer::proptests::stress_no_revision_bump_no_move ... ok
+test ui::canvas::interaction_reducer::proptests::stress_resize_infinite_bounds ... ok
+test ui::canvas::interaction_reducer::proptests::stress_preserves_state_on_select ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_child_near_edge_when_resize_targets_then_both_included ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_child_when_hit_testing_then_child_has_higher_z_index ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_children_when_selected_then_children_included_in_resize_targets ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_children_when_resizing_then_parent_references_preserved ... ok
+test ui::canvas::interaction_reducer::proptests::stress_no_revision_bump_no_resize ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_collapsed_state_when_roundtripped_then_state_preserved ... ok
+test ui::canvas::interaction_reducer::proptests::stress_resize_nan_bounds ... ok
+test ui::canvas::interaction_reducer::proptests::prop_overflow_safety ... ok
+test ui::canvas::interaction_reducer::proptests::prop_safe_zoom_boundary ... ok
+test ui::canvas::interaction_reducer::proptests::prop_subnormal_floats ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_infinite_dims ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_expanded_container_when_collapsed_then_children_remain_in_document ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_exceeds_by_epsilon ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_locked_container_with_unlocked_children_then_children_are_independently_unlocked ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_locked_container_when_selecting_unlocked_child_then_child_is_selectable ... ok
+test ui::canvas::interaction_reducer::proptests::prop_all_resize_handles ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_multiple_containers_when_collapsed_independently_then_states_are_independent ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nested_containers_then_parent_chain_is_correct ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nested_container_with_children_when_middle_selected_then_descendants_included ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_exact_boundary ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_multiple_selected_nodes_when_drag_position_calculated_then_all_tracked ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_mixed_lock_hierarchy_then_lock_states_are_per_node ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_partial_container_overlap_when_rubberband_then_only_overlapping_selected ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_three_level_hierarchy_when_outer_selected_then_all_descendants_in_drag_positions ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_node_on_edge ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_two_containers_when_inner_positioned_in_outer_then_geometry_supports_nesting ... ok
+test ui::canvas::interaction_reducer::tests::given_already_in_select_mode_when_finalized_then_no_revision_change ... ok
+test ui::canvas::interaction_reducer::proptests::prop_drag_extreme_anchor ... ok
+test ui::canvas::interaction_reducer::tests::given_drag_end_when_finalized_twice_then_revision_bumps_once ... ok
+test ui::canvas::interaction_reducer::tests::given_drag_gesture_when_duplicate_events_arrive_then_history_single_entry ... ok
+test ui::canvas::interaction_reducer::tests::given_mixed_gesture_sequence_when_finalized_then_correct_revisions ... ok
+test ui::canvas::interaction_reducer::tests::given_no_op_gesture_when_finalized_then_no_revision_bump ... ok
+test ui::canvas::interaction_reducer::tests::given_resize_end_without_resize_when_finalized_then_no_revision_bump ... ok
+test ui::canvas::interaction_reducer::proptests::prop_resize_handles_extreme_coords ... ok
+test ui::canvas::interaction_reducer::tests::given_resize_gesture_when_duplicate_events_arrive_then_history_single_entry ... ok
+test ui::canvas::interaction_reducer::tests::given_resize_end_when_finalized_twice_then_revision_bumps_once ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_line_like_node_when_resize_computed_then_scales_proportionally ... ok
+test ui::canvas::interaction_reducer::tests::given_selected_subgraph_when_collecting_resize_targets_then_interior_nodes_included ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_nodes_connected_by_curved_edge_when_resize_computed_then_nodes_scale ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_rotated_item_bounds_when_resize_computed_then_scales_correctly ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_text_node_when_resize_computed_then_text_included ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_inverted_dimensions_when_resize_computed_then_clamps_to_minimum ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_resize_past_inversion_when_finalized_then_handles_negative_scale ... ok
+test ui::canvas::math::proptests::screen_to_canvas_combined_transform ... ok
+test ui::canvas::math::proptests::screen_to_canvas_identity_at_zoom_one ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_infinite_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_nan_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_negative_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_zero_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_scales_with_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_shifts_with_camera ... ok
+test ui::canvas::interaction_reducer::proptests::prop_safe_zoom_rejects_extreme_values ... ok
+test ui::canvas::math::proptests::prop_screen_to_canvas_zoom_edge_cases ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_finger_like_input_when_processed_then_no_panic ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_mixed_pointer_inputs_then_all_produce_valid_output ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_pinch_at_limits_then_stays_bounded ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_pinch_gesture_when_zoom_in_then_zooms_canvas_not_creates_shape ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_pinch_gesture_when_zoom_out_then_zooms_canvas_not_creates_shape ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_stylus_like_input_when_processed_then_no_panic ... ok
+test ui::canvas::interaction_reducer::proptests::prop_rubberband_zero_area ... ok
+test ui::canvas::interaction_reducer::proptests::prop_nested_subgraphs ... ok
+test ui::canvas::perf::inp_mobile_touch_proptests::prop_pointer_type_agnostic_handling ... ok
+test ui::canvas::perf::inp_mobile_touch_proptests::prop_pinch_gesture_always_produces_valid_zoom ... ok
+test ui::canvas::math::proptests::prop_screen_to_canvas_roundtrip ... ok
+test ui::canvas::interaction_reducer::proptests::prop_drawing_edge_extreme ... ok
+test ui::canvas::perf::proptests::prop_continuous_wheel_zoom_respects_bounds ... ok
+test ui::canvas::perf::proptests::prop_coord_transform_roundtrip ... ok
+test ui::canvas::perf::proptests::prop_discrete_wheel_zoom_factor_consistency ... ok
+test ui::canvas::interaction_reducer::proptests::prop_resize_target_ids_empty_doc ... ok
+test ui::canvas::perf::tests::given_already_at_zoom_limit_when_wheel_then_no_change ... ok
+test ui::canvas::perf::tests::given_discrete_wheel_extreme_deltas_when_transform_then_stays_bounded ... ok
+test ui::canvas::perf::tests::given_continuous_wheel_extreme_deltas_when_transform_then_stays_bounded ... ok
+test ui::canvas::perf::tests::given_extreme_zoom_inputs_when_wheel_transform_then_zoom_stays_clamped_and_finite ... ok
+test ui::canvas::perf::tests::given_nan_camera_when_wheel_update_then_returns_none ... ok
+test ui::canvas::perf::tests::given_nan_wheel_delta_when_wheel_update_then_no_invalid_state_is_emitted ... ok
+test ui::canvas::perf::tests::given_nan_client_coords_when_wheel_update_then_returns_none ... ok
+test ui::canvas::perf::tests::given_to_canvas_coords_when_valid_then_returns_finite ... ok
+test ui::canvas::perf::tests::given_to_screen_coords_when_valid_then_returns_finite ... ok
+test ui::canvas::interaction_reducer::proptests::prop_rubberband_negative_area ... ok
+test ui::canvas::perf::tests::given_wheel_update_when_zero_delta_then_returns_none ... ok
+test ui::canvas::perf::tests::given_wheel_update_when_all_valid_then_returns_some_with_finite_values ... ok
+test ui::canvas::selection_geometry::tests::given_all_locked_nodes_when_selection_bounds_then_none ... ok
+test ui::canvas::selection_geometry::tests::given_locked_and_unlocked_nodes_when_selection_bounds_then_exclude_locked ... ok
+test ui::canvas::selection_geometry::tests::given_mixed_selection_when_selected_node_ids_then_exclude_locked ... ok
+test ui::canvas::selection_geometry::tests::given_multi_type_selection_when_bounds_requested_then_all_types_included ... ok
+test ui::canvas::interaction_reducer::proptests::prop_mode_equality_rubberband ... ok
+test ui::canvas::selection_geometry::tests::given_nodes_at_negative_coords_when_selected_then_bounds_correct ... ok
+test ui::canvas::selection_geometry::tests::given_selected_items_when_camera_transforms_then_selection_remains_unchanged ... ok
+test ui::canvas::selection_geometry::tests::given_selected_nodes_when_bounds_requested_then_bounds_cover_selection ... ok
+test ui::canvas::selection_geometry::tests::given_selection_history_when_undo_redo_then_selection_restored ... ok
+test ui::canvas::selection_geometry::tests::given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiable ... ok
+test ui::canvas::tests::given_existing_selection_when_rubber_band_released_then_selection_is_cleared ... ok
+test ui::canvas::tests::given_icon_side_when_too_small_then_fit_never_panics_and_stays_non_negative ... ok
+test ui::canvas::tests::given_noop_rubber_band_when_released_then_selection_is_preserved ... ok
+test ui::canvas::tests::given_rubber_band_release_when_applied_then_selection_is_committed ... ok
+test ui::canvas::tests::given_subgraph_release_bounds_when_drag_valid_then_bounds_returned ... ok
+test ui::canvas::interaction_reducer::proptests::prop_drawing_subgraph_extreme ... ok
+test ui::commands::distribution_tests::test_distribute_horizontal_preserves_y ... ok
+test ui::commands::distribution_tests::test_distribute_equal_spacing ... ok
+test ui::canvas::tests::given_subgraph_release_bounds_when_drag_too_small_then_none ... ok
+test ui::canvas::math::proptests::prop_overflow_safety ... ok
+test ui::canvas::math::proptests::prop_within_infinite_dims ... ok
+test ui::commands::distribution_tests::test_distribute_horizontal_three_nodes ... ok
+test ui::commands::distribution_tests::test_distribute_less_than_three_nodes_returns_false ... ok
+test ui::canvas::math::proptests::prop_safe_zoom_boundary ... ok
+test ui::commands::distribution_tests::test_distribute_outermost_nodes_at_bounds ... ok
+test ui::commands::distribution_tests::test_distribute_locked_nodes_skipped ... ok
+test ui::commands::distribution_tests::test_distribute_updates_revision ... ok
+test ui::commands::distribution_tests::test_distribute_vertical_preserves_x ... ok
+test ui::commands::distribution_tests::test_distribute_preserves_node_size ... ok
+test ui::commands::distribution_tests::test_distribute_vertical_three_nodes ... ok
+test ui::canvas::perf::proptests::prop_normalize_viewport_always_positive ... ok
+test ui::canvas::perf::proptests::prop_viewport_changed_detects_significant_change ... ok
+test ui::canvas::math::proptests::prop_within_node_on_edge ... ok
+test ui::canvas::math::proptests::prop_subnormal_floats ... ok
+test ui::canvas::perf::proptests::prop_wheel_transform_coords_always_finite ... ok
+test ui::canvas::perf::proptests::prop_wheel_transform_zoom_always_clamped ... ok
+test ui::canvas::perf::proptests::prop_wheel_update_returns_finite_or_none ... ok
+test ui::canvas::math::proptests::prop_safe_zoom_rejects_extreme_values ... ok
+test ui::commands::tests::given_alignment_when_successful_then_dimensions_unchanged ... ok
+test ui::commands::tests::given_clipboard_when_has_content_then_returns_true ... ok
+test ui::commands::tests::given_alignment_when_successful_then_revision_incremented ... ok
+test ui::commands::tests::given_clipboard_when_prepare_paste_then_increments_serial ... ok
+test ui::canvas::math::proptests::prop_within_exceeds_by_epsilon ... ok
+test ui::canvas::interaction_reducer::proptests::prop_overlapping_subgraphs ... ok
+test ui::commands::tests::given_clipboard_with_empty_nodes_when_paste_then_returns_false ... ok
+test ui::commands::tests::given_empty_clipboard_when_has_content_then_returns_false ... ok
+test ui::commands::tests::given_copied_nodes_when_paste_then_applies_offset ... ok
+test ui::commands::tests::given_copied_nodes_when_paste_then_creates_new_ids ... ok
+test ui::commands::tests::given_empty_clipboard_when_paste_then_returns_none ... ok
+test ui::commands::tests::given_edge_in_clipboard_when_paste_then_remapped_to_new_ids ... ok
+test ui::commands::tests::given_empty_selection_when_align_then_returns_false ... ok
+test ui::canvas::interaction_reducer::proptests::prop_finalize_stress ... ok
+test ui::commands::tests::given_empty_selection_when_copy_then_returns_none ... ok
+test ui::commands::tests::given_locked_node_when_align_then_skips_locked ... ok
+test ui::commands::tests::given_multiple_nodes_selected_when_copy_then_includes_edges ... ok
+test ui::commands::tests::given_multiple_pastes_then_offset_increases ... ok
+test ui::commands::tests::given_nested_nodes_selected_when_copy_then_preserves_parent_reference ... ok
+test ui::commands::tests::given_multiple_nodes_when_paste_then_all_ids_unique ... ok
+test ui::commands::tests::given_nested_subgraphs_when_validated_then_parent_chain_correct ... ok
+test ui::commands::tests::given_parent_not_pasted_when_paste_then_preserved ... ok
+test ui::commands::tests::given_parent_also_pasted_when_paste_then_remapped ... ok
+test ui::commands::tests::given_partial_edge_selection_when_copy_then_excludes_edge ... ok
+test ui::commands::tests::given_none_clipboard_when_clipboard_has_content_then_returns_false ... ok
+test ui::commands::tests::given_paste_successful_when_paste_then_revision_incremented ... ok
+test ui::commands::tests::given_paste_successful_when_paste_then_selection_updated ... ok
+test ui::canvas::interaction_reducer::proptests::prop_rapid_mode_transitions ... ok
+test ui::commands::tests::given_selected_middle_node_when_bring_to_front_then_relative_order_preserved ... ok
+test ui::commands::tests::given_second_paste_when_paste_then_applies_double_offset ... ok
+test ui::commands::tests::given_selected_middle_node_when_send_to_back_then_relative_order_preserved ... ok
+test ui::commands::tests::given_selection_when_copy_selection_for_duplicate_then_sets_serial_to_1 ... ok
+test ui::commands::tests::given_selection_with_infinite_coords_when_align_then_returns_false ... ok
+test ui::commands::tests::given_selection_with_nonexistent_ids_when_copy_then_returns_false ... ok
+test ui::commands::tests::given_single_node_selected_when_align_then_returns_false ... ok
+test ui::commands::tests::given_single_node_selected_when_copy_then_succeeds ... ok
+test ui::commands::tests::given_selected_subgraph_with_children_when_ungroup_then_children_restored_to_root ... ok
+test ui::commands::tests::given_single_node_selected_when_group_selection_then_returns_false ... ok
+test ui::commands::tests::given_some_clipboard_when_clipboard_has_content_then_reflects_content ... ok
+test ui::commands::tests::given_subgraph_selected_when_group_selection_then_subgraph_excluded ... ok
+test ui::commands::tests::given_three_nodes_selected_when_copy_then_copies_all ... ok
+test ui::commands::tests::given_three_nodes_when_align_middle_vertical_then_centered ... ok
+test ui::commands::tests::given_three_nodes_when_align_center_horizontal_then_centered ... ok
+test ui::commands::tests::given_two_nodes_when_align_bottom_then_both_share_max_bottom ... ok
+test ui::commands::tests::given_two_nodes_when_align_left_then_both_share_min_x ... ok
+test ui::commands::tests::given_two_nodes_when_align_top_then_both_share_min_y ... ok
+test ui::commands::tests::given_two_nodes_when_align_right_then_both_share_max_right ... ok
+test ui::commands::tests::given_zoom_to_center_when_at_max_then_no_change ... ok
+test ui::commands::tests::given_two_selected_nodes_when_group_selection_then_creates_subgraph_with_correct_bounds ... ok
+test ui::commands::tests::given_zoom_to_center_when_at_min_then_no_change ... ok
+test ui::commands::tests::given_zoom_to_center_when_huge_viewport_then_no_panic ... ok
+test ui::commands::tests::given_zoom_to_center_when_inf_zoom_then_uses_default ... ok
+test ui::commands::tests::given_zoom_to_center_when_nan_camera_then_zoom_still_clamped ... ok
+test ui::commands::tests::given_zoom_to_center_when_nan_zoom_then_uses_default ... ok
+test ui::commands::tests::given_zoom_to_center_when_negative_zoom_then_uses_default ... ok
+test ui::commands::tests::given_zoom_to_center_when_tiny_viewport_then_no_panic ... ok
+test ui::commands::tests::given_zoom_to_center_when_valid_then_camera_finite ... ok
+test ui::commands::tests::given_zoom_to_center_when_valid_zoom_then_zoom_clamped ... ok
+test ui::commands::tests::given_zoom_to_center_when_zero_zoom_then_uses_default ... ok
+test ui::commands::proptests::prop_zoom_increases_with_large_factor ... ok
+test ui::commands::proptests::prop_zoom_to_center_nan_zoom_recovered ... ok
+test ui::commands::proptests::prop_zoom_to_center_camera_stays_finite ... ok
+test ui::commands::proptests::prop_zoom_to_center_inf_zoom_recovered ... ok
+test ui::commands::proptests::prop_zoom_to_center_zoom_always_clamped ... ok
+test ui::commands::proptests::prop_zoom_to_center_negative_zoom_recovered ... ok
+test ui::commands::proptests::prop_zoom_to_center_zero_zoom_recovered ... ok
+test ui::commands::proptests::prop_zoom_decreases_with_small_factor ... ok
+test ui::grid::snp_snapping_tests::given_drag_near_grid_edge_when_snap_enabled_then_snaps_to_nearest_grid ... ok
+test ui::canvas::interaction_reducer::proptests::prop_tiny_subgraph ... ok
+test ui::grid::snp_snapping_tests::given_multiple_midway_values_when_snap_enabled_then_all_tie_break_consistently ... ok
+test ui::grid::snp_snapping_tests::given_multiple_offsets_when_snap_enabled_then_all_snap_consistently ... ok
+test ui::grid::snp_snapping_tests::given_point_at_grid_center_when_snap_enabled_then_deterministic ... ok
+test ui::grid::snp_snapping_tests::given_point_near_grid_intersection_when_snap_enabled_then_snaps_both_axes ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_handles_nan_node_coords ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_when_snapping_point_then_returns_point_unchanged ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_when_snapping_then_returns_value_unchanged ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_with_infinity_then_returns_infinity ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_with_nan_then_returns_nan ... ok
+test ui::grid::snp_snapping_tests::given_value_at_snap_threshold_when_snap_enabled_then_engages_correctly ... ok
+test ui::grid::snp_snapping_tests::given_value_exactly_midway_when_snap_enabled_then_deterministic_tie_break ... ok
+test ui::grid::snp_snapping_tests::given_value_near_grid_line_when_snap_enabled_then_snaps_to_grid ... ok
+test ui::grid::snp_snapping_tests::given_very_large_grid_when_snap_enabled_then_still_snaps ... ok
+test ui::grid::snp_snapping_tests::given_very_large_value_when_snap_enabled_then_snaps_correctly ... ok
+test ui::grid::snp_snapping_tests::given_very_small_grid_when_snap_enabled_then_still_snaps ... ok
+test ui::grid::snp_snapping_tests::given_zero_value_when_snap_enabled_then_returns_zero ... ok
+test ui::grid::tests::given_default_when_getting_default_grid_size_then_returns_20 ... ok
+test ui::grid::tests::given_exact_grid_multiple_when_snapping_then_returns_same_value ... ok
+test ui::grid::tests::given_fractional_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_grid_size_when_serializing_and_deserializing_then_roundtrips ... ok
+test ui::grid::tests::given_infinity_value_when_snapping_then_returns_infinity ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_handles_nan_subgraph_coords ... ok
+test ui::grid::tests::given_json_null_when_deserializing_grid_size_then_returns_error ... ok
+test ui::grid::tests::given_json_string_when_deserializing_grid_size_then_returns_error ... ok
+test ui::grid::tests::given_maximum_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_minimum_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_nan_value_when_creating_grid_size_then_returns_not_finite_error ... ok
+test ui::grid::tests::given_nan_value_when_snapping_then_returns_nan ... ok
+test ui::grid::proptests::prop_serialization_roundtrip ... ok
+test ui::grid::tests::given_negative_infinity_when_creating_grid_size_then_returns_not_finite_error ... ok
+test ui::grid::tests::given_negative_value_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::proptests::prop_grid_size_invariant_range ... ok
+test ui::grid::tests::given_negative_value_when_snapping_then_handles_correctly ... ok
+test ui::grid::tests::given_out_of_range_json_number_when_deserializing_then_returns_error ... ok
+test ui::grid::tests::given_point_when_snapping_then_each_coordinate_snapped_independently ... ok
+test ui::grid::tests::given_positive_infinity_when_creating_grid_size_then_returns_not_finite_error ... ok
+test ui::grid::tests::given_snap_disabled_when_snapping_value_then_returns_value_unchanged ... ok
+test ui::grid::tests::given_snap_enabled_when_snapping_value_then_returns_grid_multiple ... ok
+test ui::grid::tests::given_valid_json_number_when_deserializing_grid_size_then_succeeds ... ok
+test ui::grid::tests::given_valid_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_value_above_maximum_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::given_value_below_minimum_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::given_value_midway_between_grid_lines_when_snapping_then_rounds_to_nearest ... ok
+test ui::grid::tests::given_zero_value_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::test_invariant_i1_range_guaranteed ... ok
+test ui::grid::tests::test_invariant_i2_finite_guaranteed ... ok
+test ui::grid::tests::test_postcondition_q1_inner_value_preserved ... ok
+test ui::grid::tests::test_postcondition_q2_snap_disabled_identity ... ok
+test ui::grid::tests::test_postcondition_q2_snap_enabled_grid_multiple ... ok
+test ui::grid::tests::test_postcondition_q4_serialization_format ... ok
+test ui::grid::tests::test_postcondition_q5_default_value ... ok
+test ui::grid::tests::test_precondition_p1_finite_validation ... ok
+test ui::grid::tests::test_precondition_p1_range_validation ... ok
+test ui::interaction::inp_mobile_touch_tests::given_double_tap_timing_constants_then_are_finite_and_reasonable ... ok
+test ui::interaction::inp_mobile_touch_tests::given_double_tap_timing_when_taps_within_window_then_detected ... ok
+test ui::interaction::inp_mobile_touch_tests::given_long_press_when_minor_jitter_then_still_not_drag ... ok
+test ui::interaction::inp_mobile_touch_tests::given_long_press_when_no_motion_then_not_drag_and_can_select ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_drag_when_motion_below_threshold_then_not_considered_drag ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_drag_when_rightward_then_uses_contain_selection_mode ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_finger_hit_area_when_computed_then_meets_accessibility ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_degenerate_rectangles ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_hit_area_when_checking_selection_handles_then_meets_minimum ... ok
+test ui::grid::proptests::prop_snap_grid_alignment ... ok
+test ui::grid::proptests::prop_snap_disabled_identity ... ok
+test ui::grid::proptests::prop_snap_point_consistent_with_snap_value ... ok
+test ui::grid::proptests::prop_snap_idempotency ... ok
+test ui::canvas::math::proptests::prop_within_exact_boundary ... ok
+test ui::canvas::domain::tests::interaction_fuzz_prop_tests::fuzz_parse_event_never_panics ... ok
+test ui::interaction::snp_interaction_tests::given_diagonal_drag_when_threshold_checked_then_uses_euclidean_distance ... ok
+test ui::interaction::snp_interaction_tests::given_empty_selection_when_dragged_then_returns_empty ... ok
+test ui::interaction::snp_interaction_tests::given_drag_threshold_boundary_when_checked_then_engages_correctly ... ok
+test ui::interaction::snp_interaction_tests::given_different_grid_sizes_when_snap_enabled_then_snaps_to_correct_grid ... ok
+test ui::interaction::snp_interaction_tests::given_multi_select_drag_from_nonzero_anchor_when_snap_enabled_then_snaps_correctly ... ok
+test ui::interaction::snp_interaction_tests::given_multi_select_drag_when_snap_disabled_then_all_nodes_use_raw_delta ... ok
+test ui::interaction::snp_interaction_tests::given_negative_drag_when_snap_enabled_then_snaps_to_negative_grid ... ok
+test ui::interaction::snp_interaction_tests::given_multi_select_drag_when_snap_enabled_then_all_nodes_use_snapped_delta ... ok
+test ui::interaction::tests::given_drag_anchor_and_current_when_dragged_positions_then_offsets_nodes ... ok
+test ui::interaction::snp_interaction_tests::given_single_node_drag_when_snap_enabled_then_position_snapped ... ok
+test ui::interaction::tests::given_large_motion_when_threshold_checked_then_returns_true ... ok
+test ui::interaction::tests::given_intersect_mode_when_rect_touches_node_then_node_is_selected ... ok
+test ui::interaction::tests::given_leftward_drag_when_selection_mode_resolved_then_uses_intersect ... ok
+test ui::interaction::tests::given_leftward_drag_inside_node_when_node_ids_in_rect_then_returns_node_in_intersect_mode ... ok
+test ui::interaction::tests::given_leftward_drag_when_node_ids_in_rect_then_uses_intersection_behavior ... ok
+test ui::interaction::tests::given_rect_when_node_ids_in_rect_then_returns_contained_nodes ... ok
+test ui::interaction::tests::given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_contain_mode ... ok
+test ui::interaction::tests::given_rightward_drag_when_selection_mode_resolved_then_uses_contain ... ok
+test ui::interaction::tests::given_selection_when_toggling_then_adds_and_removes_item ... ok
+test ui::interaction::tests::given_selected_endpoints_when_auto_selecting_edges_then_connecting_edge_is_selected ... ok
+test ui::interaction::tests::given_single_item_when_select_single_then_only_item_is_selected ... ok
+test ui::interaction::tests::given_small_motion_when_threshold_checked_then_returns_false ... ok
+test ui::interaction::tests::given_snap_enabled_when_snapping_values_then_rounds_to_grid ... ok
+test ui::interaction::tests::given_snap_enabled_when_dragging_then_positions_use_grid_delta ... ok
+test ui::minimap::tests::given_empty_document_when_snapshot_then_returns_none ... ok
+test ui::minimap::tests::given_degenerate_world_bounds_when_projecting_then_projection_is_finite ... ok
+test ui::minimap::tests::given_nan_node_geometry_when_snapshot_built_then_invalid_geometry_is_sanitized_or_ignored ... ok
+test ui::minimap::tests::given_near_zero_node_sizes_when_snapshot_then_bounds_remain_finite ... ok
+test ui::minimap::tests::given_inf_node_geometry_when_snapshot_built_then_handles_gracefully ... ok
+test ui::minimap::tests::given_nodes_with_edges_when_snapshot_then_edge_segments_included ... ok
+test ui::minimap::tests::given_overlapping_nodes_when_projecting_then_no_panic ... ok
+test ui::minimap::tests::given_single_node_when_projecting_then_bounds_are_correct ... ok
+test ui::panels::tests::given_default_panel_visibility_when_created_then_sidebar_and_minimap_visible ... ok
+test ui::minimap::tests::given_very_large_scale_when_projecting_then_sizes_floored_to_minimum ... ok
+test ui::toolbar::auto_save::tests::given_current_revision_when_comparing_with_none_then_returns_true ... ok
+test ui::toolbar::auto_save::tests::given_default_revision_when_creating_then_returns_initial ... ok
+test ui::toolbar::auto_save::tests::given_different_revisions_when_comparing_then_returns_true ... ok
+test ui::toolbar::auto_save::tests::given_invalid_json_when_deserializing_then_returns_error ... ok
+test ui::toolbar::auto_save::tests::given_same_revisions_when_comparing_then_returns_false ... ok
+test ui::minimap::tests::given_projection_key_when_state_differs_then_keys_differ ... ok
+test ui::minimap::tests::given_projection_key_when_state_identical_then_keys_equal ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_double_tap_timing_window_is_positive ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_long_press_with_small_jitter_never_triggers_drag ... ok
+test ui::toolbar::persistence::tests::given_import_error_when_applying_contents_then_doc_and_history_remain_unchanged ... ok
+test ui::toolbar::persistence::tests::given_import_error_when_selection_exists_then_selection_is_preserved ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_touch_hit_radius_always_positive_and_finite ... ok
+test ui::toolbar::persistence::tests::given_malformed_import_when_preparing_transition_then_returns_parse_error ... ok
+test ui::toolbar::auto_save::tests::given_valid_json_when_deserializing_then_returns_diagram ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_touch_drag_threshold_consistent_regardless_of_direction ... ok
+test ui::interaction::snp_interaction_tests::given_large_multi_select_when_snap_enabled_then_all_processed ... ok
+test ui::toolbar::persistence::tests::given_semantically_invalid_import_when_preparing_transition_then_returns_validation_error ... ok
+test ui::interaction::proptests::prop_has_drag_threshold_always_false_for_tiny_delta ... ok
+test ui::toolbar::persistence_compat::tests::given_document_when_serialized_then_round_trips ... ok
+test ui::toolbar::persistence::tests::given_validation_error_when_applying_contents_then_doc_and_history_remain_unchanged ... ok
+test ui::toolbar::persistence::tests::given_document_with_extreme_finite_coords_when_import_then_succeeds ... ok
+test ui::interaction::proptests::prop_has_drag_threshold_always_true_for_large_delta ... ok
+test ui::toolbar::persistence_compat::tests::given_document_without_version_when_import_then_fails_gracefully ... ok
+test ui::validation_panel::tests::empty_validation_list_has_no_errors ... ok
+test ui::interaction::proptests::prop_snap_point_consistent_with_snap_value ... ok
+test ui::toolbar::persistence::tests::given_valid_import_when_preparing_transition_then_new_doc_and_history_are_atomic ... ok
+test ui::toolbar::persistence_compat::tests::given_legacy_font_size_keys_when_parsed_then_document_loads ... ok
+test ui::toolbar::persistence_compat::tests::given_older_document_with_legacy_fields_when_import_then_fields_remapped ... ok
+test ui::validation_panel::tests::validation_issue_creation ... ok
+test ui::interaction::proptests::prop_snap_point_disabled_returns_same ... ok
+test ui::validation_panel::tests::validation_issue_with_subject ... ok
+test ui::validation_panel::tests::validation_severity_ordering ... ok
+test ui::interaction::proptests::prop_has_drag_threshold_symmetric ... ok
+test ui::toolbar::persistence_compat::tests::given_version_1_document_when_import_then_migrates_to_current_version ... ok
+test ui::interaction::proptests::prop_snap_value_enabled_is_multiple_of_grid ... ok
+test ui::toolbar::persistence_compat::tests::given_ts_style_json_when_parsed_then_document_loads ... ok
+test ui::interaction::proptests::prop_snap_value_nan_returns_nan ... ok
+test ui::interaction::proptests::prop_snap_value_negative_grid_uses_one ... ok
+test ui::interaction::proptests::prop_snap_value_disabled_returns_same ... ok
+test ui::toolbar::persistence::tests::given_document_with_fractional_coords_when_round_trip_then_geometry_preserved ... ok
+test ui::interaction::proptests::prop_snap_value_grid_zero_uses_one ... ok
+test ui::toolbar::persistence_compat::tests::given_equivalent_legacy_aliases_when_parsed_then_canonical_json_is_identical ... ok
+test ui::toolbar::persistence::tests::given_document_with_large_coordinates_when_import_then_succeeds ... ok
+test ui::interaction::proptests::prop_dragged_positions_nan_anchor_preserves_original ... ok
+test ui::interaction::proptests::prop_dragged_positions_zero_delta_same_position ... ok
+test ui::toolbar::persistence::tests::given_document_with_various_precision_coords_when_round_trip_then_all_preserved ... ok
+test ui::interaction::proptests::prop_dragged_positions_preserves_count ... ok
+test ui::interaction::proptests::prop_toggle_selection_adds_item ... ok
+test ui::interaction::proptests::prop_toggle_selection_idempotent_after_two ... ok
+test ui::canvas::math::proptests::prop_within_handles_nan_node_coords ... ok
+test ui::canvas::math::proptests::prop_within_handles_nan_subgraph_coords ... ok
+test ui::canvas::math::proptests::prop_within_degenerate_rectangles ... ok
+test ui::canvas::interaction_reducer::proptests::prop_many_original_positions ... ok
+test ui::canvas::domain::tests::interaction_fuzz_prop_tests::prop_valid_event_sequence_maintains_invariants ... ok
+
+test result: ok. 457 passed; 0 failed; 0 ignored; 0 measured; 860 filtered out; finished in 0.15s
+
+     Running unittests src/main.rs (target/debug/deps/diagram_tool-c271eed7a19136fe)
+
+running 457 tests
+test ui::canvas::canvas_view::inp_mobile_tests::given_double_tap_threshold_is_reasonable ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_large_base_radius_when_touch_input_then_base_preserved_if_larger ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_mouse_input_when_calculating_hit_radius_then_base_unchanged ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_mouse_input_when_hit_testing_handle_then_visual_size_used ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_at_corner_when_hit_testing_then_expanded_area_covers_corners ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_same_timestamp_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_reversed_timestamps_when_checked_then_not_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_threshold_boundary_values_when_checked_then_boundary_correct ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_directly_on_handle_when_hit_testing_then_succeeds ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_outside_expanded_area_when_hit_testing_then_fails ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_when_calculating_hit_radius_then_uses_touch_minimum ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_input_when_hit_testing_handle_then_expanded_hit_area_used ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_touch_minimum_matches_wcag_guideline ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_far_apart_when_checked_then_not_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_exactly_at_threshold_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_just_over_threshold_when_checked_then_not_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_two_taps_within_threshold_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_zero_base_radius_when_touch_input_then_touch_minimum_used ... ok
+test ui::canvas::canvas_view::inp_mobile_tests::given_zero_times_when_checked_then_is_double_tap ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_precondition_p4_coordinates_finite ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q1_selection_count_exactly_one ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q5_selection_replaces_previous ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_precondition_p1_document_contains_edge ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q2_selection_contains_edge_id ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_vertical_edge_when_clicking_along_edge_then_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_postcondition_q3_no_nodes_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_edge_is_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_diagonal_edge_when_clicking_along_edge_then_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_invariant_i1_selection_contains_valid_ids ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_empty_document_when_clicking_then_no_edge_selected ... ok
+test ui::canvas::canvas_view::tests::given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_horizontal_edge_when_clicking_at_endpoint_then_edge_selected ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_invariant_i4_edge_selection_does_not_mutate_nodes ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_edge_with_bend_points_when_clicking_on_bend_then_edge_selected ... ok
+test ui::canvas::canvas_view::tests::given_endpoint_tie_when_clicking_shared_target_then_selection_is_stable_by_edge_id ... ok
+test ui::canvas::canvas_view::tests::given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_radius ... ok
+test ui::canvas::canvas_view::tests::given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter ... ok
+test ui::canvas::canvas_view::tests::given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across_zooms ... ok
+test ui::canvas::canvas_view::tests::given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_edge_id ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_idle_transitions ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_dragging_transitions ... ok
+test ui::canvas::canvas_view::sel_002_edge_selection_tests::test_sel_002_given_document_with_edge_when_clicking_far_from_edge_then_no_edge_selected ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_hovering_transitions ... ok
+test ui::canvas::domain::tests::interaction_combinatorial_tests::test_exhaustive_selecting_transitions ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_p1_violation_returns_unparseable_event ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_p2_violation_returns_coordinate_out_of_bounds ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_p3_violation_returns_invalid_selection_bounds ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_precondition_parsed_boundaries ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_precondition_semantic_coordinates ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_q2_violation_returns_coordinate_out_of_bounds ... ok
+test ui::canvas::domain::tests::interaction_contract_tests::test_q3_violation_returns_invalid_transition ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_dragging_state_when_mouse_down_event_then_returns_invalid_transition_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_hovering_state_when_mouse_move_event_then_returns_same_hovering_state ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_idle_state_when_drag_move_event_then_returns_invalid_transition_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_idle_state_when_mouse_down_then_transitions_to_selecting ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_idle_state_when_mouse_move_then_transitions_to_hovering ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_negative_area_when_creating_selection_bounds_then_returns_invalid_bounds_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_selecting_state_when_mouse_up_then_transitions_to_idle ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_unknown_raw_event_when_parsed_then_returns_unparseable_error ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_valid_drag_state_when_delta_applied_then_updates_cumulative_offset ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_valid_raw_event_when_parsed_then_returns_canvas_event ... ok
+test ui::canvas::domain::tests::interaction_happy_error_tests::given_zero_delta_when_dragging_then_state_unchanged ... ok
+test ui::canvas::domain::tests::interaction_workflow_tests::given_full_drag_workflow_from_raw_inputs_when_executed_then_yields_correct_final_state ... ok
+test ui::canvas::domain::tests::interaction_workflow_tests::given_full_selection_workflow_from_raw_inputs_when_executed_then_yields_correct_selection_bounds ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_child_when_hit_testing_then_child_has_higher_z_index ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_children_when_resizing_then_parent_references_preserved ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_child_near_edge_when_resize_targets_then_both_included ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_children_when_selected_then_children_included_in_resize_targets ... ok
+test ui::canvas::drag_math::subgraph_tests::given_expanded_container_when_collapsed_then_children_remain_in_document ... ok
+test ui::canvas::drag_math::subgraph_tests::given_locked_container_when_selecting_unlocked_child_then_child_is_selectable ... ok
+test ui::canvas::drag_math::subgraph_tests::given_locked_container_with_unlocked_children_then_children_are_independently_unlocked ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_single_point_returns_that_point ... ok
+test ui::canvas::canvas_view::proptests::dist_to_segment_point_on_endpoint_returns_zero ... ok
+test ui::canvas::drag_math::subgraph_tests::given_mixed_lock_hierarchy_then_lock_states_are_per_node ... ok
+test ui::canvas::drag_math::subgraph_tests::given_multiple_containers_when_collapsed_independently_then_states_are_independent ... ok
+test ui::canvas::canvas_view::proptests::quadratic_control_returns_finite_for_finite_input ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_midpoint_two_points ... ok
+test ui::canvas::drag_math::subgraph_tests::given_multiple_selected_nodes_when_drag_position_calculated_then_all_tracked ... ok
+test ui::canvas::canvas_view::proptests::quadratic_control_lies_on_perpendicular_through_midpoint ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_clamped_t_stays_in_bounds ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nested_containers_then_parent_chain_is_correct ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nested_container_with_children_when_middle_selected_then_descendants_included ... ok
+test ui::canvas::canvas_view::proptests::dist_to_segment_always_non_negative ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins ... ok
+test ui::canvas::canvas_view::proptests::dist_to_segment_zero_length_returns_distance_to_point ... ok
+test ui::canvas::drag_math::subgraph_tests::given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable ... ok
+test ui::canvas::canvas_view::proptests::quadratic_bezier_point_t_one_returns_p2 ... ok
+test ui::canvas::drag_math::subgraph_tests::given_partial_container_overlap_when_rubberband_then_only_overlapping_selected ... ok
+test ui::canvas::drag_math::subgraph_tests::given_container_with_collapsed_state_when_roundtripped_then_state_preserved ... ok
+test ui::canvas::canvas_view::proptests::quadratic_bezier_point_returns_finite_for_finite_inputs ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_t_zero_returns_first ... ok
+test ui::canvas::drag_math::subgraph_tests::given_two_containers_when_inner_positioned_in_outer_then_geometry_supports_nesting ... ok
+test ui::canvas::drag_math::subgraph_tests::given_three_level_hierarchy_when_outer_selected_then_all_descendants_in_drag_positions ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_last_pos_when_updated_then_tracks_movement ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_compared_to_resizing_then_modes_differ ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_compared_to_rubber_band_then_modes_differ ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_all_interaction_modes_when_panning_is_active_then_only_panning_matches ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_two_finger_gesture_then_is_distinct_from_dragging ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_panning_mode_when_compared_to_drawing_modes_then_modes_differ ... ok
+test ui::canvas::canvas_view::proptests::quadratic_bezier_point_t_zero_returns_p0 ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_empty_returns_zero ... ok
+test ui::canvas::interaction_reducer::inp_mobile_touch_tests::given_select_mode_when_compared_to_panning_then_modes_differ ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_returns_finite ... ok
+test ui::canvas::canvas_view::proptests::interpolate_polyline_point_t_one_returns_last ... ok
+test ui::canvas::interaction_reducer::proptests::stress_panning_nan ... ok
+test ui::canvas::interaction_reducer::proptests::stress_finalize_idempotent_on_select ... ok
+test ui::canvas::interaction_reducer::proptests::stress_no_revision_bump_no_resize ... ok
+test ui::canvas::interaction_reducer::proptests::stress_no_revision_bump_no_move ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_child_near_edge_when_resize_targets_then_both_included ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_child_when_hit_testing_then_child_has_higher_z_index ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_children_when_resizing_then_parent_references_preserved ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_children_when_selected_then_children_included_in_resize_targets ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_container_with_collapsed_state_when_roundtripped_then_state_preserved ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_expanded_container_when_collapsed_then_children_remain_in_document ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_locked_container_when_selecting_unlocked_child_then_child_is_selectable ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_locked_container_with_unlocked_children_then_children_are_independently_unlocked ... ok
+test ui::canvas::interaction_reducer::proptests::stress_resize_infinite_bounds ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_mixed_lock_hierarchy_then_lock_states_are_per_node ... ok
+test ui::canvas::interaction_reducer::proptests::stress_resize_nan_bounds ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_multiple_containers_when_collapsed_independently_then_states_are_independent ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_multiple_selected_nodes_when_drag_position_calculated_then_all_tracked ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nested_containers_then_parent_chain_is_correct ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nested_container_with_children_when_middle_selected_then_descendants_included ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_partial_container_overlap_when_rubberband_then_only_overlapping_selected ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_three_level_hierarchy_when_outer_selected_then_all_descendants_in_drag_positions ... ok
+test ui::canvas::interaction_reducer::subgraph_tests::given_two_containers_when_inner_positioned_in_outer_then_geometry_supports_nesting ... ok
+test ui::canvas::interaction_reducer::tests::given_already_in_select_mode_when_finalized_then_no_revision_change ... ok
+test ui::canvas::interaction_reducer::tests::given_drag_end_when_finalized_twice_then_revision_bumps_once ... ok
+test ui::canvas::interaction_reducer::tests::given_drag_gesture_when_duplicate_events_arrive_then_history_single_entry ... ok
+test ui::canvas::interaction_reducer::tests::given_mixed_gesture_sequence_when_finalized_then_correct_revisions ... ok
+test ui::canvas::interaction_reducer::tests::given_no_op_gesture_when_finalized_then_no_revision_bump ... ok
+test ui::canvas::interaction_reducer::tests::given_resize_end_when_finalized_twice_then_revision_bumps_once ... ok
+test ui::canvas::interaction_reducer::tests::given_resize_end_without_resize_when_finalized_then_no_revision_bump ... ok
+test ui::canvas::interaction_reducer::tests::given_resize_gesture_when_duplicate_events_arrive_then_history_single_entry ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_resize_past_inversion_when_finalized_then_handles_negative_scale ... ok
+test ui::canvas::interaction_reducer::tests::given_selected_subgraph_when_collecting_resize_targets_then_interior_nodes_included ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_inverted_dimensions_when_resize_computed_then_clamps_to_minimum ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_line_like_node_when_resize_computed_then_scales_proportionally ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_nodes_connected_by_curved_edge_when_resize_computed_then_nodes_scale ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_rotated_item_bounds_when_resize_computed_then_scales_correctly ... ok
+test ui::canvas::interaction_reducer::tests::given_selection_with_text_node_when_resize_computed_then_text_included ... ok
+test ui::canvas::interaction_reducer::proptests::stress_preserves_state_on_select ... ok
+test ui::canvas::interaction_reducer::proptests::prop_overflow_safety ... ok
+test ui::canvas::interaction_reducer::proptests::prop_subnormal_floats ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_infinite_dims ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_exact_boundary ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_exceeds_by_epsilon ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_node_on_edge ... ok
+test ui::canvas::interaction_reducer::proptests::prop_all_resize_handles ... ok
+test ui::canvas::interaction_reducer::proptests::prop_drag_extreme_anchor ... ok
+test ui::canvas::interaction_reducer::proptests::prop_resize_handles_extreme_coords ... ok
+test ui::canvas::math::proptests::prop_screen_to_canvas_zoom_edge_cases ... ok
+test ui::canvas::math::proptests::screen_to_canvas_combined_transform ... ok
+test ui::canvas::math::proptests::screen_to_canvas_identity_at_zoom_one ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_infinite_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_nan_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_negative_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_returns_none_for_zero_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_scales_with_zoom ... ok
+test ui::canvas::math::proptests::screen_to_canvas_shifts_with_camera ... ok
+test ui::canvas::interaction_reducer::proptests::prop_safe_zoom_rejects_extreme_values ... ok
+test ui::canvas::math::proptests::prop_screen_to_canvas_roundtrip ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_finger_like_input_when_processed_then_no_panic ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_mixed_pointer_inputs_then_all_produce_valid_output ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_pinch_at_limits_then_stays_bounded ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_pinch_gesture_when_zoom_in_then_zooms_canvas_not_creates_shape ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_pinch_gesture_when_zoom_out_then_zooms_canvas_not_creates_shape ... ok
+test ui::canvas::perf::inp_mobile_touch_tests::given_stylus_like_input_when_processed_then_no_panic ... ok
+test ui::canvas::interaction_reducer::proptests::prop_rubberband_zero_area ... ok
+test ui::canvas::perf::inp_mobile_touch_proptests::prop_pinch_gesture_always_produces_valid_zoom ... ok
+test ui::canvas::interaction_reducer::proptests::prop_nested_subgraphs ... ok
+test ui::canvas::perf::inp_mobile_touch_proptests::prop_pointer_type_agnostic_handling ... ok
+test ui::canvas::math::proptests::prop_safe_zoom_boundary ... ok
+test ui::canvas::math::proptests::prop_overflow_safety ... ok
+test ui::canvas::interaction_reducer::proptests::prop_safe_zoom_boundary ... ok
+test ui::canvas::perf::proptests::prop_discrete_wheel_zoom_factor_consistency ... ok
+test ui::canvas::perf::proptests::prop_coord_transform_roundtrip ... ok
+test ui::canvas::perf::tests::given_already_at_zoom_limit_when_wheel_then_no_change ... ok
+test ui::canvas::perf::tests::given_continuous_wheel_extreme_deltas_when_transform_then_stays_bounded ... ok
+test ui::canvas::perf::tests::given_discrete_wheel_extreme_deltas_when_transform_then_stays_bounded ... ok
+test ui::canvas::perf::tests::given_extreme_zoom_inputs_when_wheel_transform_then_zoom_stays_clamped_and_finite ... ok
+test ui::canvas::perf::proptests::prop_normalize_viewport_always_positive ... ok
+test ui::canvas::perf::tests::given_nan_camera_when_wheel_update_then_returns_none ... ok
+test ui::canvas::perf::tests::given_nan_client_coords_when_wheel_update_then_returns_none ... ok
+test ui::canvas::perf::tests::given_nan_wheel_delta_when_wheel_update_then_no_invalid_state_is_emitted ... ok
+test ui::canvas::perf::tests::given_to_canvas_coords_when_valid_then_returns_finite ... ok
+test ui::canvas::perf::proptests::prop_viewport_changed_detects_significant_change ... ok
+test ui::canvas::perf::tests::given_to_screen_coords_when_valid_then_returns_finite ... ok
+test ui::canvas::perf::tests::given_wheel_update_when_all_valid_then_returns_some_with_finite_values ... ok
+test ui::canvas::perf::tests::given_wheel_update_when_zero_delta_then_returns_none ... ok
+test ui::canvas::selection_geometry::tests::given_locked_and_unlocked_nodes_when_selection_bounds_then_exclude_locked ... ok
+test ui::canvas::selection_geometry::tests::given_all_locked_nodes_when_selection_bounds_then_none ... ok
+test ui::canvas::selection_geometry::tests::given_mixed_selection_when_selected_node_ids_then_exclude_locked ... ok
+test ui::canvas::selection_geometry::tests::given_multi_type_selection_when_bounds_requested_then_all_types_included ... ok
+test ui::canvas::interaction_reducer::proptests::prop_resize_target_ids_empty_doc ... ok
+test ui::canvas::selection_geometry::tests::given_nodes_at_negative_coords_when_selected_then_bounds_correct ... ok
+test ui::canvas::selection_geometry::tests::given_selected_items_when_camera_transforms_then_selection_remains_unchanged ... ok
+test ui::canvas::selection_geometry::tests::given_selection_history_when_undo_redo_then_selection_restored ... ok
+test ui::canvas::selection_geometry::tests::given_selected_nodes_when_bounds_requested_then_bounds_cover_selection ... ok
+test ui::canvas::selection_geometry::tests::given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiable ... ok
+test ui::canvas::tests::given_icon_side_when_too_small_then_fit_never_panics_and_stays_non_negative ... ok
+test ui::canvas::math::proptests::prop_safe_zoom_rejects_extreme_values ... ok
+test ui::canvas::tests::given_existing_selection_when_rubber_band_released_then_selection_is_cleared ... ok
+test ui::canvas::tests::given_noop_rubber_band_when_released_then_selection_is_preserved ... ok
+test ui::canvas::tests::given_subgraph_release_bounds_when_drag_too_small_then_none ... ok
+test ui::canvas::tests::given_rubber_band_release_when_applied_then_selection_is_committed ... ok
+test ui::canvas::tests::given_subgraph_release_bounds_when_drag_valid_then_bounds_returned ... ok
+test ui::commands::distribution_tests::test_distribute_horizontal_preserves_y ... ok
+test ui::commands::distribution_tests::test_distribute_horizontal_three_nodes ... ok
+test ui::commands::distribution_tests::test_distribute_less_than_three_nodes_returns_false ... ok
+test ui::commands::distribution_tests::test_distribute_equal_spacing ... ok
+test ui::commands::distribution_tests::test_distribute_locked_nodes_skipped ... ok
+test ui::commands::distribution_tests::test_distribute_outermost_nodes_at_bounds ... ok
+test ui::commands::distribution_tests::test_distribute_updates_revision ... ok
+test ui::commands::distribution_tests::test_distribute_vertical_preserves_x ... ok
+test ui::commands::distribution_tests::test_distribute_vertical_three_nodes ... ok
+test ui::commands::distribution_tests::test_distribute_preserves_node_size ... ok
+test ui::canvas::perf::proptests::prop_wheel_transform_coords_always_finite ... ok
+test ui::canvas::math::proptests::prop_within_infinite_dims ... ok
+test ui::canvas::perf::proptests::prop_wheel_transform_zoom_always_clamped ... ok
+test ui::canvas::math::proptests::prop_within_exact_boundary ... ok
+test ui::canvas::math::proptests::prop_within_exceeds_by_epsilon ... ok
+test ui::canvas::perf::proptests::prop_continuous_wheel_zoom_respects_bounds ... ok
+test ui::canvas::math::proptests::prop_within_node_on_edge ... ok
+test ui::canvas::interaction_reducer::proptests::prop_mode_equality_rubberband ... ok
+test ui::canvas::interaction_reducer::proptests::prop_drawing_edge_extreme ... ok
+test ui::commands::proptests::prop_zoom_to_center_camera_stays_finite ... ok
+test ui::commands::proptests::prop_zoom_increases_with_large_factor ... ok
+test ui::commands::proptests::prop_zoom_decreases_with_small_factor ... ok
+test ui::commands::proptests::prop_zoom_to_center_inf_zoom_recovered ... ok
+test ui::commands::tests::given_clipboard_when_has_content_then_returns_true ... ok
+test ui::commands::tests::given_alignment_when_successful_then_dimensions_unchanged ... ok
+test ui::commands::tests::given_alignment_when_successful_then_revision_incremented ... ok
+test ui::canvas::interaction_reducer::proptests::prop_finalize_stress ... ok
+test ui::commands::tests::given_clipboard_when_prepare_paste_then_increments_serial ... ok
+test ui::commands::tests::given_clipboard_with_empty_nodes_when_paste_then_returns_false ... ok
+test ui::commands::tests::given_empty_clipboard_when_has_content_then_returns_false ... ok
+test ui::commands::tests::given_copied_nodes_when_paste_then_creates_new_ids ... ok
+test ui::commands::tests::given_copied_nodes_when_paste_then_applies_offset ... ok
+test ui::commands::tests::given_empty_selection_when_align_then_returns_false ... ok
+test ui::commands::tests::given_empty_clipboard_when_paste_then_returns_none ... ok
+test ui::commands::tests::given_edge_in_clipboard_when_paste_then_remapped_to_new_ids ... ok
+test ui::commands::tests::given_empty_selection_when_copy_then_returns_none ... ok
+test ui::commands::tests::given_locked_node_when_align_then_skips_locked ... ok
+test ui::commands::tests::given_multiple_nodes_selected_when_copy_then_includes_edges ... ok
+test ui::commands::tests::given_nested_nodes_selected_when_copy_then_preserves_parent_reference ... ok
+test ui::commands::tests::given_multiple_pastes_then_offset_increases ... ok
+test ui::commands::tests::given_none_clipboard_when_clipboard_has_content_then_returns_false ... ok
+test ui::commands::tests::given_multiple_nodes_when_paste_then_all_ids_unique ... ok
+test ui::commands::tests::given_nested_subgraphs_when_validated_then_parent_chain_correct ... ok
+test ui::commands::tests::given_parent_also_pasted_when_paste_then_remapped ... ok
+test ui::commands::tests::given_partial_edge_selection_when_copy_then_excludes_edge ... ok
+test ui::commands::tests::given_parent_not_pasted_when_paste_then_preserved ... ok
+test ui::commands::tests::given_paste_successful_when_paste_then_revision_incremented ... ok
+test ui::commands::tests::given_paste_successful_when_paste_then_selection_updated ... ok
+test ui::commands::tests::given_selected_middle_node_when_bring_to_front_then_relative_order_preserved ... ok
+test ui::commands::tests::given_second_paste_when_paste_then_applies_double_offset ... ok
+test ui::commands::tests::given_selected_middle_node_when_send_to_back_then_relative_order_preserved ... ok
+test ui::commands::tests::given_selection_when_copy_selection_for_duplicate_then_sets_serial_to_1 ... ok
+test ui::commands::tests::given_selection_with_nonexistent_ids_when_copy_then_returns_false ... ok
+test ui::commands::tests::given_selection_with_infinite_coords_when_align_then_returns_false ... ok
+test ui::canvas::perf::proptests::prop_wheel_update_returns_finite_or_none ... ok
+test ui::canvas::interaction_reducer::proptests::prop_drawing_subgraph_extreme ... ok
+test ui::commands::tests::given_single_node_selected_when_align_then_returns_false ... ok
+test ui::commands::tests::given_single_node_selected_when_copy_then_succeeds ... ok
+test ui::commands::tests::given_some_clipboard_when_clipboard_has_content_then_reflects_content ... ok
+test ui::commands::tests::given_selected_subgraph_with_children_when_ungroup_then_children_restored_to_root ... ok
+test ui::commands::tests::given_single_node_selected_when_group_selection_then_returns_false ... ok
+test ui::commands::tests::given_subgraph_selected_when_group_selection_then_subgraph_excluded ... ok
+test ui::commands::tests::given_three_nodes_selected_when_copy_then_copies_all ... ok
+test ui::commands::tests::given_three_nodes_when_align_center_horizontal_then_centered ... ok
+test ui::commands::tests::given_three_nodes_when_align_middle_vertical_then_centered ... ok
+test ui::commands::tests::given_two_nodes_when_align_left_then_both_share_min_x ... ok
+test ui::commands::tests::given_two_nodes_when_align_bottom_then_both_share_max_bottom ... ok
+test ui::commands::tests::given_two_nodes_when_align_right_then_both_share_max_right ... ok
+test ui::commands::tests::given_two_nodes_when_align_top_then_both_share_min_y ... ok
+test ui::commands::tests::given_two_selected_nodes_when_group_selection_then_creates_subgraph_with_correct_bounds ... ok
+test ui::commands::tests::given_zoom_to_center_when_at_max_then_no_change ... ok
+test ui::commands::tests::given_zoom_to_center_when_at_min_then_no_change ... ok
+test ui::commands::tests::given_zoom_to_center_when_huge_viewport_then_no_panic ... ok
+test ui::commands::tests::given_zoom_to_center_when_inf_zoom_then_uses_default ... ok
+test ui::commands::tests::given_zoom_to_center_when_nan_camera_then_zoom_still_clamped ... ok
+test ui::commands::tests::given_zoom_to_center_when_nan_zoom_then_uses_default ... ok
+test ui::commands::tests::given_zoom_to_center_when_negative_zoom_then_uses_default ... ok
+test ui::commands::tests::given_zoom_to_center_when_tiny_viewport_then_no_panic ... ok
+test ui::commands::tests::given_zoom_to_center_when_valid_then_camera_finite ... ok
+test ui::commands::tests::given_zoom_to_center_when_valid_zoom_then_zoom_clamped ... ok
+test ui::commands::tests::given_zoom_to_center_when_zero_zoom_then_uses_default ... ok
+test ui::grid::snp_snapping_tests::given_drag_near_grid_edge_when_snap_enabled_then_snaps_to_nearest_grid ... ok
+test ui::canvas::interaction_reducer::proptests::prop_overlapping_subgraphs ... ok
+test ui::grid::snp_snapping_tests::given_multiple_midway_values_when_snap_enabled_then_all_tie_break_consistently ... ok
+test ui::grid::snp_snapping_tests::given_multiple_offsets_when_snap_enabled_then_all_snap_consistently ... ok
+test ui::grid::snp_snapping_tests::given_point_at_grid_center_when_snap_enabled_then_deterministic ... ok
+test ui::grid::snp_snapping_tests::given_point_near_grid_intersection_when_snap_enabled_then_snaps_both_axes ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_when_snapping_point_then_returns_point_unchanged ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_when_snapping_then_returns_value_unchanged ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_with_infinity_then_returns_infinity ... ok
+test ui::grid::snp_snapping_tests::given_snap_disabled_with_nan_then_returns_nan ... ok
+test ui::grid::snp_snapping_tests::given_value_at_snap_threshold_when_snap_enabled_then_engages_correctly ... ok
+test ui::grid::snp_snapping_tests::given_value_exactly_midway_when_snap_enabled_then_deterministic_tie_break ... ok
+test ui::grid::snp_snapping_tests::given_value_near_grid_line_when_snap_enabled_then_snaps_to_grid ... ok
+test ui::grid::snp_snapping_tests::given_very_large_grid_when_snap_enabled_then_still_snaps ... ok
+test ui::grid::snp_snapping_tests::given_very_large_value_when_snap_enabled_then_snaps_correctly ... ok
+test ui::grid::snp_snapping_tests::given_very_small_grid_when_snap_enabled_then_still_snaps ... ok
+test ui::grid::tests::given_default_when_getting_default_grid_size_then_returns_20 ... ok
+test ui::grid::tests::given_exact_grid_multiple_when_snapping_then_returns_same_value ... ok
+test ui::grid::snp_snapping_tests::given_zero_value_when_snap_enabled_then_returns_zero ... ok
+test ui::grid::tests::given_fractional_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_grid_size_when_serializing_and_deserializing_then_roundtrips ... ok
+test ui::grid::tests::given_infinity_value_when_snapping_then_returns_infinity ... ok
+test ui::commands::proptests::prop_zoom_to_center_nan_zoom_recovered ... ok
+test ui::grid::tests::given_json_null_when_deserializing_grid_size_then_returns_error ... ok
+test ui::canvas::math::proptests::prop_subnormal_floats ... ok
+test ui::grid::tests::given_json_string_when_deserializing_grid_size_then_returns_error ... ok
+test ui::grid::tests::given_maximum_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_minimum_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_nan_value_when_creating_grid_size_then_returns_not_finite_error ... ok
+test ui::commands::proptests::prop_zoom_to_center_negative_zoom_recovered ... ok
+test ui::grid::tests::given_nan_value_when_snapping_then_returns_nan ... ok
+test ui::grid::tests::given_negative_infinity_when_creating_grid_size_then_returns_not_finite_error ... ok
+test ui::commands::proptests::prop_zoom_to_center_zoom_always_clamped ... ok
+test ui::commands::proptests::prop_zoom_to_center_zero_zoom_recovered ... ok
+test ui::grid::tests::given_negative_value_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::given_negative_value_when_snapping_then_handles_correctly ... ok
+test ui::grid::tests::given_point_when_snapping_then_each_coordinate_snapped_independently ... ok
+test ui::grid::tests::given_positive_infinity_when_creating_grid_size_then_returns_not_finite_error ... ok
+test ui::grid::tests::given_out_of_range_json_number_when_deserializing_then_returns_error ... ok
+test ui::grid::tests::given_snap_disabled_when_snapping_value_then_returns_value_unchanged ... ok
+test ui::grid::tests::given_snap_enabled_when_snapping_value_then_returns_grid_multiple ... ok
+test ui::grid::tests::given_valid_json_number_when_deserializing_grid_size_then_succeeds ... ok
+test ui::grid::tests::given_valid_value_when_creating_grid_size_then_returns_ok ... ok
+test ui::grid::tests::given_value_above_maximum_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::given_value_below_minimum_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::given_value_midway_between_grid_lines_when_snapping_then_rounds_to_nearest ... ok
+test ui::grid::tests::given_zero_value_when_creating_grid_size_then_returns_out_of_range_error ... ok
+test ui::grid::tests::test_invariant_i1_range_guaranteed ... ok
+test ui::grid::tests::test_invariant_i2_finite_guaranteed ... ok
+test ui::grid::tests::test_postcondition_q1_inner_value_preserved ... ok
+test ui::grid::tests::test_postcondition_q2_snap_disabled_identity ... ok
+test ui::grid::tests::test_postcondition_q2_snap_enabled_grid_multiple ... ok
+test ui::grid::tests::test_postcondition_q4_serialization_format ... ok
+test ui::grid::tests::test_postcondition_q5_default_value ... ok
+test ui::grid::tests::test_precondition_p1_finite_validation ... ok
+test ui::canvas::interaction_reducer::proptests::prop_rapid_mode_transitions ... ok
+test ui::grid::tests::test_precondition_p1_range_validation ... ok
+test ui::canvas::interaction_reducer::proptests::prop_tiny_subgraph ... ok
+test ui::interaction::inp_mobile_touch_tests::given_double_tap_timing_constants_then_are_finite_and_reasonable ... ok
+test ui::interaction::inp_mobile_touch_tests::given_double_tap_timing_when_taps_within_window_then_detected ... ok
+test ui::interaction::inp_mobile_touch_tests::given_long_press_when_minor_jitter_then_still_not_drag ... ok
+test ui::interaction::inp_mobile_touch_tests::given_long_press_when_no_motion_then_not_drag_and_can_select ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_drag_when_motion_below_threshold_then_not_considered_drag ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_drag_when_rightward_then_uses_contain_selection_mode ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_finger_hit_area_when_computed_then_meets_accessibility ... ok
+test ui::interaction::inp_mobile_touch_tests::given_touch_hit_area_when_checking_selection_handles_then_meets_minimum ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_handles_nan_node_coords ... ok
+test ui::grid::proptests::prop_grid_size_invariant_range ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_handles_nan_subgraph_coords ... ok
+test ui::grid::proptests::prop_snap_disabled_identity ... ok
+test ui::grid::proptests::prop_serialization_roundtrip ... ok
+test ui::grid::proptests::prop_snap_grid_alignment ... ok
+test ui::grid::proptests::prop_snap_idempotency ... ok
+test ui::grid::proptests::prop_snap_point_consistent_with_snap_value ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_double_tap_timing_window_is_positive ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_touch_hit_radius_always_positive_and_finite ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_touch_drag_threshold_consistent_regardless_of_direction ... ok
+test ui::interaction::inp_mobile_touch_proptests::prop_long_press_with_small_jitter_never_triggers_drag ... ok
+test ui::interaction::proptests::prop_has_drag_threshold_always_true_for_large_delta ... ok
+test ui::interaction::proptests::prop_has_drag_threshold_always_false_for_tiny_delta ... ok
+test ui::interaction::proptests::prop_snap_point_consistent_with_snap_value ... ok
+test ui::interaction::proptests::prop_snap_value_grid_zero_uses_one ... ok
+test ui::interaction::proptests::prop_has_drag_threshold_symmetric ... ok
+test ui::interaction::proptests::prop_snap_value_enabled_is_multiple_of_grid ... ok
+test ui::interaction::proptests::prop_dragged_positions_zero_delta_same_position ... ok
+test ui::interaction::proptests::prop_snap_value_disabled_returns_same ... ok
+test ui::interaction::proptests::prop_snap_point_disabled_returns_same ... ok
+test ui::interaction::proptests::prop_dragged_positions_nan_anchor_preserves_original ... ok
+test ui::interaction::snp_interaction_tests::given_diagonal_drag_when_threshold_checked_then_uses_euclidean_distance ... ok
+test ui::interaction::snp_interaction_tests::given_drag_threshold_boundary_when_checked_then_engages_correctly ... ok
+test ui::interaction::snp_interaction_tests::given_different_grid_sizes_when_snap_enabled_then_snaps_to_correct_grid ... ok
+test ui::interaction::snp_interaction_tests::given_empty_selection_when_dragged_then_returns_empty ... ok
+test ui::interaction::snp_interaction_tests::given_multi_select_drag_from_nonzero_anchor_when_snap_enabled_then_snaps_correctly ... ok
+test ui::canvas::interaction_reducer::proptests::prop_rubberband_negative_area ... ok
+test ui::interaction::snp_interaction_tests::given_multi_select_drag_when_snap_disabled_then_all_nodes_use_raw_delta ... ok
+test ui::interaction::snp_interaction_tests::given_multi_select_drag_when_snap_enabled_then_all_nodes_use_snapped_delta ... ok
+test ui::interaction::snp_interaction_tests::given_negative_drag_when_snap_enabled_then_snaps_to_negative_grid ... ok
+test ui::interaction::snp_interaction_tests::given_single_node_drag_when_snap_enabled_then_position_snapped ... ok
+test ui::interaction::tests::given_drag_anchor_and_current_when_dragged_positions_then_offsets_nodes ... ok
+test ui::interaction::tests::given_large_motion_when_threshold_checked_then_returns_true ... ok
+test ui::interaction::tests::given_intersect_mode_when_rect_touches_node_then_node_is_selected ... ok
+test ui::interaction::tests::given_leftward_drag_inside_node_when_node_ids_in_rect_then_returns_node_in_intersect_mode ... ok
+test ui::interaction::tests::given_leftward_drag_when_selection_mode_resolved_then_uses_intersect ... ok
+test ui::canvas::domain::tests::interaction_fuzz_prop_tests::fuzz_parse_event_never_panics ... ok
+test ui::interaction::tests::given_leftward_drag_when_node_ids_in_rect_then_uses_intersection_behavior ... ok
+test ui::interaction::tests::given_rect_when_node_ids_in_rect_then_returns_contained_nodes ... ok
+test ui::interaction::tests::given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_contain_mode ... ok
+test ui::interaction::tests::given_rightward_drag_when_selection_mode_resolved_then_uses_contain ... ok
+test ui::interaction::tests::given_selection_when_toggling_then_adds_and_removes_item ... ok
+test ui::interaction::tests::given_selected_endpoints_when_auto_selecting_edges_then_connecting_edge_is_selected ... ok
+test ui::interaction::tests::given_single_item_when_select_single_then_only_item_is_selected ... ok
+test ui::interaction::tests::given_small_motion_when_threshold_checked_then_returns_false ... ok
+test ui::interaction::tests::given_snap_enabled_when_dragging_then_positions_use_grid_delta ... ok
+test ui::interaction::tests::given_snap_enabled_when_snapping_values_then_rounds_to_grid ... ok
+test ui::minimap::tests::given_empty_document_when_snapshot_then_returns_none ... ok
+test ui::minimap::tests::given_degenerate_world_bounds_when_projecting_then_projection_is_finite ... ok
+test ui::minimap::tests::given_inf_node_geometry_when_snapshot_built_then_handles_gracefully ... ok
+test ui::minimap::tests::given_nan_node_geometry_when_snapshot_built_then_invalid_geometry_is_sanitized_or_ignored ... ok
+test ui::minimap::tests::given_near_zero_node_sizes_when_snapshot_then_bounds_remain_finite ... ok
+test ui::minimap::tests::given_nodes_with_edges_when_snapshot_then_edge_segments_included ... ok
+test ui::minimap::tests::given_projection_key_when_state_differs_then_keys_differ ... ok
+test ui::minimap::tests::given_overlapping_nodes_when_projecting_then_no_panic ... ok
+test ui::minimap::tests::given_projection_key_when_state_identical_then_keys_equal ... ok
+test ui::interaction::snp_interaction_tests::given_large_multi_select_when_snap_enabled_then_all_processed ... ok
+test ui::minimap::tests::given_single_node_when_projecting_then_bounds_are_correct ... ok
+test ui::panels::tests::given_default_panel_visibility_when_created_then_sidebar_and_minimap_visible ... ok
+test ui::minimap::tests::given_very_large_scale_when_projecting_then_sizes_floored_to_minimum ... ok
+test ui::toolbar::auto_save::tests::given_current_revision_when_comparing_with_none_then_returns_true ... ok
+test ui::toolbar::auto_save::tests::given_default_revision_when_creating_then_returns_initial ... ok
+test ui::toolbar::auto_save::tests::given_different_revisions_when_comparing_then_returns_true ... ok
+test ui::toolbar::auto_save::tests::given_invalid_json_when_deserializing_then_returns_error ... ok
+test ui::toolbar::auto_save::tests::given_same_revisions_when_comparing_then_returns_false ... ok
+test ui::interaction::proptests::prop_dragged_positions_preserves_count ... ok
+test ui::toolbar::auto_save::tests::given_valid_json_when_deserializing_then_returns_diagram ... ok
+test ui::toolbar::persistence::tests::given_document_with_large_coordinates_when_import_then_succeeds ... ok
+test ui::toolbar::persistence::tests::given_document_with_extreme_finite_coords_when_import_then_succeeds ... ok
+test ui::toolbar::persistence::tests::given_import_error_when_applying_contents_then_doc_and_history_remain_unchanged ... ok
+test ui::toolbar::persistence::tests::given_malformed_import_when_preparing_transition_then_returns_parse_error ... ok
+test ui::toolbar::persistence::tests::given_import_error_when_selection_exists_then_selection_is_preserved ... ok
+test ui::toolbar::persistence::tests::given_document_with_fractional_coords_when_round_trip_then_geometry_preserved ... ok
+test ui::toolbar::persistence::tests::given_semantically_invalid_import_when_preparing_transition_then_returns_validation_error ... ok
+test ui::toolbar::persistence::tests::given_validation_error_when_applying_contents_then_doc_and_history_remain_unchanged ... ok
+test ui::toolbar::persistence_compat::tests::given_document_when_serialized_then_round_trips ... ok
+test ui::validation_panel::tests::empty_validation_list_has_no_errors ... ok
+test ui::validation_panel::tests::validation_issue_creation ... ok
+test ui::toolbar::persistence_compat::tests::given_document_without_version_when_import_then_fails_gracefully ... ok
+test ui::validation_panel::tests::validation_issue_with_subject ... ok
+test ui::validation_panel::tests::validation_severity_ordering ... ok
+test ui::toolbar::persistence_compat::tests::given_older_document_with_legacy_fields_when_import_then_fields_remapped ... ok
+test ui::toolbar::persistence_compat::tests::given_legacy_font_size_keys_when_parsed_then_document_loads ... ok
+test ui::toolbar::persistence_compat::tests::given_ts_style_json_when_parsed_then_document_loads ... ok
+test ui::toolbar::persistence_compat::tests::given_version_1_document_when_import_then_migrates_to_current_version ... ok
+test ui::toolbar::persistence::tests::given_document_with_various_precision_coords_when_round_trip_then_all_preserved ... ok
+test ui::toolbar::persistence::tests::given_valid_import_when_preparing_transition_then_new_doc_and_history_are_atomic ... ok
+test ui::interaction::proptests::prop_snap_value_nan_returns_nan ... ok
+test ui::interaction::proptests::prop_snap_value_negative_grid_uses_one ... ok
+test ui::toolbar::persistence_compat::tests::given_equivalent_legacy_aliases_when_parsed_then_canonical_json_is_identical ... ok
+test ui::canvas::interaction_reducer::proptests::prop_within_degenerate_rectangles ... ok
+test ui::interaction::proptests::prop_toggle_selection_adds_item ... ok
+test ui::interaction::proptests::prop_toggle_selection_idempotent_after_two ... ok
+test ui::canvas::math::proptests::prop_within_handles_nan_subgraph_coords ... ok
+test ui::canvas::math::proptests::prop_within_handles_nan_node_coords ... ok
+test ui::canvas::math::proptests::prop_within_degenerate_rectangles ... ok
+test ui::canvas::interaction_reducer::proptests::prop_many_original_positions ... ok
+test ui::canvas::domain::tests::interaction_fuzz_prop_tests::prop_valid_event_sequence_maintains_invariants ... ok
+
+test result: ok. 457 passed; 0 failed; 0 ignored; 0 measured; 830 filtered out; finished in 0.15s
+
+     Running tests/cli_e2e.rs (target/debug/deps/cli_e2e-ed8ccdd64796e735)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
+     Running tests/golden_scenes.rs (target/debug/deps/golden_scenes-6fc528509b12ecf4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 27 filtered out; finished in 0.00s
+
+     Running tests/perf_integration.rs (target/debug/deps/perf_integration-d2c0b0ac06b554d4)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 18 filtered out; finished in 0.00s
+
+     Running tests/phase1_rusqlite_removal.rs (target/debug/deps/phase1_rusqlite_removal-78fa13a9ed3fd324)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 8 filtered out; finished in 0.00s
+
+     Running tests/phase4_model_updates.rs (target/debug/deps/phase4_model_updates-cfc132f9b1b098b6)
+
+running 0 tests
+
+test result: ok. 0 passed; 0 failed; 0 ignored; 0 measured; 13 filtered out; finished in 0.00s
+
