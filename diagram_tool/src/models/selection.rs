@@ -1,6 +1,31 @@
-use crate::models::document::{DiagramDocument, NodeId};
+use crate::models::document::{DiagramDocument, EdgeId, NodeId, Point};
 use im::HashSet;
+use std::fmt;
 use thiserror::Error;
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ElementId {
+    Node(NodeId),
+    Edge(EdgeId),
+}
+
+impl fmt::Display for ElementId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            Self::Node(id) => write!(f, "{id}"),
+            Self::Edge(id) => write!(f, "{id}"),
+        }
+    }
+}
+
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+#[allow(clippy::struct_excessive_bools)]
+pub struct SelectModifiers {
+    pub alt: bool,
+    pub shift: bool,
+    pub ctrl: bool,
+    pub right_click: bool,
+}
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum SelectionError {
@@ -12,6 +37,16 @@ pub enum SelectionError {
     NodeNotEditable,
     #[error("Invalid marquee bounds: negative width or height")]
     InvalidMarqueeBounds,
+    #[error("Element is locked")]
+    ElementLocked,
+    #[error("Element is hidden")]
+    ElementHidden,
+    #[error("Element not found")]
+    ElementNotFound,
+    #[error("Node has no parent container")]
+    NoParentContainer,
+    #[error("Precondition violated")]
+    PreconditionViolated,
 }
 
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -31,6 +66,8 @@ pub struct Rect {
 }
 
 impl Rect {
+    /// # Errors
+    /// Returns an error if the marquee bounds have negative width or height.
     pub fn new(x: f64, y: f64, width: f64, height: f64) -> Result<Self, SelectionError> {
         if width < 0.0 || height < 0.0 {
             Err(SelectionError::InvalidMarqueeBounds)
@@ -271,6 +308,102 @@ pub fn compute_marquee_selection(
     }
 
     Ok(selected)
+}
+
+fn is_element_visible(metadata: &im::HashMap<String, serde_json::Value>) -> bool {
+    metadata
+        .get("visibility")
+        .and_then(serde_json::Value::as_str)
+        != Some("hidden")
+}
+
+/// # Errors
+///
+/// Returns an error if the element is locked, hidden, or not found.
+pub fn select_element(
+    state: &mut im::HashSet<String>,
+    document: &DiagramDocument,
+    id: &ElementId,
+    modifiers: &SelectModifiers,
+) -> Result<(), SelectionError> {
+    match id {
+        ElementId::Node(node_id) => {
+            let node = document
+                .document
+                .nodes
+                .get(node_id)
+                .ok_or(SelectionError::ElementNotFound)?;
+
+            if node.locked {
+                return Err(SelectionError::ElementLocked);
+            }
+
+            if !is_element_visible(&node.metadata) {
+                return Err(SelectionError::ElementHidden);
+            }
+
+            if modifiers.alt {
+                if let Some(parent_id) = &node.parent {
+                    state.clear();
+                    state.insert(parent_id.to_string());
+                } else {
+                    return Err(SelectionError::NoParentContainer);
+                }
+            } else {
+                state.clear();
+                state.insert(node_id.to_string());
+            }
+        }
+        ElementId::Edge(edge_id) => {
+            let edge = document
+                .document
+                .edges
+                .get(edge_id)
+                .ok_or(SelectionError::ElementNotFound)?;
+
+            if !is_element_visible(&edge.metadata) {
+                return Err(SelectionError::ElementHidden);
+            }
+
+            state.clear();
+            state.insert(edge_id.to_string());
+        }
+    }
+    Ok(())
+}
+
+/// # Errors
+///
+/// Never currently returns an error, but uses Result for API compatibility.
+pub fn hit_test(
+    point: &Point,
+    document: &DiagramDocument,
+) -> Result<Option<ElementId>, SelectionError> {
+    use itertools::Itertools;
+
+    let px = point.x.0;
+    let py = point.y.0;
+
+    let hit = document
+        .document
+        .nodes
+        .iter()
+        .sorted_by_key(|(_, n)| -n.z_index)
+        .find(|(_, n)| {
+            if !is_element_visible(&n.metadata) {
+                return false;
+            }
+
+            let nx = n.x.0;
+            let ny = n.y.0;
+            let nw = n.width.0;
+            let nh = n.height.0;
+
+            px >= nx && px <= nx + nw && py >= ny && py <= ny + nh
+        })
+        .map(|(id, _)| ElementId::Node(id.clone()));
+
+    Ok(hit)
 }
 
 #[cfg(test)]

@@ -24,8 +24,7 @@ use crate::store::types::{
 };
 
 use crate::store_async::{
-    create_async_pool, fetch_events_since,
-    fetch_latest_revision, AsyncStoreError as StoreError,
+    create_async_pool, fetch_events_since, fetch_latest_revision, AsyncStoreError as StoreError,
 };
 
 // =============================================================================
@@ -48,9 +47,15 @@ pub enum DurableError {
         found: OperationState,
     },
     #[error("Step not found: operation {operation_id}, step {step_index}")]
-    StepNotFound { operation_id: String, step_index: u32 },
+    StepNotFound {
+        operation_id: String,
+        step_index: u32,
+    },
     #[error("Step already completed: operation {operation_id}, step {step_index}")]
-    StepAlreadyCompleted { operation_id: String, step_index: u32 },
+    StepAlreadyCompleted {
+        operation_id: String,
+        step_index: u32,
+    },
     #[error("Outbox entry not found: {0}")]
     OutboxNotFound(String),
     #[error("Outbox max retries exceeded: {0}")]
@@ -183,12 +188,11 @@ pub async fn run_durable_migration(pool: &SqlitePool) -> Result<(), DurableError
     }
 
     // Outbox table - reliable side-effect delivery
-    let outbox_table_exists: (i32,) = sqlx::query_as(
-        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='outbox'",
-    )
-    .fetch_one(pool)
-    .await
-    .map_err(DurableError::Sqlx)?;
+    let outbox_table_exists: (i32,) =
+        sqlx::query_as("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='outbox'")
+            .fetch_one(pool)
+            .await
+            .map_err(DurableError::Sqlx)?;
 
     if outbox_table_exists.0 == 0 {
         sqlx::query(
@@ -323,8 +327,9 @@ pub async fn get_operation(
             author_id,
             description,
         )) => {
-            let state = OperationState::from_str(&state_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {state_str}")))?;
+            let state = OperationState::from_str(&state_str).ok_or_else(|| {
+                DurableError::ValidationFailed(format!("Invalid state: {state_str}"))
+            })?;
 
             let current_step_u32 = u32::try_from(current_step)
                 .map_err(|_| DurableError::ValidationFailed("current_step overflow".to_string()))?;
@@ -363,32 +368,29 @@ pub async fn update_operation_state(
     let mut tx = pool.begin().await.map_err(DurableError::Sqlx)?;
 
     // Get current state
-    let current: (String,) = sqlx::query_as(
-        "SELECT state FROM operations WHERE operation_id = ?1",
-    )
-    .bind(operation_id)
-    .fetch_optional(&mut *tx)
-    .await
-    .map_err(DurableError::Sqlx)?
-    .ok_or_else(|| DurableError::OperationNotFound(operation_id.to_string()))?;
+    let current: (String,) = sqlx::query_as("SELECT state FROM operations WHERE operation_id = ?1")
+        .bind(operation_id)
+        .fetch_optional(&mut *tx)
+        .await
+        .map_err(DurableError::Sqlx)?
+        .ok_or_else(|| DurableError::OperationNotFound(operation_id.to_string()))?;
 
     let current_state_str = &current.0;
-    let current_state = OperationState::from_str(current_state_str)
-        .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {current_state_str}")))?;
+    let current_state = OperationState::from_str(current_state_str).ok_or_else(|| {
+        DurableError::ValidationFailed(format!("Invalid state: {current_state_str}"))
+    })?;
 
     // Validate state transition
     validate_state_transition(current_state, new_state)?;
 
     let completed_at: Option<i64> = match new_state {
-        OperationState::Completed | OperationState::Failed => {
-            Some(
-                std::time::SystemTime::now()
-                    .duration_since(std::time::UNIX_EPOCH)
-                    .map_err(|e| DurableError::ValidationFailed(e.to_string()))?
-                    .as_secs()
-                    .cast_signed(),
-            )
-        }
+        OperationState::Completed | OperationState::Failed => Some(
+            std::time::SystemTime::now()
+                .duration_since(std::time::UNIX_EPOCH)
+                .map_err(|e| DurableError::ValidationFailed(e.to_string()))?
+                .as_secs()
+                .cast_signed(),
+        ),
         _ => None,
     };
 
@@ -570,8 +572,9 @@ pub async fn get_step(
             completed_at,
             error_message,
         )) => {
-            let status = StepStatus::from_str(&status_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
+            let status = StepStatus::from_str(&status_str).ok_or_else(|| {
+                DurableError::ValidationFailed(format!("Invalid status: {status_str}"))
+            })?;
 
             let step_index_u32 = u32::try_from(idx)
                 .map_err(|_| DurableError::ValidationFailed("step_index overflow".to_string()))?;
@@ -624,8 +627,9 @@ pub async fn update_step_status(
     })?;
 
     let current_status_str = &current.0;
-    let current_status = StepStatus::from_str(current_status_str)
-        .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {current_status_str}")))?;
+    let current_status = StepStatus::from_str(current_status_str).ok_or_else(|| {
+        DurableError::ValidationFailed(format!("Invalid status: {current_status_str}"))
+    })?;
 
     // Cannot update a completed or skipped step (unless re-running)
     if (current_status == StepStatus::Completed || current_status == StepStatus::Skipped)
@@ -701,8 +705,9 @@ pub async fn get_pending_steps(
     let mut steps = Vec::with_capacity(rows.len());
     for row in rows {
         let status_str = &row.3;
-        let status = StepStatus::from_str(status_str)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
+        let status = StepStatus::from_str(status_str).ok_or_else(|| {
+            DurableError::ValidationFailed(format!("Invalid status: {status_str}"))
+        })?;
 
         let step_index_u32 = u32::try_from(row.1)
             .map_err(|_| DurableError::ValidationFailed("step_index overflow".to_string()))?;
@@ -732,7 +737,15 @@ pub async fn skip_step(
     operation_id: &str,
     step_index: u32,
 ) -> Result<StepRecord, DurableError> {
-    update_step_status(pool, operation_id, step_index, StepStatus::Skipped, None, None).await
+    update_step_status(
+        pool,
+        operation_id,
+        step_index,
+        StepStatus::Skipped,
+        None,
+        None,
+    )
+    .await
 }
 
 // =============================================================================
@@ -821,10 +834,12 @@ pub async fn get_outbox_entry(pool: &SqlitePool, id: &str) -> Result<OutboxRecor
             acknowledged_at,
             last_error,
         )) => {
-            let side_effect_type = SideEffectType::from_str(&type_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid type: {type_str}")))?;
-            let status = OutboxStatus::from_str(&status_str)
-                .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
+            let side_effect_type = SideEffectType::from_str(&type_str).ok_or_else(|| {
+                DurableError::ValidationFailed(format!("Invalid type: {type_str}"))
+            })?;
+            let status = OutboxStatus::from_str(&status_str).ok_or_else(|| {
+                DurableError::ValidationFailed(format!("Invalid status: {status_str}"))
+            })?;
 
             let retry_count_u32 = u32::try_from(retry_count)
                 .map_err(|_| DurableError::ValidationFailed("retry_count overflow".to_string()))?;
@@ -863,14 +878,12 @@ pub async fn mark_outbox_dispatched(
         .as_secs()
         .cast_signed();
 
-    sqlx::query(
-        "UPDATE outbox SET status = 'dispatched', dispatched_at = ?1 WHERE id = ?2",
-    )
-    .bind(timestamp)
-    .bind(id)
-    .execute(pool)
-    .await
-    .map_err(DurableError::Sqlx)?;
+    sqlx::query("UPDATE outbox SET status = 'dispatched', dispatched_at = ?1 WHERE id = ?2")
+        .bind(timestamp)
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(DurableError::Sqlx)?;
 
     get_outbox_entry(pool, id).await
 }
@@ -886,14 +899,12 @@ pub async fn acknowledge_outbox(pool: &SqlitePool, id: &str) -> Result<OutboxRec
         .as_secs()
         .cast_signed();
 
-    sqlx::query(
-        "UPDATE outbox SET status = 'acknowledged', acknowledged_at = ?1 WHERE id = ?2",
-    )
-    .bind(timestamp)
-    .bind(id)
-    .execute(pool)
-    .await
-    .map_err(DurableError::Sqlx)?;
+    sqlx::query("UPDATE outbox SET status = 'acknowledged', acknowledged_at = ?1 WHERE id = ?2")
+        .bind(timestamp)
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(DurableError::Sqlx)?;
 
     get_outbox_entry(pool, id).await
 }
@@ -957,11 +968,13 @@ pub async fn get_pending_outbox(
     let mut entries = Vec::with_capacity(rows.len());
     for row in rows {
         let side_effect_type_str = &row.1;
-        let side_effect_type = SideEffectType::from_str(side_effect_type_str)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid type: {side_effect_type_str}")))?;
+        let side_effect_type = SideEffectType::from_str(side_effect_type_str).ok_or_else(|| {
+            DurableError::ValidationFailed(format!("Invalid type: {side_effect_type_str}"))
+        })?;
         let status_str = &row.4;
-        let status = OutboxStatus::from_str(status_str)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
+        let status = OutboxStatus::from_str(status_str).ok_or_else(|| {
+            DurableError::ValidationFailed(format!("Invalid status: {status_str}"))
+        })?;
 
         let retry_count_u32 = u32::try_from(row.5)
             .map_err(|_| DurableError::ValidationFailed("retry_count overflow".to_string()))?;

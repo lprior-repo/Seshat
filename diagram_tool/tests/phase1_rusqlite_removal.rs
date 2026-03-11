@@ -5,8 +5,8 @@
 //! - sqlx/tokio available with correct features
 //! - Async store module properly integrated
 
-use thiserror::Error;
 use diagram_tool::store_async::envelope_to_valid_event;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Phase1Error {
@@ -232,9 +232,10 @@ async fn test_async_append() -> Phase1Result<()> {
         timestamp: 1700000000,
     };
 
-        let valid_event = envelope_to_valid_event(&envelope).map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let valid_event =
+        envelope_to_valid_event(&envelope).map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
 
-        let result = append_event_async(&pool, valid_event, None)
+    let result = append_event_async(&pool, valid_event, None)
         .await
         .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
 
@@ -303,9 +304,10 @@ async fn test_async_append_increments_revision() -> Phase1Result<()> {
             timestamp: 1700000000 + i as i64,
         };
 
-    let valid_event = envelope_to_valid_event(&envelope).map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+        let valid_event = envelope_to_valid_event(&envelope)
+            .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
 
-    let result = append_event_async(&pool, valid_event, None)
+        let result = append_event_async(&pool, valid_event, None)
             .await
             .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
 

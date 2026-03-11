@@ -468,7 +468,11 @@ fn flush_pending_pointer_update(
                                             name: "Local User".to_string(),
                                             email: None,
                                         },
-                                        timestamp: std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).unwrap().as_millis() as i64,
+                                        timestamp: std::time::SystemTime::now()
+                                            .duration_since(std::time::UNIX_EPOCH)
+                                            .unwrap()
+                                            .as_millis()
+                                            as i64,
                                     });
                                 }
                             }
