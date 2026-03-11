@@ -17,6 +17,19 @@ pub enum CanvasEvent {
         delta: CanvasVector,
     },
     MouseUp,
+    TouchDownTarget {
+        point: CanvasPoint,
+        mode: SelectionMode,
+    },
+    TouchDownBackground {
+        point: CanvasPoint,
+        mode: SelectionMode,
+    },
+    TouchMove {
+        point: CanvasPoint,
+        delta: CanvasVector,
+    },
+    TouchUp,
 }
 
 /// Parses a raw event into a typed canvas event
@@ -40,6 +53,13 @@ pub fn parse_event(raw: RawEvent) -> Result<CanvasEvent, CanvasError> {
             Ok(CanvasEvent::DragMove { delta })
         }
         "mouse_up" => Ok(CanvasEvent::MouseUp),
+        "touch_down_target" => Ok(CanvasEvent::TouchDownTarget { point, mode }),
+        "touch_down_background" => Ok(CanvasEvent::TouchDownBackground { point, mode }),
+        "touch_move" => {
+            let delta = CanvasVector::new(raw.dx, raw.dy)?;
+            Ok(CanvasEvent::TouchMove { point, delta })
+        }
+        "touch_up" => Ok(CanvasEvent::TouchUp),
         _ => Err(CanvasError::UnparseableEvent),
     }
 }

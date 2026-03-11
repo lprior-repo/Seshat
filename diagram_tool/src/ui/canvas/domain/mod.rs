@@ -11,4 +11,5 @@ pub mod tests;
 pub use canvas_event::{parse_event, CanvasEvent};
 pub use interaction_state::{apply_drag_delta, DragState, InteractionState};
 pub use transition::transition;
+pub use transition::transition as reduce;
 pub use types::{CanvasError, CanvasPoint, CanvasVector, RawEvent, SelectionBounds, SelectionMode};
