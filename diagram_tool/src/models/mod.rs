@@ -35,6 +35,11 @@ pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas
 pub mod selection;
 
+pub mod selection_ops;
+
+#[cfg(test)]
+pub mod selection_ops_tests;
+
 pub mod sync;
 pub mod validation;
 
