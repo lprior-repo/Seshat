@@ -790,3 +790,5 @@ fn test_p5_exceeds_max_bounds_violation_returns_error() {
     let result = scale_group(&mut canvas, &[n1_id.clone()], scale, anchor);
     assert_eq!(result.unwrap_err(), GroupTransformError::OutOfBounds);
 }
+
+include!("subgraph_grouping_tests.rs");

@@ -32,12 +32,18 @@ impl BoundingBox {
 pub enum Error {
     #[error("Invalid padding")]
     InvalidPadding,
+    #[error("Empty selection")]
+    EmptySelection,
     #[error("Node not found: {0}")]
     NodeNotFound(NodeId),
     #[error("Circular dependency detected")]
     CircularDependency,
+    #[error("Node locked: {0}")]
+    NodeLocked(NodeId),
     #[error("Invalid transform scale")]
     InvalidTransform,
+    #[error("Invalid node type")]
+    InvalidNodeType,
     #[error("Invariant violation")]
     InvariantViolation,
 }
@@ -368,6 +374,211 @@ pub fn scale_group(
         .fold(subgraph.nodes.clone(), |nodes, (id, node)| {
             nodes.update(id, node)
         });
+
+    Ok(())
+}
+
+/// Modifiers for selection actions.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct SelectionModifiers {
+    pub ctrl: bool,
+}
+
+/// The result of a selection evaluation.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum SelectionResult {
+    NodeSelected(NodeId),
+}
+
+/// Evaluates a selection click, considering modifiers like Ctrl to bypass containers.
+///
+/// # Errors
+/// Returns `Error::EmptySelection` if no node was hit.
+#[allow(clippy::needless_pass_by_value)]
+pub fn evaluate_selection(
+    canvas: &CanvasState,
+    click_pos: Point,
+    modifiers: SelectionModifiers,
+) -> Result<SelectionResult, Error> {
+    use itertools::Itertools;
+
+    let px = click_pos.x.0;
+    let py = click_pos.y.0;
+
+    let hit = canvas
+        .nodes
+        .iter()
+        .sorted_by_key(|(_, n)| -n.z_index)
+        .find(|(_id, n)| {
+            let nx = n.x.0;
+            let ny = n.y.0;
+            let nw = n.width.0;
+            let nh = n.height.0;
+
+            let intersects = px >= nx && px <= nx + nw && py >= ny && py <= ny + nh;
+
+            if !intersects {
+                return false;
+            }
+
+            // If we have ctrl modifier, bypass containers
+            if modifiers.ctrl && n.kind == NodeKind::Subgraph {
+                return false;
+            }
+
+            // If a node is in a collapsed parent, it shouldn't be hit-testable
+            if let Some(parent_id) = &n.parent {
+                if let Some(parent) = canvas.nodes.get(parent_id) {
+                    if parent.collapsed.unwrap_or(false) {
+                        return false;
+                    }
+                }
+            }
+
+            true
+        });
+
+    if let Some((id, _)) = hit {
+        Ok(SelectionResult::NodeSelected(id.clone()))
+    } else {
+        Err(Error::EmptySelection)
+    }
+}
+
+/// Groups existing nodes into a new container node.
+///
+/// # Errors
+/// Returns errors based on the contract (`EmptySelection`, `NodeNotFound`, `NodeLocked`, etc.).
+#[allow(clippy::needless_pass_by_value)]
+pub fn group_nodes(
+    canvas: &mut CanvasState,
+    group_id: NodeId,
+    child_ids: &[NodeId],
+) -> Result<Node, Error> {
+    if child_ids.is_empty() {
+        return Err(Error::EmptySelection);
+    }
+
+    for id in child_ids {
+        let node = canvas
+            .nodes
+            .get(id)
+            .ok_or_else(|| Error::NodeNotFound(id.clone()))?;
+        if node.locked {
+            return Err(Error::NodeLocked(id.clone()));
+        }
+    }
+
+    // Capture child bounds before operation for invariant Q1 check
+    let child_bounds: Vec<_> = child_ids
+        .iter()
+        .filter_map(|id| canvas.nodes.get(id))
+        .map(|n| (n.x.0, n.y.0, n.width.0, n.height.0))
+        .collect();
+
+    let subgraph = create_subgraph_from_nodes(group_id.clone(), child_ids, canvas)?;
+
+    // Q1 Invariant check
+    for (cx, cy, cw, ch) in child_bounds {
+        if subgraph.x.0 > cx
+            || subgraph.y.0 > cy
+            || (subgraph.x.0 + subgraph.width.0) < (cx + cw)
+            || (subgraph.y.0 + subgraph.height.0) < (cy + ch)
+        {
+            return Err(Error::InvariantViolation);
+        }
+    }
+
+    // Q2 Invariant check
+    for id in child_ids {
+        let parent = canvas.nodes.get(id).and_then(|n| n.parent.as_ref());
+        if parent != Some(&group_id) {
+            return Err(Error::InvariantViolation);
+        }
+    }
+
+    Ok(subgraph)
+}
+
+/// Removes a container and reparents its children to its parent.
+///
+/// # Errors
+/// Returns errors based on contract (`NodeNotFound`, `InvalidNodeType`, `NodeLocked`, etc.).
+#[allow(clippy::needless_pass_by_value)]
+pub fn ungroup_nodes(canvas: &mut CanvasState, group_id: NodeId) -> Result<Vec<NodeId>, Error> {
+    let group = canvas
+        .nodes
+        .get(&group_id)
+        .ok_or_else(|| Error::NodeNotFound(group_id.clone()))?;
+
+    if group.kind != NodeKind::Subgraph {
+        return Err(Error::InvalidNodeType);
+    }
+
+    if group.locked {
+        return Err(Error::NodeLocked(group_id.clone()));
+    }
+
+    let group_parent = group.parent.clone();
+
+    // Find all children
+    let children: Vec<NodeId> = canvas
+        .nodes
+        .iter()
+        .filter(|(_, n)| n.parent.as_ref() == Some(&group_id))
+        .map(|(id, _)| id.clone())
+        .collect();
+
+    // Remove group
+    let _removed_group = canvas
+        .nodes
+        .remove(&group_id)
+        .ok_or_else(|| Error::NodeNotFound(group_id.clone()))?;
+
+    // Reparent children to group's parent
+    for child_id in &children {
+        if let Some(child) = canvas.nodes.get(child_id) {
+            let updated_child = Node {
+                parent: group_parent.clone(),
+                ..child.clone()
+            };
+            canvas.nodes = canvas.nodes.update(child_id.clone(), updated_child);
+        }
+    }
+
+    // Q3 Validation
+    for child_id in &children {
+        if !canvas.nodes.contains_key(child_id) {
+            return Err(Error::InvariantViolation);
+        }
+    }
+
+    Ok(children)
+}
+
+/// Toggles the collapsed state of a container.
+///
+/// # Errors
+/// Returns errors based on contract.
+#[allow(clippy::needless_pass_by_value)]
+pub fn toggle_collapse(canvas: &mut CanvasState, group_id: NodeId) -> Result<(), Error> {
+    let group = canvas
+        .nodes
+        .get(&group_id)
+        .ok_or_else(|| Error::NodeNotFound(group_id.clone()))?;
+
+    if group.kind != NodeKind::Subgraph {
+        return Err(Error::InvalidNodeType);
+    }
+
+    let is_collapsed = group.collapsed.unwrap_or(false);
+
+    let updated_group = Node {
+        collapsed: Some(!is_collapsed),
+        ..group.clone()
+    };
+
+    canvas.nodes = canvas.nodes.update(group_id, updated_group);
 
     Ok(())
 }
