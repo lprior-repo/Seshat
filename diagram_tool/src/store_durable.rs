@@ -104,6 +104,9 @@ pub struct DurableStoreBootstrap {
 // =============================================================================
 
 /// Runs schema migration for durable workflow tables
+///
+/// # Errors
+/// Returns an error if database migration fails.
 #[allow(clippy::too_many_lines)]
 pub async fn run_durable_migration(pool: &SqlitePool) -> Result<(), DurableError> {
     // Operations table - tracks multi-step AI operations
@@ -224,6 +227,9 @@ pub async fn run_durable_migration(pool: &SqlitePool) -> Result<(), DurableError
 }
 
 /// Bootstraps the durable store
+///
+/// # Errors
+/// Returns an error if database connection or migration fails.
 pub async fn bootstrap_durable_store(
     db_path: &Path,
     config: DurableConfig,
@@ -238,6 +244,9 @@ pub async fn bootstrap_durable_store(
 // =============================================================================
 
 /// Starts a new durable operation
+///
+/// # Errors
+/// Returns an error if database insert fails.
 pub async fn start_operation(
     pool: &SqlitePool,
     operation_id: String,
@@ -274,6 +283,9 @@ pub async fn start_operation(
 }
 
 /// Gets an operation by ID
+///
+/// # Errors
+/// Returns an error if database query fails or operation not found.
 pub async fn get_operation(
     pool: &SqlitePool,
     operation_id: &str,
@@ -337,6 +349,9 @@ pub async fn get_operation(
 }
 
 /// Updates an operation's state
+///
+/// # Errors
+/// Returns an error if database update fails, operation not found, or state transition is invalid.
 pub async fn update_operation_state(
     pool: &SqlitePool,
     operation_id: &str,
@@ -357,8 +372,9 @@ pub async fn update_operation_state(
     .map_err(DurableError::Sqlx)?
     .ok_or_else(|| DurableError::OperationNotFound(operation_id.to_string()))?;
 
-    let current_state = OperationState::from_str(&current.0)
-        .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {}", current.0)))?;
+    let current_state_str = &current.0;
+    let current_state = OperationState::from_str(current_state_str)
+        .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {current_state_str}")))?;
 
     // Validate state transition
     validate_state_transition(current_state, new_state)?;
@@ -418,6 +434,9 @@ fn validate_state_transition(from: OperationState, to: OperationState) -> Result
 }
 
 /// Gets all operations in a specific state
+///
+/// # Errors
+/// Returns an error if database query fails.
 pub async fn get_operations_by_state(
     pool: &SqlitePool,
     state: OperationState,
@@ -444,8 +463,9 @@ pub async fn get_operations_by_state(
 
     let mut operations = Vec::with_capacity(rows.len());
     for row in rows {
-        let state = OperationState::from_str(&row.1)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {}", row.1)))?;
+        let state_str = &row.1;
+        let state = OperationState::from_str(state_str)
+            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid state: {state_str}")))?;
 
         let current_step_u32 = u32::try_from(row.2)
             .map_err(|_| DurableError::ValidationFailed("current_step overflow".to_string()))?;
@@ -474,6 +494,9 @@ pub async fn get_operations_by_state(
 // =============================================================================
 
 /// Records a step in the step journal
+///
+/// # Errors
+/// Returns an error if database insert fails.
 pub async fn record_step(
     pool: &SqlitePool,
     operation_id: String,
@@ -507,6 +530,9 @@ pub async fn record_step(
 }
 
 /// Gets a step from the journal
+///
+/// # Errors
+/// Returns an error if database query fails or step not found.
 pub async fn get_step(
     pool: &SqlitePool,
     operation_id: &str,
@@ -570,6 +596,9 @@ pub async fn get_step(
 }
 
 /// Updates step status and optionally marks it complete
+///
+/// # Errors
+/// Returns an error if database update fails, step not found, or step already completed.
 pub async fn update_step_status(
     pool: &SqlitePool,
     operation_id: &str,
@@ -594,8 +623,9 @@ pub async fn update_step_status(
         step_index,
     })?;
 
-    let current_status = StepStatus::from_str(&current.0)
-        .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {}", current.0)))?;
+    let current_status_str = &current.0;
+    let current_status = StepStatus::from_str(current_status_str)
+        .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {current_status_str}")))?;
 
     // Cannot update a completed or skipped step (unless re-running)
     if (current_status == StepStatus::Completed || current_status == StepStatus::Skipped)
@@ -641,6 +671,9 @@ pub async fn update_step_status(
 }
 
 /// Gets all pending steps for an operation (for retry/resume)
+///
+/// # Errors
+/// Returns an error if database query fails.
 pub async fn get_pending_steps(
     pool: &SqlitePool,
     operation_id: &str,
@@ -667,8 +700,9 @@ pub async fn get_pending_steps(
 
     let mut steps = Vec::with_capacity(rows.len());
     for row in rows {
-        let status = StepStatus::from_str(&row.3)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {}", row.3)))?;
+        let status_str = &row.3;
+        let status = StepStatus::from_str(status_str)
+            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
 
         let step_index_u32 = u32::try_from(row.1)
             .map_err(|_| DurableError::ValidationFailed("step_index overflow".to_string()))?;
@@ -690,6 +724,9 @@ pub async fn get_pending_steps(
 }
 
 /// Marks a step as skipped (for retry scenario - step already completed)
+///
+/// # Errors
+/// Returns an error if database update fails, step not found, or step already completed.
 pub async fn skip_step(
     pool: &SqlitePool,
     operation_id: &str,
@@ -703,6 +740,9 @@ pub async fn skip_step(
 // =============================================================================
 
 /// Adds an entry to the outbox for reliable side-effect delivery
+///
+/// # Errors
+/// Returns an error if database insert fails.
 pub async fn add_outbox_entry(
     pool: &SqlitePool,
     id: String,
@@ -742,6 +782,9 @@ pub async fn add_outbox_entry(
 }
 
 /// Gets an outbox entry by ID
+///
+/// # Errors
+/// Returns an error if database query fails or outbox entry not found.
 pub async fn get_outbox_entry(pool: &SqlitePool, id: &str) -> Result<OutboxRecord, DurableError> {
     let result = sqlx::query_as::<_, (
         String,
@@ -807,6 +850,9 @@ pub async fn get_outbox_entry(pool: &SqlitePool, id: &str) -> Result<OutboxRecor
 }
 
 /// Marks an outbox entry as dispatched
+///
+/// # Errors
+/// Returns an error if database update fails or outbox entry not found.
 pub async fn mark_outbox_dispatched(
     pool: &SqlitePool,
     id: &str,
@@ -830,6 +876,9 @@ pub async fn mark_outbox_dispatched(
 }
 
 /// Acknowledges an outbox entry (external system confirmed processing)
+///
+/// # Errors
+/// Returns an error if database update fails or outbox entry not found.
 pub async fn acknowledge_outbox(pool: &SqlitePool, id: &str) -> Result<OutboxRecord, DurableError> {
     let timestamp = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
@@ -850,6 +899,9 @@ pub async fn acknowledge_outbox(pool: &SqlitePool, id: &str) -> Result<OutboxRec
 }
 
 /// Marks an outbox entry as failed and increments retry count
+///
+/// # Errors
+/// Returns an error if database update fails, outbox entry not found, or max retries exceeded.
 pub async fn mark_outbox_failed(
     pool: &SqlitePool,
     id: &str,
@@ -874,6 +926,9 @@ pub async fn mark_outbox_failed(
 }
 
 /// Gets pending outbox entries (for processing)
+///
+/// # Errors
+/// Returns an error if database query fails.
 pub async fn get_pending_outbox(
     pool: &SqlitePool,
     limit: u32,
@@ -901,10 +956,12 @@ pub async fn get_pending_outbox(
 
     let mut entries = Vec::with_capacity(rows.len());
     for row in rows {
-        let side_effect_type = SideEffectType::from_str(&row.1)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid type: {}", row.1)))?;
-        let status = OutboxStatus::from_str(&row.4)
-            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {}", row.4)))?;
+        let side_effect_type_str = &row.1;
+        let side_effect_type = SideEffectType::from_str(side_effect_type_str)
+            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid type: {side_effect_type_str}")))?;
+        let status_str = &row.4;
+        let status = OutboxStatus::from_str(status_str)
+            .ok_or_else(|| DurableError::ValidationFailed(format!("Invalid status: {status_str}")))?;
 
         let retry_count_u32 = u32::try_from(row.5)
             .map_err(|_| DurableError::ValidationFailed("retry_count overflow".to_string()))?;
@@ -934,6 +991,9 @@ pub async fn get_pending_outbox(
 // =============================================================================
 
 /// Generates a rich diff when a conditional append is rejected
+///
+/// # Errors
+/// Returns an error if database query fails.
 pub async fn generate_conflict_diff(
     pool: &SqlitePool,
     assumed_revision: i64,
@@ -978,6 +1038,9 @@ pub async fn generate_conflict_diff(
 // =============================================================================
 
 /// Fetches events using cursor-based pagination
+///
+/// # Errors
+/// Returns an error if database query fails or timestamp parsing fails.
 pub async fn fetch_events_cursor(
     pool: &SqlitePool,
     cursor: EventCursor,
@@ -1028,6 +1091,9 @@ pub async fn fetch_events_cursor(
 }
 
 /// Parses a cursor from a string
+///
+/// # Errors
+/// Returns an error if cursor string format is invalid.
 pub fn parse_cursor(cursor_str: &str) -> Result<EventCursor, DurableError> {
     let parts: Vec<&str> = cursor_str.split(':').collect();
     if parts.len() != 2 {
@@ -1066,6 +1132,9 @@ fn current_timestamp() -> Result<i64, DurableError> {
 }
 
 /// Checks if an operation can be resumed (has pending/failed steps)
+///
+/// # Errors
+/// Returns an error if database query fails or operation not found.
 pub async fn can_resume_operation(
     pool: &SqlitePool,
     operation_id: &str,
@@ -1082,6 +1151,9 @@ pub async fn can_resume_operation(
 }
 
 /// Gets the next step to execute in an operation (for resume)
+///
+/// # Errors
+/// Returns an error if database query fails.
 pub async fn get_next_step(
     pool: &SqlitePool,
     operation_id: &str,

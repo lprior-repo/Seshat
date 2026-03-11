@@ -81,7 +81,7 @@ impl StoreBridge {
             };
 
             // Parse at boundary: convert envelope to ValidEvent
-            let event = envelope_to_valid_event(&envelope).map_err(BridgeError::AsyncStore)?;
+            let event = envelope_to_valid_event(envelope).map_err(BridgeError::AsyncStore)?;
 
             // Parse at boundary: convert expected_revision to Option<Revision>
             let expected = match expected_revision {
