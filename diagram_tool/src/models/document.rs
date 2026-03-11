@@ -438,7 +438,71 @@ impl Default for DiagramDocument {
     }
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum DocumentError {
+    #[error("node not found: {0}")]
+    NodeNotFound(NodeId),
+    #[error("edge already exists: {0}")]
+    EdgeAlreadyExists(EdgeId),
+    #[error("edge not found: {0}")]
+    EdgeNotFound(EdgeId),
+}
+
 impl DiagramDocument {
+    /// Adds an edge to the document
+    ///
+    /// # Errors
+    /// Returns `DocumentError::NodeNotFound` if source or target node doesn't exist.
+    /// Returns `DocumentError::EdgeAlreadyExists` if edge ID already exists.
+    pub fn add_edge(&mut self, edge_id: EdgeId, edge: Edge) -> Result<(), DocumentError> {
+        if !self.document.nodes.contains_key(&edge.source) {
+            return Err(DocumentError::NodeNotFound(edge.source));
+        }
+        if !self.document.nodes.contains_key(&edge.target) {
+            return Err(DocumentError::NodeNotFound(edge.target));
+        }
+        if self.document.edges.contains_key(&edge_id) {
+            return Err(DocumentError::EdgeAlreadyExists(edge_id));
+        }
+        self.document.edges.insert(edge_id, edge);
+        Ok(())
+    }
+
+    /// Removes an edge from the document
+    ///
+    /// # Errors
+    /// Returns `DocumentError::EdgeNotFound` if the edge does not exist.
+    pub fn remove_edge(&mut self, edge_id: &EdgeId) -> Result<(), DocumentError> {
+        if self.document.edges.remove(edge_id).is_none() {
+            return Err(DocumentError::EdgeNotFound(edge_id.clone()));
+        }
+        Ok(())
+    }
+
+    /// Removes a node and cascades deletion to all connected edges
+    ///
+    /// # Errors
+    /// Returns `DocumentError::NodeNotFound` if the node does not exist.
+    pub fn remove_node(&mut self, node_id: &NodeId) -> Result<(), DocumentError> {
+        if self.document.nodes.remove(node_id).is_none() {
+            return Err(DocumentError::NodeNotFound(node_id.clone()));
+        }
+
+        let edges_to_remove: std::vec::Vec<EdgeId> = self
+            .document
+            .edges
+            .iter()
+            .filter(|(_, edge)| edge.source == *node_id || edge.target == *node_id)
+            .map(|(id, _)| id.clone())
+            .collect();
+
+        for edge_id in edges_to_remove {
+            self.document.edges.remove(&edge_id);
+        }
+
+        Ok(())
+    }
+
     /// Sets the source port anchor for an edge.
     ///
     /// # Errors
@@ -625,6 +689,301 @@ mod tests {
 
         let state = serde_json::from_str::<EditorState>(json).ok();
         assert!(state.is_some_and(|parsed| parsed.snap_to_grid));
+    }
+
+    // --- Edge Binding Contract Tests ---
+
+    use super::DocumentError;
+    use crate::models::document::DiagramDocument;
+
+    fn create_test_node(id: &str) -> crate::models::document::Node {
+        crate::models::document::Node {
+            kind: crate::models::document::NodeKind::Node,
+            icon: String::new(),
+            label: id.to_string(),
+            x: OrderedFloat(0.0),
+            y: OrderedFloat(0.0),
+            width: OrderedFloat(100.0),
+            height: OrderedFloat(100.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    fn create_test_edge(source: &str, target: &str) -> Edge {
+        Edge {
+            source: NodeId::new(source.to_string()),
+            target: NodeId::new(target.to_string()),
+            label: String::new(),
+            style: Default::default(),
+            arrow_type: Default::default(),
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.5),
+            directed: true,
+            bend_points: im::Vector::new(),
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            font_size: None,
+            source_port: None,
+            target_port: None,
+        }
+    }
+
+    #[test]
+    fn edg_011_valid_edge_creation() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+
+        let edge = create_test_edge("N1", "N2");
+        let result = doc.add_edge(EdgeId::new("E1".into()), edge);
+
+        assert!(result.is_ok());
+        assert!(doc.document.edges.contains_key(&EdgeId::new("E1".into())));
+    }
+
+    #[test]
+    fn edg_012_invalid_edge_missing_source() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+
+        let edge = create_test_edge("N1", "N2");
+        let result = doc.add_edge(EdgeId::new("E1".into()), edge);
+
+        assert_eq!(
+            result,
+            Err(DocumentError::NodeNotFound(NodeId::new("N1".into())))
+        );
+        assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
+    }
+
+    #[test]
+    fn edg_013_invalid_edge_missing_target() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+
+        let edge = create_test_edge("N1", "N2");
+        let result = doc.add_edge(EdgeId::new("E1".into()), edge);
+
+        assert_eq!(
+            result,
+            Err(DocumentError::NodeNotFound(NodeId::new("N2".into())))
+        );
+        assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
+    }
+
+    #[test]
+    fn edg_014_edge_deletion_isolated() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+
+        let edge = create_test_edge("N1", "N2");
+        doc.add_edge(EdgeId::new("E1".into()), edge).unwrap();
+
+        let result = doc.remove_edge(&EdgeId::new("E1".into()));
+        assert!(result.is_ok());
+        assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N2".into())));
+    }
+
+    #[test]
+    fn edg_015_node_deletion_cascades_edges() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N3".into()), create_test_node("N3"));
+
+        doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
+            .unwrap();
+        doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N2", "N3"))
+            .unwrap();
+
+        let result = doc.remove_node(&NodeId::new("N2".into()));
+        assert!(result.is_ok());
+        assert!(!doc.document.nodes.contains_key(&NodeId::new("N2".into())));
+        assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
+        assert!(!doc.document.edges.contains_key(&EdgeId::new("E2".into())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N3".into())));
+    }
+
+    #[test]
+    fn test_allows_self_loop_edge() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        let result = doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N1"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_allows_multiple_edges_between_same_nodes() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+
+        doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
+            .unwrap();
+        let result = doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N1", "N2"));
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn test_returns_error_when_creating_edge_with_duplicate_id() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+
+        doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
+            .unwrap();
+        let result = doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"));
+        assert_eq!(
+            result,
+            Err(DocumentError::EdgeAlreadyExists(EdgeId::new("E1".into())))
+        );
+    }
+
+    #[test]
+    fn test_returns_error_when_deleting_missing_edge() {
+        let mut doc = DiagramDocument::default();
+        let result = doc.remove_edge(&EdgeId::new("E1".into()));
+        assert_eq!(
+            result,
+            Err(DocumentError::EdgeNotFound(EdgeId::new("E1".into())))
+        );
+    }
+
+    #[test]
+    fn test_cascading_deletion_handles_multiple_edges_on_same_node() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+
+        doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
+            .unwrap();
+        doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N1", "N2"))
+            .unwrap();
+        doc.add_edge(EdgeId::new("E3".into()), create_test_edge("N2", "N1"))
+            .unwrap();
+
+        doc.remove_node(&NodeId::new("N1".into())).unwrap();
+
+        assert!(doc.document.edges.is_empty());
+    }
+
+    #[test]
+    fn test_cascading_deletion_handles_self_loop() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N1"))
+            .unwrap();
+
+        doc.remove_node(&NodeId::new("N1".into())).unwrap();
+        assert!(doc.document.edges.is_empty());
+    }
+
+    #[test]
+    fn test_precondition_source_node_must_exist() {
+        edg_012_invalid_edge_missing_source();
+    }
+
+    #[test]
+    fn test_precondition_target_node_must_exist() {
+        edg_013_invalid_edge_missing_target();
+    }
+
+    #[test]
+    fn test_precondition_edge_id_must_be_unique() {
+        test_returns_error_when_creating_edge_with_duplicate_id();
+    }
+
+    #[test]
+    fn test_postcondition_edge_exists_after_creation() {
+        edg_011_valid_edge_creation();
+    }
+
+    #[test]
+    fn test_postcondition_cascading_delete_maintains_invariants() {
+        edg_015_node_deletion_cascades_edges();
+    }
+
+    #[test]
+    fn test_invariant_all_edges_reference_existing_nodes() {
+        let mut doc = DiagramDocument::default();
+        doc.document
+            .nodes
+            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+        doc.document
+            .nodes
+            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+        doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
+            .unwrap();
+
+        // Remove node cascades, keeping invariant intact
+        doc.remove_node(&NodeId::new("N1".into())).unwrap();
+        for edge in doc.document.edges.values() {
+            assert!(doc.document.nodes.contains_key(&edge.source));
+            assert!(doc.document.nodes.contains_key(&edge.target));
+        }
+    }
+
+    #[test]
+    fn test_p1_violation_returns_node_not_found() {
+        edg_012_invalid_edge_missing_source();
+    }
+
+    #[test]
+    fn test_p2_violation_returns_node_not_found() {
+        edg_013_invalid_edge_missing_target();
+    }
+
+    #[test]
+    fn test_p3_violation_returns_edge_already_exists() {
+        test_returns_error_when_creating_edge_with_duplicate_id();
     }
 }
 
