@@ -1,4 +1,5 @@
 pub mod canvas_event;
+pub mod input;
 pub mod interaction_state;
 pub mod transition;
 pub mod types;
