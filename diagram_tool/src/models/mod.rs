@@ -31,6 +31,7 @@ pub mod export;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod harness;
 pub mod projection;
+pub mod port;
 pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas
 pub mod selection;

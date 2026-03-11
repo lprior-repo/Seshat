@@ -317,6 +317,10 @@ pub struct Edge {
     pub metadata: HashMap<String, Value>,
     #[serde(default, rename = "fontSize")]
     pub font_size: Option<OrderedFloat>,
+    #[serde(default)]
+    pub source_port: Option<crate::models::port::PortAnchor>,
+    #[serde(default)]
+    pub target_port: Option<crate::models::port::PortAnchor>,
 }
 
 const fn default_label_offset() -> OrderedFloat {
@@ -431,6 +435,56 @@ impl Default for DiagramDocument {
             },
             editor_state: EditorState::default(),
         }
+    }
+}
+
+impl DiagramDocument {
+    /// Sets the source port anchor for an edge.
+    ///
+    /// # Errors
+    /// Returns `PortError::EdgeNotFound` if the edge does not exist.
+    /// Returns `PortError::NodeNotFound` if the source node does not exist.
+    pub fn set_edge_source_port(
+        &mut self,
+        edge_id: &EdgeId,
+        port: Option<crate::models::port::PortAnchor>,
+    ) -> Result<(), crate::models::port::PortError> {
+        let edge = self
+            .document
+            .edges
+            .get_mut(edge_id)
+            .ok_or(crate::models::port::PortError::EdgeNotFound)?;
+
+        if !self.document.nodes.contains_key(&edge.source) {
+            return Err(crate::models::port::PortError::NodeNotFound);
+        }
+
+        edge.source_port = port;
+        Ok(())
+    }
+
+    /// Sets the target port anchor for an edge.
+    ///
+    /// # Errors
+    /// Returns `PortError::EdgeNotFound` if the edge does not exist.
+    /// Returns `PortError::NodeNotFound` if the target node does not exist.
+    pub fn set_edge_target_port(
+        &mut self,
+        edge_id: &EdgeId,
+        port: Option<crate::models::port::PortAnchor>,
+    ) -> Result<(), crate::models::port::PortError> {
+        let edge = self
+            .document
+            .edges
+            .get_mut(edge_id)
+            .ok_or(crate::models::port::PortError::EdgeNotFound)?;
+
+        if !self.document.nodes.contains_key(&edge.target) {
+            return Err(crate::models::port::PortError::NodeNotFound);
+        }
+
+        edge.target_port = port;
+        Ok(())
     }
 }
 
@@ -693,6 +747,8 @@ mod proptests {
                 tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
+            source_port: None,
+            target_port: None,
             };
             assert_eq!(edge.source, edge.target);
             let json = serde_json::to_string(&edge).unwrap();
@@ -807,6 +863,8 @@ mod proptests {
                 tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
+            source_port: None,
+            target_port: None,
             };
             let json = serde_json::to_string(&edge).unwrap();
             let parsed: Edge = serde_json::from_str(&json).unwrap();

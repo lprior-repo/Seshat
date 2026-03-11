@@ -383,6 +383,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         }
     }
 
@@ -912,6 +914,8 @@ mod proptests {
             tags: im::vector![],
             metadata: im::HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         }
     }
 

@@ -191,6 +191,8 @@ pub fn apply_edge_connect(
         tags: im::Vector::new(),
         metadata: HashMap::new(),
         font_size: None,
+            source_port: None,
+            target_port: None,
     };
 
     let new_edges = state.edges.update(edge_id, edge);
@@ -305,6 +307,8 @@ fn apply_edge_connect_checked(
         tags: im::Vector::new(),
         metadata: HashMap::new(),
         font_size: None,
+            source_port: None,
+            target_port: None,
     };
 
     let new_edges = state.edges.update(edge_id, edge);
@@ -492,6 +496,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
         let _ = state.edges.insert(EdgeId::new("edge-1".to_string()), edge);
 
@@ -529,6 +535,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
         let _ = state.edges.insert(EdgeId::new("edge-1".to_string()), edge);
 
@@ -637,6 +645,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
         let _ = state.edges.insert(EdgeId::new("edge-1".to_string()), edge1);
 

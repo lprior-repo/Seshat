@@ -186,6 +186,8 @@ mod tests {
                 tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 font_size: None,
+            source_port: None,
+            target_port: None,
             },
         )
     }
@@ -916,6 +918,8 @@ mod proptests {
                         tags: im::Vector::new(),
                         metadata: HashMap::new(),
                         font_size: None,
+            source_port: None,
+            target_port: None,
                     },
                 );
                 doc.document.edges.insert(edge.0, edge.1);

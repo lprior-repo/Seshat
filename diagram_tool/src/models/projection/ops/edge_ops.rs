@@ -132,6 +132,8 @@ pub fn create_default_edge(source_id: NodeId, target_id: NodeId) -> Edge {
         tags: im::Vector::new(),
         metadata: HashMap::new(),
         font_size: None,
+            source_port: None,
+            target_port: None,
     }
 }
 

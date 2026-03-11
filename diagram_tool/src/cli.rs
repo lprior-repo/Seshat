@@ -776,6 +776,8 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                                     tags: im::Vector::new(),
                                     metadata: HashMap::new(),
                                     font_size: None,
+            source_port: None,
+            target_port: None,
                                 };
                                 doc.document
                                     .edges
@@ -851,6 +853,8 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                                     tags: im::Vector::new(),
                                     metadata: HashMap::new(),
                                     font_size: None,
+            source_port: None,
+            target_port: None,
                                 };
                                 doc.document
                                     .edges

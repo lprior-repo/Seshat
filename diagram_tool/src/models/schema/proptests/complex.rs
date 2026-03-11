@@ -49,6 +49,8 @@ fn make_edge(source: NodeId, target: NodeId) -> Edge {
         tags: im::vector![],
         metadata: HashMap::new(),
         font_size: None,
+            source_port: None,
+            target_port: None,
     }
 }
 

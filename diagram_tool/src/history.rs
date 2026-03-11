@@ -871,6 +871,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: im::HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
         let _ = doc_after.document.edges.insert(edge_id, edge);
         doc_after.revision = doc_after.revision.increment();

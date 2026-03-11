@@ -486,6 +486,8 @@ fn apply_edge_connect(
         tags: im::Vector::new(),
         metadata: HashMap::new(),
         font_size: None,
+            source_port: None,
+            target_port: None,
     };
 
     let new_edges = state.edges.update(edge_id, edge);

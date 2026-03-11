@@ -557,6 +557,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         }
     }
 
@@ -945,6 +947,8 @@ mod sel_002_edge_selection_tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         }
     }
 
@@ -1165,6 +1169,8 @@ mod sel_002_edge_selection_tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
 
         let doc = DiagramDocument {

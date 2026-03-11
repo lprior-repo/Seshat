@@ -972,6 +972,8 @@ mod tests {
                 tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
+            source_port: None,
+            target_port: None,
             },
         );
 
@@ -1299,6 +1301,8 @@ mod tests {
                 tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
+            source_port: None,
+            target_port: None,
             };
             projection.edges.insert(edge_id, edge);
         }
@@ -1662,6 +1666,8 @@ mod tests {
                 tags: im::vector![],
                 metadata: im::HashMap::new(),
                 font_size: None,
+            source_port: None,
+            target_port: None,
             },
         );
 

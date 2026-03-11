@@ -230,6 +230,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: im::HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
         doc.document.edges.insert(edge_id.clone(), edge);
 

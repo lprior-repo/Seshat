@@ -175,6 +175,8 @@ mod tests {
             tags: im::Vector::new(),
             metadata: HashMap::new(),
             font_size: None,
+            source_port: None,
+            target_port: None,
         };
         let mut edges = HashMap::new();
         edges.insert(EdgeId::new("edge1".to_string()), edge);
