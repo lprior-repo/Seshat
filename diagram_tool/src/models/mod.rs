@@ -56,6 +56,11 @@ pub mod subgraph_events;
 pub mod sync;
 pub mod validation;
 
+pub mod clipboard_contract;
+
+#[cfg(test)]
+pub mod clipboard_contract_tests;
+
 #[cfg(test)]
 pub mod subgraph_events_tests;
 

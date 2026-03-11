@@ -18,6 +18,10 @@ const fn event_name(event: &CanvasEvent) -> &'static str {
         CanvasEvent::MouseMove { .. } => "MouseMove",
         CanvasEvent::DragMove { .. } => "DragMove",
         CanvasEvent::MouseUp => "MouseUp",
+        CanvasEvent::TouchDownTarget { .. } => "TouchDownTarget",
+        CanvasEvent::TouchDownBackground { .. } => "TouchDownBackground",
+        CanvasEvent::TouchMove { .. } => "TouchMove",
+        CanvasEvent::TouchUp => "TouchUp",
     }
 }
 
@@ -43,64 +47,83 @@ pub fn transition(
         (InteractionState::Idle, CanvasEvent::MouseMove { point }) => {
             Ok(InteractionState::Hovering { point })
         }
-        (InteractionState::Idle, CanvasEvent::MouseDownTarget { point, .. }) => {
-            Ok(InteractionState::Dragging {
-                drag: DragState {
-                    start: point,
-                    current: point,
-                    cumulative_offset: CanvasVector::new(0.0, 0.0)?,
-                },
-            })
-        }
-        (InteractionState::Idle, CanvasEvent::MouseDownBackground { point, mode }) => {
-            Ok(InteractionState::Selecting {
+        (InteractionState::Idle, CanvasEvent::TouchMove { .. }) => Ok(InteractionState::Idle),
+        (
+            InteractionState::Idle,
+            CanvasEvent::MouseDownTarget { point, .. } | CanvasEvent::TouchDownTarget { point, .. },
+        ) => Ok(InteractionState::Dragging {
+            drag: DragState {
                 start: point,
                 current: point,
-                mode,
-            })
+                cumulative_offset: CanvasVector::new(0.0, 0.0)?,
+            },
+        }),
+        (
+            InteractionState::Idle,
+            CanvasEvent::MouseDownBackground { point, mode }
+            | CanvasEvent::TouchDownBackground { point, mode },
+        ) => Ok(InteractionState::Selecting {
+            start: point,
+            current: point,
+            mode,
+        }),
+        (InteractionState::Idle, CanvasEvent::MouseUp | CanvasEvent::TouchUp) => {
+            Ok(InteractionState::Idle)
         }
-        (InteractionState::Idle, CanvasEvent::MouseUp) => Ok(InteractionState::Idle),
 
         (InteractionState::Hovering { .. }, CanvasEvent::MouseMove { point }) => {
             Ok(InteractionState::Hovering { point })
         }
-        (InteractionState::Hovering { .. }, CanvasEvent::MouseDownTarget { point, .. }) => {
-            Ok(InteractionState::Dragging {
-                drag: DragState {
-                    start: point,
-                    current: point,
-                    cumulative_offset: CanvasVector::new(0.0, 0.0)?,
-                },
-            })
-        }
-        (InteractionState::Hovering { .. }, CanvasEvent::MouseDownBackground { point, mode }) => {
-            Ok(InteractionState::Selecting {
+        (
+            InteractionState::Hovering { .. },
+            CanvasEvent::MouseDownTarget { point, .. } | CanvasEvent::TouchDownTarget { point, .. },
+        ) => Ok(InteractionState::Dragging {
+            drag: DragState {
                 start: point,
                 current: point,
-                mode,
-            })
+                cumulative_offset: CanvasVector::new(0.0, 0.0)?,
+            },
+        }),
+        (
+            InteractionState::Hovering { .. },
+            CanvasEvent::MouseDownBackground { point, mode }
+            | CanvasEvent::TouchDownBackground { point, mode },
+        ) => Ok(InteractionState::Selecting {
+            start: point,
+            current: point,
+            mode,
+        }),
+        (InteractionState::Hovering { .. }, CanvasEvent::MouseUp | CanvasEvent::TouchUp) => {
+            Ok(InteractionState::Idle)
         }
-        (InteractionState::Hovering { .. }, CanvasEvent::MouseUp) => Ok(InteractionState::Idle),
 
-        (InteractionState::Dragging { mut drag }, CanvasEvent::DragMove { delta }) => {
+        (
+            InteractionState::Dragging { mut drag },
+            CanvasEvent::DragMove { delta } | CanvasEvent::TouchMove { delta, .. },
+        ) => {
             apply_drag_delta(&mut drag, delta)?;
             Ok(InteractionState::Dragging { drag })
         }
-        (InteractionState::Dragging { .. }, CanvasEvent::MouseUp) => Ok(InteractionState::Idle),
+        (InteractionState::Dragging { .. }, CanvasEvent::MouseUp | CanvasEvent::TouchUp) => {
+            Ok(InteractionState::Idle)
+        }
         (InteractionState::Dragging { drag }, CanvasEvent::MouseMove { point: _ }) => {
             // Treat MouseMove as just updating current pos without offset, or it might be an invalid transition
             // For now, dragging uses drag move
             Ok(InteractionState::Dragging { drag })
         }
 
-        (InteractionState::Selecting { start, mode, .. }, CanvasEvent::MouseMove { point }) => {
-            Ok(InteractionState::Selecting {
-                start,
-                current: point,
-                mode,
-            })
+        (
+            InteractionState::Selecting { start, mode, .. },
+            CanvasEvent::MouseMove { point } | CanvasEvent::TouchMove { point, .. },
+        ) => Ok(InteractionState::Selecting {
+            start,
+            current: point,
+            mode,
+        }),
+        (InteractionState::Selecting { .. }, CanvasEvent::MouseUp | CanvasEvent::TouchUp) => {
+            Ok(InteractionState::Idle)
         }
-        (InteractionState::Selecting { .. }, CanvasEvent::MouseUp) => Ok(InteractionState::Idle),
 
         _ => invalid(),
     }

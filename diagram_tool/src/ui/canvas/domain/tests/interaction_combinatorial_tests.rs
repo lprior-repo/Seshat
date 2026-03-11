@@ -23,6 +23,19 @@ fn all_events() -> Vec<CanvasEvent> {
         CanvasEvent::MouseMove { point: pt() },
         CanvasEvent::DragMove { delta: vec() },
         CanvasEvent::MouseUp,
+        CanvasEvent::TouchDownTarget {
+            point: pt(),
+            mode: SelectionMode::Replace,
+        },
+        CanvasEvent::TouchDownBackground {
+            point: pt(),
+            mode: SelectionMode::Replace,
+        },
+        CanvasEvent::TouchMove {
+            point: pt(),
+            delta: vec(),
+        },
+        CanvasEvent::TouchUp,
     ]
 }
 
@@ -35,13 +48,13 @@ fn test_exhaustive_idle_transitions() {
             .when_parsed_event(event.clone());
 
         match event {
-            CanvasEvent::MouseDownTarget { .. } => {
+            CanvasEvent::MouseDownTarget { .. } | CanvasEvent::TouchDownTarget { .. } => {
                 assert!(matches!(
                     dsl.state.unwrap(),
                     InteractionState::Dragging { .. }
                 ));
             }
-            CanvasEvent::MouseDownBackground { .. } => {
+            CanvasEvent::MouseDownBackground { .. } | CanvasEvent::TouchDownBackground { .. } => {
                 assert!(matches!(
                     dsl.state.unwrap(),
                     InteractionState::Selecting { .. }
@@ -53,10 +66,10 @@ fn test_exhaustive_idle_transitions() {
                     InteractionState::Hovering { .. }
                 ));
             }
-            CanvasEvent::MouseUp => {
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp | CanvasEvent::TouchMove { .. } => {
                 assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
             }
-            CanvasEvent::DragMove { .. } => {
+            _ => {
                 assert!(dsl.last_result.unwrap().is_err());
             }
         }
@@ -72,13 +85,13 @@ fn test_exhaustive_hovering_transitions() {
             .when_parsed_event(event.clone());
 
         match event {
-            CanvasEvent::MouseDownTarget { .. } => {
+            CanvasEvent::MouseDownTarget { .. } | CanvasEvent::TouchDownTarget { .. } => {
                 assert!(matches!(
                     dsl.state.unwrap(),
                     InteractionState::Dragging { .. }
                 ));
             }
-            CanvasEvent::MouseDownBackground { .. } => {
+            CanvasEvent::MouseDownBackground { .. } | CanvasEvent::TouchDownBackground { .. } => {
                 assert!(matches!(
                     dsl.state.unwrap(),
                     InteractionState::Selecting { .. }
@@ -90,10 +103,10 @@ fn test_exhaustive_hovering_transitions() {
                     InteractionState::Hovering { .. }
                 ));
             }
-            CanvasEvent::MouseUp => {
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp => {
                 assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
             }
-            CanvasEvent::DragMove { .. } => {
+            _ => {
                 assert!(dsl.last_result.unwrap().is_err());
             }
         }
@@ -115,13 +128,13 @@ fn test_exhaustive_dragging_transitions() {
             .when_parsed_event(event.clone());
 
         match event {
-            CanvasEvent::DragMove { .. } => {
+            CanvasEvent::DragMove { .. } | CanvasEvent::TouchMove { .. } => {
                 assert!(matches!(
                     dsl.state.unwrap(),
                     InteractionState::Dragging { .. }
                 ));
             }
-            CanvasEvent::MouseUp => {
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp => {
                 assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
             }
             CanvasEvent::MouseMove { .. } => {
@@ -150,13 +163,13 @@ fn test_exhaustive_selecting_transitions() {
             .when_parsed_event(event.clone());
 
         match event {
-            CanvasEvent::MouseMove { .. } => {
+            CanvasEvent::MouseMove { .. } | CanvasEvent::TouchMove { .. } => {
                 assert!(matches!(
                     dsl.state.unwrap(),
                     InteractionState::Selecting { .. }
                 ));
             }
-            CanvasEvent::MouseUp => {
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp => {
                 assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
             }
             _ => {
