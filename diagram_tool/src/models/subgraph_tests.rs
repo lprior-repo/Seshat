@@ -594,3 +594,199 @@ fn test_q4_violation_returns_invariant_error() {
     assert_eq!(transformed.x.0, 20.0);
     assert_eq!(transformed.y.0, 40.0);
 }
+
+// -----------------------------------------------------------------------------
+// Group Scale Tests (MUL-011 to MUL-015)
+// -----------------------------------------------------------------------------
+
+#[test]
+fn test_mul_011_scale_around_group_center() {
+    let mut canvas = mock_canvas();
+    let n1_id = NodeId::new("n1".to_string());
+    let n2_id = NodeId::new("n2".to_string());
+
+    canvas.nodes = canvas
+        .nodes
+        .update(
+            n1_id.clone(),
+            create_mock_node("n1", 10.0, 10.0, 10.0, 10.0),
+        )
+        .update(
+            n2_id.clone(),
+            create_mock_node("n2", 30.0, 30.0, 10.0, 10.0),
+        );
+
+    let selection = vec![n1_id.clone(), n2_id.clone()];
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(2.0)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(25.0),
+        y: OrderedFloat::new_unchecked(25.0),
+    };
+
+    scale_group(&mut canvas, &selection, scale, anchor).unwrap();
+
+    let n1 = canvas.nodes.get(&n1_id).unwrap();
+    let n2 = canvas.nodes.get(&n2_id).unwrap();
+
+    assert_eq!(n1.x.0, -5.0);
+    assert_eq!(n1.y.0, -5.0);
+    assert_eq!(n1.width.0, 20.0);
+    assert_eq!(n1.height.0, 20.0);
+
+    assert_eq!(n2.x.0, 35.0);
+    assert_eq!(n2.y.0, 35.0);
+    assert_eq!(n2.width.0, 20.0);
+    assert_eq!(n2.height.0, 20.0);
+}
+
+#[test]
+fn test_mul_013_scale_clamps_to_minimum_dimension() {
+    let mut canvas = mock_canvas();
+    let n1_id = NodeId::new("n1".to_string());
+
+    canvas.nodes = canvas.nodes.update(
+        n1_id.clone(),
+        create_mock_node("n1", 10.0, 10.0, 10.0, 10.0),
+    );
+
+    let selection = vec![n1_id.clone()];
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(0.01)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(15.0),
+        y: OrderedFloat::new_unchecked(15.0),
+    };
+
+    scale_group(&mut canvas, &selection, scale, anchor).unwrap();
+
+    let n1 = canvas.nodes.get(&n1_id).unwrap();
+    assert_eq!(n1.width.0, MIN_DIMENSION);
+    assert_eq!(n1.height.0, MIN_DIMENSION);
+}
+
+#[test]
+fn test_mul_014_inverse_scale_no_drift() {
+    let mut canvas = mock_canvas();
+    let n1_id = NodeId::new("n1".to_string());
+
+    canvas.nodes = canvas.nodes.update(
+        n1_id.clone(),
+        create_mock_node("n1", 100.0, 100.0, 50.0, 50.0),
+    );
+
+    let selection = vec![n1_id.clone()];
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+    };
+
+    let scale_up = PositiveScale::try_new(OrderedFloat::new_unchecked(1.001)).unwrap();
+    let scale_down = PositiveScale::try_new(OrderedFloat::new_unchecked(1.0 / 1.001)).unwrap();
+
+    for _ in 0..100 {
+        scale_group(&mut canvas, &selection, scale_up, anchor.clone()).unwrap();
+        scale_group(&mut canvas, &selection, scale_down, anchor.clone()).unwrap();
+    }
+
+    let n1 = canvas.nodes.get(&n1_id).unwrap();
+    assert!((n1.x.0 - 100.0).abs() < 1e-6);
+    assert!((n1.width.0 - 50.0).abs() < 1e-6);
+}
+
+#[test]
+fn test_postcondition_unselected_nodes_unmutated() {
+    let mut canvas = mock_canvas();
+    let n1_id = NodeId::new("n1".to_string());
+    let n2_id = NodeId::new("n2".to_string());
+
+    let original_n2 = create_mock_node("n2", 30.0, 30.0, 10.0, 10.0);
+
+    canvas.nodes = canvas
+        .nodes
+        .update(
+            n1_id.clone(),
+            create_mock_node("n1", 10.0, 10.0, 10.0, 10.0),
+        )
+        .update(n2_id.clone(), original_n2.clone());
+
+    let selection = vec![n1_id.clone()];
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(2.0)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+    };
+
+    scale_group(&mut canvas, &selection, scale, anchor).unwrap();
+
+    let n2 = canvas.nodes.get(&n2_id).unwrap();
+    assert_eq!(n2, &original_n2);
+}
+
+#[test]
+fn test_p1_empty_selection_violation_returns_error() {
+    let mut canvas = mock_canvas();
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(2.0)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+    };
+
+    let result = scale_group(&mut canvas, &[], scale, anchor);
+    assert_eq!(result.unwrap_err(), GroupTransformError::EmptySelection);
+}
+
+#[test]
+fn test_p3_node_not_found_violation_returns_error() {
+    let mut canvas = mock_canvas();
+    let missing_id = NodeId::new("missing".to_string());
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(2.0)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+    };
+
+    let result = scale_group(&mut canvas, &[missing_id.clone()], scale, anchor);
+    assert_eq!(
+        result.unwrap_err(),
+        GroupTransformError::NodeNotFound(missing_id)
+    );
+}
+
+#[test]
+fn test_p4_node_locked_violation_returns_error() {
+    let mut canvas = mock_canvas();
+    let n1_id = NodeId::new("n1".to_string());
+
+    let mut locked_node = create_mock_node("n1", 10.0, 10.0, 10.0, 10.0);
+    locked_node.locked = true;
+
+    canvas.nodes = canvas.nodes.update(n1_id.clone(), locked_node);
+
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(2.0)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+    };
+
+    let result = scale_group(&mut canvas, &[n1_id.clone()], scale, anchor);
+    assert_eq!(result.unwrap_err(), GroupTransformError::NodeLocked(n1_id));
+}
+
+#[test]
+fn test_p5_exceeds_max_bounds_violation_returns_error() {
+    let mut canvas = mock_canvas();
+    let n1_id = NodeId::new("n1".to_string());
+
+    canvas.nodes = canvas.nodes.update(
+        n1_id.clone(),
+        create_mock_node("n1", 10.0, 10.0, 10.0, 10.0),
+    );
+
+    let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(MAX_COORDINATE * 2.0)).unwrap();
+    let anchor = Point {
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+    };
+
+    let result = scale_group(&mut canvas, &[n1_id.clone()], scale, anchor);
+    assert_eq!(result.unwrap_err(), GroupTransformError::OutOfBounds);
+}
