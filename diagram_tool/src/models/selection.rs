@@ -560,11 +560,12 @@ mod tests {
             .nodes
             .insert(NodeId::new("child".to_string()), child);
 
-        let marquee = Rect::new(45.0, 45.0, 20.0, 20.0).unwrap();
+        // Make marquee large enough to fully enclose the parent n1 (0,0 to 100,100)
+        let marquee = Rect::new(-10.0, -10.0, 120.0, 120.0).unwrap();
         let selected = compute_marquee_selection(&doc, marquee).unwrap();
 
         assert!(selected.contains(&NodeId::new("child".to_string())));
-        assert!(selected.contains(&NodeId::new("n1".to_string()))); // n1 bounds 0,0 100,100, overlaps
+        assert!(selected.contains(&NodeId::new("n1".to_string()))); // n1 bounds 0,0 100,100, fully enclosed
         assert!(!selected.contains(&NodeId::new("n2".to_string())));
     }
 
