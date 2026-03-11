@@ -186,8 +186,8 @@ mod tests {
                 tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 font_size: None,
-            source_port: None,
-            target_port: None,
+                source_port: None,
+                target_port: None,
             },
         )
     }

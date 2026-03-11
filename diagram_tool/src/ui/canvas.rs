@@ -1434,8 +1434,8 @@ pub fn Canvas() -> Element {
                                         tags: im::Vector::new(),
                                         metadata: HashMap::new(),
                                         font_size: None,
-            source_port: None,
-            target_port: None,
+                                        source_port: None,
+                                        target_port: None,
                                     };
 
                                     if !edge_preserves_dag(&doc, &candidate_edge) {
