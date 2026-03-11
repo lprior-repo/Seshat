@@ -1,0 +1,121 @@
+{
+  "version": 2,
+  "revision": 0,
+  "document": {
+    "nodes": {
+      "rect-1": {
+        "kind": "node",
+        "icon": "square",
+        "label": "Rectangle 1",
+        "x": 100,
+        "y": 100,
+        "width": 120,
+        "height": 80,
+        "locked": false,
+        "parent": null,
+        "tags": ["shape"],
+        "metadata": {},
+        "z_index": 0,
+        "style": "box"
+      },
+      "rect-2": {
+        "kind": "node",
+        "icon": "square",
+        "label": "Rectangle 2",
+        "x": 300,
+        "y": 100,
+        "width": 120,
+        "height": 80,
+        "locked": false,
+        "parent": null,
+        "tags": ["shape"],
+        "metadata": {},
+        "z_index": 1,
+        "style": "box"
+      },
+      "ellipse-1": {
+        "kind": "node",
+        "icon": "circle",
+        "label": "Ellipse 1",
+        "x": 200,
+        "y": 250,
+        "width": 100,
+        "height": 100,
+        "locked": false,
+        "parent": null,
+        "tags": ["shape"],
+        "metadata": {},
+        "z_index": 2,
+        "style": "cloud"
+      },
+      "text-1": {
+        "kind": "text",
+        "icon": "",
+        "label": "Sample Text Label",
+        "x": 150,
+        "y": 400,
+        "width": 200,
+        "height": 30,
+        "locked": false,
+        "parent": null,
+        "tags": [],
+        "metadata": {},
+        "z_index": 3
+      },
+      "group-1": {
+        "kind": "subgraph",
+        "icon": "group",
+        "label": "Group 1",
+        "x": 80,
+        "y": 80,
+        "width": 360,
+        "height": 280,
+        "locked": false,
+        "parent": null,
+        "tags": ["container"],
+        "metadata": {},
+        "z_index": -1
+      }
+    },
+    "edges": {
+      "arrow-1": {
+        "source": "rect-1",
+        "target": "rect-2",
+        "label": "connects to",
+        "style": "solid",
+        "arrowType": "sharp",
+        "label_offset_t": 0.5,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [],
+        "tags": [],
+        "metadata": {}
+      },
+      "edge-2": {
+        "source": "rect-1",
+        "target": "ellipse-1",
+        "label": "",
+        "style": "dashed",
+        "arrowType": "default",
+        "label_offset_t": 0.5,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [[200, 180]],
+        "tags": [],
+        "metadata": {}
+      }
+    }
+  },
+  "editor_state": {
+    "camera_x": 0,
+    "camera_y": 0,
+    "zoom": 1.0,
+    "grid_size": 20,
+    "snap_to_grid": true,
+    "selected_items": ["rect-1", "rect-2"],
+    "editing_edge_id": null,
+    "theme": "light",
+    "show_grid": true,
+    "minimap_visible": true
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "document": {
+    "edges": {},
+    "nodes": {}
+  },
+  "editor_state": {
+    "camera_x": 0.0,
+    "camera_y": 0.0,
+    "editing_edge_id": null,
+    "grid_size": 20.0,
+    "minimap_visible": false,
+    "selected_items": [],
+    "show_grid": true,
+    "snap_to_grid": true,
+    "theme": "system",
+    "zoom": 1.0
+  },
+  "revision": 0,
+  "version": 2
+}

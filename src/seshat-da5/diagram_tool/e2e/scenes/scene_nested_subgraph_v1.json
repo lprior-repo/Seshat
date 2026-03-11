@@ -1,0 +1,103 @@
+{
+  "version": 2,
+  "revision": 0,
+  "document": {
+    "nodes": {
+      "outer": {
+        "kind": "subgraph",
+        "icon": "",
+        "label": "Subgraph",
+        "x": 80,
+        "y": 80,
+        "width": 760,
+        "height": 480,
+        "locked": true,
+        "parent": null,
+        "dag_rank": null,
+        "tags": [],
+        "metadata": {},
+        "z_index": -2,
+        "style": "box",
+        "collapsed": false
+      },
+      "inner": {
+        "kind": "subgraph",
+        "icon": "",
+        "label": "Subgraph",
+        "x": 180,
+        "y": 180,
+        "width": 420,
+        "height": 240,
+        "locked": true,
+        "parent": "outer",
+        "dag_rank": null,
+        "tags": [],
+        "metadata": {},
+        "z_index": -1,
+        "style": "box",
+        "collapsed": false
+      },
+      "t1": {
+        "kind": "text",
+        "icon": "",
+        "label": "Text",
+        "x": 220,
+        "y": 220,
+        "width": 120,
+        "height": 28,
+        "locked": true,
+        "parent": "inner",
+        "dag_rank": null,
+        "tags": [],
+        "metadata": {},
+        "z_index": 1000,
+        "style": "box"
+      },
+      "t2": {
+        "kind": "text",
+        "icon": "",
+        "label": "Text",
+        "x": 480,
+        "y": 320,
+        "width": 120,
+        "height": 28,
+        "locked": true,
+        "parent": "inner",
+        "dag_rank": null,
+        "tags": [],
+        "metadata": {},
+        "z_index": 1000,
+        "style": "box"
+      }
+    },
+    "edges": {
+      "e1": {
+        "source": "t1",
+        "target": "t2",
+        "label": "in",
+        "style": "solid",
+        "arrowType": "curved",
+        "label_offset_t": 0.5,
+        "color": null,
+        "thickness": 1.5,
+        "directed": true,
+        "bend_points": [],
+        "tags": [],
+        "metadata": {},
+        "fontSize": null
+      }
+    }
+  },
+  "editor_state": {
+    "camera_x": 0,
+    "camera_y": 0,
+    "zoom": 1,
+    "grid_size": 20,
+    "snap_to_grid": true,
+    "selected_items": [],
+    "editing_edge_id": null,
+    "theme": "system",
+    "show_grid": true,
+    "minimap_visible": true
+  }
+}

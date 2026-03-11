@@ -1,0 +1,10 @@
+--- src/ui/sidebar.rs
++++ src/ui/sidebar.rs
+@@ -223,6 +223,7 @@
+             },
+             ondragstart: move |evt| {
++                // Setting some data in the dataTransfer is required by HTML5 for drop to work
++                evt.data.set_data("text/plain", "icon");
+                 dragging_icon.set(Some(DraggedIconPayload {
+                     icon_key: icon.icon_key.clone(),
+                     label: Some(icon.display_name.clone()),

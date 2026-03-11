@@ -1,0 +1,16 @@
+[
+  {
+    "id": "rq-seed-0001",
+    "sceneId": "scene_mixed_selection_v1",
+    "seed": 13337,
+    "wave": 1,
+    "operatorSet": ["tool_churn", "drag_jitter", "zoom_pulse"]
+  },
+  {
+    "id": "rq-seed-0002",
+    "sceneId": "scene_nested_subgraph_v1",
+    "seed": 14111,
+    "wave": 1,
+    "operatorSet": ["drag_jitter", "undo_redo_fork", "panel_reflow"]
+  }
+]
