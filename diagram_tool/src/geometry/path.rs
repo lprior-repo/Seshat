@@ -220,4 +220,3 @@ pub fn simplify_path(
 pub fn simplify_path_default(points: &[Point]) -> Option<Vec<Point>> {
     simplify_path(points, PathSimplificationConfig::default_config()).ok()
 }
-

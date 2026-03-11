@@ -979,8 +979,8 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let db_path = Path::new(path);
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             let diff = runtime.block_on(async {
-                use crate::store_durable::generate_conflict_diff;
                 use crate::store_async::create_async_pool;
+                use crate::store_durable::generate_conflict_diff;
                 let pool = create_async_pool(db_path)
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1010,7 +1010,9 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let db_path = Path::new(path);
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             runtime.block_on(async {
-                use crate::store_durable::{start_operation, bootstrap_durable_store, DurableConfig};
+                use crate::store_durable::{
+                    bootstrap_durable_store, start_operation, DurableConfig,
+                };
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1031,14 +1033,11 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             })?;
             println!("Operation {} started", operation_id);
         }
-        Commands::OpStatus {
-            path,
-            operation_id,
-        } => {
+        Commands::OpStatus { path, operation_id } => {
             let db_path = Path::new(path);
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             let op = runtime.block_on(async {
-                use crate::store_durable::{get_operation, bootstrap_durable_store, DurableConfig};
+                use crate::store_durable::{bootstrap_durable_store, get_operation, DurableConfig};
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1065,7 +1064,9 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             let ops = runtime.block_on(async {
                 use crate::store::types::OperationState;
-                use crate::store_durable::{get_operations_by_state, bootstrap_durable_store, DurableConfig};
+                use crate::store_durable::{
+                    bootstrap_durable_store, get_operations_by_state, DurableConfig,
+                };
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1087,16 +1088,15 @@ fn execute_command(cmd: &Commands) -> Result<()> {
                 );
             }
         }
-        Commands::OpComplete {
-            path,
-            operation_id,
-        } => {
+        Commands::OpComplete { path, operation_id } => {
             let db_path = Path::new(path);
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             runtime.block_on(async {
                 use crate::store::types::OperationState;
-                use crate::store_durable::{update_operation_state, bootstrap_durable_store, DurableConfig};
                 use crate::store_async::fetch_latest_revision;
+                use crate::store_durable::{
+                    bootstrap_durable_store, update_operation_state, DurableConfig,
+                };
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1125,7 +1125,9 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             runtime.block_on(async {
                 use crate::store::types::OperationState;
-                use crate::store_durable::{update_operation_state, bootstrap_durable_store, DurableConfig};
+                use crate::store_durable::{
+                    bootstrap_durable_store, update_operation_state, DurableConfig,
+                };
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1147,7 +1149,9 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let db_path = Path::new(path);
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             let entries = runtime.block_on(async {
-                use crate::store_durable::{get_pending_outbox, bootstrap_durable_store, DurableConfig};
+                use crate::store_durable::{
+                    bootstrap_durable_store, get_pending_outbox, DurableConfig,
+                };
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;
@@ -1179,8 +1183,10 @@ fn execute_command(cmd: &Commands) -> Result<()> {
             let runtime = Runtime::new().map_err(|e| anyhow!(e.to_string()))?;
             runtime.block_on(async {
                 use crate::store::types::SideEffectType;
-                use crate::store_durable::{add_outbox_entry, bootstrap_durable_store, DurableConfig};
                 use crate::store_async::fetch_latest_revision;
+                use crate::store_durable::{
+                    add_outbox_entry, bootstrap_durable_store, DurableConfig,
+                };
                 let bootstrap = bootstrap_durable_store(db_path, DurableConfig::default())
                     .await
                     .map_err(|e| anyhow!(e.to_string()))?;

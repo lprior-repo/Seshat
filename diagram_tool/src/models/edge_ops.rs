@@ -237,6 +237,41 @@ pub fn apply_edge_disconnect(
     })
 }
 
+/// Apply `EdgeStyle` operation
+///
+/// Updates the style of an existing edge.
+///
+/// # Errors
+/// Returns `EdgeOpsError::EdgeNotFound` if:
+/// - Edge ID doesn't exist
+pub fn apply_edge_style(
+    state: DiagramProjection,
+    id: &str,
+    style: crate::models::document::EdgeStyle,
+) -> Result<DiagramProjection, EdgeOpsError> {
+    let edge_id = EdgeId::new(id.to_string());
+
+    let edge = state
+        .edges
+        .get(&edge_id)
+        .ok_or_else(|| EdgeOpsError::EdgeNotFound(id.to_string()))?;
+
+    let updated_edge = Edge {
+        style,
+        ..edge.clone()
+    };
+
+    let new_edges = state.edges.update(edge_id, updated_edge);
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: state.nodes,
+        edges: new_edges,
+        author_priority: state.author_priority,
+    })
+}
+
 /// Apply an edge operation to the projection
 ///
 /// This is the contract-specified entry point for applying edge operations.
@@ -661,5 +696,211 @@ mod tests {
         let new_state = result.unwrap();
         assert!(new_state.has_edge(&EdgeId::new("edge-1".to_string())));
         assert!(new_state.has_edge(&EdgeId::new("edge-2".to_string())));
+    }
+
+    // Edge Style Tests
+
+    #[test]
+    fn edg_026_test_default_edge_style_is_solid() {
+        let state = make_projection_with_nodes_and_edge();
+        let result = apply_edge_connect(state, "edge-1", "node-a", "node-b");
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        let edge = new_state
+            .get_edge(&EdgeId::new("edge-1".to_string()))
+            .unwrap();
+        assert_eq!(edge.style, crate::models::document::EdgeStyle::Solid);
+    }
+
+    #[test]
+    fn edg_027_test_set_edge_style_to_dashed_updates_successfully() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+
+        let result = apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dashed);
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        let edge = new_state
+            .get_edge(&EdgeId::new("edge-1".to_string()))
+            .unwrap();
+        assert_eq!(edge.style, crate::models::document::EdgeStyle::Dashed);
+    }
+
+    #[test]
+    fn edg_028_test_set_edge_style_to_dotted_updates_successfully() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+
+        let result = apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dotted);
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        let edge = new_state
+            .get_edge(&EdgeId::new("edge-1".to_string()))
+            .unwrap();
+        assert_eq!(edge.style, crate::models::document::EdgeStyle::Dotted);
+    }
+
+    #[test]
+    fn edg_029_test_returns_error_when_setting_style_on_missing_edge() {
+        let state = make_projection_with_nodes_and_edge();
+        let result = apply_edge_style(
+            state,
+            "missing-edge",
+            crate::models::document::EdgeStyle::Dashed,
+        );
+
+        assert!(result.is_err());
+        match result.unwrap_err() {
+            EdgeOpsError::EdgeNotFound(id) => assert_eq!(id, "missing-edge"),
+            _ => panic!("Expected EdgeNotFound error"),
+        }
+    }
+
+    #[test]
+    fn edg_030_test_set_edge_style_to_same_style_is_idempotent() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+
+        let result = apply_edge_style(
+            state.clone(),
+            "edge-1",
+            crate::models::document::EdgeStyle::Solid,
+        );
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+
+        let edge_before = state.get_edge(&EdgeId::new("edge-1".to_string())).unwrap();
+        let edge_after = new_state
+            .get_edge(&EdgeId::new("edge-1".to_string()))
+            .unwrap();
+        assert_eq!(edge_before, edge_after);
+    }
+
+    #[test]
+    fn test_handles_applying_style_to_newly_connected_edge() {
+        let state = make_projection_with_nodes_and_edge();
+        let state_after_connect =
+            apply_edge_connect(state, "edge-new", "node-a", "node-b").unwrap();
+        let result = apply_edge_style(
+            state_after_connect,
+            "edge-new",
+            crate::models::document::EdgeStyle::Dashed,
+        );
+
+        assert!(result.is_ok());
+        let new_state = result.unwrap();
+        let edge = new_state
+            .get_edge(&EdgeId::new("edge-new".to_string()))
+            .unwrap();
+        assert_eq!(edge.style, crate::models::document::EdgeStyle::Dashed);
+    }
+
+    #[test]
+    fn test_style_persists_across_multiple_operations() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+        let state =
+            apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dotted).unwrap();
+
+        let mut state = state;
+        let _ = state
+            .nodes
+            .insert(NodeId::new("node-c".to_string()), make_node("node-c"));
+
+        let state = apply_edge_connect(state, "edge-2", "node-a", "node-c").unwrap();
+
+        let edge1 = state.get_edge(&EdgeId::new("edge-1".to_string())).unwrap();
+        assert_eq!(edge1.style, crate::models::document::EdgeStyle::Dotted);
+    }
+
+    #[test]
+    fn test_precondition_target_edge_must_exist() {
+        let state = DiagramProjection::empty();
+        let result = apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Solid);
+        assert!(matches!(result, Err(EdgeOpsError::EdgeNotFound(_))));
+    }
+
+    #[test]
+    fn test_postcondition_edge_style_is_updated() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+
+        let result =
+            apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dashed).unwrap();
+        let edge = result.get_edge(&EdgeId::new("edge-1".to_string())).unwrap();
+        assert_eq!(edge.style, crate::models::document::EdgeStyle::Dashed);
+    }
+
+    #[test]
+    fn test_postcondition_other_properties_unchanged() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+
+        let original_edge = state
+            .get_edge(&EdgeId::new("edge-1".to_string()))
+            .unwrap()
+            .clone();
+
+        let result =
+            apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dotted).unwrap();
+        let updated_edge = result.get_edge(&EdgeId::new("edge-1".to_string())).unwrap();
+
+        assert_eq!(original_edge.source, updated_edge.source);
+        assert_eq!(original_edge.target, updated_edge.target);
+        assert_eq!(original_edge.label, updated_edge.label);
+        assert_eq!(original_edge.arrow_type, updated_edge.arrow_type);
+        assert_eq!(original_edge.label_offset_t, updated_edge.label_offset_t);
+        assert_eq!(original_edge.thickness, updated_edge.thickness);
+        assert_eq!(original_edge.directed, updated_edge.directed);
+    }
+
+    #[test]
+    fn test_postcondition_other_edges_unchanged() {
+        let mut state = make_projection_with_nodes_and_edge();
+        let _ = state
+            .nodes
+            .insert(NodeId::new("node-c".to_string()), make_node("node-c"));
+
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+        let state = apply_edge_connect(state, "edge-2", "node-b", "node-c").unwrap();
+
+        let original_edge2 = state
+            .get_edge(&EdgeId::new("edge-2".to_string()))
+            .unwrap()
+            .clone();
+
+        let result =
+            apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dashed).unwrap();
+        let updated_edge2 = result.get_edge(&EdgeId::new("edge-2".to_string())).unwrap();
+
+        assert_eq!(&original_edge2, updated_edge2);
+    }
+
+    #[test]
+    fn test_invariant_projection_structural_integrity_preserved() {
+        let state = make_projection_with_nodes_and_edge();
+        let state = apply_edge_connect(state, "edge-1", "node-a", "node-b").unwrap();
+
+        let result =
+            apply_edge_style(state, "edge-1", crate::models::document::EdgeStyle::Dashed).unwrap();
+
+        // Nodes should be untouched
+        assert!(result.has_node(&NodeId::new("node-a".to_string())));
+        assert!(result.has_node(&NodeId::new("node-b".to_string())));
+
+        // Tolerance check passes
+        assert!(verify_edge_tolerance(&result).is_ok());
+    }
+
+    #[test]
+    fn test_edge_exists_violation_returns_not_found_error() {
+        let state = make_projection_with_nodes_and_edge();
+        let result = apply_edge_style(
+            state,
+            "missing-edge",
+            crate::models::document::EdgeStyle::Dashed,
+        );
+
+        assert!(matches!(result, Err(EdgeOpsError::EdgeNotFound(id)) if id == "missing-edge"));
     }
 }

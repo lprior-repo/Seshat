@@ -35,9 +35,19 @@ pub mod port;
 pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas
 pub mod selection;
+pub mod subgraph;
+
+pub mod selection_ops;
+
+#[cfg(test)]
+pub mod selection_ops_tests;
 
 pub mod sync;
 pub mod validation;
+pub mod subgraph_events;
+
+#[cfg(test)]
+pub mod subgraph_events_tests;
 
 #[cfg(test)]
 pub mod subgraph_persistence_tests;

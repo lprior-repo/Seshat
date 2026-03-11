@@ -5,7 +5,9 @@ pub const MIN_ZOOM: f64 = 0.1;
 #[allow(dead_code)]
 pub const MAX_ZOOM: f64 = 10.0;
 #[allow(dead_code)]
-pub fn clamp_zoom(zoom: f64) -> f64 { zoom.clamp(MIN_ZOOM, MAX_ZOOM) }
+pub fn clamp_zoom(zoom: f64) -> f64 {
+    zoom.clamp(MIN_ZOOM, MAX_ZOOM)
+}
 #[allow(dead_code)]
 pub const MIN_SIZE: f64 = 1.0;
 

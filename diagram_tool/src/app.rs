@@ -27,9 +27,9 @@ use crate::ui::ValidationPanel;
 #[allow(unused_imports)]
 use auto_save::AUTO_SAVE_KEY;
 use dioxus::prelude::*;
-use std::collections::HashMap;
 #[cfg(feature = "async-db")]
 use futures_util::stream::StreamExt;
+use std::collections::HashMap;
 
 const VALIDATION_IDLE_MS: u64 = 220;
 
@@ -123,7 +123,9 @@ pub fn App() -> Element {
                         doc_signal.with_mut(|doc| {
                             for event in events {
                                 next_rev = next_rev.max(event.revision);
-                                if let Ok(envelope) = crate::models::envelope::parse_event_envelope(&event.payload) {
+                                if let Ok(envelope) =
+                                    crate::models::envelope::parse_event_envelope(&event.payload)
+                                {
                                     let proj_event = crate::models::projection::EventRecord {
                                         op_id: event.op_id.clone(),
                                         revision: doc.revision.value(),
@@ -137,12 +139,17 @@ pub fn App() -> Element {
                                         nodes: doc.document.nodes.clone(),
                                         edges: doc.document.edges.clone(),
                                         author_priority: im::HashMap::new(),
-                                        cycle_policy: crate::models::projection::CyclePolicy::default(),
+                                        cycle_policy:
+                                            crate::models::projection::CyclePolicy::default(),
                                     };
-                                    if let Ok(new_proj) = crate::models::projection::apply_event(proj, &proj_event) {
+                                    if let Ok(new_proj) =
+                                        crate::models::projection::apply_event(proj, &proj_event)
+                                    {
                                         doc.document.nodes = new_proj.nodes;
                                         doc.document.edges = new_proj.edges;
-                                        doc.revision = crate::models::document::Revision::new(new_proj.revision);
+                                        doc.revision = crate::models::document::Revision::new(
+                                            new_proj.revision,
+                                        );
                                         doc.version = new_proj.version;
                                     }
                                 }

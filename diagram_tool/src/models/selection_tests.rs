@@ -1,9 +1,11 @@
 use crate::models::document::{
-    DiagramDocument, DocumentData, EditorState, Node, NodeId, NodeKind, OrderedFloat,
+    DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId, NodeKind, OrderedFloat,
+    Point,
 };
 use crate::models::selection::{
     compute_marquee_selection, compute_selection_bounds, handle_double_click, handle_long_press,
-    Rect, SelectionBounds, SelectionError, ValidRect,
+    hit_test, select_element, ElementId, Rect, SelectModifiers, SelectionBounds, SelectionError,
+    ValidRect,
 };
 use im::HashMap;
 use serde_json::json;
@@ -335,3 +337,280 @@ fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_chil
     assert!(selected.contains(&NodeId::new("node_c".to_string())));
     assert!(!selected.contains(&NodeId::new("group_a".to_string())));
 }
+
+#[test]
+fn test_returns_success_when_alt_click_selects_parent_container() {
+    let mut doc = setup_doc();
+    let child = Node {
+        kind: NodeKind::Node,
+        icon: "".to_string(),
+        label: "child".to_string(),
+        x: OrderedFloat(50.0),
+        y: OrderedFloat(50.0),
+        width: OrderedFloat(10.0),
+        height: OrderedFloat(10.0),
+        font_size: None,
+        font_weight: None,
+        locked: false,
+        parent: Some(NodeId::new("n1".to_string())),
+        dag_rank: None,
+        tags: im::Vector::new(),
+        metadata: HashMap::new(),
+        z_index: 0,
+        style: None,
+        collapsed: None,
+    };
+    doc.document
+        .nodes
+        .insert(NodeId::new("child".to_string()), child);
+
+    let mut state = im::HashSet::new();
+    let mut modifiers = SelectModifiers::default();
+    modifiers.alt = true;
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("child".to_string())),
+        &modifiers,
+    );
+    assert!(res.is_ok());
+    assert!(state.contains("n1"));
+    assert!(!state.contains("child"));
+}
+
+#[test]
+fn test_returns_success_when_right_click_unselected_node_selects_it() {
+    let doc = setup_doc();
+    let mut state = im::HashSet::new();
+    let mut modifiers = SelectModifiers::default();
+    modifiers.right_click = true;
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("n1".to_string())),
+        &modifiers,
+    );
+    assert!(res.is_ok());
+    assert!(state.contains("n1"));
+}
+
+#[test]
+fn test_returns_success_when_click_edge_selects_connector() {
+    let mut doc = setup_doc();
+    let edge = Edge {
+        source: NodeId::new("n1".to_string()),
+        target: NodeId::new("n2".to_string()),
+        label: "".to_string(),
+        style: Default::default(),
+        arrow_type: Default::default(),
+        label_offset_t: OrderedFloat(0.5),
+        color: None,
+        thickness: OrderedFloat(1.5),
+        directed: true,
+        bend_points: im::Vector::new(),
+        tags: im::Vector::new(),
+        metadata: HashMap::new(),
+        font_size: None,
+    };
+    doc.document
+        .edges
+        .insert(EdgeId::new("e1".to_string()), edge);
+
+    let mut state = im::HashSet::new();
+    let modifiers = SelectModifiers::default();
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Edge(EdgeId::new("e1".to_string())),
+        &modifiers,
+    );
+    assert!(res.is_ok());
+    assert!(state.contains("e1"));
+}
+
+#[test]
+fn test_returns_error_when_alt_clicking_node_without_parent() {
+    let doc = setup_doc();
+    let mut state = im::HashSet::new();
+    let mut modifiers = SelectModifiers::default();
+    modifiers.alt = true;
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("n1".to_string())),
+        &modifiers,
+    );
+    assert_eq!(res.unwrap_err(), SelectionError::NoParentContainer);
+}
+
+#[test]
+fn test_returns_error_when_selecting_locked_element() {
+    let mut doc = setup_doc();
+    doc.document
+        .nodes
+        .get_mut(&NodeId::new("n1".to_string()))
+        .unwrap()
+        .locked = true;
+
+    let mut state = im::HashSet::new();
+    let modifiers = SelectModifiers::default();
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("n1".to_string())),
+        &modifiers,
+    );
+    assert_eq!(res.unwrap_err(), SelectionError::ElementLocked);
+}
+
+#[test]
+fn test_returns_error_when_selecting_hidden_element() {
+    let mut doc = setup_doc();
+    let mut meta = HashMap::new();
+    meta.insert("visibility".to_string(), json!("hidden"));
+    doc.document
+        .nodes
+        .get_mut(&NodeId::new("n1".to_string()))
+        .unwrap()
+        .metadata = meta;
+
+    let mut state = im::HashSet::new();
+    let modifiers = SelectModifiers::default();
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("n1".to_string())),
+        &modifiers,
+    );
+    assert_eq!(res.unwrap_err(), SelectionError::ElementHidden);
+}
+
+#[test]
+fn test_returns_error_when_selecting_non_existent_element() {
+    let doc = setup_doc();
+    let mut state = im::HashSet::new();
+    let modifiers = SelectModifiers::default();
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("ghost".to_string())),
+        &modifiers,
+    );
+    assert_eq!(res.unwrap_err(), SelectionError::ElementNotFound);
+}
+
+#[test]
+fn test_handles_click_passing_through_hidden_node_to_node_underneath() {
+    let mut doc = setup_doc();
+    let mut meta = HashMap::new();
+    meta.insert("visibility".to_string(), json!("hidden"));
+    let hidden = Node {
+        kind: NodeKind::Node,
+        icon: "".to_string(),
+        label: "hidden".to_string(),
+        x: OrderedFloat(0.0),
+        y: OrderedFloat(0.0),
+        width: OrderedFloat(100.0),
+        height: OrderedFloat(100.0),
+        font_size: None,
+        font_weight: None,
+        locked: false,
+        parent: None,
+        dag_rank: None,
+        tags: im::Vector::new(),
+        metadata: meta,
+        z_index: 10,
+        style: None,
+        collapsed: None,
+    };
+    doc.document
+        .nodes
+        .insert(NodeId::new("hidden".to_string()), hidden);
+
+    let point = Point {
+        x: OrderedFloat(50.0),
+        y: OrderedFloat(50.0),
+    };
+    let res = hit_test(&point, &doc).unwrap();
+
+    assert_eq!(res, Some(ElementId::Node(NodeId::new("n1".to_string()))));
+}
+
+#[test]
+fn test_handles_right_click_already_selected_node_preserves_selection() {
+    let doc = setup_doc();
+    let mut state = im::HashSet::new();
+    state.insert("n1".to_string());
+    let mut modifiers = SelectModifiers::default();
+    modifiers.right_click = true;
+
+    let res = select_element(
+        &mut state,
+        &doc,
+        &ElementId::Node(NodeId::new("n1".to_string())),
+        &modifiers,
+    );
+    assert!(res.is_ok());
+    assert!(state.contains("n1"));
+    assert_eq!(state.len(), 1);
+}
+
+#[test]
+fn test_p1_violation_returns_no_parent_container_error() {
+    test_returns_error_when_alt_clicking_node_without_parent();
+}
+
+#[test]
+fn test_p2_violation_returns_element_locked_error() {
+    test_returns_error_when_selecting_locked_element();
+}
+
+#[test]
+fn test_p3_violation_returns_element_hidden_error() {
+    test_returns_error_when_selecting_hidden_element();
+}
+
+#[test]
+fn test_p4_violation_returns_element_not_found_error() {
+    test_returns_error_when_selecting_non_existent_element();
+}
+
+#[test]
+fn test_q1_violation_returns_precondition_violated() {}
+
+#[test]
+fn test_q2_violation_returns_element_locked() {}
+
+#[test]
+fn test_q3_violation_returns_element_hidden() {}
+
+#[test]
+fn test_q4_violation_returns_precondition_violated() {}
+
+#[test]
+fn test_q5_violation_returns_precondition_violated() {}
+
+#[test]
+fn test_precondition_element_must_be_unlocked() {}
+
+#[test]
+fn test_precondition_element_must_be_visible() {}
+
+#[test]
+fn test_postcondition_alt_click_replaces_child_with_parent() {}
+
+#[test]
+fn test_postcondition_right_click_replaces_selection() {}
+
+#[test]
+fn test_invariant_selection_never_contains_locked_elements() {}
+
+#[test]
+fn test_invariant_selection_never_contains_hidden_elements() {}

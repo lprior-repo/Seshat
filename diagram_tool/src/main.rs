@@ -39,9 +39,9 @@ pub mod store;
 #[cfg(feature = "async-db")]
 pub mod store_async;
 #[cfg(feature = "async-db")]
-pub mod store_durable;
-#[cfg(feature = "async-db")]
 pub mod store_bridge;
+#[cfg(feature = "async-db")]
+pub mod store_durable;
 mod test_harness;
 mod ui;
 
@@ -59,13 +59,16 @@ fn main() {
         }
     }
 
-    let mut builder = dioxus::LaunchBuilder::new()
-        .with_context(server_only! { ServeConfig::builder() });
+    let mut builder =
+        dioxus::LaunchBuilder::new().with_context(server_only! { ServeConfig::builder() });
 
     #[cfg(feature = "async-db")]
     {
         let db_path = std::path::PathBuf::from("diagram.db");
-        let bridge = std::sync::Arc::new(crate::store_bridge::StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn async pool"));
+        let bridge = std::sync::Arc::new(
+            crate::store_bridge::StoreBridge::spawn_async_pool(&db_path)
+                .expect("Failed to spawn async pool"),
+        );
         builder = builder.with_context(bridge);
     }
 
