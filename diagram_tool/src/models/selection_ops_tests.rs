@@ -24,6 +24,8 @@ mod tests {
         DiagramState::with_nodes(nodes)
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_001_click_replaces_selection() {
         let mut state = setup_state();
@@ -42,6 +44,8 @@ mod tests {
         assert_eq!(state.selected_items.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_shift_click_adds_to_selection() {
         let mut state = setup_state();
@@ -59,6 +63,8 @@ mod tests {
         assert_eq!(state.selected_items.len(), 2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_shift_click_removes_from_selection() {
         let mut state = setup_state();
@@ -76,6 +82,8 @@ mod tests {
         assert_eq!(state.selected_items.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_003_left_to_right_marquee_selects_contained_nodes() {
         let mut state = setup_state();
@@ -98,6 +106,8 @@ mod tests {
         assert_eq!(state.selected_items.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_004_click_empty_canvas_clears_selection() {
         let mut state = setup_state();
@@ -110,6 +120,8 @@ mod tests {
         assert!(state.selected_items.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_005_right_to_left_marquee_selects_intersected_nodes() {
         let mut state = setup_state();
@@ -129,6 +141,8 @@ mod tests {
         assert_eq!(state.selected_items.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_selecting_non_existent_node() {
         let mut state = setup_state();
@@ -144,6 +158,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_marquee_starts_on_node() {
         let mut state = setup_state();
@@ -153,6 +169,8 @@ mod tests {
         assert_eq!(result, Err(Error::InvalidInteractionState));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_marquee_selection_with_no_contained_or_intersected_nodes() {
         let mut state = setup_state();
@@ -167,6 +185,8 @@ mod tests {
         assert!(state.selected_items.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_marquee_selection_exactly_matching_node_bounds() {
         let mut state = setup_state();
@@ -184,6 +204,8 @@ mod tests {
             .contains(&NodeId::new("node-a".to_string())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_selection_set_contains_no_duplicates() {
         // HashSet naturally prevents duplicates.
@@ -206,6 +228,8 @@ mod tests {
         assert_eq!(state.selected_items.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_selection_set_only_contains_existing_nodes() {
         let mut state = setup_state();
@@ -219,6 +243,8 @@ mod tests {
         assert!(state.selected_items.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p1_violation_returns_item_not_found_error() {
         let mut state = setup_state();
@@ -233,6 +259,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p2_violation_returns_invalid_interaction_state_error() {
         let mut state = setup_state();

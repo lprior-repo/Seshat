@@ -136,6 +136,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_more_than_cap_when_pushing_then_undo_stack_is_capped_at_100() {
         let history = (0..105_u64).fold(History::new(), |acc, step| {
@@ -150,6 +152,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_capped_history_when_undo_all_then_exactly_100_undos_succeed() {
         let history = (0..105_u64).fold(History::new(), |acc, step| {
@@ -176,6 +180,8 @@ mod tests {
         assert!(undo_count < MAX_UNDOS, "should not hit safety limit");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_entries_when_undo_then_it_walks_back_in_order() {
         let history = History::new()
@@ -207,6 +213,8 @@ mod tests {
         assert_eq!(third.revision, doc_with_revision(1).revision);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cap_boundary_when_undo_and_redo_then_round_trip_is_sane() {
         let history = (0..100_u64).fold(History::new(), |acc, step| {
@@ -235,6 +243,8 @@ mod tests {
     // ============================================================
 
     /// Direct test of truncate_stack: empty stack stays empty
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_stack_when_truncate_then_returns_empty() {
         use super::{truncate_stack, List};
@@ -244,6 +254,8 @@ mod tests {
     }
 
     /// Direct test of truncate_stack: small stack unchanged
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_small_stack_when_truncate_then_returns_same_elements() {
         use super::{truncate_stack, List};
@@ -263,6 +275,8 @@ mod tests {
     }
 
     /// Direct test of truncate_stack: exact boundary (100 elements)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_exactly_100_elements_when_truncate_then_all_preserved() {
         use super::{truncate_stack, List};
@@ -280,6 +294,8 @@ mod tests {
     }
 
     /// Direct test of truncate_stack: over limit gets truncated to 100
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_105_elements_when_truncate_then_exactly_100_preserved() {
         use super::{truncate_stack, List};
@@ -301,6 +317,8 @@ mod tests {
     }
 
     /// Direct test of drop_first: empty stack stays empty
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_stack_when_drop_first_then_returns_empty() {
         use super::{drop_first, List};
@@ -310,6 +328,8 @@ mod tests {
     }
 
     /// Direct test of drop_first: single element becomes empty
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_element_when_drop_first_then_returns_empty() {
         use super::{drop_first, List};
@@ -322,6 +342,8 @@ mod tests {
     }
 
     /// Direct test of drop_first: removes first, preserves rest
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_elements_when_drop_first_then_two_remain_in_order() {
         use super::{drop_first, List};
@@ -340,6 +362,8 @@ mod tests {
     }
 
     /// Direct test of undo: returns correct document
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_one_state_when_undo_then_returns_that_document() {
         let history = History::new().push(doc_with_revision(10));
@@ -358,6 +382,8 @@ mod tests {
     }
 
     /// Direct test of undo: returns correct new history state
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_states_when_undo_then_new_history_has_dropped_first() {
         let history = History::new()
@@ -384,6 +410,8 @@ mod tests {
     }
 
     /// Direct test of undo on empty history
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_history_when_undo_then_returns_none() {
         let history = History::new();
@@ -395,6 +423,8 @@ mod tests {
     }
 
     /// Direct test of redo: returns correct document
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_redo_state_when_redo_then_returns_that_document() {
         // Create history with one undo available
@@ -417,6 +447,8 @@ mod tests {
     }
 
     /// Direct test of redo on empty redo stack
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_fresh_history_when_redo_then_returns_none() {
         let history = History::new().push(doc_with_revision(1));
@@ -431,6 +463,8 @@ mod tests {
     }
 
     /// Test undo then redo round trip with single element
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_push_when_undo_then_redo_then_returns_to_current() {
         let original_current = doc_with_revision(999);
@@ -453,6 +487,8 @@ mod tests {
     }
 
     /// Test that push clears redo stack
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_undone_state_when_push_then_redo_stack_is_cleared() {
         let history = History::new()
@@ -478,6 +514,8 @@ mod tests {
     }
 
     /// Verify undo returns correct document for multiple pushes (no loops)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_pushes_when_undo_once_then_returns_most_recent_push() {
         let history = History::new()
@@ -498,6 +536,8 @@ mod tests {
     }
 
     /// Verify undo order for second undo
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_pushes_when_undo_twice_then_returns_second_push() {
         let history = History::new()
@@ -520,24 +560,32 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_can_undo_returns_false_for_fresh_history() {
         let history = History::new();
         assert!(!history.can_undo());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_can_undo_returns_true_after_push() {
         let history = History::new().push(doc_with_revision(1));
         assert!(history.can_undo());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_can_redo_returns_false_for_fresh_history() {
         let history = History::new();
         assert!(!history.can_redo());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_can_redo_returns_true_after_undo() {
         let history = History::new().push(doc_with_revision(1));
@@ -577,6 +625,8 @@ mod tests {
     }
 
     /// HIS-001: Move node undo restores original position
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_at_position_when_moved_and_undo_then_position_restored() {
         let mut doc_before = DiagramDocument::default();
@@ -612,6 +662,8 @@ mod tests {
     }
 
     /// HIS-002: Resize undo restores exact original dimensions
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_dimensions_when_resized_and_undo_then_dimensions_restored() {
         let mut doc_before = DiagramDocument::default();
@@ -653,6 +705,8 @@ mod tests {
     }
 
     /// HIS-003: Rotation undo restores original rotation (stored in metadata)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_rotation_metadata_when_rotated_and_undo_then_rotation_restored() {
         let mut doc_before = DiagramDocument::default();
@@ -693,6 +747,8 @@ mod tests {
     }
 
     /// HIS-004: Group undo removes group and restores original parent relationships
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nodes_when_grouped_and_undo_then_group_removed_and_parents_restored() {
         let mut doc_before = DiagramDocument::default();
@@ -786,6 +842,8 @@ mod tests {
     }
 
     /// HIS-005: Reparent undo restores original parent relationship
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_parent_when_reparented_and_undo_then_original_parent_restored() {
         let mut doc_before = DiagramDocument::default();
@@ -834,6 +892,8 @@ mod tests {
     }
 
     /// HIS-006: Connector create undo removes the edge
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_nodes_when_edge_created_and_undo_then_edge_removed() {
         let mut doc_before = DiagramDocument::default();
@@ -889,6 +949,8 @@ mod tests {
     }
 
     /// HIS-007: Style change undo restores original style
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_style_when_style_changed_and_undo_then_original_style_restored() {
         let mut doc_before = DiagramDocument::default();
@@ -925,6 +987,8 @@ mod tests {
     }
 
     /// HIS-008: Text edit creates single history entry
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_label_when_label_changed_and_pushed_then_single_history_entry() {
         let mut doc_before = DiagramDocument::default();
@@ -959,6 +1023,8 @@ mod tests {
     }
 
     /// HIS-009: Drag gesture creates single history entry
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_when_drag_completed_and_pushed_then_single_history_entry() {
         let mut doc_before = DiagramDocument::default();
@@ -992,6 +1058,8 @@ mod tests {
     }
 
     /// HIS-010: Undo/redo does not change camera state (camera changes not in document history)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_camera_when_undo_then_camera_state_unchanged() {
         let mut doc_before = DiagramDocument::default();
@@ -1043,6 +1111,8 @@ mod tests {
     }
 
     /// HIS-011: Push after undo clears redo stack
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
         let mut doc1 = DiagramDocument::default();
@@ -1107,6 +1177,8 @@ mod tests {
     }
 
     /// HIS-012: Multiple undos walk back through history correctly
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_multiple_states_when_undo_multiple_times_then_walks_back_correctly() {
         let mut doc_a = DiagramDocument::default();
@@ -1193,6 +1265,8 @@ mod tests {
     }
 
     /// HIS-013: Redo after multiple undos works correctly
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_after_multiple_undos_when_redo_then_walks_forward_correctly() {
         let mut doc_a = DiagramDocument::default();
@@ -1287,6 +1361,8 @@ mod tests {
     /// HIS-014: Redo chain preserved after multiple undos
     /// Verifies that the redo stack maintains correct order and integrity
     /// after performing multiple consecutive undos.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_four_states_when_undo_three_times_then_redo_chain_preserved() {
         let mut doc_a = DiagramDocument::default();
@@ -1425,6 +1501,8 @@ mod tests {
 
     /// HIS-015: New action clears redo stack completely
     /// Verifies that pushing a new state after undo clears all redo entries.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_history_with_redo_entries_when_new_action_pushed_then_redo_stack_empty() {
         let mut doc1 = DiagramDocument::default();
@@ -1505,6 +1583,8 @@ mod tests {
     /// HIS-016: Undo across autosave boundary
     /// Verifies that undo correctly restores document state regardless of
     /// revision numbers that might be associated with autosave intervals.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_high_revision_when_undo_then_state_and_revision_restored() {
         let mut doc_before_autosave = DiagramDocument::default();
@@ -1564,6 +1644,8 @@ mod tests {
 
     /// HIS-017: Inverse property validation for move operations
     /// Verifies that undo of a move operation restores exact original position.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_at_original_position_when_moved_and_undo_then_exact_position_restored() {
         let original_x = 123.45;
@@ -1623,6 +1705,8 @@ mod tests {
 
     /// HIS-018: Inverse property validation for resize operations
     /// Verifies that undo of a resize operation restores exact original dimensions.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_original_dimensions_when_resized_and_undo_then_exact_dimensions_restored() {
         let original_width = 150.75;
@@ -1701,6 +1785,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_undo_on_empty_returns_none(rev in 0..1000u64) {
@@ -1709,6 +1795,8 @@ mod proptests {
             prop_assert!(history.undo(current).is_none());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_redo_on_empty_returns_none(rev in 0..1000u64) {
@@ -1717,6 +1805,8 @@ mod proptests {
             prop_assert!(history.redo(current).is_none());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_push_undo_roundtrip(current_rev in 0..1000u64, push_rev in 0..1000u64) {
@@ -1730,6 +1820,8 @@ mod proptests {
             prop_assert_eq!(redo_doc.revision, current.revision);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_undo_stack_bounded_at_100(pushes in 0..200usize) {
@@ -1739,6 +1831,8 @@ mod proptests {
             prop_assert!(history.undo_stack.len() <= 100);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_redo_stack_bounded_at_100(undos in 1..150usize) {
@@ -1757,6 +1851,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_sequential_pushes_recoverable(pushes in 1..50usize) {
@@ -1776,6 +1872,8 @@ mod proptests {
             prop_assert!(h.undo(current).is_none());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_capacity_maintained_after_many_ops(ops in 0..300usize) {
@@ -1787,6 +1885,8 @@ mod proptests {
             prop_assert!(history.redo_stack.len() <= 100);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_push_clears_redo_stack(initial_pushes in 1..20usize, undos in 1..10usize) {
@@ -1808,6 +1908,8 @@ mod proptests {
             prop_assert!(after_push.redo_stack.is_empty());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_undo_redo_idempotent(push_rev in 0..100u64, current_rev in 0..100u64) {

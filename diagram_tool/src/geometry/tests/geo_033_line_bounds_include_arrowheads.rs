@@ -130,6 +130,8 @@ impl Line {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_line_bounds_simple() {
     // Given: a simple line without arrowheads
@@ -145,6 +147,8 @@ fn test_line_bounds_simple() {
     assert!(bounds.max_y >= 50.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_line_bounds_with_end_arrow() {
     // Given: a line with an arrowhead at the end
@@ -165,6 +169,8 @@ fn test_line_bounds_with_end_arrow() {
     assert!(bounds.max_y > 0.0 || (bounds.max_y - 0.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_line_bounds_with_both_arrows() {
     // Given: a line with arrowheads at both ends
@@ -184,6 +190,8 @@ fn test_line_bounds_with_both_arrows() {
     assert!(bounds.max_x > 100.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_line_bounds_with_thick_stroke() {
     // Given: a line with thick stroke
@@ -197,6 +205,8 @@ fn test_line_bounds_with_thick_stroke() {
     assert!((bounds.max_y - 5.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_line_bounds_diagonal_with_arrow() {
     // Given: a diagonal line with arrowhead

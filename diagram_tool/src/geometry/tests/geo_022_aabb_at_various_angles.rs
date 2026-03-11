@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-022: AABB at Various Angles ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_at_various_angles() {
     // Given: a rectangle at various rotation angles
@@ -31,6 +33,8 @@ fn test_aabb_at_various_angles() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_at_15_degrees() {
     // Given: rectangle rotated 15 degrees
@@ -48,6 +52,8 @@ fn test_aabb_at_15_degrees() {
     assert!(aabb_area < rect_45.aabb().width() * rect_45.aabb().height() + TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_at_60_degrees() {
     // Given: rectangle rotated 60 degrees

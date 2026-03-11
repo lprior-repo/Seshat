@@ -71,6 +71,8 @@ mod tests {
         )
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_document_when_export_png_then_creates_valid_png_file() -> Result<()> {
         // Given
@@ -88,6 +90,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_single_node_when_export_png_then_creates_valid_png() -> Result<()> {
         // Given
@@ -121,6 +125,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_multiple_nodes_when_export_png_then_creates_valid_png() -> Result<()> {
         // Given
@@ -152,6 +158,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_edges_when_export_png_then_creates_valid_png() -> Result<()> {
         // Given
@@ -202,6 +210,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_document_when_export_png_then_file_exists_on_disk() -> Result<()> {
         // Given
@@ -220,6 +230,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_document_when_export_png_then_png_has_iend_chunk() -> Result<()> {
         // Given
@@ -241,6 +253,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_document_when_export_png_then_png_has_ihdr_chunk() -> Result<()> {
         // Given
@@ -262,6 +276,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_output_path_when_export_png_then_returns_error() {
         // Given
@@ -276,6 +292,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_large_coordinates_when_export_png_then_creates_valid_png() -> Result<()>
     {

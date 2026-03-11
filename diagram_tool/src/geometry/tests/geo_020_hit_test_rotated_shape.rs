@@ -26,6 +26,8 @@ pub fn hit_test_rotated_rect(point: Point, rect: &Rectangle) -> bool {
     hit_test_rect(local_point, &local_rect, 0.0)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_rotated_inside() {
     // Given: rotated square (45 degrees) and point at center
@@ -40,6 +42,8 @@ fn test_hit_test_rotated_inside() {
     assert!(hit);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_rotated_corner() {
     // Given: rotated square (45 degrees) and point at the actual corner
@@ -58,6 +62,8 @@ fn test_hit_test_rotated_corner() {
     assert!(hit);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_rotated_outside() {
     // Given: rotated square and point outside
@@ -71,6 +77,8 @@ fn test_hit_test_rotated_outside() {
     assert!(!hit);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_rotated_no_rotation() {
     // Given: non-rotated rectangle

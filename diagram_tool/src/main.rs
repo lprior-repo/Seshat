@@ -42,6 +42,8 @@ pub mod store_async;
 pub mod store_bridge;
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
 pub mod store_durable;
+#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+pub mod ai_event_detection;
 mod test_harness;
 mod ui;
 

@@ -56,6 +56,8 @@ fn scale_rect_around_corner(rect: &Rectangle, corner: Corner, factor: f64) -> Re
     Rectangle::new(new_x, new_y, new_width, new_height)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_nw() {
     // Given: a rectangle at origin with size 100x50
@@ -74,6 +76,8 @@ fn test_scale_around_anchor_nw() {
     assert!((scaled.height - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_ne() {
     // Given: a rectangle at origin with size 100x50
@@ -94,6 +98,8 @@ fn test_scale_around_anchor_ne() {
     assert!((get_corner_point(&scaled, Corner::NorthEast).y - 0.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_se() {
     // Given: a rectangle at origin with size 100x50
@@ -116,6 +122,8 @@ fn test_scale_around_anchor_se() {
     assert!((se.y - 50.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_sw() {
     // Given: a rectangle at origin with size 100x50
@@ -138,6 +146,8 @@ fn test_scale_around_anchor_sw() {
     assert!((sw.y - 50.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_shrink_nw() {
     // Given: a rectangle at origin with size 100x50

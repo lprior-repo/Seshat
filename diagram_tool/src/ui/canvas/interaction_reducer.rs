@@ -8,10 +8,23 @@
 use super::selection_geometry::{selected_node_ids, selection_bounds};
 use crate::history::History;
 use crate::models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind};
+use crate::models::envelope::{EventEnvelope, LabelTargetType};
 use crate::mutation::ui_helpers::mutate_doc_with_history;
+use crate::ui::dispatch::{
+    dispatch_node_resize, dispatch_update_label, DispatchError, ResizeBounds,
+};
 use dioxus::prelude::*;
 use im::HashMap;
 use std::collections::HashSet;
+
+/// Error type for commit_inline_edit operations
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommitError {
+    /// Dispatch failed (e.g., channel closed)
+    DispatchFailed(DispatchError),
+    /// Target node or edge not found in document
+    TargetNotFound,
+}
 
 fn safe_zoom(zoom: f64) -> Option<f64> {
     (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
@@ -110,99 +123,219 @@ pub(super) fn commit_inline_edit(
     mut editing_node: Signal<Option<NodeId>>,
     mut editing_edge: Signal<Option<EdgeId>>,
     edit_value: Signal<String>,
-) {
+    db_tx: Option<Coroutine<EventEnvelope>>,
+) -> Result<bool, CommitError> {
     let node_target = editing_node.read().clone();
     if let Some(node_id) = node_target {
-        let new_label = edit_value.read().clone();
-        let target = node_id;
-        let current_label = doc_signal
-            .read()
-            .document
-            .nodes
-            .get(&target)
-            .map_or_else(String::new, |n| n.label.clone());
-        if current_label != new_label {
-            let _ = mutate_doc_with_history(&mut doc_signal, &mut history_signal, |doc| {
-                let new_nodes: HashMap<NodeId, Node> = doc
-                    .document
-                    .nodes
-                    .iter()
-                    .map(|(id, node)| {
-                        if *id == target {
-                            (
-                                id.clone(),
-                                Node {
-                                    label: new_label.clone(),
-                                    ..node.clone()
-                                },
-                            )
-                        } else {
-                            (id.clone(), node.clone())
-                        }
-                    })
-                    .collect();
-
-                let new_doc = DiagramDocument {
-                    version: doc.version,
-                    revision: doc.revision.increment(),
-                    document: crate::models::document::DocumentData {
-                        nodes: new_nodes,
-                        edges: doc.document.edges.clone(),
-                    },
-                    editor_state: doc.editor_state,
-                };
-                Ok(new_doc)
-            });
-        }
+        let changed = commit_node_edit(
+            &mut doc_signal,
+            &mut history_signal,
+            node_id,
+            &edit_value,
+            &db_tx,
+        )?;
         editing_node.set(None);
-        return;
+        return Ok(changed);
     }
 
     let edge_target = editing_edge.read().clone();
     if let Some(edge_id) = edge_target {
-        let new_label = edit_value.read().clone();
-        let target = edge_id;
-        let current_label = doc_signal
-            .read()
-            .document
-            .edges
-            .get(&target)
-            .map_or_else(String::new, |e| e.label.clone());
-        if current_label != new_label {
-            let _ = mutate_doc_with_history(&mut doc_signal, &mut history_signal, |doc| {
-                let new_edges: HashMap<EdgeId, Edge> = doc
-                    .document
-                    .edges
-                    .iter()
-                    .map(|(id, edge)| {
-                        if *id == target {
-                            (
-                                id.clone(),
-                                Edge {
-                                    label: new_label.clone(),
-                                    ..edge.clone()
-                                },
-                            )
-                        } else {
-                            (id.clone(), edge.clone())
-                        }
-                    })
-                    .collect();
-
-                let new_doc = DiagramDocument {
-                    version: doc.version,
-                    revision: doc.revision.increment(),
-                    document: crate::models::document::DocumentData {
-                        nodes: doc.document.nodes.clone(),
-                        edges: new_edges,
-                    },
-                    editor_state: doc.editor_state,
-                };
-                Ok(new_doc)
-            });
-        }
+        let changed = commit_edge_edit(
+            &mut doc_signal,
+            &mut history_signal,
+            edge_id,
+            &edit_value,
+            &db_tx,
+        )?;
         editing_edge.set(None);
+        return Ok(changed);
     }
+
+    Ok(false)
+}
+
+fn commit_node_edit(
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
+    node_id: NodeId,
+    edit_value: &Signal<String>,
+    db_tx: &Option<Coroutine<EventEnvelope>>,
+) -> Result<bool, CommitError> {
+    let new_label = edit_value.read().clone();
+    let current_label = current_node_label(doc_signal, &node_id);
+
+    ensure_node_exists(doc_signal, &node_id)?;
+
+    if current_label == new_label {
+        return Ok(false);
+    }
+
+    dispatch_label_to_db(
+        db_tx,
+        node_id.as_str(),
+        LabelTargetType::Node,
+        &current_label,
+        &new_label,
+    );
+    apply_node_label_change(doc_signal, history_signal, &node_id, &new_label);
+    Ok(true)
+}
+
+fn current_node_label(doc_signal: &Signal<DiagramDocument>, node_id: &NodeId) -> String {
+    doc_signal
+        .read()
+        .document
+        .nodes
+        .get(node_id)
+        .map_or_else(String::new, |n| n.label.clone())
+}
+
+fn ensure_node_exists(
+    doc_signal: &Signal<DiagramDocument>,
+    node_id: &NodeId,
+) -> Result<(), CommitError> {
+    doc_signal
+        .read()
+        .document
+        .nodes
+        .get(node_id)
+        .map_or(Err(CommitError::TargetNotFound), |_| Ok(()))
+}
+
+fn dispatch_label_to_db(
+    db_tx: &Option<Coroutine<EventEnvelope>>,
+    target_id: &str,
+    target_type: LabelTargetType,
+    old_label: &str,
+    new_label: &str,
+) {
+    dispatch_update_label(db_tx, target_id, target_type, old_label, new_label)
+        .map_err(CommitError::DispatchFailed)
+        .ok();
+}
+
+fn apply_node_label_change(
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
+    node_id: &NodeId,
+    new_label: &str,
+) {
+    let doc = doc_signal.read();
+    let new_nodes = doc
+        .document
+        .nodes
+        .iter()
+        .map(|(id, node)| {
+            let updated = if *id == *node_id {
+                Node {
+                    label: new_label.to_string(),
+                    ..node.clone()
+                }
+            } else {
+                node.clone()
+            };
+            (id.clone(), updated)
+        })
+        .collect();
+
+    let new_doc = build_updated_doc(&doc, new_nodes, doc.document.edges.clone());
+    drop(doc);
+
+    mutate_doc_with_history(doc_signal, history_signal, |_| Ok(new_doc)).ok();
+}
+
+fn build_updated_doc(
+    doc: &DiagramDocument,
+    new_nodes: HashMap<NodeId, Node>,
+    edges: HashMap<EdgeId, Edge>,
+) -> DiagramDocument {
+    DiagramDocument {
+        version: doc.version,
+        revision: doc.revision.increment(),
+        document: crate::models::document::DocumentData {
+            nodes: new_nodes,
+            edges,
+        },
+        editor_state: doc.editor_state.clone(),
+    }
+}
+
+fn commit_edge_edit(
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
+    edge_id: EdgeId,
+    edit_value: &Signal<String>,
+    db_tx: &Option<Coroutine<EventEnvelope>>,
+) -> Result<bool, CommitError> {
+    let new_label = edit_value.read().clone();
+    let current_label = current_edge_label(doc_signal, &edge_id);
+
+    ensure_edge_exists(doc_signal, &edge_id)?;
+
+    if current_label == new_label {
+        return Ok(false);
+    }
+
+    dispatch_label_to_db(
+        db_tx,
+        edge_id.as_str(),
+        LabelTargetType::Edge,
+        &current_label,
+        &new_label,
+    );
+    apply_edge_label_change(doc_signal, history_signal, &edge_id, &new_label);
+    Ok(true)
+}
+
+fn current_edge_label(doc_signal: &Signal<DiagramDocument>, edge_id: &EdgeId) -> String {
+    doc_signal
+        .read()
+        .document
+        .edges
+        .get(edge_id)
+        .map_or_else(String::new, |e| e.label.clone())
+}
+
+fn ensure_edge_exists(
+    doc_signal: &Signal<DiagramDocument>,
+    edge_id: &EdgeId,
+) -> Result<(), CommitError> {
+    doc_signal
+        .read()
+        .document
+        .edges
+        .get(edge_id)
+        .map_or(Err(CommitError::TargetNotFound), |_| Ok(()))
+}
+
+fn apply_edge_label_change(
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
+    edge_id: &EdgeId,
+    new_label: &str,
+) {
+    let doc = doc_signal.read();
+    let new_edges = doc
+        .document
+        .edges
+        .iter()
+        .map(|(id, edge)| {
+            let updated = if *id == *edge_id {
+                Edge {
+                    label: new_label.to_string(),
+                    ..edge.clone()
+                }
+            } else {
+                edge.clone()
+            };
+            (id.clone(), updated)
+        })
+        .collect();
+
+    let new_doc = build_updated_doc(&doc, doc.document.nodes.clone(), new_edges);
+    drop(doc);
+
+    mutate_doc_with_history(doc_signal, history_signal, |_| Ok(new_doc)).ok();
 }
 
 pub(super) fn start_resize_interaction(
@@ -252,7 +385,23 @@ pub(super) fn start_resize_interaction(
 pub(super) fn finalize_motion_release(
     mode: &mut InteractionMode,
     doc: &mut DiagramDocument,
+    db_tx: &Option<Coroutine<EventEnvelope>>,
 ) -> bool {
+    // Extract did_resize before we consume the mode
+    let did_resize = matches!(
+        mode,
+        InteractionMode::ResizingSelection {
+            did_resize: true,
+            ..
+        }
+    );
+
+    // Extract the originals map before we mutate mode
+    let originals: HashMap<NodeId, (f64, f64, f64, f64)> = match mode {
+        InteractionMode::ResizingSelection { originals, .. } => originals.clone(),
+        _ => HashMap::new(),
+    };
+
     let should_increment = match mode {
         InteractionMode::DraggingSelection { did_move, .. } => Some(*did_move),
         InteractionMode::ResizingSelection { did_resize, .. } => Some(*did_resize),
@@ -262,6 +411,27 @@ pub(super) fn finalize_motion_release(
     if let Some(increment) = should_increment {
         if increment {
             doc.revision = doc.revision.increment();
+
+            // If a resize occurred, dispatch the resize event for each resized node
+            if did_resize {
+                for (node_id, (ox, oy, ow, oh)) in originals {
+                    if let Some(node) = doc.document.nodes.get(&node_id) {
+                        let bounds = ResizeBounds::new(
+                            node_id.clone(),
+                            ox,
+                            oy,
+                            ow,
+                            oh,
+                            node.x.0,
+                            node.y.0,
+                            node.width.0,
+                            node.height.0,
+                        );
+                        // Ignore dispatch errors - they're logged internally
+                        let _ = dispatch_node_resize(db_tx, bounds);
+                    }
+                }
+            }
         }
         *mode = InteractionMode::Select;
         true
@@ -311,8 +481,8 @@ mod tests {
             did_move: true,
         };
 
-        let first = finalize_motion_release(&mut mode, &mut doc);
-        let second = finalize_motion_release(&mut mode, &mut doc);
+        let first = finalize_motion_release(&mut mode, &mut doc, &None);
+        let second = finalize_motion_release(&mut mode, &mut doc, &None);
 
         assert!(first);
         assert!(!second);
@@ -335,7 +505,7 @@ mod tests {
             aspect_ratio: None,
         };
 
-        let finalized = finalize_motion_release(&mut mode, &mut doc);
+        let finalized = finalize_motion_release(&mut mode, &mut doc, &None);
 
         assert!(finalized);
         assert_eq!(doc.revision, DiagramDocument::default().revision);
@@ -354,8 +524,8 @@ mod tests {
             aspect_ratio: None,
         };
 
-        let first = finalize_motion_release(&mut mode, &mut doc);
-        let second = finalize_motion_release(&mut mode, &mut doc);
+        let first = finalize_motion_release(&mut mode, &mut doc, &None);
+        let second = finalize_motion_release(&mut mode, &mut doc, &None);
 
         assert!(first);
         assert!(!second);
@@ -430,7 +600,7 @@ mod tests {
         let initial_revision = doc.revision;
         let mut mode = InteractionMode::Select;
 
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
 
         assert!(!result, "Should return false when already in Select mode");
         assert_eq!(doc.revision, initial_revision, "Revision should not change");
@@ -451,14 +621,14 @@ mod tests {
             did_move: true,
         };
 
-        let first_result = finalize_motion_release(&mut mode, &mut doc);
+        let first_result = finalize_motion_release(&mut mode, &mut doc, &None);
         let first_revision = doc.revision;
 
         assert!(first_result, "First finalize should succeed");
         assert_eq!(mode, InteractionMode::Select);
 
         // Second event: duplicate pointerup arrives after already finalized
-        let second_result = finalize_motion_release(&mut mode, &mut doc);
+        let second_result = finalize_motion_release(&mut mode, &mut doc, &None);
         let second_revision = doc.revision;
 
         assert!(!second_result, "Second finalize should be idempotent");
@@ -468,7 +638,7 @@ mod tests {
         );
 
         // Third event: another duplicate mouseup
-        let third_result = finalize_motion_release(&mut mode, &mut doc);
+        let third_result = finalize_motion_release(&mut mode, &mut doc, &None);
         let third_revision = doc.revision;
 
         assert!(!third_result, "Third finalize should also be idempotent");
@@ -501,13 +671,13 @@ mod tests {
             aspect_ratio: None,
         };
 
-        let first_result = finalize_motion_release(&mut mode, &mut doc);
+        let first_result = finalize_motion_release(&mut mode, &mut doc, &None);
         assert!(first_result);
         assert_eq!(mode, InteractionMode::Select);
 
         // Duplicate events after finalization
         for _ in 0..5 {
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             assert!(!result, "Finalize should be idempotent after first call");
         }
 
@@ -532,7 +702,7 @@ mod tests {
             did_move: false, // No actual movement
         };
 
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
 
         assert!(result, "Should return true (mode transitioned)");
         assert_eq!(doc.revision, initial_revision, "No revision bump for no-op");
@@ -547,7 +717,7 @@ mod tests {
 
         // First: select (no-op)
         let mut mode = InteractionMode::Select;
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
         assert!(!result);
         assert_eq!(doc.revision, initial_revision);
 
@@ -558,7 +728,7 @@ mod tests {
             original_positions: HashMap::new(),
             did_move: true,
         };
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
         assert!(result);
         assert_eq!(doc.revision, initial_revision.increment());
 
@@ -571,13 +741,13 @@ mod tests {
             did_resize: true,
             aspect_ratio: None,
         };
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
         assert!(result);
         assert_eq!(doc.revision, initial_revision.increment().increment());
 
         // Duplicate finalizations should not change anything
         for _ in 0..3 {
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             assert!(!result);
         }
         assert_eq!(
@@ -946,7 +1116,7 @@ mod tests {
         };
 
         // When: Finalizing the resize (even with inversion potential)
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
 
         // Then: The resize completes without panic/error
         assert!(result);
@@ -988,7 +1158,7 @@ mod tests {
         };
 
         // When: Finalizing
-        let result = finalize_motion_release(&mut mode, &mut doc);
+        let result = finalize_motion_release(&mut mode, &mut doc, &None);
 
         // Then: Completes successfully (canvas logic handles clamping)
         assert!(result);
@@ -1140,7 +1310,7 @@ mod proptests {
         for _ in 0..256 {
             let mut doc = DiagramDocument::default();
             let mut mode = InteractionMode::Select;
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             assert!(!result);
             assert_eq!(mode, InteractionMode::Select);
         }
@@ -1161,7 +1331,7 @@ mod proptests {
                 original_positions: HashMap::new(),
                 did_move: true,
             };
-            let _ = finalize_motion_release(&mut mode, &mut doc);
+            let _ = finalize_motion_release(&mut mode, &mut doc, &None);
             prop_assert_eq!(mode, InteractionMode::Select);
         }
     }
@@ -1179,7 +1349,7 @@ mod proptests {
                 did_resize: true,
                 aspect_ratio: None,
             };
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             assert!(result);
             assert_eq!(mode, InteractionMode::Select);
         }
@@ -1203,7 +1373,7 @@ mod proptests {
                 did_resize: true,
                 aspect_ratio: None,
             };
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             assert!(result);
         }
     }
@@ -1301,7 +1471,7 @@ mod proptests {
                     original_positions: HashMap::new(),
                     did_move: true,
                 };
-                let _ = finalize_motion_release(&mut mode, &mut doc);
+                let _ = finalize_motion_release(&mut mode, &mut doc, &None);
             }
             let mut expected = initial_revision;
             for _ in 0..iterations {
@@ -1346,7 +1516,7 @@ mod proptests {
                 did_resize: true,
                 aspect_ratio: None,
             };
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             prop_assert!(result);
         }
     }
@@ -1368,7 +1538,7 @@ mod proptests {
                 did_move: true,
             };
             let mut doc = DiagramDocument::default();
-            let _ = finalize_motion_release(&mut mode, &mut doc);
+            let _ = finalize_motion_release(&mut mode, &mut doc, &None);
             prop_assert_eq!(mode, InteractionMode::Select);
         }
     }
@@ -1490,7 +1660,7 @@ mod proptests {
                 aspect_ratio: None,
             };
             let mut doc = DiagramDocument::default();
-            let result = finalize_motion_release(&mut mode, &mut doc);
+            let result = finalize_motion_release(&mut mode, &mut doc, &None);
             prop_assert!(result);
         }
     }
@@ -1507,7 +1677,7 @@ mod proptests {
                 original_positions: HashMap::new(),
                 did_move: false,
             };
-            let _ = finalize_motion_release(&mut mode, &mut doc);
+            let _ = finalize_motion_release(&mut mode, &mut doc, &None);
             assert_eq!(doc.revision, initial);
         }
     }
@@ -1526,7 +1696,7 @@ mod proptests {
                 did_resize: false,
                 aspect_ratio: None,
             };
-            let _ = finalize_motion_release(&mut mode, &mut doc);
+            let _ = finalize_motion_release(&mut mode, &mut doc, &None);
             assert_eq!(doc.revision, initial);
         }
     }
@@ -1607,7 +1777,7 @@ mod proptests {
                     },
                     6 => InteractionMode::Panning { last_pos: (0.0, 0.0) },
                     _ => {
-                        let _ = finalize_motion_release(&mut mode, &mut doc);
+                        let _ = finalize_motion_release(&mut mode, &mut doc, &None);
                         continue;
                     }
                 };
@@ -1672,7 +1842,7 @@ mod proptests {
             );
             let doc_before = doc.clone();
             let mut mode = InteractionMode::Select;
-            let _ = finalize_motion_release(&mut mode, &mut doc);
+            let _ = finalize_motion_release(&mut mode, &mut doc, &None);
             assert_eq!(doc.document.nodes.len(), doc_before.document.nodes.len());
         }
     }
@@ -2394,7 +2564,7 @@ mod subgraph_tests {
 
         // Simulate resize finalization (which would update positions)
         let mut mode = InteractionMode::Select;
-        let _ = super::finalize_motion_release(&mut mode, &mut doc);
+        let _ = super::finalize_motion_release(&mut mode, &mut doc, &None);
 
         // Verify parent reference is still intact
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");

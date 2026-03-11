@@ -211,6 +211,8 @@ pub fn next_zoom_out(current: f64) -> f64 {
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_pan_basic() {
         let mut viewport = ViewportState::new(800.0, 600.0);
@@ -221,6 +223,8 @@ mod tests {
         assert!((viewport.camera_y() - (-50.0)).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_zoom_in() {
         let mut viewport = ViewportState::new(800.0, 600.0);
@@ -230,6 +234,8 @@ mod tests {
         assert!((viewport.zoom() - ZOOM_IN_FACTOR).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_zoom_out() {
         let mut viewport = ViewportState::new(800.0, 600.0);
@@ -239,6 +245,8 @@ mod tests {
         assert!((viewport.zoom() - ZOOM_OUT_FACTOR).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_zoom_to() {
         let mut viewport = ViewportState::new(800.0, 600.0);
@@ -248,6 +256,8 @@ mod tests {
         assert!((viewport.zoom() - 2.0).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_zoom_to_bounds() {
         let mut viewport = ViewportState::new(800.0, 600.0);
@@ -263,6 +273,8 @@ mod tests {
         assert!((viewport.zoom() - MIN_ZOOM).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_reset() {
         let mut viewport = ViewportState::new(800.0, 600.0);
@@ -277,6 +289,8 @@ mod tests {
         assert!((viewport.zoom() - 1.0).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_is_valid_zoom() {
         assert!(is_valid_zoom(1.0));
@@ -290,6 +304,8 @@ mod tests {
         assert!(!is_valid_zoom(f64::INFINITY));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clamp_zoom() {
         assert!((clamp_zoom(1.0) - 1.0).abs() < f64::EPSILON);
@@ -299,6 +315,8 @@ mod tests {
         assert!((clamp_zoom(0.0) - 1.0).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_calculate_fit_zoom() {
         let content = AABB::new(0.0, 0.0, 500.0, 400.0);

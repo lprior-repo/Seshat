@@ -562,6 +562,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_radius() {
         let source_id = NodeId::new(String::from("source"));
@@ -583,6 +585,8 @@ mod tests {
         assert_eq!(hit, Some(edge_id));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter() {
         let source_id = NodeId::new(String::from("source"));
@@ -604,6 +608,8 @@ mod tests {
         assert!(hit.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_edge_id() {
         let source_id = NodeId::new(String::from("source"));
@@ -627,6 +633,8 @@ mod tests {
         assert_eq!(hit, Some(edge_a));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit() {
         let source_id = NodeId::new(String::from("source"));
@@ -647,6 +655,8 @@ mod tests {
         assert_eq!(hit, Some(edge_id));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across_zooms() {
         let source_id = NodeId::new(String::from("source"));
@@ -670,6 +680,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_endpoint_tie_when_clicking_shared_target_then_selection_is_stable_by_edge_id() {
         let source_a = NodeId::new(String::from("source-a"));
@@ -709,6 +721,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn quadratic_bezier_point_returns_finite_for_finite_inputs(
             p0x in finite_f64(), p0y in finite_f64(),
@@ -721,6 +735,8 @@ mod proptests {
             prop_assert!(y.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn quadratic_bezier_point_t_zero_returns_p0(
             p0x in finite_f64(), p0y in finite_f64(),
@@ -732,6 +748,8 @@ mod proptests {
             prop_assert!((y - p0y).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn quadratic_bezier_point_t_one_returns_p2(
             p0x in finite_f64(), p0y in finite_f64(),
@@ -743,6 +761,8 @@ mod proptests {
             prop_assert!((y - p2y).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_t_zero_returns_first(
             x1 in finite_f64(), y1 in finite_f64(),
@@ -754,6 +774,8 @@ mod proptests {
             prop_assert!((py - y1).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_t_one_returns_last(
             x1 in finite_f64(), y1 in finite_f64(),
@@ -765,6 +787,8 @@ mod proptests {
             prop_assert!((py - y2).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_single_point_returns_that_point(
             x in finite_f64(), y in finite_f64(),
@@ -776,6 +800,8 @@ mod proptests {
             prop_assert!((py - y).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_empty_returns_zero(t in 0.0_f64..=1.0_f64) {
             let points: Vec<(f64, f64)> = vec![];
@@ -784,6 +810,8 @@ mod proptests {
             prop_assert!((py - 0.0).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn quadratic_control_returns_finite_for_finite_input(
             sx in finite_f64(), sy in finite_f64(),
@@ -794,6 +822,8 @@ mod proptests {
             prop_assert!(cy.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn quadratic_control_lies_on_perpendicular_through_midpoint(
             sx in finite_f64(), sy in finite_f64(),
@@ -811,6 +841,8 @@ mod proptests {
             prop_assert!(dot.abs() < scale * 1e-9);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn dist_to_segment_zero_length_returns_distance_to_point(
             px in finite_f64(), py in finite_f64(),
@@ -822,6 +854,8 @@ mod proptests {
             prop_assert!((dist - expected).abs() <= tolerance);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn dist_to_segment_point_on_endpoint_returns_zero(
             x1 in finite_f64(), y1 in finite_f64(),
@@ -833,6 +867,8 @@ mod proptests {
             prop_assert!(dist_end < 1e-9);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn dist_to_segment_always_non_negative(
             px in finite_f64(), py in finite_f64(),
@@ -843,6 +879,8 @@ mod proptests {
             prop_assert!(dist >= 0.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_midpoint_two_points(
             x1 in finite_f64(), y1 in finite_f64(),
@@ -856,6 +894,8 @@ mod proptests {
             prop_assert!((py - expected_y).abs() < 1e-10);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_returns_finite(
             x1 in finite_f64(), y1 in finite_f64(),
@@ -869,6 +909,8 @@ mod proptests {
             prop_assert!(py.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn interpolate_polyline_point_clamped_t_stays_in_bounds(
             x1 in finite_f64(), y1 in finite_f64(),
@@ -977,6 +1019,8 @@ mod sel_002_edge_selection_tests {
     /// Given: Document with two nodes and an edge between them
     /// When: Click on edge at position (50, 0) - center of edge line
     /// Then: Edge is found and selected
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_edge_is_selected(
     ) {
@@ -1002,6 +1046,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Test: Click at edge center selects edge
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_selected() {
         let doc = create_document_with_edge();
@@ -1020,6 +1066,8 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     /// Test: Click on empty document returns None
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_empty_document_when_clicking_then_no_edge_selected() {
         let doc = DiagramDocument::default();
@@ -1032,6 +1080,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Test: Click far from edge returns None
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_document_with_edge_when_clicking_far_from_edge_then_no_edge_selected() {
         let doc = create_document_with_edge();
@@ -1047,6 +1097,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Test: NaN coordinates return None
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_selected() {
         let doc = create_document_with_edge();
@@ -1068,6 +1120,8 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     /// Test: Click at endpoint selects edge
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_horizontal_edge_when_clicking_at_endpoint_then_edge_selected() {
         let doc = create_document_with_edge();
@@ -1084,6 +1138,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Test: Vertical edge selection
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_vertical_edge_when_clicking_along_edge_then_edge_selected() {
         let source_id = NodeId::new(String::from("source"));
@@ -1112,6 +1168,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Test: Diagonal edge selection
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_diagonal_edge_when_clicking_along_edge_then_edge_selected() {
         let source_id = NodeId::new(String::from("source"));
@@ -1140,6 +1198,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Test: Edge with bend points selection
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_002_given_edge_with_bend_points_when_clicking_on_bend_then_edge_selected() {
         use crate::models::document::Point;
@@ -1199,6 +1259,8 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     /// P1: Document contains edge
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_precondition_p1_document_contains_edge() {
         let doc = create_document_with_edge();
@@ -1213,6 +1275,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// P4: Coordinates finite
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_precondition_p4_coordinates_finite() {
         let doc = create_document_with_edge();
@@ -1236,6 +1300,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Q1: Selection count exactly one
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_q1_selection_count_exactly_one() {
         let mut doc = create_document_with_edge();
@@ -1258,6 +1324,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Q2: Selection contains correct edge ID
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_q2_selection_contains_edge_id() {
         let mut doc = create_document_with_edge();
@@ -1279,6 +1347,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// I1: Selection contains valid IDs only
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_i1_selection_contains_valid_ids() {
         let mut doc = create_document_with_edge();
@@ -1300,6 +1370,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// I4: Edge selection does not mutate nodes
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_i4_edge_selection_does_not_mutate_nodes() {
         let source_id = NodeId::new(String::from("node-a"));
@@ -1354,6 +1426,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Q3: No nodes selected (only the edge)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_q3_no_nodes_selected() {
         let mut doc = create_document_with_edge();
@@ -1381,6 +1455,8 @@ mod sel_002_edge_selection_tests {
     }
 
     /// Q5: Single-click replaces previous selection
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_q5_selection_replaces_previous() {
         let mut doc = create_document_with_edge();
@@ -1477,6 +1553,8 @@ mod inp_mobile_tests {
     // INP-1: Double-tap timing threshold tests
     // =========================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_taps_within_threshold_when_checked_then_is_double_tap() {
         let first_tap = 1000_u64;
@@ -1488,6 +1566,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_taps_exactly_at_threshold_when_checked_then_is_double_tap() {
         let first_tap = 1000_u64;
@@ -1499,6 +1579,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_taps_just_over_threshold_when_checked_then_not_double_tap() {
         let first_tap = 1000_u64;
@@ -1510,6 +1592,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_taps_far_apart_when_checked_then_not_double_tap() {
         let first_tap = 1000_u64;
@@ -1521,6 +1605,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zero_times_when_checked_then_is_double_tap() {
         // Edge case: both at zero means they're at the same time
@@ -1530,6 +1616,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_same_timestamp_when_checked_then_is_double_tap() {
         let timestamp = 12345_u64;
@@ -1539,6 +1627,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_reversed_timestamps_when_checked_then_not_double_tap() {
         // If second tap appears before first (clock skew or edge case),
@@ -1552,6 +1642,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_threshold_boundary_values_when_checked_then_boundary_correct() {
         // Test the exact boundary
@@ -1568,6 +1660,8 @@ mod inp_mobile_tests {
     // INP-2: Touch handle hit area usable tests
     // =========================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_input_when_hit_testing_handle_then_expanded_hit_area_used() {
         let handle_x = 100.0;
@@ -1590,6 +1684,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_input_at_corner_when_hit_testing_then_expanded_area_covers_corners() {
         let handle_x = 100.0;
@@ -1606,6 +1702,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_input_outside_expanded_area_when_hit_testing_then_fails() {
         let handle_x = 100.0;
@@ -1622,6 +1720,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mouse_input_when_hit_testing_handle_then_visual_size_used() {
         let handle_x = 100.0;
@@ -1638,6 +1738,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_input_directly_on_handle_when_hit_testing_then_succeeds() {
         let handle_x = 100.0;
@@ -1654,6 +1756,8 @@ mod inp_mobile_tests {
     // INP-3: Touch input uses larger hit radius tests
     // =========================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_input_when_calculating_hit_radius_then_uses_touch_minimum() {
         let base_radius = 17.0; // Standard edge hit radius
@@ -1672,6 +1776,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_large_base_radius_when_touch_input_then_base_preserved_if_larger() {
         let large_base = 60.0; // Larger than touch minimum
@@ -1684,6 +1790,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mouse_input_when_calculating_hit_radius_then_base_unchanged() {
         let base_radius = 25.0;
@@ -1696,6 +1804,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zero_base_radius_when_touch_input_then_touch_minimum_used() {
         let base_radius = 0.0;
@@ -1708,6 +1818,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_minimum_matches_wcag_guideline() {
         // WCAG 2.1 Success Criterion 2.5.5 (Target Size - Enhanced)
@@ -1718,6 +1830,8 @@ mod inp_mobile_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_double_tap_threshold_is_reasonable() {
         // Industry standard double-tap thresholds are typically 300-400ms

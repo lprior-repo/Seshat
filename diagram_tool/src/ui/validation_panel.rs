@@ -92,6 +92,8 @@ pub fn ValidationPanel(issues: ReadSignal<Vec<ValidationIssue>>) -> Element {
 mod tests {
     use crate::models::validation::{ValidationIssue, ValidationSeverity};
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn validation_issue_creation() {
         let issue = ValidationIssue {
@@ -104,6 +106,8 @@ mod tests {
         assert_eq!(issue.severity, ValidationSeverity::Error);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn validation_severity_ordering() {
         // Just verify the variants exist and are different
@@ -112,6 +116,8 @@ mod tests {
         assert_ne!(error_severity, warning_severity);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn empty_validation_list_has_no_errors() {
         let issues: Vec<ValidationIssue> = vec![];
@@ -122,6 +128,8 @@ mod tests {
         assert_eq!(error_count, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn validation_issue_with_subject() {
         let issue = ValidationIssue {

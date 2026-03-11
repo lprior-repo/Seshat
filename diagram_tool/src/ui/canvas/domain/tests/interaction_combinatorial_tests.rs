@@ -39,6 +39,8 @@ fn all_events() -> Vec<CanvasEvent> {
     ]
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_exhaustive_idle_transitions() {
     let state = InteractionState::Idle;
@@ -76,6 +78,8 @@ fn test_exhaustive_idle_transitions() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_exhaustive_hovering_transitions() {
     let state = InteractionState::Hovering { point: pt() };
@@ -113,6 +117,8 @@ fn test_exhaustive_hovering_transitions() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_exhaustive_dragging_transitions() {
     let state = InteractionState::Dragging {
@@ -150,6 +156,8 @@ fn test_exhaustive_dragging_transitions() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_exhaustive_selecting_transitions() {
     let state = InteractionState::Selecting {

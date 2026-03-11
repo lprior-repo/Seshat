@@ -20,6 +20,8 @@ pub fn hit_test_rect(point: Point, rect: &Rectangle, margin: f64) -> bool {
         && point.y <= aabb.max_y + margin
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_margin_inside() {
     // Given: point inside rectangle
@@ -33,6 +35,8 @@ fn test_hit_test_margin_inside() {
     assert!(hit);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_margin_within_margin() {
     // Given: point just outside rectangle but within margin
@@ -46,6 +50,8 @@ fn test_hit_test_margin_within_margin() {
     assert!(hit);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_margin_outside() {
     // Given: point outside margin
@@ -59,6 +65,8 @@ fn test_hit_test_margin_outside() {
     assert!(!hit);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_hit_test_margin_zero() {
     // Given: point on exact edge

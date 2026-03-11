@@ -229,6 +229,8 @@ mod tests {
         (id, node)
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_hash_returns_deterministic_hash() {
         let (node_id, node) = make_test_node("node-1");
@@ -252,6 +254,8 @@ mod tests {
         assert_eq!(hash1.len(), 16);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_hash_different_states_different_hashes() {
         let (node_id, mut node) = make_test_node("node-1");
@@ -287,6 +291,8 @@ mod tests {
         assert_ne!(hash1, hash2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_hash_empty_projection() {
         let projection = DiagramProjection::empty();
@@ -295,6 +301,8 @@ mod tests {
         assert_eq!(hash.len(), 16);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_hash_returns_error_on_nan_coordinates() {
         let (node_id, mut node) = make_test_node("node-1");
@@ -320,6 +328,8 @@ mod tests {
         assert!(error_msg.contains("non-finite coordinates"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_hash_returns_error_on_infinity_coordinates() {
         let (node_id, mut node) = make_test_node("node-1");
@@ -345,6 +355,8 @@ mod tests {
         assert!(error_msg.contains("non-finite coordinates"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_hash_includes_all_fields() {
         // Create projection with all fields populated

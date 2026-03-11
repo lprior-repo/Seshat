@@ -1,6 +1,8 @@
 // Martin Fowler Tests for Node Grouping (SUB-001 to SUB-006)
 
 // Happy Path Tests
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sub001_click_inside_container_selects_child_vs_container_with_modifier() {
     let mut canvas = mock_canvas();
@@ -42,6 +44,8 @@ fn test_sub001_click_inside_container_selects_child_vs_container_with_modifier()
     // In our evaluate_selection, it just picks the first hitting node. We assume group bounds are larger.
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sub003_collapse_and_expand_container_toggles_child_visibility() {
     let mut canvas = mock_canvas();
@@ -88,6 +92,8 @@ fn test_sub003_collapse_and_expand_container_toggles_child_visibility() {
     assert_eq!(canvas.nodes.get(&group_id).unwrap().collapsed, Some(false));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sub006_delete_container_reparents_children_to_grandparent() {
     let mut canvas = mock_canvas();
@@ -132,6 +138,8 @@ fn test_sub006_delete_container_reparents_children_to_grandparent() {
 }
 
 // Error Path Tests
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_grouping_with_empty_selection() {
     let mut canvas = mock_canvas();
@@ -140,6 +148,8 @@ fn test_returns_error_when_grouping_with_empty_selection() {
     assert_eq!(result.unwrap_err(), Error::EmptySelection);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_grouping_nonexistent_nodes() {
     let mut canvas = mock_canvas();
@@ -149,6 +159,8 @@ fn test_returns_error_when_grouping_nonexistent_nodes() {
     assert_eq!(result.unwrap_err(), Error::NodeNotFound(child));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_ungrouping_non_container_node() {
     let mut canvas = mock_canvas();
@@ -163,6 +175,8 @@ fn test_returns_error_when_ungrouping_non_container_node() {
 }
 
 // Contract Violation Tests
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p1_violation_returns_empty_selection() {
     let mut canvas = mock_canvas();
@@ -171,6 +185,8 @@ fn test_p1_violation_returns_empty_selection() {
     assert_eq!(result.unwrap_err(), Error::EmptySelection);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p2_violation_returns_node_not_found() {
     let mut canvas = mock_canvas();
@@ -180,6 +196,8 @@ fn test_p2_violation_returns_node_not_found() {
     assert_eq!(result.unwrap_err(), Error::NodeNotFound(missing));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p4_violation_returns_node_locked() {
     let mut canvas = mock_canvas();
@@ -193,6 +211,8 @@ fn test_p4_violation_returns_node_locked() {
     assert_eq!(result.unwrap_err(), Error::NodeLocked(locked_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p5_violation_returns_invalid_node_type() {
     let mut canvas = mock_canvas();

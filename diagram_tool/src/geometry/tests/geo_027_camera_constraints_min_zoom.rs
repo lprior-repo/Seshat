@@ -17,6 +17,8 @@ fn clamp_zoom(zoom: f64) -> f64 {
     zoom.clamp(MIN_ZOOM, MAX_ZOOM)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_constraints_min_zoom() {
     // Given: zoom values below minimum
@@ -31,6 +33,8 @@ fn test_camera_constraints_min_zoom() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_constraints_min_zoom_exact() {
     // Given: zoom at exact minimum

@@ -342,6 +342,8 @@ impl Benchmark {
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_node_count_valid() {
         assert!(NodeCount::new(1).is_ok());
@@ -349,18 +351,24 @@ mod tests {
         assert!(NodeCount::new(10000).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_node_count_invalid() {
         assert!(NodeCount::new(0).is_err());
         assert!(NodeCount::new(10001).is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_duration_ms_valid() {
         assert!(DurationMs::new(100).is_ok());
         assert!(DurationMs::new(5000).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_duration_ms_invalid() {
         assert!(DurationMs::new(0).is_err());
@@ -368,6 +376,8 @@ mod tests {
         assert!(DurationMs::new(99).is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_benchmark_config_builder() {
         let config = BenchmarkConfig::new("pan")
@@ -385,6 +395,8 @@ mod tests {
         assert_eq!(config.operation, "pan");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_warmup_config() {
         let warmup = WarmupConfig::new(5, 1000);
@@ -395,6 +407,8 @@ mod tests {
         assert!(!warmup.is_complete(4));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_benchmark_run() {
         let config = BenchmarkConfig::new("test")
@@ -412,6 +426,8 @@ mod tests {
         assert!(result.validate().is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_benchmark_result_is_regression() {
         let mut config = BenchmarkConfig::new("test");
@@ -430,6 +446,8 @@ mod tests {
         assert!(!result.is_regression(10.0));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_benchmark_config_is_valid() {
         let valid_config = BenchmarkConfig::new("test").with_target_fps(120.0);

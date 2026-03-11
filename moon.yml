@@ -9,7 +9,7 @@ tasks:
 
   serve-e2e:
     script: |
-      exec python3 -m http.server 8081 --directory target/dx/diagram_tool/release/web/public
+      cd diagram_tool && dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
     options:
       cache: false
 
@@ -28,6 +28,7 @@ tasks:
 
   e2e-smoke:
     script: |
+      moon run :build-web
       npm exec -- playwright test --project e2e-smoke
     options:
       cache: false
@@ -41,13 +42,22 @@ tasks:
 
   e2e-seeded:
     script: |
+      moon run :build-web
       npm exec -- playwright test --project redqueen-seeded --grep @rq
     options:
       cache: false
 
   e2e-stress:
     script: |
+      moon run :build-web
       npm exec -- playwright test --project redqueen-stress
+    options:
+      cache: false
+
+  e2e-full:
+    script: |
+      moon run :build-web
+      npm exec -- playwright test
     options:
       cache: false
 
@@ -67,6 +77,22 @@ tasks:
   clippy:
     script: |
       /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
+
+  clippy-source:
+    script: |
+      /usr/bin/cargo clippy --lib --bins --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -F unsafe_code
+
+  arch-audit:
+    script: |
+      ./scripts/enforce_file_lengths.sh
+      ./scripts/enforce_boundaries.sh
+
+  ci-source:
+    script: |
+      moon run :fmt
+      moon run :clippy-source
+      moon run :arch-audit
+      moon run :test-rust
 
   fmt:
     script: |
@@ -124,3 +150,25 @@ tasks:
     script: |
       moon run :ci-hardening
       moon run :mutants-ci
+
+  agent-check:
+    script: |
+      cargo check -p dioxus-agent-rs
+
+  agent-clippy:
+    script: |
+      cargo clippy -p dioxus-agent-rs -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
+
+  agent-test:
+    script: |
+      cargo test -p dioxus-agent-rs
+
+  agent-build:
+    script: |
+      cargo build -p dioxus-agent-rs
+
+  agent-install-chrome:
+    script: |
+      which google-chrome || (apt-get update && apt-get install -y chromium)
+    options:
+      cache: false

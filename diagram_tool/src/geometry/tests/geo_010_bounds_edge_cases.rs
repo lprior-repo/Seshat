@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-010: Bounds Edge Cases ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_bounds_edge_cases_zero_size() {
     // Given: zero-sized bounds
@@ -22,6 +24,8 @@ fn test_bounds_edge_cases_zero_size() {
     assert!((aabb.height() - 0.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_bounds_edge_cases_negative_coords() {
     // Given: negative coordinates
@@ -36,6 +40,8 @@ fn test_bounds_edge_cases_negative_coords() {
     assert!((aabb.max_y - (-5.0)).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_bounds_edge_cases_large_coords() {
     // Given: very large coordinates
@@ -48,6 +54,8 @@ fn test_bounds_edge_cases_large_coords() {
     assert!((aabb.height() - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_bounds_edge_cases_nan() {
     // Given: NaN values
@@ -57,6 +65,8 @@ fn test_bounds_edge_cases_nan() {
     assert!(result.is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_bounds_edge_cases_infinity() {
     // Given: infinity values
@@ -66,6 +76,8 @@ fn test_bounds_edge_cases_infinity() {
     assert!(result.is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_bounds_edge_cases_swapped_min_max() {
     // Given: min > max (swapped)

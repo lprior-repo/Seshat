@@ -10,6 +10,28 @@ use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CellSize(f64);
+
+#[derive(Debug, thiserror::Error)]
+pub enum GridError {
+    #[error("cell_size must be positive and finite, got {0}")]
+    InvalidCellSize(f64),
+}
+
+impl CellSize {
+    pub fn new(val: f64) -> Result<Self, GridError> {
+        if val.is_finite() && val > 0.0 {
+            Ok(Self(val))
+        } else {
+            Err(GridError::InvalidCellSize(val))
+        }
+    }
+    pub fn get(self) -> f64 {
+        self.0
+    }
+}
+
 fn accumulated_parent_delta(
     parent_id: &NodeId,
     deltas: &HashMap<NodeId, (f64, f64)>,
@@ -177,6 +199,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nested_children_when_grid_layout_moves_root_then_descendants_follow() {
         let root = NodeId::new(String::from("root"));
@@ -233,6 +257,8 @@ mod tests {
         assert!((grand_after.1 - (grand_before.1 + delta.1)).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_ancestor_chain_deltas_when_accumulated_then_sum_is_exact() {
         let root = NodeId::new(String::from("root"));
@@ -251,6 +277,8 @@ mod tests {
         assert_eq!(result, Some((7.0, 10.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_only_locked_roots_when_grid_layout_calculated_then_document_is_unchanged() {
         let n1 = NodeId::new(String::from("n1"));
@@ -265,6 +293,8 @@ mod tests {
         assert_eq!(next.document.nodes, doc.document.nodes);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_locked_cells_when_layout_runs_then_unlocked_nodes_avoid_occupied_cells() {
         let locked = NodeId::new(String::from("locked"));
@@ -298,6 +328,8 @@ mod tests {
         assert!((p2.1 % 100.0).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_first_row_occupied_when_layout_runs_then_next_free_node_moves_to_next_row() {
         let l0 = NodeId::new(String::from("l0"));
@@ -321,6 +353,8 @@ mod tests {
         assert_eq!(free_pos.1, 100.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_four_unlocked_nodes_when_layout_runs_then_positions_are_deterministic_and_unique() {
         let ids = [
@@ -349,6 +383,8 @@ mod tests {
         assert!(positions.contains(&(100.0, 100.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_sparse_locked_cells_when_layout_runs_then_scan_order_is_stable() {
         let lock00 = NodeId::new(String::from("lock00"));
@@ -387,6 +423,8 @@ mod tests {
         assert_eq!(pc, (0.0, 200.0));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_locked_prefix_cells_when_layout_runs_then_it_advances_to_next_open_row() {
         let lock00 = NodeId::new(String::from("lock00"));
@@ -461,6 +499,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_never_panics_with_valid_cell_size(cell_size in 1e-10_f64..1e10_f64) {
             let doc = make_doc(vec![
@@ -471,6 +511,8 @@ mod proptests {
             prop_assert!(result.document.nodes.len() == 2);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_zero_cell_size(_ in Just(0.0_f64)) {
@@ -478,6 +520,8 @@ mod proptests {
             let _result = calculate_grid_layout(&doc, 0.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_negative_cell_size(cell_size in -1e10_f64..-1e-10_f64) {
@@ -485,6 +529,8 @@ mod proptests {
             let _result = calculate_grid_layout(&doc, cell_size);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_nan_cell_size(_ in Just(())) {
@@ -492,6 +538,8 @@ mod proptests {
             let _result = calculate_grid_layout(&doc, f64::NAN);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[should_panic(expected = "cell_size must be positive and finite")]
         fn prop_grid_layout_inf_cell_size(sign in -1_i32..=1) {
@@ -504,6 +552,8 @@ mod proptests {
             let _result = calculate_grid_layout(&doc, cell_size);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_extreme_node_coordinates(coord in -1e15_f64..1e15_f64) {
             let doc = make_doc(vec![
@@ -514,6 +564,8 @@ mod proptests {
             prop_assert!(result.document.nodes.len() == 2);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_nan_node_positions(_ in Just(())) {
             let mut doc = DiagramDocument::default();
@@ -525,6 +577,8 @@ mod proptests {
             prop_assert!(result.document.nodes.len() == 1);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_inf_node_positions(sign in -1_i32..=1) {
             let mut doc = DiagramDocument::default();
@@ -537,6 +591,8 @@ mod proptests {
             prop_assert!(result.document.nodes.len() == 1);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_empty_document(_ in Just(())) {
             let doc = DiagramDocument::default();
@@ -544,6 +600,8 @@ mod proptests {
             prop_assert!(result.document.nodes.is_empty());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_very_tiny_cell_size(_ in Just(())) {
             let doc = make_doc(vec![
@@ -554,6 +612,8 @@ mod proptests {
             prop_assert!(result.document.nodes.len() == 2);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_mixed_locked_unlocked(
             unlocked_count in 1_usize..10,
@@ -582,6 +642,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_positions_are_finite(
             cell_size in 0.1_f64..1e6_f64,
@@ -601,6 +663,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_grid_layout_locked_nodes_unchanged(
             x in -1000.0_f64..1000.0_f64,

@@ -19,6 +19,8 @@ pub fn snap_to_grid(point: Point, grid_size: f64) -> Point {
     )
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_grid_step_snap() {
     // Given: point at (47, 53) with grid size 10
@@ -33,6 +35,8 @@ fn test_grid_step_snap() {
     assert!((snapped.y - 50.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_grid_step_already_on_grid() {
     // Given: point already on grid
@@ -47,6 +51,8 @@ fn test_grid_step_already_on_grid() {
     assert!((snapped.y - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_grid_step_negative_coords() {
     // Given: point at negative coordinates

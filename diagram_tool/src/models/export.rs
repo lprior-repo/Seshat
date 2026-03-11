@@ -538,6 +538,8 @@ mod tests {
     use crate::store_async as store;
     use tempfile::TempDir;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_empty_database_when_exporting_then_returns_empty_projection() {
         let temp_dir = TempDir::new().unwrap();
@@ -557,6 +559,8 @@ mod tests {
         assert!(export.events.is_some());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_database_with_events_when_exporting_then_includes_projection_data() {
         let temp_dir = TempDir::new().unwrap();
@@ -619,6 +623,8 @@ mod tests {
         assert_eq!(export.metadata.revision, 2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_empty_database_when_importing_then_succeeds_with_zero_events() {
         let temp_dir = TempDir::new().unwrap();
@@ -658,6 +664,8 @@ mod tests {
         assert_eq!(import_result.final_revision, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_valid_export_json_when_importing_then_creates_events() {
         let temp_dir = TempDir::new().unwrap();
@@ -717,6 +725,8 @@ mod tests {
         assert!(import_result.final_revision > 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_invalid_json_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -738,6 +748,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_mismatched_revision_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -798,6 +810,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_author_to_envelope_author_conversion() {
         let author = Author {
@@ -811,6 +825,8 @@ mod tests {
         assert_eq!(envelope_author.name, "test-user");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_ai_author_to_envelope_author_conversion() {
         let author = Author {
@@ -824,6 +840,8 @@ mod tests {
         assert_eq!(envelope_author.id, "ai-assistant");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_empty_projection_when_exporting_then_returns_valid_json() {
         let projection = DiagramProjection::empty();
@@ -836,6 +854,8 @@ mod tests {
         assert!(json.contains("\"version\": 2"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_projection_with_nodes_when_exporting_then_includes_nodes_in_json() {
         use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat};
@@ -872,6 +892,8 @@ mod tests {
         assert!(json.contains("Test Node"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_valid_json_when_validating_schema_then_succeeds() {
         let projection = DiagramProjection::empty();
@@ -882,6 +904,8 @@ mod tests {
         assert!(result.is_ok(), "Validation failed: {:?}", result.err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_invalid_json_when_validating_schema_then_fails() {
         let invalid_json = "not valid json";
@@ -891,6 +915,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_json_with_wrong_version_when_validating_then_fails() {
         let json = r#"{
@@ -907,6 +933,8 @@ mod tests {
         assert!(matches!(err, ExportError::InvalidSchema(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_projection_with_edges_when_exporting_then_includes_edges_in_json() {
         use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
@@ -988,6 +1016,8 @@ mod tests {
 
     // Tests for export_while_recovering - bd-mtu
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_empty_database_in_recovery_mode_when_exporting_then_returns_valid_json() {
         use crate::store_async::open_recovery_mode_async;
@@ -1016,6 +1046,8 @@ mod tests {
         assert!(json.contains("\"revision\": 0"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_database_with_events_in_recovery_mode_when_exporting_then_returns_projection_json(
     ) {
@@ -1070,6 +1102,8 @@ mod tests {
         assert!(json.contains("\"revision\": 1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_recovery_connection_is_read_only_when_exporting_then_succeeds() {
         use crate::store_async::open_recovery_mode_async;
@@ -1109,6 +1143,8 @@ mod tests {
     // 1. Serialization Errors
     // -------------------------------------------------------------------------
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_truncated_json_when_importing_then_returns_serialization_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -1141,6 +1177,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_null_in_required_field_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -1172,6 +1210,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_malformed_json_structure_when_importing_then_returns_serialization_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -1202,6 +1242,8 @@ mod tests {
     // 2. Large Diagrams
     // -------------------------------------------------------------------------
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_1000_nodes_when_exporting_then_succeeds_within_time_limit() {
         use std::time::Instant;
@@ -1253,6 +1295,8 @@ mod tests {
         assert!(json.contains("node-999"), "JSON should contain last node");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_1000_edges_when_exporting_then_succeeds_within_time_limit() {
         use std::time::Instant;
@@ -1323,6 +1367,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_large_diagram_when_importing_then_all_events_replay_correctly() {
         let temp_dir = TempDir::new().unwrap();
@@ -1394,6 +1440,8 @@ mod tests {
     // 3. Unicode Handling
     // -------------------------------------------------------------------------
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_emoji_labels_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
@@ -1453,6 +1501,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_right_to_left_text_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
@@ -1500,6 +1550,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_zero_width_characters_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
@@ -1549,6 +1601,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_mixed_script_labels_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
@@ -1596,6 +1650,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_unicode_in_edge_labels_when_exporting_then_roundtrips_correctly() {
         let mut projection = DiagramProjection::empty();
@@ -1692,6 +1748,8 @@ mod tests {
     // 4. Schema Validation Failures (via validate_export_schema)
     // -------------------------------------------------------------------------
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_negative_dimensions_in_json_when_validating_then_schema_fails() {
         // This tests that schema validation catches negative dimensions
@@ -1728,6 +1786,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_invalid_color_format_in_json_when_validating_then_schema_fails() {
         // JSON with invalid color format in edge
@@ -1763,6 +1823,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_orphan_edge_references_in_json_when_validating_then_schema_fails() {
         // JSON with edge referencing non-existent node
@@ -1797,6 +1859,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_invalid_label_offset_in_json_when_validating_then_schema_fails() {
         // JSON with label_offset_t > 1.0
@@ -1832,6 +1896,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_non_subgraph_parent_in_json_when_validating_then_schema_fails() {
         // JSON with node parent that is a regular node, not a subgraph
@@ -1856,6 +1922,8 @@ mod tests {
     // 5. Version Mismatches
     // -------------------------------------------------------------------------
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_future_schema_version_when_importing_then_returns_version_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -1888,6 +1956,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_future_schema_version_when_validating_export_then_returns_version_error() {
         let json = r#"{
@@ -1911,6 +1981,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_missing_version_field_when_importing_then_returns_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -1939,6 +2011,8 @@ mod tests {
         assert!(result.is_err(), "Missing version field should return error");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_version_1_export_when_validating_then_current_version_works() {
         // Version 1 is less than current (2), so it should work

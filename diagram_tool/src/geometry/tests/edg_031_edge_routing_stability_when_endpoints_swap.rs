@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== EDG-031: Edge Routing Stability When Endpoints Swap ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_edge_routing_stable_when_endpoints_swap_order() {
     // EDG-031: Route must be stable when endpoints swap (same path, reversed)
@@ -32,6 +34,8 @@ fn test_edge_routing_stable_when_endpoints_swap_order() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_edge_routing_stable_different_start_point() {
     // EDG-031: Test with different start point

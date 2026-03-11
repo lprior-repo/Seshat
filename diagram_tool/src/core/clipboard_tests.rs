@@ -45,6 +45,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_copy_with_empty_selection_returns_error() {
         let doc = DiagramDocument::default();
@@ -52,6 +54,8 @@ mod tests {
         assert_eq!(result.unwrap_err(), ClipboardError::EmptySelection);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_copy_single_node_populates_clipboard() {
         let mut doc = DiagramDocument::default();
@@ -67,6 +71,8 @@ mod tests {
         assert_eq!(clipboard.edges.len(), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_cut_with_empty_selection_returns_empty_selection_error() {
         let mut doc = DiagramDocument::default();
@@ -74,6 +80,8 @@ mod tests {
         assert_eq!(result.unwrap_err(), ClipboardError::EmptySelection);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_duplicate_with_empty_selection_returns_empty_selection_error() {
         let mut doc = DiagramDocument::default();
@@ -81,6 +89,8 @@ mod tests {
         assert_eq!(result.unwrap_err(), ClipboardError::EmptySelection);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_cut_single_node_returns_clipboard_and_removes_from_doc() {
         let mut doc = DiagramDocument::default();
@@ -96,6 +106,8 @@ mod tests {
         assert_eq!(doc.editor_state.selected_items.len(), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_cut_multiple_nodes_with_edges_removes_subgraph() {
         let mut doc = DiagramDocument::default();
@@ -141,6 +153,8 @@ mod tests {
         assert_eq!(doc.editor_state.selected_items.len(), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_duplicate_single_node_creates_new_node_with_offset() {
         let mut doc = DiagramDocument::default();
@@ -167,6 +181,8 @@ mod tests {
         assert_eq!(new_node.y, OrderedFloat(30.0));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_duplicate_multiple_nodes_with_edges_preserves_topology() {
         let mut doc = DiagramDocument::default();

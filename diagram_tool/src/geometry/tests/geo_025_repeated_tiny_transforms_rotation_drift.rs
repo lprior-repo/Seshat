@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-025: Repeated Tiny Transforms - Rotation Drift ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_repeated_tiny_transforms_no_drift() {
     // Given: a point at (100, 0)
@@ -33,6 +35,8 @@ fn test_repeated_tiny_transforms_no_drift() {
     assert!(drift < 1e-6, "Drift {} exceeds threshold", drift);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_repeated_tiny_rotations_full_circle() {
     // Given: a point at (100, 0)

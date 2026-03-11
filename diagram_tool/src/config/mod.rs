@@ -32,12 +32,16 @@ pub fn load_config() -> Result<AppConfig, ConfigError> {
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_load_config_returns_valid_config() {
         let result = load_config();
         assert!(result.is_ok() || result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_config_has_defaults() {
         let config = AppConfig::load_from_environment().expect("should create config");

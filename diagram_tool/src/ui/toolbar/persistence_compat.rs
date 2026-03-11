@@ -77,6 +77,8 @@ mod tests {
     use crate::models::canonical_json::to_canonical_pretty_json;
     use crate::models::document::DiagramDocument;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_when_serialized_then_round_trips() {
         let doc = DiagramDocument::default();
@@ -85,6 +87,8 @@ mod tests {
         assert_eq!(doc.revision, loaded.revision);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_ts_style_json_when_parsed_then_document_loads() {
         let json = r#"{
@@ -134,6 +138,8 @@ mod tests {
         assert!(loaded.is_ok(), "{:?}", loaded.err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_legacy_font_size_keys_when_parsed_then_document_loads() {
         let json = r#"{
@@ -185,6 +191,8 @@ mod tests {
         assert!(loaded.is_ok(), "{:?}", loaded.err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_equivalent_legacy_aliases_when_parsed_then_canonical_json_is_identical() {
         let legacy_a = r#"{
@@ -292,6 +300,8 @@ mod tests {
     /// Given: A JSON document with version: 1 (older schema)
     /// When: Importing the document
     /// Then: Document migrates to current version (version: 2)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_version_1_document_when_import_then_migrates_to_current_version() {
         // Given - Version 1 document (hypothetical older schema)
@@ -351,6 +361,8 @@ mod tests {
     }
 
     /// IO-TEST-5b: Version migration with legacy field names
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_older_document_with_legacy_fields_when_import_then_fields_remapped() {
         // Given - Document using legacy field naming conventions
@@ -447,6 +459,8 @@ mod tests {
     }
 
     /// IO-TEST-5c: Version field is required
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_without_version_when_import_then_fails_gracefully() {
         // Given - Document without explicit version field

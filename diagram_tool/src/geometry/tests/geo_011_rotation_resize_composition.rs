@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-011: Rotation + Resize Composition ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotation_resize_composition() {
     // Given: a point, anchor, scale factor, and rotation angle
@@ -27,6 +29,8 @@ fn test_rotation_resize_composition() {
     assert!((result.y - 20.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotation_resize_composition_reverse_order() {
     // Given: a point at (10, 0)
@@ -43,6 +47,8 @@ fn test_rotation_resize_composition_reverse_order() {
     assert!((scaled.y - 20.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotation_resize_composition_no_scale() {
     // Given: scale factor of 1.0

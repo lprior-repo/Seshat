@@ -7,6 +7,8 @@ use crate::geometry::routing::*;
 // Happy Path Tests
 // --------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_when_points_are_vertically_aligned() {
     let from = Point::new(50.0, 10.0);
@@ -18,6 +20,8 @@ fn test_returns_success_when_points_are_vertically_aligned() {
     assert!(is_orthogonal(&route));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_when_points_are_horizontally_aligned() {
     let from = Point::new(10.0, 50.0);
@@ -29,6 +33,8 @@ fn test_returns_success_when_points_are_horizontally_aligned() {
     assert!(is_orthogonal(&route));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_l_shape_when_points_are_diagonal() {
     let from = Point::new(0.0, 0.0);
@@ -40,6 +46,8 @@ fn test_returns_success_l_shape_when_points_are_diagonal() {
     assert!(is_orthogonal(&route));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_detour_when_avoiding_obstacle() {
     let from = Point::new(0.0, 25.0);
@@ -54,6 +62,8 @@ fn test_returns_success_detour_when_avoiding_obstacle() {
     assert!(!route_intersects(&route, &obstacle));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_symmetric_route_when_endpoints_are_swapped() {
     let from = Point::new(0.0, 0.0);
@@ -70,6 +80,8 @@ fn test_returns_symmetric_route_when_endpoints_are_swapped() {
 // Error Path Tests
 // --------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_start_point_is_nan() {
     let from = Point::new(f64::NAN, 0.0);
@@ -79,6 +91,8 @@ fn test_returns_error_when_start_point_is_nan() {
     assert_eq!(result, Err(RoutingError::InvalidEndpoint));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_end_point_is_infinity() {
     let from = Point::new(0.0, 0.0);
@@ -88,6 +102,8 @@ fn test_returns_error_when_end_point_is_infinity() {
     assert_eq!(result, Err(RoutingError::InvalidEndpoint));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_start_and_end_are_identical() {
     let from = Point::new(5.0, 5.0);
@@ -97,6 +113,8 @@ fn test_returns_error_when_start_and_end_are_identical() {
     assert_eq!(result, Err(RoutingError::DegenerateRoute));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_start_point_inside_obstacle() {
     let from = Point::new(50.0, 50.0);
@@ -107,6 +125,8 @@ fn test_returns_error_when_start_point_inside_obstacle() {
     assert_eq!(result, Err(RoutingError::EndpointInsideObstacle));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_end_point_inside_obstacle() {
     let from = Point::new(200.0, 200.0);
@@ -121,6 +141,8 @@ fn test_returns_error_when_end_point_inside_obstacle() {
 // Edge Case Tests
 // --------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_handles_points_with_sub_pixel_differences_as_identical() {
     let from = Point::new(5.0, 5.0);
@@ -130,6 +152,8 @@ fn test_handles_points_with_sub_pixel_differences_as_identical() {
     assert_eq!(result, Err(RoutingError::DegenerateRoute));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_detour_margin_calculation_near_boundaries() {
     // Tests that obstacle avoidance works even if the endpoints are near the margins
@@ -142,6 +166,8 @@ fn test_detour_margin_calculation_near_boundaries() {
     assert!(!route_intersects(&route, &obstacle));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_obstacle_avoidance_when_route_barely_touches_edge() {
     let from = Point::new(0.0, 50.0);
@@ -159,6 +185,8 @@ fn test_obstacle_avoidance_when_route_barely_touches_edge() {
 // Contract Verification Tests
 // --------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_route_has_minimum_two_points() {
     let from = Point::new(0.0, 0.0);
@@ -167,6 +195,8 @@ fn test_postcondition_route_has_minimum_two_points() {
     assert!(route.points.len() >= 2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_all_segments_are_strictly_orthogonal() {
     let from = Point::new(0.0, 0.0);
@@ -175,6 +205,8 @@ fn test_postcondition_all_segments_are_strictly_orthogonal() {
     assert!(is_orthogonal(&route));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_start_and_end_points_match_input() {
     let from = Point::new(10.0, 20.0);
@@ -184,6 +216,8 @@ fn test_postcondition_start_and_end_points_match_input() {
     assert_eq!(*route.points.last().unwrap(), to);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_route_never_intersects_obstacle_interior() {
     let from = Point::new(0.0, 25.0);
@@ -197,6 +231,8 @@ fn test_postcondition_route_never_intersects_obstacle_interior() {
 // Contract Violation Tests
 // --------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p1_violation_returns_invalid_endpoint() {
     assert_eq!(
@@ -205,6 +241,8 @@ fn test_p1_violation_returns_invalid_endpoint() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p2_violation_returns_degenerate_route() {
     assert_eq!(
@@ -213,6 +251,8 @@ fn test_p2_violation_returns_degenerate_route() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p3_violation_returns_endpoint_inside_obstacle() {
     assert_eq!(

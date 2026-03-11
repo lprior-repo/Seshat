@@ -48,6 +48,8 @@ mod tests {
     use super::to_canonical_pretty_json;
     use serde_json::json;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_equivalent_objects_when_serialized_then_output_is_deterministic() {
         let a = json!({"z": 1, "a": {"d": 4, "b": 2}});

@@ -206,6 +206,8 @@ mod tests {
 
     // ============== calculate_bounds tests ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_document_when_calculate_bounds_then_returns_default_bounds() -> Result<()> {
         // Given
@@ -222,6 +224,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_at_origin_when_calculate_bounds_then_returns_node_bounds() -> Result<()> {
         // Given
@@ -240,6 +244,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_with_positive_coords_when_calculate_bounds_then_returns_node_bounds(
     ) -> Result<()> {
@@ -259,6 +265,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_nodes_when_calculate_bounds_then_returns_combined_bounds() -> Result<()> {
         // Given
@@ -285,6 +293,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nodes_with_negative_coords_when_calculate_bounds_then_handles_negative_values(
     ) -> Result<()> {
@@ -304,6 +314,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_overlapping_nodes_when_calculate_bounds_then_returns_union_bounds() -> Result<()> {
         // Given
@@ -332,6 +344,8 @@ mod tests {
 
     // ============== generate_svg_string tests ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_document_when_generate_svg_string_then_contains_valid_svg_structure(
     ) -> Result<()> {
@@ -349,6 +363,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_document_when_generate_svg_string_then_uses_default_viewbox() -> Result<()> {
         // Given
@@ -364,6 +380,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_when_generate_svg_string_then_viewbox_contains_node_with_margin(
     ) -> Result<()> {
@@ -385,6 +403,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_when_generate_svg_string_then_contains_node_rect() -> Result<()> {
         // Given
@@ -402,6 +422,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_when_generate_svg_string_then_transform_uses_node_position() -> Result<()> {
         // Given
@@ -417,6 +439,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_between_nodes_when_generate_svg_string_then_line_connects_centers() -> Result<()>
     {
@@ -450,6 +474,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_with_offset_nodes_when_generate_svg_string_then_line_uses_correct_arithmetic(
     ) -> Result<()> {
@@ -476,6 +502,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_with_missing_source_node_when_generate_svg_string_then_skips_edge() -> Result<()>
     {
@@ -495,6 +523,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_with_missing_target_node_when_generate_svg_string_then_skips_edge() -> Result<()>
     {
@@ -514,6 +544,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_small_content_when_generate_svg_string_then_enforces_minimum_dimensions() -> Result<()>
     {
@@ -533,6 +565,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_wide_document_when_generate_svg_string_then_viewbox_reflects_width() -> Result<()> {
         // Given
@@ -552,6 +586,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_tall_document_when_generate_svg_string_then_viewbox_reflects_height() -> Result<()> {
         // Given
@@ -571,6 +607,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_exact_position_when_generate_svg_string_then_text_is_centered() -> Result<()>
     {
@@ -594,6 +632,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_edges_when_generate_svg_string_then_all_edges_rendered() -> Result<()> {
         // Given
@@ -621,6 +661,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_viewbox_margin_when_generate_svg_string_then_subtracts_50_from_bounds() -> Result<()> {
         // Given
@@ -639,6 +681,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_extent_calculation_when_calculate_bounds_then_adds_width_and_height() -> Result<()>
     {
@@ -656,6 +700,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_center_calculation_when_edge_rendered_then_uses_division_by_2() -> Result<()> {
         // Given - odd width/height to verify division
@@ -681,6 +727,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_icon_when_generate_svg_string_then_icon_is_centered_horizontally(
     ) -> Result<()> {
@@ -701,6 +749,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_icon_when_generate_svg_string_then_icon_is_centered_vertically_with_offset(
     ) -> Result<()> {
@@ -721,6 +771,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_large_dimensions_when_generate_svg_string_then_icon_position_uses_subtraction(
     ) -> Result<()> {
@@ -747,6 +799,8 @@ mod tests {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_icon_when_generate_svg_string_then_icon_size_is_32() -> Result<()> {
         // Given
@@ -821,6 +875,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_nan_coordinates_do_not_crash(_x in any::<f64>(), y in any::<f64>(), width in any::<f64>(), height in any::<f64>()) {
@@ -833,6 +889,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_infinity_coordinates_do_not_crash(x in prop_oneof![Just(f64::INFINITY), Just(f64::NEG_INFINITY)]) {
@@ -845,6 +903,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_extreme_coordinates_do_not_crash(coord in -1e300_f64..1e300_f64) {
@@ -857,6 +917,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_negative_dimensions_do_not_crash(width in any::<f64>(), height in any::<f64>()) {
@@ -869,6 +931,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_zero_sized_nodes_do_not_crash(width in 0.0_f64..0.001, height in 0.0_f64..0.001) {
@@ -881,6 +945,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_many_nodes_with_random_coords(
@@ -897,6 +963,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_edges_without_nodes_produce_valid_svg(edge_count in 0usize..10) {
@@ -932,6 +1000,8 @@ mod proptests {
             prop_assert_eq!(line_count, 0, "No lines should render without nodes");
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_unicode_labels_do_not_crash(label in ".*") {
@@ -944,6 +1014,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_label_with_special_xml_chars(label in "[<>&\\\"\\']{0,10}") {
@@ -956,6 +1028,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_calculate_bounds_consistency(
@@ -977,6 +1051,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_subnormal_floats(width in any::<f64>(), height in any::<f64>()) {
@@ -990,6 +1066,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_floating_point_edge_cases(val in prop_oneof![
@@ -1012,6 +1090,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_coordinate_near_max(coord in (f64::MAX / 2.0)..f64::MAX) {
@@ -1024,6 +1104,8 @@ mod proptests {
             prop_assert!(svg.ends_with("</svg>"));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_very_long_label(len in 0usize..10000) {
@@ -1102,6 +1184,8 @@ mod io_tests {
     /// Given: A document with nodes at specific positions
     /// When: Exporting to SVG
     /// Then: The exported image bounds match the calculated document bounds (with margin)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_nodes_when_export_svg_then_bounds_match_with_margin() -> Result<()> {
         // Given
@@ -1135,6 +1219,8 @@ mod io_tests {
     }
 
     /// IO-TEST-1b: Empty document uses default bounds
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_document_when_export_svg_then_uses_default_bounds() -> Result<()> {
         // Given
@@ -1157,6 +1243,8 @@ mod io_tests {
     /// Given: A document containing nodes with rotation metadata
     /// When: Exporting to SVG
     /// Then: The export completes without crash and produces valid SVG
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_rotation_metadata_when_export_svg_then_succeeds() -> Result<()> {
         // Given
@@ -1186,6 +1274,8 @@ mod io_tests {
     }
 
     /// IO-TEST-2b: Multiple rotated items
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_rotated_nodes_when_export_svg_then_succeeds() -> Result<()> {
         // Given
@@ -1213,6 +1303,8 @@ mod io_tests {
     }
 
     /// IO-TEST-2c: Negative rotation
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_negative_rotation_when_export_svg_then_succeeds() -> Result<()> {
         // Given

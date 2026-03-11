@@ -66,6 +66,8 @@ async fn setup_async_store(db_path: &Path) -> Result<PoolGuard, AsyncStoreError>
 mod test_events_module {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_events_module_imports_async_store_error() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -85,6 +87,8 @@ mod test_events_module {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_events_schema_created_with_async_store() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -99,6 +103,8 @@ mod test_events_module {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_multiple_events_increments_revision() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -125,6 +131,8 @@ mod test_events_module {
 mod test_snapshot_module {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_snapshot_works_with_async_store() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -144,6 +152,8 @@ mod test_snapshot_module {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_snapshot_load_projection_from_events() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -197,6 +207,8 @@ mod test_snapshot_module {
 mod test_sync_module {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_sync_fetch_events_since_with_async_store() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -228,6 +240,8 @@ mod test_sync_module {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_sync_fetch_all_events_with_async_store() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -256,6 +270,8 @@ mod test_sync_module {
 mod test_no_rusqlite_in_models {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_models_use_async_not_rusqlite() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -297,6 +313,8 @@ mod test_no_rusqlite_in_models {
 mod test_append_event_async_full_roundtrip {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_and_fetch_verifies_data_integrity() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -361,6 +379,8 @@ mod test_append_event_async_full_roundtrip {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_batch_append_and_replay_produces_correct_projection(
     ) -> Result<(), AsyncStoreError> {
@@ -459,6 +479,8 @@ mod test_append_event_async_full_roundtrip {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_revision_mismatch_error_is_typed() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -503,6 +525,8 @@ mod test_append_event_async_full_roundtrip {
 mod test_edge_cases {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_duplicate_op_id_returns_error() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
@@ -526,6 +550,8 @@ mod test_edge_cases {
         Ok(())
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_very_large_batch_append() -> Result<(), AsyncStoreError> {
         let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;

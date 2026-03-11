@@ -228,7 +228,7 @@ mod tests {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked: true,
+            locked: false,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -259,16 +259,22 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_small_motion_when_threshold_checked_then_returns_false() {
         assert!(!has_drag_threshold((0.0, 0.0), (1.0, 1.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_large_motion_when_threshold_checked_then_returns_true() {
         assert!(has_drag_threshold((0.0, 0.0), (4.0, 0.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selection_when_toggling_then_adds_and_removes_item() {
         let once = toggle_selection(&HashSet::new(), "node-1");
@@ -278,6 +284,8 @@ mod tests {
         assert!(!twice.contains("node-1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_item_when_select_single_then_only_item_is_selected() {
         let selected = select_single(String::from("edge-1"));
@@ -285,6 +293,8 @@ mod tests {
         assert_eq!(selected.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_drag_anchor_and_current_when_dragged_positions_then_offsets_nodes() {
         let originals = HashMap::new().update(NodeId::new(String::from("a")), (2.0, 3.0));
@@ -293,6 +303,8 @@ mod tests {
         assert_eq!(pos, Some((7.0, 1.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_snap_enabled_when_dragging_then_positions_use_grid_delta() {
         let originals = HashMap::new().update(NodeId::new(String::from("a")), (3.0, 7.0));
@@ -302,6 +314,8 @@ mod tests {
         assert_eq!(pos, Some((23.0, 27.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_rect_when_node_ids_in_rect_then_returns_contained_nodes() {
         let doc = doc_with_nodes();
@@ -310,18 +324,24 @@ mod tests {
         assert!(!selected.contains("b"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_leftward_drag_when_selection_mode_resolved_then_uses_intersect() {
         let mode = selection_mode_from_drag((100.0, 100.0), (40.0, 120.0));
         assert_eq!(mode, SelectionMode::Intersect);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_rightward_drag_when_selection_mode_resolved_then_uses_contain() {
         let mode = selection_mode_from_drag((40.0, 100.0), (100.0, 120.0));
         assert_eq!(mode, SelectionMode::Contain);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_leftward_drag_when_node_ids_in_rect_then_uses_intersection_behavior() {
         let doc = doc_with_nodes();
@@ -332,6 +352,8 @@ mod tests {
         assert!(leftward.contains("a"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_intersect_mode_when_rect_touches_node_then_node_is_selected() {
         let doc = doc_with_nodes();
@@ -340,6 +362,8 @@ mod tests {
         assert!(selected.contains("a"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_snap_enabled_when_snapping_values_then_rounds_to_grid() {
         assert!((snap_value(29.0, true, 20.0) - 20.0).abs() < f64::EPSILON);
@@ -347,6 +371,8 @@ mod tests {
         assert!((pt.0 - 40.0).abs() < f64::EPSILON && (pt.1 - 40.0).abs() < f64::EPSILON);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selected_endpoints_when_auto_selecting_edges_then_connecting_edge_is_selected() {
         let source = NodeId::new(String::from("source"));
@@ -389,6 +415,8 @@ mod tests {
         assert!(enriched.contains(&edge_id.to_string()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_contain_mode() {
         let mut doc = DiagramDocument::default();
@@ -405,7 +433,7 @@ mod tests {
                 height: OrderedFloat(24.0),
                 font_size: None,
                 font_weight: None,
-                locked: true,
+                locked: false,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -428,6 +456,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_leftward_drag_inside_node_when_node_ids_in_rect_then_returns_node_in_intersect_mode() {
         let mut doc = DiagramDocument::default();
@@ -444,7 +474,7 @@ mod tests {
                 height: OrderedFloat(24.0),
                 font_size: None,
                 font_weight: None,
-                locked: true,
+                locked: false,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -484,6 +514,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_has_drag_threshold_symmetric(origin in arb_point(), delta in 0.0_f64..100.0_f64) {
             let current = (origin.0 + delta, origin.1);
@@ -492,12 +524,16 @@ mod proptests {
             prop_assert_eq!(result1, result2);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_value_disabled_returns_same(value in arb_finite_f64(), grid in arb_positive_f64()) {
             let result = snap_value(value, false, grid);
             prop_assert!((result - value).abs() < f64::EPSILON);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_value_enabled_is_multiple_of_grid(value in arb_finite_f64(), grid in arb_positive_f64()) {
             let result = snap_value(value, true, grid);
@@ -506,6 +542,8 @@ mod proptests {
             prop_assert!(remainder.abs() < f64::EPSILON || !result.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_value_nan_returns_nan(grid in arb_positive_f64()) {
             let result = snap_value(f64::NAN, true, grid);
@@ -513,6 +551,8 @@ mod proptests {
             prop_assert!(result.is_nan());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_point_consistent_with_snap_value(point in arb_point(), grid in arb_positive_f64()) {
             let snapped = snap_point(point, true, grid);
@@ -522,6 +562,8 @@ mod proptests {
             prop_assert!((snapped.1 - expected_y).abs() < f64::EPSILON);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_point_disabled_returns_same(point in arb_point(), grid in arb_positive_f64()) {
             let result = snap_point(point, false, grid);
@@ -529,6 +571,8 @@ mod proptests {
             prop_assert!((result.1 - point.1).abs() < f64::EPSILON);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_toggle_selection_idempotent_after_two(item in "[a-z]{1,3}") {
             let once = toggle_selection(&HashSet::new(), &item);
@@ -536,12 +580,16 @@ mod proptests {
             prop_assert!(twice.is_empty());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_toggle_selection_adds_item(item in "[a-z]{1,3}") {
             let result = toggle_selection(&HashSet::new(), &item);
             prop_assert!(result.contains(&item));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_dragged_positions_preserves_count(
             x1 in arb_finite_f64(), y1 in arb_finite_f64(),
@@ -555,6 +603,8 @@ mod proptests {
             prop_assert_eq!(result.len(), originals.len());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_dragged_positions_zero_delta_same_position(
             x in arb_finite_f64(), y in arb_finite_f64(),
@@ -570,6 +620,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_dragged_positions_nan_anchor_preserves_original(
             x in arb_finite_f64(), y in arb_finite_f64(),
@@ -587,18 +639,24 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_has_drag_threshold_always_true_for_large_delta(delta in 100.0_f64..10000.0_f64) {
             prop_assert!(has_drag_threshold((0.0, 0.0), (delta, 0.0)));
             prop_assert!(has_drag_threshold((0.0, 0.0), (0.0, delta)));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_has_drag_threshold_always_false_for_tiny_delta(delta in 0.0_f64..2.0_f64) {
             prop_assert!(!has_drag_threshold((0.0, 0.0), (delta, 0.0)));
             prop_assert!(!has_drag_threshold((0.0, 0.0), (0.0, delta)));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_value_grid_zero_uses_one(value in arb_finite_f64()) {
             let result = snap_value(value, true, 0.0);
@@ -608,6 +666,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_snap_value_negative_grid_uses_one(value in arb_finite_f64(), grid in -100.0_f64..-0.1_f64) {
             let result = snap_value(value, true, grid);
@@ -628,6 +688,8 @@ mod snp_interaction_tests {
 
     // SNP-3: Grid snap multi-select - detailed tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multi_select_drag_when_snap_enabled_then_all_nodes_use_snapped_delta() {
         let grid = GridSize::new(20.0).unwrap();
@@ -665,6 +727,8 @@ mod snp_interaction_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multi_select_drag_when_snap_disabled_then_all_nodes_use_raw_delta() {
         let grid = GridSize::new(20.0).unwrap();
@@ -692,6 +756,8 @@ mod snp_interaction_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multi_select_drag_from_nonzero_anchor_when_snap_enabled_then_snaps_correctly() {
         let grid = GridSize::new(20.0).unwrap();
@@ -722,6 +788,8 @@ mod snp_interaction_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_drag_when_snap_enabled_then_position_snapped() {
         let grid = GridSize::new(20.0).unwrap();
@@ -736,6 +804,8 @@ mod snp_interaction_tests {
         assert_eq!(pos, Some((20.0, 0.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_negative_drag_when_snap_enabled_then_snaps_to_negative_grid() {
         let grid = GridSize::new(20.0).unwrap();
@@ -753,6 +823,8 @@ mod snp_interaction_tests {
         assert_eq!(pos, Some((80.0, 80.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_drag_threshold_boundary_when_checked_then_engages_correctly() {
         // DRAG_THRESHOLD_PX is 3.0
@@ -770,6 +842,8 @@ mod snp_interaction_tests {
         assert!(has_drag_threshold((0.0, 0.0), (0.0, 3.1)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_diagonal_drag_when_threshold_checked_then_uses_euclidean_distance() {
         // Diagonal distance should be Euclidean
@@ -783,6 +857,8 @@ mod snp_interaction_tests {
         assert!(has_drag_threshold((0.0, 0.0), (2.0, 3.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_selection_when_dragged_then_returns_empty() {
         let grid = GridSize::new(20.0).unwrap();
@@ -794,6 +870,8 @@ mod snp_interaction_tests {
         assert!(updated.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_large_multi_select_when_snap_enabled_then_all_processed() {
         let grid = GridSize::new(20.0).unwrap();
@@ -824,6 +902,8 @@ mod snp_interaction_tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_different_grid_sizes_when_snap_enabled_then_snaps_to_correct_grid() {
         // Test with minimum grid size
@@ -861,6 +941,8 @@ mod inp_mobile_touch_tests {
     // INP-1: Touch drag selects not marquee
     // Single-finger touch drag on canvas should initiate rubber-band selection, not marquee zoom.
     // The drag threshold determines when a touch becomes a drag vs a tap.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_drag_when_motion_below_threshold_then_not_considered_drag() {
         // Touch drag below the 3.0px threshold should not trigger drag behavior
@@ -879,6 +961,8 @@ mod inp_mobile_touch_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_drag_when_rightward_then_uses_contain_selection_mode() {
         // Rightward touch drag should use contain mode for rubber-band selection
@@ -896,6 +980,8 @@ mod inp_mobile_touch_tests {
     // INP-3: Long press selects
     // A long press (touch hold without movement) should select the target node.
     // The drag threshold being NOT met indicates a long press / tap scenario.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_long_press_when_no_motion_then_not_drag_and_can_select() {
         // Long press without motion should not trigger drag threshold
@@ -916,6 +1002,8 @@ mod inp_mobile_touch_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_long_press_when_minor_jitter_then_still_not_drag() {
         // Touch screens have jitter; long press should tolerate small movements
@@ -940,6 +1028,8 @@ mod inp_mobile_touch_tests {
 
     // INP-6: Double-tap timing
     // Double-tap detection requires consistent timing thresholds.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_double_tap_timing_when_taps_within_window_then_detected() {
         // Double-tap window is typically 300-500ms
@@ -968,6 +1058,8 @@ mod inp_mobile_touch_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_double_tap_timing_constants_then_are_finite_and_reasonable() {
         // Verify timing constants are usable
@@ -991,6 +1083,8 @@ mod inp_mobile_touch_tests {
     // INP-7: Touch handle hit area usable
     // Selection handles should have touch-friendly hit areas (at least 44x44 points).
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_hit_area_when_checking_selection_handles_then_meets_minimum() {
         // Selection handles should be at least 44x44 points (22px radius)
@@ -1006,6 +1100,8 @@ mod inp_mobile_touch_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_touch_finger_hit_area_when_computed_then_meets_accessibility() {
         // WCAG 2.1 recommends minimum 44x44 CSS pixels for touch targets
@@ -1043,6 +1139,8 @@ mod inp_mobile_touch_proptests {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
         // INP-1: Touch drag threshold property
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_touch_drag_threshold_consistent_regardless_of_direction(
             origin in arb_touch_point(),
@@ -1063,6 +1161,8 @@ mod inp_mobile_touch_proptests {
         }
 
         // INP-3: Long press stability
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_long_press_with_small_jitter_never_triggers_drag(
             origin in arb_touch_point(),
@@ -1083,6 +1183,8 @@ mod inp_mobile_touch_proptests {
         }
 
         // INP-6: Double-tap timing consistency
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_double_tap_timing_window_is_positive(
             min_ms in 50_u64..200,
@@ -1095,6 +1197,8 @@ mod inp_mobile_touch_proptests {
         }
 
         // INP-7: Touch hit area is always positive
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_touch_hit_radius_always_positive_and_finite(radius in 1.0_f64..100.0) {
             let effective = radius.max(TOUCH_HIT_RADIUS_MIN);

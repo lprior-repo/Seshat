@@ -116,6 +116,8 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_lock_file_when_acquired_then_held() {
         let temp_dir = TempDir::new().unwrap();
@@ -126,6 +128,8 @@ mod tests {
         assert!(lock.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_lock_file_when_dropped_then_released() {
         let temp_dir = TempDir::new().unwrap();
@@ -141,6 +145,8 @@ mod tests {
         assert!(lock2.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_lock_timeout_when_cannot_acquire_then_error() {
         let temp_dir = TempDir::new().unwrap();

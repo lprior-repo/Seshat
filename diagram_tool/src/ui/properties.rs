@@ -7,8 +7,10 @@
 
 use crate::history::History;
 use crate::models::document::{
-    ArrowType, DiagramDocument, EdgeId, EdgeStyle, NodeId, NodeKind, OrderedFloat,
+    ArrowType, DiagramDocument, EdgeId, EdgeStyle, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
+use crate::models::envelope::EventEnvelope;
+use crate::ui::dispatch::dispatch_update_node_style;
 use crate::ui::theme::{
     BG_BASE, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_DIM, TEXT_MAIN, TEXT_MUTED,
 };
@@ -95,6 +97,38 @@ const fn node_kind_str(kind: &NodeKind) -> &'static str {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum StyleError {
+    #[error("Invalid node style: {0}")]
+    InvalidNodeStyle(String),
+    #[error("Invalid edge style: {0}")]
+    InvalidEdgeStyle(String),
+    #[error("Invalid arrow type: {0}")]
+    InvalidArrowType(String),
+}
+
+#[allow(dead_code)]
+fn parse_node_style(v: &str) -> Result<NodeStyle, StyleError> {
+    match v {
+        "box" => Ok(NodeStyle::Box),
+        "cloud" => Ok(NodeStyle::Cloud),
+        "cylinder" => Ok(NodeStyle::Cylinder),
+        "dashed" => Ok(NodeStyle::Dashed),
+        _ => Err(StyleError::InvalidNodeStyle(v.to_string())),
+    }
+}
+
+#[allow(dead_code)]
+fn node_style_str(style: &Option<NodeStyle>) -> &'static str {
+    match style.as_ref() {
+        Some(NodeStyle::Box) => "box",
+        Some(NodeStyle::Cloud) => "cloud",
+        Some(NodeStyle::Cylinder) => "cylinder",
+        Some(NodeStyle::Dashed) => "dashed",
+        None => "box",
+    }
+}
+
 #[allow(dead_code)]
 fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
     doc.document.nodes.get(id).map_or_else(
@@ -117,6 +151,7 @@ pub fn PropertiesPanel() -> Element {
     let mut history = use_context::<Signal<History>>();
     let mut edge_style_default = use_context::<Signal<EdgeStyle>>();
     let mut arrow_type_default = use_context::<Signal<ArrowType>>();
+    let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
 
     let selected_ids = use_memo(move || doc_signal.read().editor_state.selected_items.clone());
     let selected_items: Vec<String> = selected_ids.read().iter().cloned().collect();
@@ -274,6 +309,7 @@ pub fn PropertiesPanel() -> Element {
                     let id_h = id.clone();
                     let id_font = id.clone();
                     let id_lock = id.clone();
+                    let id_style = id.clone();
                     rsx! {
                         div {
                             key: "{id}",
@@ -313,6 +349,49 @@ pub fn PropertiesPanel() -> Element {
                                 div {
                                     style: "margin-top: 3px; display: inline-block; border: 1px solid {BORDER}; border-radius: 999px; padding: 2px 8px; font-size: 11px; color: {TEXT_MAIN};",
                                     "{node_kind_str(&node.kind)}"
+                                }
+                            }
+
+                            div {
+                                label { style: "display: block; font-size: 12px; color: {TEXT_MUTED};", "Style" }
+                                select {
+                                    style: "width: 100%; padding: 6px 8px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
+                                    value: "{node_style_str(&node.style)}",
+                                    onchange: move |evt| {
+                                        let nid = id_style.clone();
+                                        // Parse returns Result - invalid values from dropdown shouldn't happen but handle gracefully
+                                        let new_style = match parse_node_style(&evt.value()) {
+                                            Ok(style) => style,
+                                            Err(_) => return, // Ignore invalid input from dropdown
+                                        };
+                                        // Only push history and dispatch if style actually changed
+                                        // Compare Option<NodeStyle> with Some(NodeStyle) to correctly detect:
+                                        // - None -> Some(Box) as a change
+                                        // - Some(Cloud) -> Some(Box) as a change
+                                        // - Some(Box) -> Some(Box) as NO change (idempotent)
+                                        let has_changes = doc_signal.read()
+                                            .document
+                                            .nodes
+                                            .get(&nid)
+                                            .is_some_and(|n| n.style.as_ref() != Some(&new_style));
+                                        if has_changes {
+                                            let current = doc_signal.read().clone();
+                                            let next_h = history.read().push(current);
+                                            *history.write() = next_h;
+                                            // Dispatch to db_tx
+                                            dispatch_update_node_style(&db_tx, nid.as_str(), new_style.clone()).ok();
+                                        }
+                                        doc_signal.with_mut(|doc| {
+                                            if let Some(n) = doc.document.nodes.get_mut(&nid) {
+                                                n.style = Some(new_style);
+                                                doc.revision = doc.revision.increment();
+                                            }
+                                        });
+                                    },
+                                    option { value: "box", "Box" }
+                                    option { value: "cloud", "Cloud" }
+                                    option { value: "cylinder", "Cylinder" }
+                                    option { value: "dashed", "Dashed" }
                                 }
                             }
 

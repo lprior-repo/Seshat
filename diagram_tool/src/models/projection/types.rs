@@ -60,6 +60,17 @@ pub enum ReplayError {
     ZIndexOverflow,
 }
 
+/// Errors that can occur during projection operations
+#[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
+pub enum ProjectionError {
+    #[error("node not found: {0}")]
+    NodeNotFound(String),
+    #[error("invalid dimensions: {0}")]
+    InvalidDimensions(String),
+    #[error("invalid operation: {0}")]
+    InvalidOperation(String),
+}
+
 /// Event record for replay - contains all information needed to reconstruct state
 ///
 /// `DomainOp` is not Eq, so we use `PartialEq` instead

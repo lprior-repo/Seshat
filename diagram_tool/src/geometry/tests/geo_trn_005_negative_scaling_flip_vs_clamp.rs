@@ -42,6 +42,8 @@ fn scale_with_clamp(
     (new_width, new_height)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_flip_x() {
     // Given: a rectangle with positive dimensions
@@ -58,6 +60,8 @@ fn test_negative_scaling_flip_x() {
     assert!((new_height - 50.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_flip_y() {
     // Given: a rectangle with positive dimensions
@@ -74,6 +78,8 @@ fn test_negative_scaling_flip_y() {
     assert!((new_height - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_flip_both() {
     // Given: a rectangle
@@ -90,6 +96,8 @@ fn test_negative_scaling_flip_both() {
     assert!((new_height - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_clamp_x() {
     // Given: a rectangle
@@ -106,6 +114,8 @@ fn test_negative_scaling_clamp_x() {
     assert!((new_height - 50.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_clamp_y() {
     // Given: a rectangle
@@ -122,6 +132,8 @@ fn test_negative_scaling_clamp_y() {
     assert!((new_height - MIN_SIZE).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_clamp_both() {
     // Given: a rectangle
@@ -138,6 +150,8 @@ fn test_negative_scaling_clamp_both() {
     assert!((new_height - MIN_SIZE).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_negative_scaling_zero_transition() {
     // Given: scale factor approaching zero from positive side

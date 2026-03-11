@@ -54,6 +54,8 @@ fn has_feature(content: &str, package: &str, feature: &str) -> bool {
     false
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_rusqlite_removed() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
@@ -67,6 +69,8 @@ async fn test_rusqlite_removed() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_sqlx_tokio_available() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
@@ -98,6 +102,8 @@ async fn test_sqlx_tokio_available() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_sqlx_tokio_non_optional() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
@@ -120,6 +126,8 @@ async fn test_sqlx_tokio_non_optional() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_store_module_imports() -> Phase1Result<()> {
     use diagram_tool::store_async::{bootstrap_async_store, AsyncStoreError};
@@ -134,6 +142,8 @@ async fn test_store_module_imports() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_async_bootstrap() -> Phase1Result<()> {
     use diagram_tool::store_async::{bootstrap_async_store, fetch_latest_revision};
@@ -196,6 +206,8 @@ async fn test_async_bootstrap() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_async_append() -> Phase1Result<()> {
     use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
@@ -269,6 +281,8 @@ async fn test_async_append() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_async_append_increments_revision() -> Phase1Result<()> {
     use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
@@ -335,6 +349,8 @@ async fn test_async_append_increments_revision() -> Phase1Result<()> {
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[tokio::test]
 async fn test_async_bootstrap_corrupted_db() -> Phase1Result<()> {
     use diagram_tool::store_async::bootstrap_async_store;

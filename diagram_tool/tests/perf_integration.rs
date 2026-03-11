@@ -7,6 +7,8 @@ use diagram_tool::perf::{
 use tempfile::TempDir;
 
 /// Test HP-001: Measure FPS with 3000 nodes
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_001_measure_fps_3000_nodes() {
     let config = BenchmarkConfig::new("test")
@@ -25,6 +27,8 @@ fn hp_001_measure_fps_3000_nodes() {
 }
 
 /// Test HP-002: Run pan benchmark
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_002_pan_benchmark() {
     let temp_dir = TempDir::new().unwrap();
@@ -38,6 +42,8 @@ fn hp_002_pan_benchmark() {
 }
 
 /// Test HP-003: Run zoom benchmark
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_003_zoom_benchmark() {
     let temp_dir = TempDir::new().unwrap();
@@ -51,6 +57,8 @@ fn hp_003_zoom_benchmark() {
 }
 
 /// Test HP-004: Run select benchmark
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_004_select_benchmark() {
     let temp_dir = TempDir::new().unwrap();
@@ -64,6 +72,8 @@ fn hp_004_select_benchmark() {
 }
 
 /// Test HP-005: Run drag benchmark
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_005_drag_benchmark() {
     let temp_dir = TempDir::new().unwrap();
@@ -77,6 +87,8 @@ fn hp_005_drag_benchmark() {
 }
 
 /// Test HP-006: Generate baseline JSON
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_006_generate_baseline_json() {
     let temp_dir = TempDir::new().unwrap();
@@ -90,6 +102,8 @@ fn hp_006_generate_baseline_json() {
 }
 
 /// Test HP-008: Percentile calculations
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_008_percentile_calculations() {
     let samples: Vec<f64> = (1..=100).map(f64::from).collect();
@@ -103,6 +117,8 @@ fn hp_008_percentile_calculations() {
 /// Test HP-010: Benchmark reproducibility
 /// Note: The simulation is time-based and may vary between runs,
 /// so we verify that the FPS is in a reasonable range rather than exact match.
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn hp_010_benchmark_reproducibility() {
     let config = BenchmarkConfig::new("test")
@@ -135,6 +151,8 @@ fn hp_010_benchmark_reproducibility() {
 }
 
 /// Test EP-001: Invalid node count (0)
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn ep_001_invalid_node_count_zero() {
     let result = BenchmarkConfig::new("test").with_node_count(0);
@@ -142,6 +160,8 @@ fn ep_001_invalid_node_count_zero() {
 }
 
 /// Test EP-002: Invalid node count (10001)
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn ep_002_invalid_node_count_too_large() {
     let result = BenchmarkConfig::new("test").with_node_count(10001);
@@ -149,6 +169,8 @@ fn ep_002_invalid_node_count_too_large() {
 }
 
 /// Test EP-003: Invalid duration (0ms)
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn ep_003_invalid_duration_zero() {
     let result = BenchmarkConfig::new("test").with_duration_ms(0);
@@ -156,6 +178,8 @@ fn ep_003_invalid_duration_zero() {
 }
 
 /// Test EP-004: Invalid duration (50ms)
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn ep_004_invalid_duration_too_small() {
     let result = BenchmarkConfig::new("test").with_duration_ms(50);
@@ -163,6 +187,8 @@ fn ep_004_invalid_duration_too_small() {
 }
 
 /// Test EC-001: Single node benchmark
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn ec_001_single_node_benchmark() {
     let config = BenchmarkConfig::new("test")
@@ -180,6 +206,8 @@ fn ec_001_single_node_benchmark() {
 }
 
 /// Test EC-002: Maximum nodes (10000)
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn ec_002_maximum_nodes_benchmark() {
     let config = BenchmarkConfig::new("test")
@@ -195,6 +223,8 @@ fn ec_002_maximum_nodes_benchmark() {
 }
 
 /// Test regression detection works
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn regression_detection_works() {
     use diagram_tool::perf::Baseline;
@@ -229,6 +259,8 @@ fn regression_detection_works() {
 }
 
 /// Test INV-1: No NaN in measurements
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn inv_001_no_nan_in_measurements() {
     let samples: Vec<FrameSample> = (0..10)
@@ -244,6 +276,8 @@ fn inv_001_no_nan_in_measurements() {
 }
 
 /// Test INV-4: Sample count matches
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn inv_004_sample_count_matches() {
     let samples: Vec<FrameSample> = (0..50)
@@ -256,6 +290,8 @@ fn inv_004_sample_count_matches() {
 }
 
 /// Test INV-5: Percentile ordering
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn inv_005_percentile_ordering() {
     let samples: Vec<f64> = (0..100).map(|i| f64::from(i) + 1.0).collect();

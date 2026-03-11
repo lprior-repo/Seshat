@@ -121,6 +121,8 @@ mod tests {
     }
 
     #[cfg(target_arch = "wasm32")]
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_diagram_when_serializing_then_produces_valid_json() {
         use crate::ui::editor::ToolMode;
@@ -137,6 +139,8 @@ mod tests {
         assert!(json.contains("\"version\":1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_json_when_deserializing_then_returns_diagram() {
         let diagram = AutoSavedDiagram {
@@ -152,24 +156,32 @@ mod tests {
         assert_eq!(result.unwrap().version, AUTO_SAVE_VERSION);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_json_when_deserializing_then_returns_error() {
         let result = deserialize_diagram("{not-valid-json}");
         assert!(matches!(result, Err(AutoSaveError::Deserialize(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_current_revision_when_comparing_with_none_then_returns_true() {
         let revision = Revision::INITIAL;
         assert!(has_revision_changed(revision, None));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_same_revisions_when_comparing_then_returns_false() {
         let revision = Revision::INITIAL;
         assert!(!has_revision_changed(revision, Some(revision)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_different_revisions_when_comparing_then_returns_true() {
         let current = Revision::INITIAL.increment();
@@ -177,6 +189,8 @@ mod tests {
         assert!(has_revision_changed(current, Some(previous)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_default_revision_when_creating_then_returns_initial() {
         let default = default_revision();

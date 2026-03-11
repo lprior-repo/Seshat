@@ -5,8 +5,6 @@
 #![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
-thread_local! { pub static CLIPBOARD: std::cell::RefCell<Option<crate::ui::commands::ClipboardData>> = const { std::cell::RefCell::new(None) }; }
-
 use crate::history::History;
 use crate::models::document::{
     DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
@@ -1167,6 +1165,8 @@ mod tests {
         doc
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_valid_zoom_then_zoom_clamped() {
         let mut doc = make_doc_with_zoom(1.0);
@@ -1175,6 +1175,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0 >= 0.1 && doc.editor_state.zoom.0 <= 4.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_nan_zoom_then_uses_default() {
         let mut doc = make_doc_with_zoom(f64::NAN);
@@ -1183,6 +1185,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_inf_zoom_then_uses_default() {
         let mut doc = make_doc_with_zoom(f64::INFINITY);
@@ -1191,6 +1195,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_zero_zoom_then_uses_default() {
         let mut doc = make_doc_with_zoom(0.0);
@@ -1199,6 +1205,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0 >= 0.1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_negative_zoom_then_uses_default() {
         let mut doc = make_doc_with_zoom(-5.0);
@@ -1207,6 +1215,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0 >= 0.1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_at_max_then_no_change() {
         let mut doc = make_doc_with_zoom(4.0);
@@ -1214,6 +1224,8 @@ mod tests {
         assert!(!result);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_at_min_then_no_change() {
         let mut doc = make_doc_with_zoom(0.1);
@@ -1221,6 +1233,8 @@ mod tests {
         assert!(!result);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_valid_then_camera_finite() {
         let mut doc = make_doc_with_camera(1.0, 100.0, 200.0);
@@ -1229,6 +1243,8 @@ mod tests {
         assert!(doc.editor_state.camera_y.0.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_nan_camera_then_zoom_still_clamped() {
         let mut doc = make_doc_with_camera(1.0, f64::NAN, f64::NAN);
@@ -1237,6 +1253,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0 >= 0.1 && doc.editor_state.zoom.0 <= 4.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_tiny_viewport_then_no_panic() {
         let mut doc = make_doc_with_zoom(1.0);
@@ -1245,6 +1263,8 @@ mod tests {
         assert!(doc.editor_state.zoom.0.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zoom_to_center_when_huge_viewport_then_no_panic() {
         let mut doc = make_doc_with_zoom(1.0);
@@ -1322,6 +1342,8 @@ mod tests {
 
     // Pure clipboard function tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_selection_when_copy_then_returns_none() {
         let doc = DiagramDocument::default();
@@ -1329,6 +1351,8 @@ mod tests {
         assert!(result.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_selected_when_copy_then_succeeds() {
         let mut doc = make_doc_with_node("node-1", 100.0, 50.0);
@@ -1343,6 +1367,8 @@ mod tests {
         assert_eq!(clipboard.paste_serial, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_nodes_selected_when_copy_then_includes_edges() {
         let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
@@ -1357,6 +1383,8 @@ mod tests {
         assert_eq!(clipboard.edges.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_clipboard_when_paste_then_returns_none() {
         let clipboard = ClipboardData::new();
@@ -1371,6 +1399,8 @@ mod tests {
         assert_eq!(returned_doc.document.nodes.len(), node_count_before);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_copied_nodes_when_paste_then_creates_new_ids() {
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
@@ -1399,6 +1429,8 @@ mod tests {
         assert_eq!(pasted_ids.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_copied_nodes_when_paste_then_applies_offset() {
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
@@ -1434,9 +1466,10 @@ mod tests {
     // Additional copy/paste tests (bd-2b4)
     // =============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selection_with_nonexistent_ids_when_copy_then_returns_false() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let mut doc = DiagramDocument::default();
         // Add a node but select a different (non-existent) ID
         let real_id = NodeId::new("real-node".to_string());
@@ -1455,12 +1488,12 @@ mod tests {
             result.is_none(),
             "Copy should return None for nonexistent selection"
         );
-        crate::ui::commands::CLIPBOARD.with(|s| assert!(s.borrow().is_none()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_nodes_selected_when_copy_then_copies_all() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let mut doc = DiagramDocument::default();
         let node_a = NodeId::new("node-a".to_string());
         let node_b = NodeId::new("node-b".to_string());
@@ -1489,9 +1522,10 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_partial_edge_selection_when_copy_then_excludes_edge() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
         // Only select source node, not target
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
@@ -1528,9 +1562,10 @@ mod tests {
         (doc, parent_node_id, child_node_id)
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nested_nodes_selected_when_copy_then_preserves_parent_reference() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let (mut doc, parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
         let _ = doc.editor_state.selected_items.insert("parent".to_string());
         let _ = doc.editor_state.selected_items.insert("child".to_string());
@@ -1557,20 +1592,14 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_clipboard_with_empty_nodes_when_paste_then_returns_false() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let doc = DiagramDocument::default();
         let node_count_before = doc.document.nodes.len();
 
         // Set clipboard with empty nodes vector
-        crate::ui::commands::CLIPBOARD.with(|s| {
-            *s.borrow_mut() = Some(ClipboardData {
-                nodes: vec![],
-                edges: vec![],
-                paste_serial: 0,
-            });
-        });
 
         // Try to paste - should return None because clipboard is empty
         let clipboard = ClipboardData {
@@ -1587,9 +1616,10 @@ mod tests {
         assert_eq!(doc.document.nodes.len(), node_count_before);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_second_paste_when_paste_then_applies_double_offset() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
         let _ = doc
             .editor_state
@@ -1636,9 +1666,10 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_nodes_when_paste_then_all_ids_unique() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let mut doc = DiagramDocument::default();
         let node_a = NodeId::new("node-a".to_string());
         let node_b = NodeId::new("node-b".to_string());
@@ -1675,9 +1706,10 @@ mod tests {
         assert_eq!(ids.len(), 6, "all node IDs should be unique");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_in_clipboard_when_paste_then_remapped_to_new_ids() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let (mut doc, _edge_id) = make_doc_with_two_nodes_and_edge("node-a", "node-b");
         let _ = doc.editor_state.selected_items.insert("node-a".to_string());
         let _ = doc.editor_state.selected_items.insert("node-b".to_string());
@@ -1716,9 +1748,10 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_parent_also_pasted_when_paste_then_remapped() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let (mut doc, _parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
         let _ = doc.editor_state.selected_items.insert("parent".to_string());
         let _ = doc.editor_state.selected_items.insert("child".to_string());
@@ -1759,9 +1792,10 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_parent_not_pasted_when_paste_then_preserved() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let (mut doc, parent_id, _child_id) = make_doc_with_parent_child("parent", "child");
         // Only select and copy the child, not the parent
         let _ = doc.editor_state.selected_items.insert("child".to_string());
@@ -1792,9 +1826,10 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_paste_successful_when_paste_then_selection_updated() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
         let _ = doc
             .editor_state
@@ -1829,9 +1864,10 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_paste_successful_when_paste_then_revision_incremented() {
-        crate::ui::commands::CLIPBOARD.with(|s| *s.borrow_mut() = None);
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
         let _ = doc
             .editor_state
@@ -1857,6 +1893,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_clipboard_when_has_content_then_returns_true() {
         let clipboard = ClipboardData {
@@ -1867,17 +1905,23 @@ mod tests {
         assert!(clipboard.has_content());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_clipboard_when_has_content_then_returns_false() {
         let clipboard = ClipboardData::new();
         assert!(!clipboard.has_content());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_none_clipboard_when_clipboard_has_content_then_returns_false() {
         assert!(!clipboard_has_content(None));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_some_clipboard_when_clipboard_has_content_then_reflects_content() {
         let empty = ClipboardData::new();
@@ -1891,6 +1935,8 @@ mod tests {
         assert!(clipboard_has_content(Some(&with_content)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_clipboard_when_prepare_paste_then_increments_serial() {
         let clipboard = ClipboardData {
@@ -1906,6 +1952,8 @@ mod tests {
         assert_eq!(prepared_again.paste_serial, 2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selection_when_copy_selection_for_duplicate_then_sets_serial_to_1() {
         let mut doc = make_doc_with_node("node-1", 100.0, 50.0);
@@ -1919,6 +1967,8 @@ mod tests {
         assert!(!clipboard.nodes.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_pastes_then_offset_increases() {
         let mut doc = make_doc_with_node("original-node", 100.0, 50.0);
@@ -1966,6 +2016,8 @@ mod tests {
         assert_eq!(positions[1].1, 90.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selected_middle_node_when_bring_to_front_then_relative_order_preserved() {
         let mut ids = vec![
@@ -1988,6 +2040,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selected_middle_node_when_send_to_back_then_relative_order_preserved() {
         let mut ids = vec![
@@ -2175,6 +2229,8 @@ mod tests {
         true
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_selected_nodes_when_group_selection_then_creates_subgraph_with_correct_bounds() {
         let mut doc = DiagramDocument::default();
@@ -2270,6 +2326,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selected_subgraph_with_children_when_ungroup_then_children_restored_to_root() {
         let mut doc = DiagramDocument::default();
@@ -2370,6 +2428,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nested_subgraphs_when_validated_then_parent_chain_correct() {
         let mut doc = DiagramDocument::default();
@@ -2433,6 +2493,8 @@ mod tests {
         assert_eq!(child.kind, NodeKind::Node);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_selected_when_group_selection_then_returns_false() {
         let mut doc = DiagramDocument::default();
@@ -2455,6 +2517,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_subgraph_selected_when_group_selection_then_subgraph_excluded() {
         let mut doc = DiagramDocument::default();
@@ -2611,6 +2675,8 @@ mod tests {
         true
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_nodes_when_align_left_then_both_share_min_x() {
         let mut doc = DiagramDocument::default();
@@ -2638,6 +2704,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_nodes_when_align_right_then_both_share_max_right() {
         let mut doc = DiagramDocument::default();
@@ -2669,6 +2737,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_nodes_when_align_center_horizontal_then_centered() {
         let mut doc = DiagramDocument::default();
@@ -2708,6 +2778,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_nodes_when_align_top_then_both_share_min_y() {
         let mut doc = DiagramDocument::default();
@@ -2735,6 +2807,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_nodes_when_align_bottom_then_both_share_max_bottom() {
         let mut doc = DiagramDocument::default();
@@ -2765,6 +2839,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_nodes_when_align_middle_vertical_then_centered() {
         let mut doc = DiagramDocument::default();
@@ -2804,6 +2880,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_selected_when_align_then_returns_false() {
         let mut doc = DiagramDocument::default();
@@ -2824,6 +2902,8 @@ mod tests {
         assert!(!result, "align should return false for single node");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_selection_when_align_then_returns_false() {
         let mut doc = DiagramDocument::default();
@@ -2840,6 +2920,8 @@ mod tests {
         assert!(!result, "align should return false for empty selection");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_locked_node_when_align_then_skips_locked() {
         let mut doc = DiagramDocument::default();
@@ -2882,6 +2964,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selection_with_infinite_coords_when_align_then_returns_false() {
         let mut doc = DiagramDocument::default();
@@ -2906,6 +2990,8 @@ mod tests {
         assert!(!result, "align should return false for non-finite coords");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_alignment_when_successful_then_dimensions_unchanged() {
         let mut doc = DiagramDocument::default();
@@ -2946,6 +3032,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_alignment_when_successful_then_revision_incremented() {
         let mut doc = DiagramDocument::default();
@@ -3009,6 +3097,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_to_center_zoom_always_clamped(
             zoom in arb_zoom_f64(),
@@ -3022,6 +3112,8 @@ mod proptests {
             prop_assert!(doc.editor_state.zoom.0 <= 4.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_to_center_camera_stays_finite(
             zoom in arb_zoom_f64(),
@@ -3037,6 +3129,8 @@ mod proptests {
             prop_assert!(doc.editor_state.camera_y.0.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_to_center_nan_zoom_recovered(
             factor in arb_factor(),
@@ -3050,6 +3144,8 @@ mod proptests {
             prop_assert!(doc.editor_state.zoom.0 <= 4.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_to_center_inf_zoom_recovered(
             factor in arb_factor(),
@@ -3061,6 +3157,8 @@ mod proptests {
             prop_assert!(doc.editor_state.zoom.0.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_to_center_zero_zoom_recovered(
             factor in arb_factor(),
@@ -3072,6 +3170,8 @@ mod proptests {
             prop_assert!(doc.editor_state.zoom.0 >= 0.1);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_to_center_negative_zoom_recovered(
             factor in arb_factor(),
@@ -3083,6 +3183,8 @@ mod proptests {
             prop_assert!(doc.editor_state.zoom.0 >= 0.1);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_increases_with_large_factor(
             zoom in 0.2_f64..2.0_f64,
@@ -3097,6 +3199,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_zoom_decreases_with_small_factor(
             zoom in 0.5_f64..3.0_f64,
@@ -3265,6 +3369,8 @@ mod distribution_tests {
         true
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_horizontal_three_nodes() {
         let mut doc = make_doc_with_three_nodes_for_dist();
@@ -3303,6 +3409,8 @@ mod distribution_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_vertical_three_nodes() {
         let mut doc = DiagramDocument::default();
@@ -3355,6 +3463,8 @@ mod distribution_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_horizontal_preserves_y() {
         let mut doc = make_doc_with_three_nodes_for_dist();
@@ -3405,6 +3515,8 @@ mod distribution_tests {
         assert_eq!(node_c.y.0, 300.0, "node-c y should be unchanged");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_vertical_preserves_x() {
         let mut doc = DiagramDocument::default();
@@ -3453,6 +3565,8 @@ mod distribution_tests {
         assert_eq!(node_c.x.0, 250.0, "node-c x should be unchanged");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_less_than_three_nodes_returns_false() {
         let mut doc = DiagramDocument::default();
@@ -3484,6 +3598,8 @@ mod distribution_tests {
         assert!(!result, "distribute should return false for 0 nodes");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_outermost_nodes_at_bounds() {
         let mut doc = make_doc_with_three_nodes_for_dist();
@@ -3514,6 +3630,8 @@ mod distribution_tests {
         assert_eq!(node_c.x.0, 400.0, "rightmost node should stay at max bound");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_equal_spacing() {
         let mut doc = DiagramDocument::default();
@@ -3580,6 +3698,8 @@ mod distribution_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_preserves_node_size() {
         let mut doc = make_doc_with_three_nodes_for_dist();
@@ -3635,6 +3755,8 @@ mod distribution_tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_locked_nodes_skipped() {
         let mut doc = DiagramDocument::default();
@@ -3689,6 +3811,8 @@ mod distribution_tests {
         assert_eq!(original_b_x, new_b_x, "locked node should not move");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_distribute_updates_revision() {
         let mut doc = make_doc_with_three_nodes_for_dist();

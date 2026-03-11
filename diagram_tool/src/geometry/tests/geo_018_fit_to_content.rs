@@ -55,6 +55,8 @@ pub fn fit_to_viewport(
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_fit_to_content_perfect_fit() {
     // Given: content exactly matching viewport
@@ -69,6 +71,8 @@ fn test_fit_to_content_perfect_fit() {
     assert!((fit.scale - 1.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_fit_to_content_scale_down() {
     // Given: content larger than viewport
@@ -83,6 +87,8 @@ fn test_fit_to_content_scale_down() {
     assert!((fit.scale - 0.5).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_fit_to_content_with_padding() {
     // Given: content with padding requirement
@@ -98,6 +104,8 @@ fn test_fit_to_content_with_padding() {
     assert!((fit.scale - 1.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_fit_to_content_centers_content() {
     // Given: off-center content

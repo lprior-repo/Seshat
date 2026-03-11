@@ -11,6 +11,8 @@ const TOLERANCE: f64 = 1e-10;
 // ============== Property-Based Tests ==============
 
 proptest! {
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_scale_around_anchor_idempotent_at_anchor(factor in -10.0_f64..10.0) {
         let anchor = Point::new(50.0, 50.0);
@@ -19,6 +21,8 @@ proptest! {
         prop_assert!((scaled.y - anchor.y).abs() < TOLERANCE);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_rotate_around_center_idempotent_at_center(angle in -4.0_f64 * PI..4.0 * PI) {
         let center = Point::new(50.0, 50.0);
@@ -27,6 +31,8 @@ proptest! {
         prop_assert!((rotated.y - center.y).abs() < TOLERANCE);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_rotate_full_circle_returns_to_origin(angle in -4.0_f64 * PI..4.0 * PI) {
         let point = Point::new(100.0, 0.0);
@@ -37,6 +43,8 @@ proptest! {
         prop_assert!((rotated_twice.y - point.y).abs() < 1e-9);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_aabb_contains_all_corners(
         x in -1000.0_f64..1000.0,
@@ -58,6 +66,8 @@ proptest! {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_aspect_ratio_preserved(
         width in 1.0_f64..1000.0,
@@ -70,6 +80,8 @@ proptest! {
         prop_assert!((original_ratio - new_ratio).abs() < TOLERANCE);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_safe_bounds_finite_inputs_produce_valid_aabb(
         min_x in -1e6_f64..1e6,

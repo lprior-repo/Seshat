@@ -47,6 +47,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_group_selection_creates_padded_container_and_reparents() {
         let mut doc = DiagramDocument::default();
@@ -98,6 +100,8 @@ mod tests {
         assert!(doc.editor_state.selected_items.contains(group_id.as_str()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_ungroup_selection_empty() {
         let mut doc = DiagramDocument::default();
@@ -107,6 +111,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_ungroup_selection_no_subgraphs_selected() {
         let mut doc = DiagramDocument::default();
@@ -124,6 +130,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_ungroup_selection_deletes_subgraph_and_orphans_children() {
         let mut doc = DiagramDocument::default();
@@ -161,6 +169,8 @@ mod tests {
         assert!(doc.editor_state.selected_items.contains(c2_id.as_str()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_ungroup_selection_nested_subgraphs() {
         let mut doc = DiagramDocument::default();
@@ -203,6 +213,8 @@ mod tests {
         assert!(doc.editor_state.selected_items.contains(c_id.as_str()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_ungroup_selection_removes_edges_connected_to_subgraph() {
         let mut doc = DiagramDocument::default();

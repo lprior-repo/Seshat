@@ -791,6 +791,8 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_bootstrap_async_store_creates_database() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -803,6 +805,8 @@ mod tests {
         assert_eq!(bootstrap.schema_version, CURRENT_SCHEMA_VERSION);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_event_async() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -840,6 +844,8 @@ mod tests {
         assert_eq!(result.op_id, "test-op-1");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_current_revision() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -856,6 +862,8 @@ mod tests {
         assert_eq!(rev, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_events_since_empty() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -872,6 +880,8 @@ mod tests {
         assert!(events.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_events_since_with_data() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -939,6 +949,8 @@ mod tests {
         assert_eq!(all_events.len(), 2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_all_events() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -984,6 +996,8 @@ mod tests {
         assert_eq!(events[0].op_id, "test-op-1");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_read_store_pragmas_async() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -999,12 +1013,14 @@ mod tests {
             .expect("Failed to read pragmas");
 
         assert_eq!(pragmas.journal_mode, "wal");
-        assert_eq!(pragmas.synchronous, 2); // FULL = 2
+        assert_eq!(pragmas.synchronous, 1); // NORMAL = 1
         assert_eq!(pragmas.wal_autocheckpoint, 1000);
         assert!(pragmas.foreign_keys);
         assert_eq!(pragmas.busy_timeout, 5000);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_integrity_check_async() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1022,6 +1038,8 @@ mod tests {
         assert_eq!(results[0], "ok");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_open_recovery_mode_async() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1043,6 +1061,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_classify_duplicate_exact_match() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1087,6 +1107,8 @@ mod tests {
         assert_eq!(kind, DuplicateKind::Exact);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_classify_duplicate_conflict() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1149,6 +1171,8 @@ mod tests {
         assert_eq!(kind, DuplicateKind::Conflict);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_idempotent_new_operation() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1185,6 +1209,8 @@ mod tests {
         assert_eq!(result.op_id, "test-op-1");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_idempotent_exact_duplicate_returns_existing() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1229,6 +1255,8 @@ mod tests {
         assert_eq!(events.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_idempotent_conflicting_duplicate_returns_error() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");

@@ -303,3 +303,28 @@ fn verify_edge_geometry(edge_id: &EdgeId, edge: &Edge) -> Result<(), ReplayError
     }
     Ok(())
 }
+
+/// Apply update edge label operation
+pub fn apply_update_edge_label(
+    state: DiagramProjection,
+    id: &str,
+    label: &String,
+) -> Result<DiagramProjection, ReplayError> {
+    let edge_id = EdgeId::new(id.to_string());
+
+    if let Some(edge) = state.edges.get(&edge_id) {
+        let mut updated_edge = edge.clone();
+        updated_edge.label = label.clone();
+
+        let new_edges = state.edges.update(edge_id, updated_edge);
+
+        Ok(DiagramProjection {
+            edges: new_edges,
+            ..state
+        })
+    } else {
+        Err(ReplayError::InvariantViolation(format!(
+            "edge not found: {id}"
+        )))
+    }
+}

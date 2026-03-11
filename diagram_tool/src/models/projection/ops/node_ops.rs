@@ -205,10 +205,10 @@ pub fn apply_node_op(
             width,
             height,
             label,
-        } => apply_node_add(state, id, *x, *y, *width, *height, label),
-        DomainOp::NodeMove { id, x, y } => apply_node_move(state, id, *x, *y),
-        DomainOp::NodeDelete { id } => apply_node_delete(state, id),
-        DomainOp::NodeRestore { id } => apply_node_restore(state, id),
+        } => apply_node_add(state, id.as_str(), *x, *y, *width, *height, label),
+        DomainOp::NodeMove { id, x, y } => apply_node_move(state, id.as_str(), *x, *y),
+        DomainOp::NodeDelete { id } => apply_node_delete(state, id.as_str()),
+        DomainOp::NodeRestore { id } => apply_node_restore(state, id.as_str()),
         _ => Err(ReplayError::InvalidEvent(format!(
             "not a node operation: {:?}",
             op.kind()

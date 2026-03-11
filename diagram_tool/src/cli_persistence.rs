@@ -435,6 +435,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_document_when_saved_atomically_then_file_exists() {
         let temp_dir = TempDir::new().unwrap();
@@ -447,6 +449,8 @@ mod tests {
         assert!(path.exists());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_saved_document_when_loaded_with_lkg_then_returns_same_document() {
         let temp_dir = TempDir::new().unwrap();
@@ -462,6 +466,8 @@ mod tests {
         assert_eq!(loaded_doc.revision, doc.revision);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_missing_file_when_loaded_with_lkg_then_fails() {
         let temp_dir = TempDir::new().unwrap();
@@ -476,6 +482,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_json_when_loaded_with_lkg_then_fails() {
         let temp_dir = TempDir::new().unwrap();
@@ -488,6 +496,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_schema_when_loaded_with_lkg_then_fails() {
         let temp_dir = TempDir::new().unwrap();
@@ -502,6 +512,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_lkg_fallback_file_when_primary_fails_then_uses_lkg() {
         let temp_dir = TempDir::new().unwrap();
@@ -523,6 +535,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_stage_details_when_serialized_then_contains_expected_fields() {
         let details = StageDetails::new()
@@ -537,6 +551,8 @@ mod tests {
         assert!(json.contains("/test/path.json"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_relative_path_when_saved_then_uses_current_directory() {
         // Use a unique filename to avoid conflicts
@@ -553,6 +569,8 @@ mod tests {
         let _ = std::fs::remove_file(path);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_atomic_save_when_crash_during_write_then_original_untouched() {
         let temp_dir = TempDir::new().unwrap();
@@ -585,6 +603,8 @@ mod tests {
 
     // === Path Traversal Prevention Tests ===
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_simple_filename_when_validated_then_allowed() {
         let temp_dir = TempDir::new().unwrap();
@@ -600,6 +620,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_path_traversal_when_validated_then_rejected() {
         let temp_dir = TempDir::new().unwrap();
@@ -616,6 +638,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_absolute_path_outside_cwd_when_validated_then_rejected() {
         let temp_dir = TempDir::new().unwrap();
@@ -632,6 +656,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_sibling_escape_when_validated_then_rejected() {
         let temp_dir = TempDir::new().unwrap();
@@ -649,6 +675,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_subpath_when_validated_then_allowed() {
         let temp_dir = TempDir::new().unwrap();
@@ -665,6 +693,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_relative_path_with_dot_prefix_when_validated_then_allowed() {
         let temp_dir = TempDir::new().unwrap();

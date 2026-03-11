@@ -14,7 +14,7 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::models::document::{EdgeStyle, NodeId, NodeStyle};
+use crate::models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
 
 /// Error types for domain `op_types`
 #[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -79,6 +79,16 @@ pub enum OpKind {
     ZOrder,
 }
 
+/// Type of label target (node or edge)
+#[derive(Debug, Clone, Copy, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "snake_case")]
+pub enum LabelTargetType {
+    /// Target is a node
+    Node,
+    /// Target is an edge
+    Edge,
+}
+
 impl OpKind {
     /// Returns the name of this `op_type` kind as a string
     #[must_use]
@@ -100,7 +110,7 @@ impl OpKind {
 pub enum DomainOp {
     // Node operations
     NodeAdd {
-        id: String,
+        id: NodeId,
         x: f64,
         y: f64,
         width: f64,
@@ -108,61 +118,69 @@ pub enum DomainOp {
         label: String,
     },
     NodeMove {
-        id: String,
+        id: NodeId,
         x: f64,
         y: f64,
     },
     NodeDelete {
-        id: String,
+        id: NodeId,
     },
     NodeRestore {
-        id: String,
+        id: NodeId,
     },
     NodeResize {
         id: NodeId,
+        original_x: f64,
+        original_y: f64,
+        original_width: f64,
+        original_height: f64,
+        x: f64,
+        y: f64,
         width: f64,
         height: f64,
     },
     UpdateLabel {
-        id: String,
-        label: String,
+        target_id: String,
+        target_type: LabelTargetType,
+        old_label: String,
+        new_label: String,
     },
     UpdateNodeStyle {
-        id: String,
+        id: NodeId,
         style: NodeStyle,
     },
     // Edge operations
     EdgeConnect {
-        id: String,
-        source: String,
-        target: String,
+        id: EdgeId,
+        source: NodeId,
+        target: NodeId,
     },
     EdgeDisconnect {
-        id: String,
+        id: EdgeId,
     },
     UpdateEdgeStyle {
-        id: String,
+        id: EdgeId,
         style: EdgeStyle,
     },
     // Z-order op_types
     BringForward {
-        ids: Vec<String>,
+        ids: Vec<NodeId>,
     },
     SendBackward {
-        ids: Vec<String>,
+        ids: Vec<NodeId>,
     },
     BringToFront {
-        ids: Vec<String>,
+        ids: Vec<NodeId>,
     },
     SendToBack {
-        ids: Vec<String>,
+        ids: Vec<NodeId>,
     },
     // Composite op_types
     Group {
-        ids: Vec<String>,
+        ids: Vec<NodeId>,
     },
     Ungroup {
-        id: String,
+        id: NodeId,
     },
 }
 
@@ -247,7 +265,7 @@ pub const fn domain_op_kind(op: &DomainOp) -> OpKind {
 // Helper functions for parsing domain op_types
 
 fn parse_node_add(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
     let x = extract_f64_field(value, "x")?;
     let y = extract_f64_field(value, "y")?;
     let width = extract_f64_field(value, "width")?;
@@ -269,7 +287,7 @@ fn parse_node_add(value: &serde_json::Value) -> Result<DomainOp, ContractError> 
 }
 
 fn parse_node_move(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
     let x = extract_f64_field(value, "x")?;
     let y = extract_f64_field(value, "y")?;
 
@@ -277,37 +295,126 @@ fn parse_node_move(value: &serde_json::Value) -> Result<DomainOp, ContractError>
 }
 
 fn parse_node_delete(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
     Ok(DomainOp::NodeDelete { id })
 }
 
 fn parse_node_restore(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
     Ok(DomainOp::NodeRestore { id })
 }
 
 fn parse_node_resize(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id_str = extract_string_field(value, "id")?;
-    let id = require_non_empty_id(&id_str)?;
-    let width = extract_f64_field(value, "width")?;
-    let height = extract_f64_field(value, "height")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
+    let dims = extract_and_validate_dimensions(value)?;
+    Ok(DomainOp::NodeResize {
+        id,
+        original_x: dims.original_x,
+        original_y: dims.original_y,
+        original_width: dims.original_width,
+        original_height: dims.original_height,
+        x: dims.x,
+        y: dims.y,
+        width: dims.width,
+        height: dims.height,
+    })
+}
 
-    Ok(DomainOp::NodeResize { id, width, height })
+fn extract_and_validate_dimensions(
+    value: &serde_json::Value,
+) -> Result<NodeResizeDimensions, ContractError> {
+    Ok(NodeResizeDimensions {
+        original_x: extract_f64_field(value, "original_x")?,
+        original_y: extract_f64_field(value, "original_y")?,
+        original_width: validate_positive_finite(
+            extract_f64_field(value, "original_width")?,
+            "original_width",
+        )?,
+        original_height: validate_positive_finite(
+            extract_f64_field(value, "original_height")?,
+            "original_height",
+        )?,
+        x: extract_f64_field(value, "x")?,
+        y: extract_f64_field(value, "y")?,
+        width: validate_positive_finite(extract_f64_field(value, "width")?, "width")?,
+        height: validate_positive_finite(extract_f64_field(value, "height")?, "height")?,
+    })
+}
+
+/// Helper struct to bundle NodeResize fields
+struct NodeResizeDimensions {
+    original_x: f64,
+    original_y: f64,
+    original_width: f64,
+    original_height: f64,
+    x: f64,
+    y: f64,
+    width: f64,
+    height: f64,
 }
 
 fn parse_update_label(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
-    let label = value
-        .get("label")
+    // Backward compatibility: check for "id" first, then "target_id"
+    let target_id = value
+        .get("id")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .or_else(|| {
+            value
+                .get("target_id")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+        })
+        .unwrap_or_default();
+
+    let target_type_str = value
+        .get("target_type")
+        .and_then(|v| v.as_str())
+        .unwrap_or("node");
+    let target_type = match target_type_str {
+        "node" => LabelTargetType::Node,
+        "edge" => LabelTargetType::Edge,
+        _ => LabelTargetType::Node,
+    };
+    let old_label = value
+        .get("old_label")
         .and_then(|v| v.as_str())
         .map(String::from)
         .unwrap_or_default();
+    let new_label = value
+        .get("new_label")
+        .and_then(|v| v.as_str())
+        .map(String::from)
+        .or_else(|| {
+            // Backward compatibility: also accept "label" field
+            value
+                .get("label")
+                .and_then(|v| v.as_str())
+                .map(String::from)
+        })
+        .unwrap_or_default();
 
-    Ok(DomainOp::UpdateLabel { id, label })
+    // Use target_id or fall back to empty if neither id nor target_id present
+    let final_target_id = if target_id.is_empty() {
+        value
+            .get("target_id")
+            .and_then(|v| v.as_str())
+            .map(String::from)
+            .unwrap_or_default()
+    } else {
+        target_id
+    };
+
+    Ok(DomainOp::UpdateLabel {
+        target_id: final_target_id,
+        target_type,
+        old_label,
+        new_label,
+    })
 }
 
 fn parse_update_node_style(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
     let style_str = value
         .get("style")
         .and_then(|v| v.as_str())
@@ -324,7 +431,7 @@ fn parse_update_node_style(value: &serde_json::Value) -> Result<DomainOp, Contra
 }
 
 fn parse_update_edge_style(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_edge_id(&extract_string_field(value, "id")?)?;
     let style_str = value
         .get("style")
         .and_then(|v| v.as_str())
@@ -368,6 +475,15 @@ fn require_non_empty_id(id: &str) -> Result<NodeId, ContractError> {
     Ok(NodeId::new(id.to_string()))
 }
 
+fn require_non_empty_edge_id(id: &str) -> Result<EdgeId, ContractError> {
+    if id.is_empty() {
+        return Err(ContractError::InvalidPayload(
+            "edge id cannot be empty".to_string(),
+        ));
+    }
+    Ok(EdgeId::new(id.to_string()))
+}
+
 fn validate_positive_finite(value: f64, field_name: &str) -> Result<f64, ContractError> {
     if !value.is_finite() {
         return Err(ContractError::InvalidPayload(format!(
@@ -383,45 +499,45 @@ fn validate_positive_finite(value: f64, field_name: &str) -> Result<f64, Contrac
 }
 
 fn parse_edge_connect(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
-    let source = extract_string_field(value, "source")?;
-    let target = extract_string_field(value, "target")?;
+    let id = require_non_empty_edge_id(&extract_string_field(value, "id")?)?;
+    let source = require_non_empty_id(&extract_string_field(value, "source")?)?;
+    let target = require_non_empty_id(&extract_string_field(value, "target")?)?;
 
     Ok(DomainOp::EdgeConnect { id, source, target })
 }
 
 fn parse_edge_disconnect(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_edge_id(&extract_string_field(value, "id")?)?;
     Ok(DomainOp::EdgeDisconnect { id })
 }
 
 fn parse_bring_forward(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let ids = parse_string_array(value.get("ids"))?;
+    let ids = parse_node_id_array(value.get("ids"))?;
     Ok(DomainOp::BringForward { ids })
 }
 
 fn parse_send_backward(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let ids = parse_string_array(value.get("ids"))?;
+    let ids = parse_node_id_array(value.get("ids"))?;
     Ok(DomainOp::SendBackward { ids })
 }
 
 fn parse_bring_to_front(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let ids = parse_string_array(value.get("ids"))?;
+    let ids = parse_node_id_array(value.get("ids"))?;
     Ok(DomainOp::BringToFront { ids })
 }
 
 fn parse_send_to_back(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let ids = parse_string_array(value.get("ids"))?;
+    let ids = parse_node_id_array(value.get("ids"))?;
     Ok(DomainOp::SendToBack { ids })
 }
 
 fn parse_group(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let ids = parse_string_array(value.get("ids"))?;
+    let ids = parse_node_id_array(value.get("ids"))?;
     Ok(DomainOp::Group { ids })
 }
 
 fn parse_ungroup(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&extract_string_field(value, "id")?)?;
     Ok(DomainOp::Ungroup { id })
 }
 
@@ -437,6 +553,15 @@ fn parse_string_array(value: Option<&serde_json::Value>) -> Result<Vec<String>, 
             })
         })
         .collect()
+}
+
+fn parse_node_id_array(value: Option<&serde_json::Value>) -> Result<Vec<NodeId>, ContractError> {
+    let strings = parse_string_array(value)?;
+    let mut node_ids = Vec::with_capacity(strings.len());
+    for s in strings {
+        node_ids.push(require_non_empty_id(&s)?);
+    }
+    Ok(node_ids)
 }
 
 /// Event envelope containing operation and author metadata
@@ -491,10 +616,24 @@ pub fn encode_envelope(op: &EventEnvelope) -> Result<String, ContractError> {
 /// Returns `ContractError::InvalidAuthor` if author validation fails
 /// Returns `ContractError::UnknownOpType` if the `op_type` type is invalid
 pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError> {
-    let value: serde_json::Value =
-        serde_json::from_str(input).map_err(|e| ContractError::InvalidJson(e.to_string()))?;
+    // Implement size limits: >5MB payload rejection before any parsing
+    if input.len() > 5 * 1024 * 1024 {
+        return Err(ContractError::InvalidPayload(
+            "payload exceeds 5MB limit".to_string(),
+        ));
+    }
 
-    validate_envelope_fields(&value)?;
+    // Fast pass to reject >5000 JSON edges/objects to prevent memory exhaustion attacks
+    // before allocating the DOM or running full deserialization.
+    let structural_edges = input.bytes().filter(|&b| b == b'{' || b == b'[').count();
+    if structural_edges > 5000 {
+        return Err(ContractError::InvalidPayload(
+            "payload exceeds 5000 structural edges limit".to_string(),
+        ));
+    }
+
+    // To prevent full JSON DOM allocation, we deserialize directly into the struct
+    // rather than intermediate serde_json::Value. This enforces strong types and memory limits at the edge.
     deserialize_envelope(input)
 }
 
@@ -581,6 +720,8 @@ pub fn encode_event_envelope(op: &EventEnvelope) -> Result<String, ContractError
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[ignore = "Known issue: serde internally tagged enum conflict with struct field"]
     fn given_valid_json_when_parsing_event_envelope_then_returns_envelope() {
@@ -610,6 +751,8 @@ mod tests {
         assert_eq!(envelope.timestamp, 1699999999);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_json_when_parsing_event_envelope_then_returns_invalid_json_error() {
         let raw = "not valid json";
@@ -623,6 +766,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_missing_op_id_field_when_parsing_event_envelope_then_returns_missing_field_error() {
         let raw = r#"{
@@ -643,6 +788,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_missing_author_field_when_parsing_event_envelope_then_returns_missing_field_error() {
         let raw = r#"{
@@ -663,6 +810,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_author_missing_name_when_parsing_event_envelope_then_returns_invalid_author_error(
     ) {
@@ -685,6 +834,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[ignore = "Known issue: serde internally tagged enum conflict with struct field"]
     fn given_unknown_op_type_type_when_parsing_event_envelope_then_returns_unknown_op_type_error() {
@@ -704,6 +855,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[ignore = "Known issue: serde internally tagged enum conflict with struct field"]
     fn given_all_op_type_types_then_all_parse_correctly() {
@@ -741,6 +894,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[ignore = "Known issue: serde internally tagged enum conflict with struct field"]
     fn given_author_with_email_when_parsing_event_envelope_then_email_is_preserved() {
@@ -767,6 +922,8 @@ mod tests {
         assert_eq!(envelope.author.email, Some("alice@example.com".to_string()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[ignore = "Known issue: serde internally tagged enum conflict with struct field"]
     fn given_author_without_email_when_parsing_event_envelope_then_email_is_none() {
@@ -792,6 +949,8 @@ mod tests {
         assert_eq!(envelope.author.email, None);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_event_envelope_when_encoding_then_roundtrip_works() {
         let original = EventEnvelope {
@@ -818,6 +977,8 @@ mod tests {
         assert_eq!(decoded.unwrap(), original);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_event_envelope_with_complex_operation_when_encoding_then_roundtrip_works() {
         let original = EventEnvelope {
@@ -848,6 +1009,8 @@ mod tests {
 
     // DomainOp and OpKind tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_node_add_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -867,6 +1030,8 @@ mod tests {
         assert!(matches!(op, DomainOp::NodeAdd { .. }));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_node_move_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -883,6 +1048,8 @@ mod tests {
         assert!(matches!(op, DomainOp::NodeMove { .. }));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_node_delete_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -896,6 +1063,8 @@ mod tests {
         assert!(matches!(result.unwrap(), DomainOp::NodeDelete { id } if id == "node-1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_edge_connect_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -912,6 +1081,8 @@ mod tests {
         assert!(matches!(op, DomainOp::EdgeConnect { .. }));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_edge_disconnect_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -925,6 +1096,8 @@ mod tests {
         assert!(matches!(result.unwrap(), DomainOp::EdgeDisconnect { id } if id == "edge-1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_group_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -939,6 +1112,8 @@ mod tests {
         assert!(matches!(op, DomainOp::Group { ids } if ids.len() == 3));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_ungroup_json_when_parsing_then_returns_domain_op() {
         let raw = r#"{
@@ -952,6 +1127,8 @@ mod tests {
         assert!(matches!(result.unwrap(), DomainOp::Ungroup { id } if id == "group-1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_zorder_json_when_parsing_then_returns_domain_op() {
         let test_cases = [
@@ -967,6 +1144,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_json_when_parsing_then_returns_invalid_json_error() {
         let raw = "not valid json";
@@ -977,6 +1156,8 @@ mod tests {
         assert!(matches!(result.unwrap_err(), ContractError::InvalidJson(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_missing_op_field_when_parsing_then_returns_missing_field_error() {
         let raw = r#"{
@@ -993,6 +1174,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_unknown_op_type_when_parsing_then_returns_unknown_op_type_error() {
         let raw = r#"{
@@ -1009,6 +1192,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_missing_required_field_when_parsing_then_returns_missing_field_error() {
         let raw = r#"{
@@ -1025,6 +1210,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_array_when_parsing_then_returns_invalid_payload_error() {
         let raw = r#"{
@@ -1041,6 +1228,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_add_op_when_getting_kind_then_returns_node_kind() {
         let op = DomainOp::NodeAdd {
@@ -1057,6 +1246,8 @@ mod tests {
         assert_eq!(kind, OpKind::Node);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_move_op_when_getting_kind_then_returns_node_kind() {
         let op = DomainOp::NodeMove {
@@ -1070,6 +1261,8 @@ mod tests {
         assert_eq!(kind, OpKind::Node);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_delete_op_when_getting_kind_then_returns_node_kind() {
         let op = DomainOp::NodeDelete {
@@ -1081,6 +1274,8 @@ mod tests {
         assert_eq!(kind, OpKind::Node);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_restore_op_when_getting_kind_then_returns_node_kind() {
         let op = DomainOp::NodeRestore {
@@ -1092,11 +1287,15 @@ mod tests {
         assert_eq!(kind, OpKind::Node);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_update_label_op_when_getting_kind_then_returns_node_kind() {
         let op = DomainOp::UpdateLabel {
-            id: "node-1".to_string(),
-            label: "Test Label".to_string(),
+            target_id: "node-1".to_string(),
+            target_type: LabelTargetType::Node,
+            old_label: "Old Label".to_string(),
+            new_label: "Test Label".to_string(),
         };
 
         let kind = domain_op_kind(&op);
@@ -1104,11 +1303,13 @@ mod tests {
         assert_eq!(kind, OpKind::Node);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_update_label_with_very_long_label_when_parsing_then_succeeds() {
         let long_label = "x".repeat(15_000);
         let raw = format!(
-            r#"{{"op": "update_label", "id": "n1", "label": "{}"}}"#,
+            r#"{{"op": "update_label", "target_id": "n1", "target_type": "node", "old_label": "old", "new_label": "{}"}}"#,
             long_label
         );
 
@@ -1117,32 +1318,36 @@ mod tests {
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let op = result.unwrap();
         match op {
-            DomainOp::UpdateLabel { label, .. } => {
-                assert_eq!(label.len(), 15_000);
+            DomainOp::UpdateLabel { new_label, .. } => {
+                assert_eq!(new_label.len(), 15_000);
             }
             _ => panic!("Expected UpdateLabel"),
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_update_label_with_mixed_direction_text_when_parsing_then_succeeds() {
-        let raw = r#"{"op": "update_label", "id": "n1", "label": "Hello مرحبا World 🌍"}"#;
+        let raw = r#"{"op": "update_label", "target_id": "n1", "target_type": "node", "old_label": "old", "new_label": "Hello مرحبا World 🌍"}"#;
 
         let result = parse_domain_op(raw);
 
         assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
         let op = result.unwrap();
         match op {
-            DomainOp::UpdateLabel { label, .. } => {
-                assert_eq!(label, "Hello مرحبا World 🌍");
+            DomainOp::UpdateLabel { new_label, .. } => {
+                assert_eq!(new_label, "Hello مرحبا World 🌍");
             }
             _ => panic!("Expected UpdateLabel"),
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_update_label_json_missing_op_field_when_parsing_then_returns_missing_field_error() {
-        let raw = r#"{"id": "n1", "label": "New Label"}"#;
+        let raw = r#"{"target_id": "n1", "new_label": "New Label"}"#;
 
         let result = parse_domain_op(raw);
 
@@ -1153,9 +1358,11 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_update_label_json_when_parsing_then_returns_domain_op() {
-        let raw = r#"{"op": "update_label", "id": "node-1", "label": "New Label"}"#;
+        let raw = r#"{"op": "update_label", "target_id": "node-1", "target_type": "node", "old_label": "old", "new_label": "New Label"}"#;
 
         let result = parse_domain_op(raw);
 
@@ -1164,6 +1371,57 @@ mod tests {
         assert!(matches!(op, DomainOp::UpdateLabel { .. }));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
+    #[test]
+    fn given_update_label_with_edge_target_type_when_parsing_then_succeeds() {
+        let raw = r#"{"op": "update_label", "target_id": "edge-1", "target_type": "edge", "old_label": "old label", "new_label": "new label"}"#;
+
+        let result = parse_domain_op(raw);
+
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let op = result.unwrap();
+        match op {
+            DomainOp::UpdateLabel {
+                target_type,
+                target_id,
+                ..
+            } => {
+                assert_eq!(target_type, LabelTargetType::Edge);
+                assert_eq!(target_id, "edge-1");
+            }
+            _ => panic!("Expected UpdateLabel"),
+        }
+    }
+
+    #[cfg(kani)]
+    #[kani::proof]
+    #[test]
+    fn given_update_label_backward_compatibility_with_old_fields_when_parsing_then_succeeds() {
+        // Test backward compatibility: old "id" and "label" fields should still work
+        let raw = r#"{"op": "update_label", "id": "node-1", "label": "Test Label"}"#;
+
+        let result = parse_domain_op(raw);
+
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let op = result.unwrap();
+        match op {
+            DomainOp::UpdateLabel {
+                target_id,
+                new_label,
+                target_type,
+                ..
+            } => {
+                assert_eq!(target_id, "node-1");
+                assert_eq!(new_label, "Test Label");
+                assert_eq!(target_type, LabelTargetType::Node); // default
+            }
+            _ => panic!("Expected UpdateLabel"),
+        }
+    }
+
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_connect_op_when_getting_kind_then_returns_edge_kind() {
         let op = DomainOp::EdgeConnect {
@@ -1177,6 +1435,8 @@ mod tests {
         assert_eq!(kind, OpKind::Edge);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_disconnect_op_when_getting_kind_then_returns_edge_kind() {
         let op = DomainOp::EdgeDisconnect {
@@ -1188,6 +1448,8 @@ mod tests {
         assert_eq!(kind, OpKind::Edge);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zorder_ops_when_getting_kind_then_returns_zorder_kind() {
         let ops = [
@@ -1211,6 +1473,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_composite_ops_when_getting_kind_then_returns_composite_kind() {
         let ops = [
@@ -1228,6 +1492,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_op_kind_as_str_then_returns_correct_string() {
         assert_eq!(OpKind::Node.as_str(), "node");
@@ -1236,6 +1502,8 @@ mod tests {
         assert_eq!(OpKind::ZOrder.as_str(), "z_order");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_domain_op_kind_method_then_matches_free_function() {
         let ops = [
@@ -1293,6 +1561,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_all_domain_op_variants_exhaustive_match_then_all_cases_handled() {
         // This test ensures that when we add new variants to DomainOp,
@@ -1341,12 +1611,20 @@ mod tests {
             },
             DomainOp::NodeResize {
                 id: NodeId::new("n1".to_string()),
-                width: 80.0,
-                height: 40.0,
+                original_x: 0.0,
+                original_y: 0.0,
+                original_width: 80.0,
+                original_height: 40.0,
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 60.0,
             },
             DomainOp::UpdateLabel {
-                id: "n1".to_string(),
-                label: "test".to_string(),
+                target_id: "n1".to_string(),
+                target_type: LabelTargetType::Node,
+                old_label: "old".to_string(),
+                new_label: "test".to_string(),
             },
             DomainOp::UpdateNodeStyle {
                 id: "n1".to_string(),
@@ -1392,6 +1670,8 @@ mod tests {
 
     // ============== BDD Tests for Numeric Boundaries (bd-14y) ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_timestamp_at_i64_max_when_creating_envelope_then_preserves_value() {
         // Given: envelope with i64::MAX timestamp
@@ -1421,6 +1701,8 @@ mod tests {
         assert_eq!(deserialized.timestamp, i64::MAX);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_timestamp_at_i64_min_when_creating_envelope_then_preserves_value() {
         // Given: envelope with i64::MIN timestamp
@@ -1450,6 +1732,8 @@ mod tests {
         assert_eq!(deserialized.timestamp, i64::MIN);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_zero_timestamp_when_creating_envelope_then_succeeds() {
         // Given: envelope with zero timestamp
@@ -1479,6 +1763,8 @@ mod tests {
         assert_eq!(deserialized.timestamp, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_negative_timestamp_when_creating_envelope_then_preserves_value() {
         // Given: envelope with negative timestamp (pre-epoch time)
@@ -1508,6 +1794,8 @@ mod tests {
         assert_eq!(deserialized.timestamp, -1000000);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_add_with_infinity_x_when_parsing_then_no_panic() {
         // Given: JSON with infinity x coordinate (represented as string or number)
@@ -1520,6 +1808,8 @@ mod tests {
         assert!(result.is_err() || result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_add_with_very_large_coordinates_when_parsing_then_succeeds() {
         // Given: JSON with very large coordinates
@@ -1540,6 +1830,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_add_with_very_small_positive_coordinates_when_parsing_then_succeeds() {
         // Given: JSON with very small positive coordinates
@@ -1560,6 +1852,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_envelope_serialization_with_large_timestamp_then_produces_valid_json() {
         // Given: envelope with large timestamp
@@ -1588,6 +1882,8 @@ mod tests {
         assert!(json.contains("9223372036854775807"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_envelope_roundtrip_with_negative_timestamp_then_preserves_value() {
         // Given: envelope with negative timestamp

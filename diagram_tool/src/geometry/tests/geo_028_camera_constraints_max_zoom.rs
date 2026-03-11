@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-028: Camera Constraints - Max Zoom ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_constraints_max_zoom() {
     // Given: zoom values above maximum
@@ -24,6 +26,8 @@ fn test_camera_constraints_max_zoom() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_constraints_max_zoom_exact() {
     // Given: zoom at exact maximum
@@ -36,6 +40,8 @@ fn test_camera_constraints_max_zoom_exact() {
     assert!((clamped - MAX_ZOOM).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_constraints_valid_range() {
     // Given: zoom values within valid range

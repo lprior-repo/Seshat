@@ -5,6 +5,8 @@ use crate::ui::canvas::domain::{
 use proptest::prelude::*;
 
 proptest! {
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn fuzz_parse_event_never_panics(
         event_type in ".*",
@@ -45,6 +47,8 @@ fn arb_event() -> impl Strategy<Value = CanvasEvent> {
 }
 
 proptest! {
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_valid_event_sequence_maintains_invariants(events in prop::collection::vec(arb_event(), 1..50)) {
         let mut state = InteractionState::Idle;

@@ -216,6 +216,8 @@ mod tests {
         )
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_to_nonexistent_node_when_validated_then_edge_dangling_error() {
         let mut doc = DiagramDocument::default();
@@ -228,6 +230,8 @@ mod tests {
         assert!(issues.iter().any(|i| i.code == "edge-dangling"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_when_validated_then_dag_cycle_error() {
         let mut doc = DiagramDocument::default();
@@ -242,6 +246,8 @@ mod tests {
         assert!(issues.iter().any(|i| i.code == "dag-cycle"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_non_subgraph_parent_when_validated_then_invalid_parent_error() {
         let mut doc = DiagramDocument::default();
@@ -254,6 +260,8 @@ mod tests {
         assert!(issues.iter().any(|i| i.code == "invalid-parent"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_existing_subgraph_parent_when_validated_then_no_invalid_parent_issue() {
         let mut doc = DiagramDocument::default();
@@ -271,6 +279,8 @@ mod tests {
         assert!(!issues.iter().any(|i| i.code == "invalid-parent"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_document_when_validated_then_no_issues() {
         let doc = DiagramDocument::default();
@@ -278,6 +288,8 @@ mod tests {
         assert!(issues.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nan_node_geometry_when_validated_then_returns_error() {
         let mut doc = DiagramDocument::default();
@@ -295,6 +307,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_inf_node_geometry_when_validated_then_returns_error() {
         let mut doc = DiagramDocument::default();
@@ -312,6 +326,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_negative_node_dimensions_when_validated_then_returns_error() {
         let mut doc = DiagramDocument::default();
@@ -327,6 +343,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_node_minimum_size_when_validated_then_accepts() {
         let mut doc = DiagramDocument::default();
@@ -499,6 +517,8 @@ mod proptests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_validate_empty_doc_has_no_issues() {
         let doc = DiagramDocument::default();

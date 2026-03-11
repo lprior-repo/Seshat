@@ -37,6 +37,8 @@ fn create_mock_node(id: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
 // Happy Path Tests
 // -----------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_creates_empty_subgraph_container_with_minimum_dimensions_sub_015() {
     let id = NodeId::new("sg1".to_string());
@@ -54,6 +56,8 @@ fn test_creates_empty_subgraph_container_with_minimum_dimensions_sub_015() {
     assert!(result.height.0 >= 60.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_creates_subgraph_with_pre_selected_nodes_encapsulated_sub_016() {
     let mut canvas = mock_canvas();
@@ -96,6 +100,8 @@ fn test_creates_subgraph_with_pre_selected_nodes_encapsulated_sub_016() {
     assert_eq!(sg.height.0, 180.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_creates_nested_subgraph_structure_sub_017() {
     let mut canvas = mock_canvas();
@@ -132,6 +138,8 @@ fn test_creates_nested_subgraph_structure_sub_017() {
     assert_eq!(canvas.nodes.get(&child_id).unwrap().parent, Some(parent_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_subgraph_inherits_viewport_transforms_sub_018() {
     let sg = create_empty_subgraph(
@@ -151,6 +159,8 @@ fn test_subgraph_inherits_viewport_transforms_sub_018() {
     assert_eq!(transformed.height.0, 120.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_container_padding_alignment_is_maintained_sub_014() {
     let n1 = create_mock_node("c1", 10.0, 10.0, 50.0, 50.0);
@@ -169,6 +179,8 @@ fn test_container_padding_alignment_is_maintained_sub_014() {
     assert_eq!(bounds.max_y, 70.0); // 60 + 10
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_container_expands_when_child_overflows_sub_013() {
     // Similar to bounds check - handled by calculate_container_bounds inherently based on extremes
@@ -193,6 +205,8 @@ fn test_container_expands_when_child_overflows_sub_013() {
 // Error Path Tests
 // -----------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_creating_subgraph_with_non_existent_nodes() {
     let mut canvas = mock_canvas();
@@ -204,6 +218,8 @@ fn test_returns_error_when_creating_subgraph_with_non_existent_nodes() {
     assert_eq!(result.unwrap_err(), Error::NodeNotFound(missing_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_nested_subgraph_creates_cycle() {
     let mut canvas = mock_canvas();
@@ -243,6 +259,8 @@ fn test_returns_error_when_nested_subgraph_creates_cycle() {
     assert_eq!(result.unwrap_err(), Error::CircularDependency);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_applying_invalid_viewport_transform() {
     let scale = PositiveScale::try_new(OrderedFloat::new_unchecked(0.0));
@@ -253,6 +271,8 @@ fn test_returns_error_when_applying_invalid_viewport_transform() {
 // Edge Case Tests
 // -----------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_container_behavior_with_zero_padding() {
     let n1 = create_mock_node("c1", 10.0, 10.0, 50.0, 50.0);
@@ -271,6 +291,8 @@ fn test_container_behavior_with_zero_padding() {
     assert_eq!(bounds.max_y, 60.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_container_overflow_handling_with_massive_child_node() {
     let n1 = create_mock_node("c1", 10.0, 10.0, 1000000.0, 1000000.0);
@@ -287,6 +309,8 @@ fn test_container_overflow_handling_with_massive_child_node() {
     assert_eq!(bounds.max_y, 1000020.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_deeply_nested_subgraphs_render_correctly() {
     let mut canvas = mock_canvas();
@@ -342,6 +366,8 @@ fn test_deeply_nested_subgraphs_render_correctly() {
 // Contract Verification Tests
 // -----------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_precondition_padding_must_be_non_negative() {
     // Type-level enforcement: Padding struct uses u32.
@@ -353,6 +379,8 @@ fn test_precondition_padding_must_be_non_negative() {
     };
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_precondition_viewport_scale_must_be_positive() {
     let valid_scale = PositiveScale::try_new(OrderedFloat::new_unchecked(1.0)).unwrap();
@@ -362,6 +390,8 @@ fn test_precondition_viewport_scale_must_be_positive() {
     assert_eq!(invalid_scale.unwrap_err(), Error::InvalidTransform);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_container_bounds_encapsulate_all_children() {
     let n1 = create_mock_node("c1", 10.0, 10.0, 50.0, 50.0);
@@ -377,6 +407,8 @@ fn test_postcondition_container_bounds_encapsulate_all_children() {
     assert!(bounds.max_x >= n1.x.0 + n1.width.0 + f64::from(padding.right));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_subgraph_creation_updates_child_parent_references() {
     let mut canvas = mock_canvas();
@@ -393,6 +425,8 @@ fn test_postcondition_subgraph_creation_updates_child_parent_references() {
     assert_eq!(canvas.nodes.get(&child1).unwrap().parent, Some(sg_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_invariant_node_has_at_most_one_parent() {
     let mut canvas = mock_canvas();
@@ -437,6 +471,8 @@ fn test_invariant_node_has_at_most_one_parent() {
     assert_eq!(canvas.nodes.get(&child_id).unwrap().parent, Some(sg2_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_invariant_hierarchy_is_acyclic() {
     // Duplicate of test_returns_error_when_nested_subgraph_creates_cycle to match requested name
@@ -463,6 +499,8 @@ fn test_invariant_hierarchy_is_acyclic() {
 // Contract Violation Tests
 // -----------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p1_violation_returns_type_error() {
     // Type-level constraint (Padding uses u32). Proved by successful compilation.
@@ -474,6 +512,8 @@ fn test_p1_violation_returns_type_error() {
     };
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p2_violation_returns_error_node_not_found() {
     let mut canvas = mock_canvas();
@@ -484,6 +524,8 @@ fn test_p2_violation_returns_error_node_not_found() {
     assert!(matches!(result, Err(Error::NodeNotFound(_))));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p3_violation_returns_error_circular_dependency() {
     let mut canvas = mock_canvas();
@@ -521,12 +563,16 @@ fn test_p3_violation_returns_error_circular_dependency() {
     assert!(matches!(result, Err(Error::CircularDependency)));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p4_violation_returns_invalid_transform() {
     let result = PositiveScale::try_new(OrderedFloat::new_unchecked(0.0));
     assert!(matches!(result, Err(Error::InvalidTransform)));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q1_violation_returns_invariant_error() {
     // Handled inherently by calculate_container_bounds internally checking valid bounds,
@@ -546,6 +592,8 @@ fn test_q1_violation_returns_invariant_error() {
     .is_ok());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q2_violation_returns_invariant_error() {
     // If create_empty_subgraph created something < 100x60, it would err.
@@ -561,6 +609,8 @@ fn test_q2_violation_returns_invariant_error() {
     assert!(node.height.0 >= 60.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q3_violation_returns_invariant_error() {
     let mut canvas = mock_canvas();
@@ -577,6 +627,8 @@ fn test_q3_violation_returns_invariant_error() {
     assert_eq!(canvas.nodes.get(&child1).unwrap().parent, Some(sg_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q4_violation_returns_invariant_error() {
     // Ensured by functional apply_viewport_transform
@@ -599,6 +651,8 @@ fn test_q4_violation_returns_invariant_error() {
 // Group Scale Tests (MUL-011 to MUL-015)
 // -----------------------------------------------------------------------------
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_011_scale_around_group_center() {
     let mut canvas = mock_canvas();
@@ -639,6 +693,8 @@ fn test_mul_011_scale_around_group_center() {
     assert_eq!(n2.height.0, 20.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_013_scale_clamps_to_minimum_dimension() {
     let mut canvas = mock_canvas();
@@ -663,6 +719,8 @@ fn test_mul_013_scale_clamps_to_minimum_dimension() {
     assert_eq!(n1.height.0, MIN_DIMENSION);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_014_inverse_scale_no_drift() {
     let mut canvas = mock_canvas();
@@ -692,6 +750,8 @@ fn test_mul_014_inverse_scale_no_drift() {
     assert!((n1.width.0 - 50.0).abs() < 1e-6);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_unselected_nodes_unmutated() {
     let mut canvas = mock_canvas();
@@ -721,6 +781,8 @@ fn test_postcondition_unselected_nodes_unmutated() {
     assert_eq!(n2, &original_n2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p1_empty_selection_violation_returns_error() {
     let mut canvas = mock_canvas();
@@ -734,6 +796,8 @@ fn test_p1_empty_selection_violation_returns_error() {
     assert_eq!(result.unwrap_err(), GroupTransformError::EmptySelection);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p3_node_not_found_violation_returns_error() {
     let mut canvas = mock_canvas();
@@ -751,6 +815,8 @@ fn test_p3_node_not_found_violation_returns_error() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p4_node_locked_violation_returns_error() {
     let mut canvas = mock_canvas();
@@ -771,6 +837,8 @@ fn test_p4_node_locked_violation_returns_error() {
     assert_eq!(result.unwrap_err(), GroupTransformError::NodeLocked(n1_id));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p5_exceeds_max_bounds_violation_returns_error() {
     let mut canvas = mock_canvas();

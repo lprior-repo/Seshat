@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-027: Path Simplification Tests ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_001_basic_simplification() {
     // Given: A path with 5 points in a rough line
@@ -32,6 +34,8 @@ fn geo027_001_basic_simplification() {
     assert_eq!(simplified[1], Point::new(4.0, 4.0));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_002_endpoint_preservation_start() {
     // Given: A path
@@ -51,6 +55,8 @@ fn geo027_002_endpoint_preservation_start() {
     assert_eq!(simplified[0], Point::new(0.0, 0.0));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_003_endpoint_preservation_end() {
     // Given: A path
@@ -70,6 +76,8 @@ fn geo027_003_endpoint_preservation_end() {
     assert_eq!(simplified[simplified.len() - 1], Point::new(30.0, 30.0));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_006_insufficient_points_zero() {
     // Given: An empty path
@@ -83,6 +91,8 @@ fn geo027_006_insufficient_points_zero() {
     assert_eq!(result.unwrap_err(), PathError::InsufficientPoints);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_007_insufficient_points_one() {
     // Given: A path with one point
@@ -96,6 +106,8 @@ fn geo027_007_insufficient_points_one() {
     assert_eq!(result.unwrap_err(), PathError::InsufficientPoints);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_008_two_points_preserved() {
     // Given: A path with two points
@@ -110,6 +122,8 @@ fn geo027_008_two_points_preserved() {
     assert_eq!(simplified.len(), 2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_009_invalid_point_nan() {
     // Given: A path with NaN
@@ -127,6 +141,8 @@ fn geo027_009_invalid_point_nan() {
     assert_eq!(result.unwrap_err(), PathError::InvalidPoint);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_010_invalid_point_infinity() {
     // Given: A path with Infinity
@@ -144,6 +160,8 @@ fn geo027_010_invalid_point_infinity() {
     assert_eq!(result.unwrap_err(), PathError::InvalidPoint);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_011_epsilon_zero() {
     // Given: A path with points exactly on line
@@ -162,6 +180,8 @@ fn geo027_011_epsilon_zero() {
     assert_eq!(simplified.len(), 3);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_012_epsilon_boundary_exactly_on() {
     // Given: A path where middle point is exactly at epsilon distance
@@ -181,6 +201,8 @@ fn geo027_012_epsilon_boundary_exactly_on() {
     assert_eq!(simplified.len(), 2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_016_straight_line_preserved() {
     // Given: A simple straight line
@@ -197,6 +219,8 @@ fn geo027_016_straight_line_preserved() {
     assert_eq!(simplified[1], Point::new(100.0, 0.0));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn geo027_014_curved_path_simplification() {
     // Given: A curved path along diagonal
@@ -218,6 +242,8 @@ fn geo027_014_curved_path_simplification() {
     assert_eq!(simplified.len(), 2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn path_error_display() {
     assert_eq!(

@@ -25,6 +25,8 @@ fn create_test_node(x: f64, y: f64, locked: bool, kind: NodeKind) -> Node {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_nudge_selection_moves_unlocked_skips_locked() {
     let mut doc = DiagramDocument::default();
@@ -72,6 +74,8 @@ fn test_nudge_selection_moves_unlocked_skips_locked() {
     assert_eq!(n3.y.0, 25.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_nudge_selection_empty_does_nothing() {
     let mut doc = DiagramDocument::default();
@@ -81,6 +85,8 @@ fn test_nudge_selection_empty_does_nothing() {
     assert_eq!(doc.revision.value(), initial_revision.value());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_nudge_selection_zero_delta_does_nothing() {
     let mut doc = DiagramDocument::default();

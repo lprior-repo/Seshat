@@ -5,13 +5,13 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::models::envelope::DomainOp;
+use crate::models::envelope::{DomainOp, LabelTargetType};
 
 use crate::models::projection::ops::{
     apply_bring_forward, apply_bring_to_front, apply_edge_connect, apply_edge_disconnect,
     apply_group, apply_node_add, apply_node_delete, apply_node_move, apply_node_resize,
     apply_node_restore, apply_send_backward, apply_send_to_back, apply_ungroup,
-    apply_update_edge_style, apply_update_label, apply_update_node_style,
+    apply_update_edge_label, apply_update_edge_style, apply_update_label, apply_update_node_style,
 };
 use crate::models::projection::types::{DiagramProjection, EventRecord, ReplayError};
 
@@ -171,24 +171,73 @@ fn dispatch_operation(
             width,
             height,
             label,
-        } => apply_node_add(state, id, *x, *y, *width, *height, label),
-        DomainOp::NodeMove { id, x, y } => apply_node_move(state, id, *x, *y),
-        DomainOp::NodeDelete { id } => apply_node_delete(state, id),
-        DomainOp::NodeRestore { id } => apply_node_restore(state, id),
-        DomainOp::NodeResize { id, width, height } => apply_node_resize(state, id, *width, *height),
-        DomainOp::UpdateLabel { id, label } => apply_update_label(state, id, label),
-        DomainOp::UpdateNodeStyle { id, style } => apply_update_node_style(state, id, *style),
-        DomainOp::EdgeConnect { id, source, target } => {
-            apply_edge_connect(state, id, source, target)
+        } => apply_node_add(state, id.as_str(), *x, *y, *width, *height, label),
+        DomainOp::NodeMove { id, x, y } => apply_node_move(state, id.as_str(), *x, *y),
+        DomainOp::NodeDelete { id } => apply_node_delete(state, id.as_str()),
+        DomainOp::NodeRestore { id } => apply_node_restore(state, id.as_str()),
+        DomainOp::NodeResize {
+            id,
+            x,
+            y,
+            width,
+            height,
+            ..
+        } => apply_node_resize(state, id, *x, *y, *width, *height).map_err(
+            |e: crate::models::projection::types::ProjectionError| {
+                ReplayError::InvalidEvent(e.to_string())
+            },
+        ),
+        DomainOp::UpdateLabel {
+            target_id,
+            target_type,
+            old_label: _,
+            new_label,
+        } => match target_type {
+            LabelTargetType::Node => apply_update_label(state, target_id, new_label).map_err(
+                |e: crate::models::projection::types::ProjectionError| {
+                    ReplayError::InvalidEvent(e.to_string())
+                },
+            ),
+            LabelTargetType::Edge => apply_update_edge_label(state, target_id, new_label),
+        },
+        DomainOp::UpdateNodeStyle { id, style } => {
+            apply_update_node_style(state, id.as_str(), style.clone())
         }
-        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect(state, id),
-        DomainOp::UpdateEdgeStyle { id, style } => apply_update_edge_style(state, id, *style),
-        DomainOp::BringForward { ids } => apply_bring_forward(state, ids),
-        DomainOp::SendBackward { ids } => apply_send_backward(state, ids),
-        DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),
-        DomainOp::SendToBack { ids } => apply_send_to_back(state, ids),
-        DomainOp::Group { ids } => apply_group(state, ids),
-        DomainOp::Ungroup { id } => apply_ungroup(state, id),
+        DomainOp::EdgeConnect { id, source, target } => {
+            apply_edge_connect(state, id.as_str(), source.as_str(), target.as_str())
+        }
+        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect(state, id.as_str()),
+        DomainOp::UpdateEdgeStyle { id, style } => {
+            apply_update_edge_style(state, id.as_str(), style.clone())
+        }
+        DomainOp::EdgeConnect { id, source, target } => {
+            apply_edge_connect(state, id.as_str(), source.as_str(), target.as_str())
+        }
+        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect(state, id.as_str()),
+        DomainOp::UpdateEdgeStyle { id, style } => {
+            apply_update_edge_style(state, id.as_str(), style.clone())
+        }
+        DomainOp::BringForward { ids } => {
+            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+            apply_bring_forward(state, &str_ids)
+        }
+        DomainOp::SendBackward { ids } => {
+            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+            apply_send_backward(state, &str_ids)
+        }
+        DomainOp::BringToFront { ids } => {
+            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+            apply_bring_to_front(state, &str_ids)
+        }
+        DomainOp::SendToBack { ids } => {
+            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+            apply_send_to_back(state, &str_ids)
+        }
+        DomainOp::Group { ids } => {
+            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
+            apply_group(state, &str_ids)
+        }
+        DomainOp::Ungroup { id } => apply_ungroup(state, id.as_str()),
     }
 }
 

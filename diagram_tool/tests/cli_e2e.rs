@@ -33,6 +33,8 @@ fn parse_jsonl_events(stdout: Vec<u8>) -> Result<Vec<Value>, Box<dyn std::error:
     Ok(parsed)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_valid_document_when_validate_command_runs_then_it_succeeds(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -46,6 +48,8 @@ fn given_valid_document_when_validate_command_runs_then_it_succeeds(
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_valid_patch_when_patch_command_runs_then_it_writes_updated_document(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -81,6 +85,8 @@ fn given_valid_patch_when_patch_command_runs_then_it_writes_updated_document(
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_valid_document_when_layout_command_runs_then_output_contains_nodes_and_edges(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -111,6 +117,8 @@ fn given_valid_document_when_layout_command_runs_then_output_contains_nodes_and_
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_valid_document_when_render_svg_command_runs_then_svg_file_is_generated(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -134,6 +142,8 @@ fn given_valid_document_when_render_svg_command_runs_then_svg_file_is_generated(
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_validate_command_when_run_then_it_outputs_jsonl_start_and_finish_events(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -162,6 +172,8 @@ fn given_validate_command_when_run_then_it_outputs_jsonl_start_and_finish_events
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_invalid_v2_document_when_validate_runs_then_schema_violation_is_emitted(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -187,6 +199,8 @@ fn given_invalid_v2_document_when_validate_runs_then_schema_violation_is_emitted
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_legacy_edge_alias_when_validate_runs_then_parse_error_is_emitted(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -212,6 +226,8 @@ fn given_legacy_edge_alias_when_validate_runs_then_parse_error_is_emitted(
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_patch_without_first_revision_test_when_patch_runs_then_fail_closed_error_events_are_emitted(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -262,6 +278,8 @@ fn given_patch_without_first_revision_test_when_patch_runs_then_fail_closed_erro
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_stale_revision_document_when_patch_runs_then_it_fails_with_stale_revision_error(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -303,6 +321,8 @@ fn given_stale_revision_document_when_patch_runs_then_it_fails_with_stale_revisi
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_dag_cycle_document_when_validate_runs_then_it_fails_with_dag_error(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -330,6 +350,8 @@ fn given_dag_cycle_document_when_validate_runs_then_it_fails_with_dag_error(
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_dangling_edge_document_when_validate_runs_then_it_fails_with_dangling_error(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -357,6 +379,8 @@ fn given_dangling_edge_document_when_validate_runs_then_it_fails_with_dangling_e
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_failed_patch_when_last_known_good_exists_then_original_is_preserved(
 ) -> Result<(), Box<dyn std::error::Error>> {
@@ -400,6 +424,8 @@ fn given_failed_patch_when_last_known_good_exists_then_original_is_preserved(
     Ok(())
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_self_loop_edge_when_validate_runs_then_it_fails_with_dag_error(
 ) -> Result<(), Box<dyn std::error::Error>> {

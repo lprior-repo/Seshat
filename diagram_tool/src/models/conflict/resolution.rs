@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 
 use super::{ConflictDecision, ConflictError, ProjectionState};
-use crate::models::envelope::{Author, DomainOp, EventEnvelope};
+use crate::models::envelope::{Author, DomainOp, EventEnvelope, LabelTargetType};
 use crate::models::projection::DiagramProjection;
 
 fn is_human_author(author: &Author) -> bool {
@@ -21,8 +21,15 @@ fn extract_affected_entities(op: &DomainOp) -> Vec<String> {
         | DomainOp::NodeMove { id, .. }
         | DomainOp::NodeDelete { id }
         | DomainOp::NodeRestore { id }
-        | DomainOp::UpdateLabel { id, .. }
         | DomainOp::UpdateNodeStyle { id, .. } => vec![format!("node:{}", id)],
+        DomainOp::UpdateLabel {
+            target_id,
+            target_type,
+            ..
+        } => match target_type {
+            LabelTargetType::Node => vec![format!("node:{}", target_id)],
+            LabelTargetType::Edge => vec![format!("edge:{}", target_id)],
+        },
         DomainOp::NodeResize { id, .. } => vec![format!("node:{}", id.as_str())],
         DomainOp::EdgeConnect { id, source, target } => vec![
             format!("edge:{}", id),

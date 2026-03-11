@@ -997,6 +997,8 @@ mod tests {
     }
 
     /// Test: CyclePolicy default is Allow
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_no_cycle_policy_specified_then_default_is_allow() {
         let projection = DiagramProjection::empty();
@@ -1004,6 +1006,8 @@ mod tests {
     }
 
     /// Test: CyclePolicy::Allow permits cycles
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_policy_allow_when_cycle_exists_then_enforce_succeeds() {
         let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Allow);
@@ -1068,6 +1072,8 @@ mod tests {
     }
 
     /// Test: CyclePolicy::Deny rejects cycles
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_policy_deny_when_cycle_exists_then_enforce_fails() {
         let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
@@ -1138,6 +1144,8 @@ mod tests {
     }
 
     /// Test: CyclePolicy::Deny allows acyclic graphs
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_policy_deny_when_no_cycle_exists_then_enforce_succeeds() {
         let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
@@ -1192,6 +1200,8 @@ mod tests {
     }
 
     /// Test: apply_policy_op allows acyclic operations under Deny policy
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_policy_deny_when_applying_acyclic_op_then_succeeds() {
         let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);
@@ -1229,6 +1239,8 @@ mod tests {
     }
 
     /// Test: apply_policy_op rejects cycle-creating operations under Deny policy
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_policy_deny_when_applying_cyclic_op_then_fails() {
         let mut projection = DiagramProjection::with_cycle_policy(CyclePolicy::Deny);

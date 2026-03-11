@@ -588,7 +588,7 @@ pub fn apply_tail_batch(
 /// This function examines the events and collects all affected entity IDs
 /// (nodes and edges) for targeted UI updates.
 fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> {
-    use crate::models::envelope::DomainOp;
+    use crate::models::envelope::{DomainOp, LabelTargetType};
     use std::collections::HashSet;
 
     let mut entities: HashSet<String> = HashSet::new();
@@ -599,9 +599,14 @@ fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> 
             | DomainOp::NodeMove { id, .. }
             | DomainOp::NodeDelete { id }
             | DomainOp::NodeRestore { id }
-            | DomainOp::UpdateLabel { id, .. }
             | DomainOp::UpdateNodeStyle { id, .. } => {
                 entities.insert(format!("node:{}", id));
+            }
+            DomainOp::UpdateLabel { target_id, target_type, .. } => {
+                match target_type {
+                    LabelTargetType::Node => entities.insert(format!("node:{}", target_id)),
+                    LabelTargetType::Edge => entities.insert(format!("edge:{}", target_id)),
+                };
             }
             DomainOp::NodeResize { id, .. } => {
                 entities.insert(format!("node:{}", id.as_str()));
@@ -723,6 +728,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_new_events_returns_empty_when_no_events() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -731,6 +738,8 @@ mod tests {
         assert!(events.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_new_events_returns_events_after_revision() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -752,6 +761,8 @@ mod tests {
         assert_eq!(events[2].revision, 5);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_new_events_returns_all_events_when_after_revision_zero() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -770,6 +781,8 @@ mod tests {
         assert_eq!(events.len(), 3);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_new_events_returns_empty_when_after_revision_is_latest() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -788,6 +801,8 @@ mod tests {
         assert!(events.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_latest_revision_returns_zero_when_empty() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -796,6 +811,8 @@ mod tests {
         assert_eq!(revision, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_latest_revision_returns_max_revision() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -813,6 +830,8 @@ mod tests {
         assert_eq!(revision, 5);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn test_start_event_tail_watcher_fails_for_nonexistent_path() {
@@ -829,6 +848,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
     async fn test_start_event_tail_watcher_succeeds_for_existing_db() {
@@ -848,6 +869,8 @@ mod tests {
         let _ = rx.recv_timeout(Duration::from_millis(100));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
     async fn test_watcher_detects_database_modifications() {
@@ -885,6 +908,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_events_are_ordered_by_revision() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -908,6 +933,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_event_record_contains_correct_data() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -943,6 +970,8 @@ mod tests {
         assert!(matches!(event.operation, DomainOp::NodeMove { .. }));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_replaying_fetched_events_produces_correct_projection() {
         let (_temp_dir, _db_path, bootstrap) = create_test_db().await;
@@ -1014,6 +1043,8 @@ mod tests {
 
     // Tests for contract-compliant start_store_watcher and stop_store_watcher
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     #[cfg(not(target_arch = "wasm32"))]
     fn test_start_store_watcher_fails_for_nonexistent_path() {
@@ -1029,6 +1060,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
     async fn test_start_store_watcher_succeeds_for_existing_db() {
@@ -1045,6 +1078,8 @@ mod tests {
         drop(handle);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
     async fn test_stop_store_watcher_succeeds() {
@@ -1057,6 +1092,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     #[cfg(not(target_arch = "wasm32"))]
     async fn test_watcher_handle_is_active_flag() {
@@ -1071,6 +1108,8 @@ mod tests {
 
     // Tests for apply_tail_batch and schedule_ui_update
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_tail_batch_with_empty_events_returns_empty_summary() {
         use crate::models::projection::DiagramProjection;
@@ -1086,6 +1125,8 @@ mod tests {
         assert!(summary.affected_entities.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_apply_tail_batch_applies_events_and_updates_revision() {
         use crate::models::projection::DiagramProjection;
@@ -1114,6 +1155,8 @@ mod tests {
         assert_eq!(projection.nodes.len(), 3);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_apply_tail_batch_extracts_affected_entities() {
         use crate::models::projection::DiagramProjection;
@@ -1187,6 +1230,8 @@ mod tests {
             .contains(&"edge:edge-1".to_string()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_schedule_ui_update_with_empty_summary_succeeds() {
         let summary = ApplySummary {
@@ -1200,6 +1245,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_schedule_ui_update_with_events_succeeds() {
         let summary = ApplySummary {

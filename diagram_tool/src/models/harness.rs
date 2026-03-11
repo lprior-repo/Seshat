@@ -22,6 +22,7 @@
 use sqlx::Error as SqlxError;
 use std::path::Path;
 use thiserror::Error;
+use crate::models::document::{EdgeId, NodeId};
 
 use crate::models::envelope::{Author, DomainOp, EventEnvelope};
 use crate::models::projection::{replay_events, DiagramProjection, EventRecord};
@@ -418,7 +419,7 @@ fn generate_random_op(
             *node_counter += 1;
             let id = format!("node-{}", *node_counter);
             DomainOp::NodeAdd {
-                id,
+                id: NodeId::new(id),
                 x: rng.next_f64() * 1000.0,
                 y: rng.next_f64() * 1000.0,
                 width: 80.0 + rng.next_f64() * 120.0,
@@ -433,7 +434,7 @@ fn generate_random_op(
                 *node_counter += 1;
                 let id = format!("node-{}", *node_counter);
                 DomainOp::NodeAdd {
-                    id,
+                    id: NodeId::new(id),
                     x: rng.next_f64() * 1000.0,
                     y: rng.next_f64() * 1000.0,
                     width: 80.0,
@@ -444,7 +445,7 @@ fn generate_random_op(
                 // Move the last added node
                 let id = format!("node-{}", *node_counter);
                 DomainOp::NodeMove {
-                    id,
+                    id: NodeId::new(id),
                     x: rng.next_f64() * 1000.0,
                     y: rng.next_f64() * 1000.0,
                 }
@@ -784,7 +785,7 @@ fn test_fresh_database_recovery(_db_path: &Path) -> Result<TestReport, VerifyErr
         let envelope = EventEnvelope {
             op_id: format!("recovery-op-{}", i),
             operation: DomainOp::NodeAdd {
-                id: format!("node-{}", i),
+                id: NodeId::new(format!("node-{}", i)),
                 x: 100.0 * (i as f64),
                 y: 100.0 * (i as f64),
                 width: 80.0,
@@ -834,7 +835,7 @@ fn test_append_only_invariant(_db_path: &Path) -> Result<TestReport, VerifyError
         let envelope = EventEnvelope {
             op_id,
             operation: DomainOp::NodeAdd {
-                id: format!("node-{}", i),
+                id: NodeId::new(format!("node-{}", i)),
                 x: 100.0,
                 y: 100.0,
                 width: 80.0,
@@ -960,7 +961,7 @@ fn test_crash_after_append_before_memory_apply() -> Result<TestReport, VerifyErr
     let envelope = EventEnvelope {
         op_id: "crash-append-op-1".to_string(),
         operation: DomainOp::NodeAdd {
-            id: "node-crash-1".to_string(),
+            id: NodeId::new("node-crash-1".to_string()),
             x: 100.0,
             y: 200.0,
             width: 80.0,
@@ -1210,7 +1211,7 @@ fn test_human_drag_beats_ai_move_same_node() -> Result<TestReport, VerifyError> 
     let ai_envelope = EventEnvelope {
         op_id: "ai-move-1".to_string(),
         operation: DomainOp::NodeMove {
-            id: "node-1".to_string(),
+            id: NodeId::new("node-1".to_string()),
             x: 500.0,
             y: 500.0,
         },
@@ -1248,7 +1249,7 @@ fn test_ai_rejected_on_active_human_edit() -> Result<TestReport, VerifyError> {
     let ai_envelope = EventEnvelope {
         op_id: "ai-delete-1".to_string(),
         operation: DomainOp::NodeDelete {
-            id: "node-1".to_string(),
+            id: NodeId::new("node-1".to_string()),
         },
         author: Author {
             id: "ai-system".to_string(),
@@ -1293,7 +1294,7 @@ fn test_human_allowed_during_ai_edit() -> Result<TestReport, VerifyError> {
     let human_envelope = EventEnvelope {
         op_id: "human-move-1".to_string(),
         operation: DomainOp::NodeMove {
-            id: "node-1".to_string(),
+            id: NodeId::new("node-1".to_string()),
             x: 200.0,
             y: 200.0,
         },
@@ -1331,7 +1332,7 @@ fn test_ai_allowed_on_different_entity() -> Result<TestReport, VerifyError> {
     let ai_envelope = EventEnvelope {
         op_id: "ai-move-2".to_string(),
         operation: DomainOp::NodeMove {
-            id: "node-2".to_string(),
+            id: NodeId::new("node-2".to_string()),
             x: 300.0,
             y: 300.0,
         },
@@ -1369,9 +1370,9 @@ fn test_edge_conflict_with_human_node_edit() -> Result<TestReport, VerifyError> 
     let ai_envelope = EventEnvelope {
         op_id: "ai-edge-1".to_string(),
         operation: DomainOp::EdgeConnect {
-            id: "edge-1".to_string(),
-            source: "source-node".to_string(),
-            target: "target-node".to_string(),
+            id: EdgeId::new("edge-1".to_string()),
+            source: NodeId::new("source-node".to_string()),
+            target: NodeId::new("target-node".to_string()),
         },
         author: Author {
             id: "ai-connector".to_string(),
@@ -1428,7 +1429,7 @@ fn test_multi_entity_conflict_detection() -> Result<TestReport, VerifyError> {
     let ai_envelope = EventEnvelope {
         op_id: "ai-zorder-1".to_string(),
         operation: DomainOp::BringForward {
-            ids: vec!["node-a".to_string(), "node-c".to_string()],
+            ids: vec![NodeId::new("node-a".to_string()), NodeId::new("node-c".to_string())],
         },
         author: Author {
             id: "ai-organizer".to_string(),
@@ -1483,7 +1484,7 @@ fn test_rejection_observability() -> Result<TestReport, VerifyError> {
     let ai_envelope = EventEnvelope {
         op_id: "ai-obs-test".to_string(),
         operation: DomainOp::NodeMove {
-            id: "obs-node".to_string(),
+            id: NodeId::new("obs-node".to_string()),
             x: 999.0,
             y: 999.0,
         },
@@ -1540,7 +1541,7 @@ fn test_human_priority_preserved_across_replay() -> Result<TestReport, VerifyErr
             op_id: "op-1".to_string(),
             revision: 0,
             operation: DomainOp::NodeAdd {
-                id: "node-1".to_string(),
+                id: NodeId::new("node-1".to_string()),
                 x: 100.0,
                 y: 100.0,
                 width: 80.0,
@@ -1558,7 +1559,7 @@ fn test_human_priority_preserved_across_replay() -> Result<TestReport, VerifyErr
             op_id: "op-2".to_string(),
             revision: 1,
             operation: DomainOp::NodeAdd {
-                id: "node-2".to_string(),
+                id: NodeId::new("node-2".to_string()),
                 x: 200.0,
                 y: 200.0,
                 width: 80.0,
@@ -1576,7 +1577,7 @@ fn test_human_priority_preserved_across_replay() -> Result<TestReport, VerifyErr
             op_id: "op-3".to_string(),
             revision: 2,
             operation: DomainOp::NodeMove {
-                id: "node-1".to_string(),
+                id: NodeId::new("node-1".to_string()),
                 x: 150.0,
                 y: 150.0,
             },
@@ -1643,7 +1644,7 @@ mod tests {
         let envelope = EventEnvelope {
             op_id: "op-valid-1".to_string(),
             operation: DomainOp::NodeAdd {
-                id: "node-1".to_string(),
+                id: NodeId::new("node-1".to_string()),
                 x: 100.0,
                 y: 200.0,
                 width: 80.0,
@@ -1692,7 +1693,7 @@ mod tests {
             let envelope = EventEnvelope {
                 op_id: op_id.to_string(),
                 operation: DomainOp::NodeAdd {
-                    id: node_id.to_string(),
+                    id: NodeId::new(node_id.to_string()),
                     x: *x,
                     y: *y,
                     width: 80.0,
@@ -1788,7 +1789,7 @@ mod tests {
         let envelope1 = EventEnvelope {
             op_id: "op-initial".to_string(),
             operation: DomainOp::NodeAdd {
-                id: "node-1".to_string(),
+                id: NodeId::new("node-1".to_string()),
                 x: 100.0,
                 y: 100.0,
                 width: 80.0,
@@ -1811,7 +1812,7 @@ mod tests {
         let envelope2 = EventEnvelope {
             op_id: "op-stale".to_string(),
             operation: DomainOp::NodeAdd {
-                id: "node-2".to_string(),
+                id: NodeId::new("node-2".to_string()),
                 x: 200.0,
                 y: 200.0,
                 width: 80.0,
@@ -1869,7 +1870,7 @@ mod tests {
         let envelope1 = EventEnvelope {
             op_id: op_id.to_string(),
             operation: DomainOp::NodeAdd {
-                id: "node-dup".to_string(),
+                id: NodeId::new("node-dup".to_string()),
                 x: 100.0,
                 y: 100.0,
                 width: 80.0,
@@ -1892,7 +1893,7 @@ mod tests {
         let envelope2 = EventEnvelope {
             op_id: op_id.to_string(), // Same op_id
             operation: DomainOp::NodeAdd {
-                id: "node-dup-2".to_string(),
+                id: NodeId::new("node-dup-2".to_string()),
                 x: 200.0,
                 y: 200.0,
                 width: 80.0,
@@ -2121,7 +2122,7 @@ mod tests {
             op_id: "op-1".to_string(),
             revision: 0,
             operation: DomainOp::NodeAdd {
-                id: "node-1".to_string(),
+                id: NodeId::new("node-1".to_string()),
                 x: 100.0,
                 y: 100.0,
                 width: 80.0,
@@ -2140,7 +2141,7 @@ mod tests {
             op_id: "op-2".to_string(),
             revision: 0,
             operation: DomainOp::NodeAdd {
-                id: "node-2".to_string(),
+                id: NodeId::new("node-2".to_string()),
                 x: 200.0,
                 y: 200.0,
                 width: 80.0,

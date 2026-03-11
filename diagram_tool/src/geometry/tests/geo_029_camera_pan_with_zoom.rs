@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-029: Camera Pan with Zoom ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_pan_with_zoom() {
     // Given: screen-space delta and different zoom levels
@@ -26,6 +28,8 @@ fn test_camera_pan_with_zoom() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_pan_consistent_screen_movement() {
     // Given: two zoom levels and their world deltas
@@ -43,6 +47,8 @@ fn test_camera_pan_consistent_screen_movement() {
     assert!((world_delta1 / world_delta2 - 2.0_f64).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_pan_at_min_zoom() {
     // Given: minimum zoom level

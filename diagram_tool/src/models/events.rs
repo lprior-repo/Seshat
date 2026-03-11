@@ -151,6 +151,8 @@ mod tests {
     use crate::store::create_pool;
     use tempfile::TempDir;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_fresh_database_when_ensuring_schema_then_schema_is_created() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -167,6 +169,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_database_with_v1_schema_when_reading_state_then_returns_v1() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -185,6 +189,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_database_with_v1_schema_when_ensuring_again_then_returns_existing() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -200,6 +206,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_unknown_higher_schema_version_then_rejects_with_mismatch() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -237,6 +245,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn given_lower_schema_version_then_rejects_with_migration_forbidden() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");

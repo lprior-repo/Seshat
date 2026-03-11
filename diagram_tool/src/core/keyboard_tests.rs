@@ -2,6 +2,8 @@
 mod tests {
     use crate::core::keyboard::{map_key_to_action, KeyAction};
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_shortcuts_do_not_fire_when_input_has_focus() {
         let action = map_key_to_action("z", true, false, true);
@@ -11,6 +13,8 @@ mod tests {
         assert!(matches!(action2, KeyAction::None));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_undo_and_redo_bindings() {
         assert!(matches!(
@@ -34,6 +38,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clipboard_bindings() {
         assert!(matches!(
@@ -50,6 +56,8 @@ mod tests {
         ));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_delete_binding() {
         assert!(matches!(

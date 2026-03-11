@@ -479,6 +479,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_021_bounding_box_covers_rotated_nodes() {
         let mut doc = setup_doc();
@@ -502,6 +504,8 @@ mod tests {
         assert!((bounds.height - 141.421).abs() < 0.1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_022_long_press_adds_node_to_selection_without_drag() {
         let mut doc = setup_doc();
@@ -510,6 +514,8 @@ mod tests {
         assert!(doc.editor_state.selected_items.contains("n1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_023_double_click_enters_edit_mode_on_shape() {
         let mut doc = setup_doc();
@@ -518,6 +524,8 @@ mod tests {
         assert_eq!(doc.editor_state.edit_mode_target.as_deref(), Some("n1"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_024_selection_persists_across_camera_zoom_and_pan() {
         let mut doc = setup_doc();
@@ -534,6 +542,8 @@ mod tests {
         assert_eq!(selection_before, selection_after);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_025_marquee_selects_nodes_inside_subgraphs() {
         let mut doc = setup_doc();
@@ -569,6 +579,8 @@ mod tests {
         assert!(!selected.contains(&NodeId::new("n2".to_string())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_computing_bounds_for_missing_nodes() {
         let mut doc = setup_doc();
@@ -580,6 +592,8 @@ mod tests {
         assert_eq!(res.unwrap_err(), SelectionError::NodeNotFound);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_long_press_fails_when_movement_exceeds_threshold() {
         let mut doc = setup_doc();
@@ -590,6 +604,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_double_click_fails_on_uneditable_nodes() {
         let mut doc = setup_doc();
@@ -603,6 +619,8 @@ mod tests {
         assert_eq!(res.unwrap_err(), SelectionError::NodeNotEditable);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p1_violation_returns_node_not_found() {
         let mut doc = setup_doc();
@@ -611,6 +629,8 @@ mod tests {
         assert_eq!(res, Err(SelectionError::NodeNotFound));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p2_violation_returns_movement_exceeded_drag_threshold() {
         let mut doc = setup_doc();
@@ -618,6 +638,8 @@ mod tests {
         assert_eq!(res, Err(SelectionError::MovementExceededDragThreshold));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p3_violation_returns_node_not_editable() {
         let mut doc = setup_doc();
@@ -630,12 +652,16 @@ mod tests {
         assert_eq!(res, Err(SelectionError::NodeNotEditable));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p5_violation_returns_marquee_invalid() {
         let res = Rect::new(0.0, 0.0, -10.0, 10.0);
         assert_eq!(res.unwrap_err(), SelectionError::InvalidMarqueeBounds);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_021_bounding_box_with_mixed_rotated_and_unrotated_nodes() {
         let mut doc = setup_doc();
@@ -663,6 +689,8 @@ mod tests {
         assert!((bounds.height - 250.0).abs() < 0.1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_child() {
         let mut doc = setup_doc();

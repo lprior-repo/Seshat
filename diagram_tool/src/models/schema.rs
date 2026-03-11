@@ -228,6 +228,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_default_document_when_validated_then_schema_passes() {
         let doc = DiagramDocument::default();
@@ -235,6 +237,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_non_v2_document_when_validated_then_schema_fails_without_runtime_gate() {
         let doc = DiagramDocument {
@@ -246,6 +250,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_parent_that_is_not_subgraph_when_validated_then_schema_fails() {
         let parent_id = NodeId::new(String::from("parent"));
@@ -259,6 +265,8 @@ mod tests {
         assert!(validate_schema(&doc).is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_with_missing_target_when_validated_then_schema_fails() {
         let a = NodeId::new(String::from("a"));
@@ -271,6 +279,8 @@ mod tests {
         assert!(validate_schema(&doc).is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_missing_parent_reference_when_validated_then_schema_fails() {
         let missing_parent = NodeId::new(String::from("missing-parent"));
@@ -283,6 +293,8 @@ mod tests {
         assert!(validate_schema(&doc).is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_with_existing_subgraph_parent_when_validated_then_schema_passes() {
         let parent_id = NodeId::new(String::from("parent"));
@@ -300,6 +312,8 @@ mod tests {
     // SUB subgraph tests (bd-163) - Parent cycle prevention
     // =============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_circular_parent_chain_when_validated_then_schema_fails() {
         // Create a cycle: A -> B -> C -> A
@@ -330,6 +344,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_self_referential_parent_when_validated_then_schema_fails() {
         // A node that is its own parent
@@ -346,6 +362,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_node_parent_cycle_when_validated_then_schema_fails() {
         // Create a 2-node cycle: A -> B -> A
@@ -449,6 +467,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_version_must_be_2(version in 0u32..100) {
             let doc = DiagramDocument {
@@ -468,6 +488,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_editor_state_extreme_floats(
             camera_x in arb_ordered_float_with_specials(),
@@ -502,6 +524,8 @@ mod proptests {
             let _ = result;
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_edge_to_nonexistent_node_fails(
             source in arb_node_id(),
@@ -521,6 +545,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_edge_both_nodes_nonexistent(
             source in arb_node_id(),
@@ -540,6 +566,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_node_parent_must_exist_and_be_subgraph(
             child_id in arb_node_id(),
@@ -567,6 +595,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_node_references_missing_parent(child_id in arb_node_id(), missing in arb_node_id()) {
             let doc = DiagramDocument {
@@ -581,6 +611,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_self_referential_edge(node_id in arb_node_id(), edge_id in arb_edge_id()) {
             let doc = DiagramDocument {
@@ -596,6 +628,8 @@ mod proptests {
             prop_assert!(result.is_err(), "self-loop should fail DAG validation");
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_empty_vs_populated_empty_nodes(
             num_nodes in 0usize..10,
@@ -618,6 +652,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_deeply_nested_parent_chain(depth in 1usize..20) {
             let mut nodes = HashMap::new();
@@ -642,6 +678,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_circular_parent_chain_three_nodes(
             id_a in arb_node_id(),
@@ -664,6 +702,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_err(), "circular parent chain should fail");
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_multiple_edges_same_nodes(
             source in arb_node_id(),
@@ -689,6 +729,8 @@ mod proptests {
             prop_assert!(validate_schema(&doc).is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_node_extreme_coordinates(
             node_id in arb_node_id(),
@@ -714,6 +756,8 @@ mod proptests {
             let _ = validate_schema(&doc);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_complex_dag(
             num_nodes in 2usize..10,
@@ -748,6 +792,8 @@ mod proptests {
             let _ = validate_schema(&doc);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_subgraph_with_children(
             subgraph_id in arb_node_id(),

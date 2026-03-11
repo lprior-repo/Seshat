@@ -51,6 +51,8 @@ fn make_node(
 }
 
 /// Test that a simple subgraph with a child node round-trips correctly
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_subgraph_with_child_when_serialized_and_deserialized_then_parent_preserved() {
     let mut doc = DiagramDocument::default();
@@ -111,6 +113,8 @@ fn given_subgraph_with_child_when_serialized_and_deserialized_then_parent_preser
 }
 
 /// Test nested subgraphs survive round-trip
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_nested_subgraphs_when_serialized_and_deserialized_then_hierarchy_preserved() {
     let mut doc = DiagramDocument::default();
@@ -197,6 +201,8 @@ fn given_nested_subgraphs_when_serialized_and_deserialized_then_hierarchy_preser
 }
 
 /// Test that relative proportions are preserved after round-trip
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_subgraph_with_child_when_roundtripped_then_relative_proportions_preserved() {
     let mut doc = DiagramDocument::default();
@@ -258,6 +264,8 @@ fn given_subgraph_with_child_when_roundtripped_then_relative_proportions_preserv
 }
 
 /// Test that nested subgraph proportions are preserved
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_nested_subgraphs_when_roundtripped_then_inner_outer_proportions_preserved() {
     let mut doc = DiagramDocument::default();
@@ -326,6 +334,8 @@ fn given_nested_subgraphs_when_roundtripped_then_inner_outer_proportions_preserv
 }
 
 /// Test the scene_nested_subgraph_v1.json format round-trips correctly
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_scene_nested_subgraph_v1_json_when_parsed_then_document_valid() {
     let json = include_str!("../../e2e/scenes/scene_nested_subgraph_v1.json");
@@ -393,6 +403,8 @@ fn given_scene_nested_subgraph_v1_json_when_parsed_then_document_valid() {
 }
 
 /// Test that schema validation passes for valid nested subgraphs
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_valid_nested_subgraph_document_when_validated_then_passes() {
     use crate::models::schema::validate_schema;
@@ -409,6 +421,8 @@ fn given_valid_nested_subgraph_document_when_validated_then_passes() {
 }
 
 /// Test that schema validation fails for node with non-subgraph parent
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_node_with_non_subgraph_parent_when_validated_then_fails() {
     use crate::models::schema::validate_schema;

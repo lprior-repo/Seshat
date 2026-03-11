@@ -821,12 +821,16 @@ pub fn run_all_tests(categories: &[TestCategory]) -> Result<TestSuiteReport, Tes
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fixtures_dir_returns_path() {
         let dir = fixtures_dir();
         assert!(dir.ends_with("tests/fixtures"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_load_fixture_not_found_returns_error() {
         let result = load_fixture("nonexistent_fixture_12345.json");
@@ -839,6 +843,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_validate_fixture_schema_accepts_version_2() {
         let doc = serde_json::json!({"version": 2, "document": {"nodes": {}, "edges": {}}});
@@ -846,6 +852,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_validate_fixture_schema_rejects_wrong_version() {
         let doc = serde_json::json!({"version": 99, "document": {"nodes": {}, "edges": {}}});
@@ -860,6 +868,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_get_nodes_missing_nodes_returns_error() {
         let doc = serde_json::json!({"version": 2, "document": {"edges": {}}});
@@ -873,6 +883,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_get_edges_missing_edges_returns_error() {
         let doc = serde_json::json!({"version": 2, "document": {"nodes": {}}});
@@ -886,6 +898,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_create_golden_scene_produces_valid_document() {
         let nodes = vec![NodeSpec {
@@ -909,6 +923,8 @@ mod tests {
         assert!(doc["document"]["nodes"].get("test-node-1").is_some());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_category_expected_counts_are_correct() {
         assert_eq!(TestCategory::Sel.expected_count(), 25);
@@ -924,12 +940,16 @@ mod tests {
         assert_eq!(TestCategory::Inp.expected_count(), 7);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_total_expected_tests_is_228() {
         let total: usize = TestCategory::all().iter().map(|c| c.expected_count()).sum();
         assert_eq!(total, 228);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_generate_stress_scene_produces_5000_nodes() {
         let doc = generate_stress_scene(12345);
@@ -947,6 +967,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_generate_stress_scene_is_deterministic() {
         let doc1 = generate_stress_scene(12345);
@@ -955,6 +977,8 @@ mod tests {
         assert_eq!(doc1, doc2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fuzz_document_operations_produces_deterministic_report() {
         let report1 = fuzz_document_operations(12345, 100).unwrap();
@@ -965,6 +989,8 @@ mod tests {
         assert_eq!(report1.cases_run, report2.cases_run);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_verify_invariants_passes_for_valid_document() {
         let mut doc = DiagramDocument::default();
@@ -997,6 +1023,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_verify_invariants_fails_for_nan_coordinates() {
         let mut doc = DiagramDocument::default();
@@ -1035,6 +1063,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_verify_invariants_fails_for_negative_dimensions() {
         let mut doc = DiagramDocument::default();
@@ -1073,6 +1103,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_compute_document_hash_is_stable() {
         let doc = DiagramDocument::default();
@@ -1082,6 +1114,8 @@ mod tests {
         assert_eq!(hash1, hash2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_test_db_path_is_unique_per_test() {
         let path1 = test_db_path("test_a");
@@ -1090,6 +1124,8 @@ mod tests {
         assert_ne!(path1, path2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_run_all_tests_aggregates_categories() {
         let categories = &[TestCategory::Sel, TestCategory::Clp];
@@ -1099,6 +1135,8 @@ mod tests {
         assert_eq!(report.categories.len(), 2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_category_display_names() {
         assert_eq!(TestCategory::Sel.display_name(), "Selection");
@@ -1106,6 +1144,8 @@ mod tests {
         assert_eq!(TestCategory::Inp.display_name(), "Input (Touch/Stylus)");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_category_all_returns_all_categories() {
         let all = TestCategory::all();

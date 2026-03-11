@@ -370,6 +370,8 @@ mod tests {
         baseline
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_regression_result_new() {
         let result = RegressionResult::new(Operation::Pan, 100.0, 120.0, 20.0);
@@ -379,6 +381,8 @@ mod tests {
         assert!((result.delta_percent - (-16.67)).abs() < 0.1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_regression_result_failed() {
         let result = RegressionResult::new(Operation::Pan, 90.0, 120.0, 20.0);
@@ -386,6 +390,8 @@ mod tests {
         assert!(!result.passed); // 30 FPS drop exceeds threshold
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_regression_result_summary() {
         let result = RegressionResult::new(Operation::Pan, 110.0, 120.0, 20.0);
@@ -397,6 +403,8 @@ mod tests {
         assert!(summary.contains("120"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_regression_test_from_baseline() {
         let baseline = make_test_baseline();
@@ -410,6 +418,8 @@ mod tests {
         assert!(regression.passed); // 20 FPS drop is at threshold
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_regression_test_unknown_operation() {
         let baseline = make_test_baseline();
@@ -421,6 +431,8 @@ mod tests {
         assert!(regression.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_any_regressions() {
         let passing: Vec<RegressionResult> = vec![
@@ -436,6 +448,8 @@ mod tests {
         assert!(RegressionTest::any_regressions(&failing));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_summarize_results() {
         let results: Vec<RegressionResult> = vec![
@@ -448,6 +462,8 @@ mod tests {
         assert!(summary.contains("0 failed"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_performance_report_new() {
         let results: Vec<RegressionResult> =
@@ -458,6 +474,8 @@ mod tests {
         assert_eq!(report.regression_results.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_performance_report_markdown() {
         let results: Vec<RegressionResult> =
@@ -471,6 +489,8 @@ mod tests {
         assert!(md.contains("| pan |"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_performance_report_save_load() {
         let temp_dir = tempfile::tempdir().unwrap();

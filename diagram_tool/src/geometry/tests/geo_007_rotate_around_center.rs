@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-007: Rotate Around Center ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_center_90_degrees() {
     // Given: a point at (100, 0) and center at origin
@@ -24,6 +26,8 @@ fn test_rotate_around_center_90_degrees() {
     assert!((rotated.y - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_center_180_degrees() {
     // Given: a point at (100, 0) and center at origin
@@ -38,6 +42,8 @@ fn test_rotate_around_center_180_degrees() {
     assert!((rotated.y - 0.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_center_keeps_center_fixed() {
     // Given: center as the point to rotate
@@ -51,6 +57,8 @@ fn test_rotate_around_center_keeps_center_fixed() {
     assert!((rotated.y - center.y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_center_45_degrees() {
     // Given: a point at (1, 0) and center at origin

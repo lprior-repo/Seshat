@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-030: Camera World-to-Screen at Extremes ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_world_to_screen_at_extremes() {
     // Given: extreme world coordinates
@@ -28,6 +30,8 @@ fn test_camera_world_to_screen_at_extremes() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_world_to_screen_at_extremes_with_zoom() {
     // Given: extreme coordinates with high zoom
@@ -44,6 +48,8 @@ fn test_camera_world_to_screen_at_extremes_with_zoom() {
     assert!((screen.x - 1e7).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_camera_round_trip_at_extremes() {
     // Given: extreme world coordinates

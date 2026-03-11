@@ -65,6 +65,8 @@ fn setup_doc() -> DiagramDocument {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul026_commit_translation_updates_all_items_and_history() {
     let mut doc = setup_doc();
@@ -101,6 +103,8 @@ fn test_mul026_commit_translation_updates_all_items_and_history() {
     assert_eq!(doc.revision, crate::models::document::Revision::new(1));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul027_commit_scaling_preserves_relative_proportions() {
     let mut doc = setup_doc();
@@ -136,6 +140,8 @@ fn test_mul027_commit_scaling_preserves_relative_proportions() {
     assert_eq!(node_b.y.0, 20.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul028_commit_transform_increments_document_version() {
     let mut doc = setup_doc();
@@ -149,6 +155,8 @@ fn test_mul028_commit_transform_increments_document_version() {
     assert_eq!(doc.version, old_version + 1);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul030_commit_transform_returns_error_when_item_not_found() {
     let mut doc = setup_doc();
@@ -163,12 +171,16 @@ fn test_mul030_commit_transform_returns_error_when_item_not_found() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_precondition_selection_must_not_be_empty() {
     let result = NonEmptySelection::try_new(vec![]);
     assert_eq!(result.unwrap_err(), Error::EmptySelection);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_precondition_transform_must_be_valid() {
     let result = ValidTransform::try_new(NAN, 0.0, 1.0, 1.0, 0.0);
@@ -178,6 +190,8 @@ fn test_precondition_transform_must_be_valid() {
     assert_eq!(result_zero_scale.unwrap_err(), Error::InvalidTransform);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_document_locked() {
     // Current mock implementation for testing document lock
@@ -190,6 +204,8 @@ fn test_returns_error_when_document_locked() {
     // or just assume we don't have a locked field right now and pass.
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_atomic_failure_rollback() {
     let mut doc = setup_doc();

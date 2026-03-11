@@ -21,6 +21,8 @@ pub fn zoom_at_pointer(view_center: Point, pointer: Point, factor: f64) -> Point
     )
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_zoom_at_pointer_center() {
     // Given: view centered at origin, pointer at origin
@@ -35,6 +37,8 @@ fn test_zoom_at_pointer_center() {
     assert!((new_center.y - 0.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_zoom_at_pointer_offset() {
     // Given: view at (100, 100), pointer at (50, 50)
@@ -50,6 +54,8 @@ fn test_zoom_at_pointer_offset() {
     assert!((new_center.y - 150.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_zoom_at_pointer_zoom_out() {
     // Given: view at (100, 100), pointer at (50, 50)

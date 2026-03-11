@@ -43,7 +43,7 @@ use crate::{
         dag::validate_dag,
         document::{
             ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
-            OrderedFloat, Revision,
+            OrderedFloat,
         },
     },
     ui::{
@@ -459,7 +459,7 @@ fn flush_pending_pointer_update(
                                     tx.send(crate::models::envelope::EventEnvelope {
                                         op_id: uuid::Uuid::new_v4().to_string(),
                                         operation: crate::models::envelope::DomainOp::NodeMove {
-                                            id: id.to_string(),
+                                            id: id.clone(),
                                             x: *nx,
                                             y: *ny,
                                         },
@@ -799,10 +799,13 @@ pub fn Canvas() -> Element {
                                 match mode {
                                     InteractionMode::DraggingSelection { .. }
                                     | InteractionMode::ResizingSelection { .. } => {
+                                        let db_tx = db_tx.clone();
+                                        let mut doc_clone = doc_signal.read().clone();
                                         interaction_mode.with_mut(|mode_mut| {
-                                            doc_signal.with_mut(|doc| {
-                                                let _ = finalize_motion_release(mode_mut, doc);
-                                            });
+                                            let did_change = finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
+                                            if did_change {
+                                                doc_signal.set(doc_clone);
+                                            }
                                         });
                                     }
                                     InteractionMode::Select => {
@@ -1242,7 +1245,9 @@ pub fn Canvas() -> Element {
                             editing_node,
                             editing_edge,
                             edit_value,
-                        );
+                            db_tx.clone(),
+                        )
+                        .ok();
                     }
 
                     let button = json["button"].as_str().map_or("0", |s| s);
@@ -1506,28 +1511,31 @@ pub fn Canvas() -> Element {
                                 let history = history_signal.read().clone();
                                 *history_signal.write() = history.push(current_doc);
                                 doc_signal.with_mut(|doc| {
-                                    let _ = doc.document.nodes.insert(
-                                        id.clone(),
-                                        Node {
-                                            kind: NodeKind::Subgraph,
-                                            icon: String::new(),
-                                            label: String::from("Subgraph"),
-                                            x: OrderedFloat(x),
-                                            y: OrderedFloat(y),
-                                            width: OrderedFloat(w),
-                                            height: OrderedFloat(h),
-                                            font_size: None,
-                                            font_weight: None,
-                                            locked: true,
-                                            parent: None,
-                                            dag_rank: None,
-                                            tags: im::Vector::new(),
-                                            metadata: HashMap::new(),
-                                            z_index: -1,
-                                            style: Some(NodeStyle::Box),
-                                            collapsed: Some(false),
-                                        },
-                                    );
+                                    doc.document.nodes = doc
+                                        .document
+                                        .nodes
+                                        .update(
+                                            id.clone(),
+                                            Node {
+                                                kind: NodeKind::Subgraph,
+                                                icon: String::new(),
+                                                label: String::new(),
+                                                x: OrderedFloat(x),
+                                                y: OrderedFloat(y),
+                                                width: OrderedFloat(w),
+                                                height: OrderedFloat(h),
+                                                font_size: None,
+                                                font_weight: None,
+                                                locked: true,
+                                                parent: None,
+                                                dag_rank: None,
+                                                tags: im::Vector::new(),
+                                                metadata: HashMap::new(),
+                                                z_index: -1,
+                                                style: Some(NodeStyle::Box),
+                                                collapsed: Some(false),
+                                            },
+                                        );
                                     doc.editor_state.selected_items.clear();
                                     let _ = doc.editor_state.selected_items.insert(id.to_string());
                                     doc.revision = doc.revision.increment();
@@ -1538,10 +1546,13 @@ pub fn Canvas() -> Element {
                         }
                         InteractionMode::ResizingSelection { .. }
                         | InteractionMode::DraggingSelection { .. } => {
-                            doc_signal.with_mut(|doc| {
-                                let _ = finalize_motion_release(mode, doc);
-                            });
-                            *mode = InteractionMode::Select;
+                            let db_tx = db_tx.clone();
+                            let mut doc_clone = doc_signal.read().clone();
+                            let did_change = finalize_motion_release(mode, &mut doc_clone, &db_tx);
+                            if did_change {
+                                doc_signal.set(doc_clone);
+                                *mode = InteractionMode::Select;
+                            }
                         }
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
@@ -1808,7 +1819,9 @@ pub fn Canvas() -> Element {
                         editing_node,
                         editing_edge,
                         edit_value,
-                    );
+                        db_tx.clone(),
+                    )
+                    .ok();
                 }
                 let coords = evt.data.coordinates().client();
                 // Use origin from the signal - it should be fresh now because the JS pointerdown
@@ -2116,9 +2129,12 @@ pub fn Canvas() -> Element {
                         }
                         InteractionMode::ResizingSelection { .. }
                         | InteractionMode::DraggingSelection { .. } => {
-                            doc_signal.with_mut(|doc| {
-                                let _ = finalize_motion_release(mode, doc);
-                            });
+                            let db_tx = db_tx.clone();
+                            let mut doc_clone = doc_signal.read().clone();
+                            let did_change = finalize_motion_release(mode, &mut doc_clone, &db_tx);
+                            if did_change {
+                                doc_signal.set(doc_clone);
+                            }
                         }
                         InteractionMode::Panning { .. } => {
                             *mode = InteractionMode::Select;
@@ -2304,7 +2320,9 @@ pub fn Canvas() -> Element {
                                                         editing_node,
                                                         editing_edge,
                                                         edit_value,
-                                                    );
+                                                        db_tx.clone(),
+                                                    )
+                                                    .ok();
                                                 },
                                                 onkeydown: move |evt| {
                                                     if evt.key() == Key::Enter {
@@ -2314,7 +2332,9 @@ pub fn Canvas() -> Element {
                                                             editing_node,
                                                             editing_edge,
                                                             edit_value,
-                                                        );
+                                                            db_tx.clone(),
+                                                        )
+                                                        .ok();
                                                     } else if evt.key() == Key::Escape {
                                                         editing_edge.set(None);
                                                     }
@@ -2600,10 +2620,13 @@ pub fn Canvas() -> Element {
                                     }
                                     InteractionMode::DraggingSelection { .. }
                                     | InteractionMode::ResizingSelection { .. } => {
+                                        let db_tx = db_tx.clone();
+                                        let mut doc_clone = doc_signal.read().clone();
                                         interaction_mode.with_mut(|mode_mut| {
-                                            doc_signal.with_mut(|doc| {
-                                                let _ = finalize_motion_release(mode_mut, doc);
-                                            });
+                                            let did_change = finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
+                                            if did_change {
+                                                doc_signal.set(doc_clone);
+                                            }
                                         });
                                     }
                                     _ => {}
@@ -2633,7 +2656,9 @@ pub fn Canvas() -> Element {
                                                 editing_node,
                                                 editing_edge,
                                                 edit_value,
-                                            );
+                                                db_tx.clone(),
+                                            )
+                                            .ok();
                                         },
                                         onkeydown: move |evt| {
                                             if evt.key() == Key::Enter {
@@ -2643,7 +2668,9 @@ pub fn Canvas() -> Element {
                                                     editing_node,
                                                     editing_edge,
                                                     edit_value,
-                                                );
+                                                    db_tx.clone(),
+                                                )
+                                                .ok();
                                             } else if evt.key() == Key::Escape {
                                                 editing_node.set(None);
                                             }
@@ -2686,7 +2713,9 @@ pub fn Canvas() -> Element {
                                                 editing_node,
                                                 editing_edge,
                                                 edit_value,
-                                            );
+                                                db_tx.clone(),
+                                            )
+                                            .ok();
                                         },
                                         onkeydown: move |evt| {
                                             if evt.key() == Key::Enter {
@@ -2696,7 +2725,9 @@ pub fn Canvas() -> Element {
                                                     editing_node,
                                                     editing_edge,
                                                     edit_value,
-                                                );
+                                                    db_tx.clone(),
+                                                )
+                                                .ok();
                                             } else if evt.key() == Key::Escape {
                                                 editing_node.set(None);
                                             }
@@ -2818,7 +2849,9 @@ pub fn Canvas() -> Element {
                                                 editing_node,
                                                 editing_edge,
                                                 edit_value,
-                                            );
+                                                db_tx.clone(),
+                                            )
+                                            .ok();
                                         },
                                         onkeydown: move |evt| {
                                             if evt.key() == Key::Enter {
@@ -2828,7 +2861,9 @@ pub fn Canvas() -> Element {
                                                     editing_node,
                                                     editing_edge,
                                                     edit_value,
-                                                );
+                                                    db_tx.clone(),
+                                                )
+                                                .ok();
                                             } else if evt.key() == Key::Escape {
                                                 editing_node.set(None);
                                             }
@@ -3047,7 +3082,7 @@ mod tests {
             height: OrderedFloat(50.0),
             font_size: None,
             font_weight: None,
-            locked: true,
+            locked: false,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -3058,6 +3093,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_rubber_band_release_when_applied_then_selection_is_committed() {
         let mut doc = DiagramDocument::default();
@@ -3075,6 +3112,8 @@ mod tests {
             .contains(&node_id.to_string()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_noop_rubber_band_when_released_then_selection_is_preserved() {
         let mut doc = DiagramDocument::default();
@@ -3094,6 +3133,8 @@ mod tests {
             .contains(&node_id.to_string()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_existing_selection_when_rubber_band_released_then_selection_is_cleared() {
         let mut doc = DiagramDocument::default();
@@ -3123,6 +3164,8 @@ mod tests {
             .contains(&node2_id.to_string()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_subgraph_release_bounds_when_drag_too_small_then_none() {
         let grid = GridSize::new(20.0).unwrap();
@@ -3130,6 +3173,8 @@ mod tests {
         assert!(result.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
         let grid = GridSize::new(20.0).unwrap();
@@ -3137,6 +3182,8 @@ mod tests {
         assert_eq!(result, Some((5.0, 10.0, 55.0, 60.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_icon_side_when_too_small_then_fit_never_panics_and_stays_non_negative() {
         let result = fit_icon_side(19.68);

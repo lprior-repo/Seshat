@@ -331,6 +331,8 @@ mod tests {
         doc
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_malformed_import_when_preparing_transition_then_returns_parse_error() {
         let current = sample_doc_with_node("n-current", 40.0);
@@ -338,6 +340,8 @@ mod tests {
         assert!(matches!(result, Err(ImportTransitionError::Parse(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_semantically_invalid_import_when_preparing_transition_then_returns_validation_error() {
         let current = sample_doc_with_node("n-current", 40.0);
@@ -359,6 +363,8 @@ mod tests {
         assert!(matches!(result, Err(ImportTransitionError::Validation(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_import_when_preparing_transition_then_new_doc_and_history_are_atomic() {
         let current = sample_doc_with_node("n-current", 40.0);
@@ -394,6 +400,8 @@ mod tests {
         assert!(fresh_history.undo(current).is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_import_error_when_applying_contents_then_doc_and_history_remain_unchanged() {
         let mut doc = sample_doc_with_node("n-current", 40.0);
@@ -415,6 +423,8 @@ mod tests {
         assert_eq!(undo_after, Some(previous));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_validation_error_when_applying_contents_then_doc_and_history_remain_unchanged() {
         let mut doc = sample_doc_with_node("n-current", 40.0);
@@ -450,6 +460,8 @@ mod tests {
         assert_eq!(undo_after, Some(previous));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_import_error_when_selection_exists_then_selection_is_preserved() {
         let mut doc = sample_doc_with_node("n-current", 40.0);
@@ -467,6 +479,8 @@ mod tests {
     /// Given: A document with nodes at precise fractional coordinates
     /// When: Saving to JSON and reopening
     /// Then: All geometry values are exactly preserved
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_fractional_coords_when_round_trip_then_geometry_preserved() {
         use crate::models::canonical_json::to_canonical_pretty_json;
@@ -533,6 +547,8 @@ mod tests {
     }
 
     /// IO-TEST-3b: Multiple nodes with various precision levels
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_various_precision_coords_when_round_trip_then_all_preserved() {
         use crate::models::canonical_json::to_canonical_pretty_json;
@@ -604,6 +620,8 @@ mod tests {
     /// Given: A JSON document with very large coordinate values
     /// When: Importing the document
     /// Then: Import succeeds without floating-point overflow/crash
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_large_coordinates_when_import_then_succeeds() {
         use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
@@ -663,6 +681,8 @@ mod tests {
     }
 
     /// IO-TEST-4b: Extreme but finite values
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_with_extreme_finite_coords_when_import_then_succeeds() {
         use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;

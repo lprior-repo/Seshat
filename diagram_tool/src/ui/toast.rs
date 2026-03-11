@@ -13,6 +13,157 @@ use std::collections::HashSet;
 
 const MAX_TOASTS: usize = 1;
 const DISMISS_REMOVE_DELAY_MS: u64 = 1_000_000;
+const CONFLICT_TOAST_DISMISS_MS: u64 = 3_000;
+
+/// AI conflict state representation for toast display
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct AiConflictState {
+    /// The reason for the conflict rejection
+    pub reason: Option<String>,
+    /// Entities that were in conflict
+    pub conflicting_entities: Vec<String>,
+}
+
+impl AiConflictState {
+    #[must_use]
+    pub const fn new(reason: Option<String>, conflicting_entities: Vec<String>) -> Self {
+        Self {
+            reason,
+            conflicting_entities,
+        }
+    }
+
+    #[must_use]
+    pub fn has_valid_reason(&self) -> bool {
+        self.reason
+            .as_ref()
+            .is_some_and(|r| !r.trim().is_empty())
+    }
+}
+
+/// Error types for conflict toast operations - matches contract specification
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum Error {
+    /// No conflict state provided (P1 violation)
+    NoConflictState,
+    /// Toast queue is at capacity (P2 violation)
+    QueueFull,
+    /// Conflict reason is empty or missing (P3 violation)
+    InvalidReason,
+    /// The JavaScript setTimeout call failed or returned an error
+    JsTimeoutFailure,
+    /// The required Dioxus signal is not available in context
+    SignalNotFound,
+    /// Attempted to dismiss a toast that no longer exists in the queue
+    ToastNotFound,
+    /// The auto-dismiss timer was cancelled (e.g., manual dismiss before 3s)
+    TimerCancelled,
+}
+
+impl std::fmt::Display for Error {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::NoConflictState => write!(f, "No conflict state provided"),
+            Self::QueueFull => write!(f, "Toast queue is at capacity"),
+            Self::InvalidReason => write!(f, "Conflict reason is empty or missing"),
+            Self::JsTimeoutFailure => write!(f, "JavaScript setTimeout call failed"),
+            Self::SignalNotFound => write!(f, "Required Dioxus signal not available in context"),
+            Self::ToastNotFound => write!(f, "Toast no longer exists in the queue"),
+            Self::TimerCancelled => write!(f, "Auto-dismiss timer was cancelled"),
+        }
+    }
+}
+
+impl std::error::Error for Error {}
+
+/// Validates that conflict state has meaningful content
+fn validate_conflict_state(state: &AiConflictState) -> Result<(), Error> {
+    let has_reason = state
+        .reason
+        .as_ref()
+        .is_some_and(|r| !r.trim().is_empty());
+    let has_entities = !state.conflicting_entities.is_empty();
+    if !has_reason && !has_entities {
+        Err(Error::NoConflictState)
+    } else {
+        Ok(())
+    }
+}
+
+/// Extracts the reason text from conflict state, using fallback if empty
+fn extract_reason_text(state: &AiConflictState) -> String {
+    state
+        .reason
+        .as_ref()
+        .filter(|r| !r.trim().is_empty())
+        .cloned()
+        .unwrap_or_else(|| "Edit conflict".to_string())
+}
+
+/// Builds the detail text for the toast from conflict state
+fn build_conflict_detail(reason_text: &str, entities: &[String]) -> Option<String> {
+    if entities.is_empty() {
+        Some(reason_text.to_string())
+    } else {
+        let entity_list = entities.join(", ");
+        Some(format!("{reason_text}: {entity_list}"))
+    }
+}
+
+/// Validates that the created toast has a valid ID
+fn validate_toast_id(handle: &ToastHandle) -> Result<(), Error> {
+    if handle.id().0 == 0 {
+        Err(Error::QueueFull)
+    } else {
+        Ok(())
+    }
+}
+
+/// Creates toast options for a conflict notification
+fn create_conflict_toast_options(state: &AiConflictState) -> ToastOptions {
+    let reason = extract_reason_text(state);
+    let detail = build_conflict_detail(&reason, &state.conflicting_entities);
+    ToastOptions::new(ToastIntent::Warning, "Edit Conflict").with_optional_detail(detail)
+}
+
+/// Clears the ai_conflict_state signal by setting it to None
+pub fn clear_ai_conflict_state(state: &mut Signal<Option<AiConflictState>>) {
+    state.set(None);
+}
+
+/// Display toast for AI conflict state
+/// Returns: Result<ToastHandle, Error>
+pub fn show_conflict_toast(
+    conflict_state: &AiConflictState,
+    toast_api: ToastApi,
+) -> Result<ToastHandle, Error> {
+    // P1: Must have valid conflict state
+    validate_conflict_state(conflict_state)?;
+
+    // Create toast options and display
+    let options = create_conflict_toast_options(conflict_state);
+    let handle = toast_api.toast(options);
+
+    // Q1: Verify toast has valid non-zero ID
+    validate_toast_id(&handle)?;
+
+    Ok(handle)
+}
+
+/// Check if toast should be displayed for conflict
+/// Returns: Result<bool, Error>
+pub fn should_show_conflict_toast(
+    conflict_state: Option<&AiConflictState>,
+) -> Result<bool, Error> {
+    match conflict_state {
+        Some(state) => {
+            // P1: Must have valid conflict state
+            // P3: Rejection reason must be present
+            Ok(state.has_valid_reason() || !state.conflicting_entities.is_empty())
+        }
+        None => Ok(false),
+    }
+}
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct ToastId(u64);
@@ -331,12 +482,56 @@ impl ToastQueue {
 #[component]
 pub fn Toaster() -> Element {
     let mut toasts = use_context::<Signal<ToastQueue>>();
+    let ai_conflict_state: Option<Signal<Option<String>>> = use_context();
     let items = toasts.read().items().to_vec();
     let mut pending_remove: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
-    let effect_items = items.clone();
+    let mut pending_dismiss: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
 
+    // Auto-dismiss effect for conflict toasts (Warning and Error intents)
+    let effect_items_dismiss = items.clone();
     use_effect(move || {
-        let to_schedule: Vec<ToastId> = effect_items
+        let to_dismiss: Vec<ToastId> = effect_items_dismiss
+            .iter()
+            .filter_map(|item| {
+                let is_conflict = matches!(item.intent, ToastIntent::Warning | ToastIntent::Error);
+                let not_yet_dismissed = !item.dismissed;
+                let not_scheduled = !pending_dismiss.read().contains(&item.id);
+                if is_conflict && not_yet_dismissed && not_scheduled {
+                    Some(item.id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+
+        for id in to_dismiss {
+            let _ = pending_dismiss.write().insert(id);
+            let mut toasts_signal = toasts;
+            let mut pending_signal = pending_dismiss;
+            let conflict_state = ai_conflict_state;
+            let mut eval = document::eval(&format!(
+                "setTimeout(() => dioxus.send({{ kind: 'dismiss-conflict', id: {} }}), {});",
+                id.0, CONFLICT_TOAST_DISMISS_MS
+            ));
+            spawn(async move {
+                if eval.recv::<serde_json::Value>().await.is_ok() {
+                    toasts_signal.with_mut(|queue| {
+                        let _ = queue.dismiss(id);
+                    });
+                    // Clear conflict state after auto-dismiss
+                    if let Some(mut state) = conflict_state {
+                        *state.write() = None;
+                    }
+                    let _ = pending_signal.write().remove(&id);
+                }
+            });
+        }
+    });
+
+    // Existing removal effect for dismissed toasts
+    let effect_items_remove = items.clone();
+    use_effect(move || {
+        let to_schedule: Vec<ToastId> = effect_items_remove
             .iter()
             .filter_map(|item| {
                 if item.dismissed && !pending_remove.read().contains(&item.id) {
@@ -432,6 +627,10 @@ pub fn Toaster() -> Element {
                                         toasts.with_mut(|queue| {
                                             let _ = queue.dismiss_target(Some(id));
                                         });
+                                        // Clear conflict state on manual dismiss
+                                        if let Some(mut state) = ai_conflict_state {
+                                            *state.write() = None;
+                                        }
                                     },
                                     "x"
                                 }

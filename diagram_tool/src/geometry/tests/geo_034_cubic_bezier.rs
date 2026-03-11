@@ -78,6 +78,8 @@ impl CubicBezier {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_quadratic_bezier_bounds_simple() {
     // Given: a simple quadratic Bezier (arc)
@@ -96,6 +98,8 @@ fn test_quadratic_bezier_bounds_simple() {
     assert!(bounds.max_y >= 50.0); // Curve goes above the line between endpoints
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_quadratic_bezier_bounds_straight_line() {
     // Given: a quadratic Bezier that's essentially a straight line
@@ -113,6 +117,8 @@ fn test_quadratic_bezier_bounds_straight_line() {
     assert!((bounds.max_x - 100.0).abs() < 1.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_quadratic_bezier_bounds_with_stroke() {
     // Given: a curve with thick stroke
@@ -130,6 +136,8 @@ fn test_quadratic_bezier_bounds_with_stroke() {
     assert!(bounds.min_y < 0.0); // Expanded for stroke
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_quadratic_bezier_tight_bounds() {
     // Given: a curve
@@ -150,6 +158,8 @@ fn test_quadratic_bezier_tight_bounds() {
     assert!(tight.max_y <= sampled.max_y + 1.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_cubic_bezier_bounds_simple() {
     // Given: a simple cubic Bezier (S-curve)
@@ -170,6 +180,8 @@ fn test_cubic_bezier_bounds_simple() {
     assert!(bounds.max_y > 50.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_cubic_bezier_bounds_complex() {
     // Given: a complex cubic Bezier with multiple extrema

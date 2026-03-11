@@ -16,6 +16,8 @@ pub fn snap_vertical(line_x: f64, targets: &[f64], tolerance: f64) -> Option<f64
     snap_horizontal(line_x, targets, tolerance)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_snap_vertical_within_tolerance() {
     // Given: line at x=102 and snap targets
@@ -30,6 +32,8 @@ fn test_snap_vertical_within_tolerance() {
     assert_eq!(result, Some(100.0));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_snap_vertical_prefers_closest() {
     // Given: line at x=48 (equidistant to 0 and 100 within tolerance)

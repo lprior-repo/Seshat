@@ -12,6 +12,8 @@ const TOLERANCE: f64 = 1e-10;
 //
 // Tests rotation operations using a user-defined pivot point.
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_custom_pivot_origin() {
     // Given: a point and custom pivot at origin
@@ -26,6 +28,8 @@ fn test_rotate_around_custom_pivot_origin() {
     assert!((rotated.y - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_custom_pivot_offset() {
     // Given: a point and custom pivot at offset position
@@ -43,6 +47,8 @@ fn test_rotate_around_custom_pivot_offset() {
     assert!((rotated.y - 150.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_custom_pivot_270_degrees() {
     // Given: a point and custom pivot
@@ -58,6 +64,8 @@ fn test_rotate_around_custom_pivot_270_degrees() {
     assert!((rotated.y - (-50.0)).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_custom_pivot_preserves_distance() {
     // Given: a point at distance d from pivot

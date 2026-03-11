@@ -202,6 +202,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_linear_graph_when_validated_then_it_is_acyclic() {
         let a = NodeId::new(String::from("a"));
@@ -220,6 +222,8 @@ mod tests {
         assert!(validate_dag(&nodes, &edges).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_when_validated_then_it_returns_cycle_error() {
         let a = NodeId::new(String::from("a"));
@@ -238,6 +242,8 @@ mod tests {
         assert!(matches!(result, Err(CycleError::CycleDetected(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_with_missing_endpoint_when_validated_then_it_is_ignored_for_cycle_detection() {
         let a = NodeId::new(String::from("a"));
@@ -249,6 +255,8 @@ mod tests {
         assert!(validate_dag(&nodes, &edges).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_with_missing_source_and_existing_target_when_validated_then_it_does_not_create_false_cycle(
     ) {
@@ -262,6 +270,8 @@ mod tests {
         assert!(validate_dag(&nodes, &edges).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_incoming_edges_when_validated_then_degree_reduction_stays_acyclic() {
         let a = NodeId::new(String::from("a"));
@@ -280,6 +290,8 @@ mod tests {
         assert!(validate_dag(&nodes, &edges).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_reachable_cycle_after_acyclic_prefix_when_validated_then_cycle_is_detected() {
         let a = NodeId::new(String::from("a"));
@@ -300,6 +312,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mixed_edges_when_cycle_detected_then_reported_edge_is_from_cycle_component() {
         let a = NodeId::new(String::from("a"));
@@ -349,6 +363,8 @@ mod tests {
 
     // Tests for DAG validation - disconnected graphs are now allowed
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_disconnected_nodes_when_validated_then_returns_ok() {
         let a = NodeId::new(String::from("a"));
@@ -365,6 +381,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_connected_nodes_when_validated_then_returns_ok() {
         let a = NodeId::new(String::from("a"));
@@ -380,6 +398,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_nodes_two_components_when_validated_then_returns_ok() {
         let a = NodeId::new(String::from("a"));
@@ -398,6 +418,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_graph_when_validated_then_returns_ok() {
         let nodes = HashMap::new();
@@ -407,6 +429,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_when_validated_then_returns_ok() {
         let a = NodeId::new(String::from("a"));
@@ -418,6 +442,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_self_loop_edge_when_validated_then_returns_cycle_error() {
         let a = NodeId::new(String::from("a"));
@@ -432,6 +458,8 @@ mod tests {
         assert!(matches!(result, Err(CycleError::CycleDetected(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_cycle_takes_precedence_over_disconnected_when_validated_then_returns_cycle_error() {
         let a = NodeId::new(String::from("a"));

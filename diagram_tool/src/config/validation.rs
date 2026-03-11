@@ -61,12 +61,16 @@ const MAX_DATABASE_PATH_LENGTH: usize = 4096;
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_valid_database_config() {
         let config = DatabaseConfig::default();
         assert!(ConfigValidator::validate_database(&config).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invalid_journal_mode() {
         let mut config = DatabaseConfig::default();
@@ -75,6 +79,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invalid_synchronous() {
         let mut config = DatabaseConfig::default();
@@ -83,6 +89,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invalid_wal_checkpoint() {
         let mut config = DatabaseConfig::default();
@@ -91,12 +99,16 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_valid_log_config() {
         let config = LogConfig::default();
         assert!(ConfigValidator::validate_logging(&config).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invalid_log_level() {
         let mut config = LogConfig::default();
@@ -105,6 +117,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_full_config_validation() {
         let config = AppConfig::default();

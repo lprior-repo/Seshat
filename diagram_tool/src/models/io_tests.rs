@@ -60,6 +60,8 @@ fn create_test_db() -> Result<(rusqlite::Connection, tempfile::TempDir), Box<dyn
 // IO-001: Malformed JSON Import
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_001_malformed_json_import_syntax_error() {
     // Given: JSON input with syntax errors
@@ -72,6 +74,8 @@ fn io_001_malformed_json_import_syntax_error() {
     assert!(result.is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_001_malformed_json_import_unclosed_string() {
     // Given: JSON with unclosed string
@@ -84,6 +88,8 @@ fn io_001_malformed_json_import_unclosed_string() {
     assert!(result.is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_001_malformed_json_import_invalid_escape() {
     // Given: JSON with invalid escape sequence
@@ -100,6 +106,8 @@ fn io_001_malformed_json_import_invalid_escape() {
 // IO-002: Empty Document Export
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_002_empty_document_export() {
     // Given: Empty database (no events)
@@ -123,6 +131,8 @@ fn io_002_empty_document_export() {
 // IO-003: Invalid Schema Version
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_003_invalid_schema_version_too_new() {
     // Given: JSON with version > current supported
@@ -150,6 +160,8 @@ fn io_003_invalid_schema_version_too_new() {
     assert!(version > 2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_003_invalid_schema_version_rejected_on_import() {
     // Given: JSON with future version
@@ -181,6 +193,8 @@ fn io_003_invalid_schema_version_rejected_on_import() {
 // IO-004: Valid Round-Trip
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_004_valid_json_parses() {
     // Given: Valid JSON export
@@ -202,6 +216,8 @@ fn io_004_valid_json_parses() {
 // IO-005: Large Document Export Performance
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_005_large_document_export_performance() {
     // Given: Document with 1000+ events
@@ -235,6 +251,8 @@ fn io_005_large_document_export_performance() {
 // IO-006: Large Document Import Performance
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_006_large_document_import_performance() {
     // Given: Export with 100 nodes
@@ -296,6 +314,8 @@ fn io_006_large_document_import_performance() {
 // IO-007: Unicode Node Labels
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_007_unicode_emoji_labels() {
     // Given: Document with emoji labels
@@ -319,6 +339,8 @@ fn io_007_unicode_emoji_labels() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_007_unicode_rtl_text() {
     // Given: RTL text (Arabic, Hebrew)
@@ -339,6 +361,8 @@ fn io_007_unicode_rtl_text() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_007_unicode_combining_characters() {
     // Given: Text with combining diacritics
@@ -356,6 +380,8 @@ fn io_007_unicode_combining_characters() {
 // IO-008: Atomic Save on Crash
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_008_atomic_save_pattern_works() {
     use std::fs;
@@ -396,6 +422,8 @@ fn io_008_atomic_save_pattern_works() {
 // IO-009: LKG Fallback
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_009_lkg_fallback_function_exists() {
     use crate::cli_persistence::{load_workspace_with_lkg, CliPersistenceError};
@@ -430,6 +458,8 @@ fn io_009_lkg_fallback_function_exists() {
 // IO-010: Schema Validation on Import
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_010_validate_schema_exists() {
     use crate::models::schema::validate_schema;
@@ -458,6 +488,8 @@ fn io_010_validate_schema_exists() {
 // IO-011: Recovery Mode Export
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_011_recovery_mode_export_function_exists() {
     use crate::models::export::export_while_recovering;
@@ -493,6 +525,8 @@ fn io_011_recovery_mode_export_function_exists() {
 // IO-012: Version Backward Compatibility
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_012_backward_compatible_version_1() {
     use crate::models::export::validate_export_schema;
@@ -519,6 +553,8 @@ fn io_012_backward_compatible_version_1() {
 // IO-013: Null in Required Field
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_013_null_version_field() {
     // Given: Version field is null
@@ -539,6 +575,8 @@ fn io_013_null_version_field() {
 // IO-014: Truncated JSON
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_014_truncated_json_mid_string() {
     // Given: JSON cut off mid-string
@@ -555,6 +593,8 @@ fn io_014_truncated_json_mid_string() {
 // IO-015: Missing Required Field
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_015_missing_version_field() {
     // Given: JSON missing version field
@@ -570,6 +610,8 @@ fn io_015_missing_version_field() {
     assert!(result.is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn io_015_missing_metadata_field() {
     // Given: JSON missing metadata

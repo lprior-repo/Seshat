@@ -557,6 +557,8 @@ impl DiagramDocument {
 mod tests {
     use super::{ArrowType, Edge, EdgeId, EditorState, NodeId, OrderedFloat, Revision};
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_legacy_arrowhead_key_when_deserializing_edge_then_it_is_accepted() {
         let json = r#"{
@@ -581,6 +583,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_and_edge_ids_when_stringified_then_values_are_preserved() {
         let node = NodeId::new(String::from("node-1"));
@@ -592,6 +596,8 @@ mod tests {
         assert_eq!(edge.to_string(), "edge-1");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_id_try_new_with_empty_string_then_it_returns_error() {
         let result = NodeId::try_new(String::new());
@@ -599,6 +605,8 @@ mod tests {
         assert_eq!(result.unwrap_err(), "NodeId cannot be empty");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_id_try_new_with_empty_string_then_it_returns_error() {
         let result = EdgeId::try_new(String::new());
@@ -606,6 +614,8 @@ mod tests {
         assert_eq!(result.unwrap_err(), "EdgeId cannot be empty");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_node_id_try_new_with_valid_string_then_it_succeeds() {
         let result = NodeId::try_new(String::from("valid-id"));
@@ -613,6 +623,8 @@ mod tests {
         assert_eq!(result.unwrap().as_str(), "valid-id");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_id_try_new_with_valid_string_then_it_succeeds() {
         let result = EdgeId::try_new(String::from("valid-id"));
@@ -620,6 +632,8 @@ mod tests {
         assert_eq!(result.unwrap().as_str(), "valid-id");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_revision_when_incremented_then_it_increases_exactly_once() {
         let initial = Revision::INITIAL;
@@ -632,6 +646,8 @@ mod tests {
         assert_eq!(serde_json::to_string(&next).ok(), Some(String::from("1")));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_ordered_float_operations_when_applied_then_arithmetic_is_exact() {
         let a = OrderedFloat(8.0);
@@ -645,6 +661,8 @@ mod tests {
         assert_eq!(a.to_string(), "8");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_edge_without_directed_field_when_deserializing_then_default_is_true() {
         let json = r#"{
@@ -665,6 +683,8 @@ mod tests {
         assert!(parsed.is_some_and(|edge| edge.directed));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_default_editor_state_when_created_then_snap_and_grid_are_enabled() {
         let state = EditorState::default();
@@ -673,6 +693,8 @@ mod tests {
         assert!(state.show_grid);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_editor_state_json_without_snap_flag_when_deserialized_then_snap_defaults_true() {
         let json = r#"{
@@ -738,6 +760,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_011_valid_edge_creation() {
         let mut doc = DiagramDocument::default();
@@ -755,6 +779,8 @@ mod tests {
         assert!(doc.document.edges.contains_key(&EdgeId::new("E1".into())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_012_invalid_edge_missing_source() {
         let mut doc = DiagramDocument::default();
@@ -772,6 +798,8 @@ mod tests {
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_013_invalid_edge_missing_target() {
         let mut doc = DiagramDocument::default();
@@ -789,6 +817,8 @@ mod tests {
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_014_edge_deletion_isolated() {
         let mut doc = DiagramDocument::default();
@@ -809,6 +839,8 @@ mod tests {
         assert!(doc.document.nodes.contains_key(&NodeId::new("N2".into())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_015_node_deletion_cascades_edges() {
         let mut doc = DiagramDocument::default();
@@ -836,6 +868,8 @@ mod tests {
         assert!(doc.document.nodes.contains_key(&NodeId::new("N3".into())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_allows_self_loop_edge() {
         let mut doc = DiagramDocument::default();
@@ -846,6 +880,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_allows_multiple_edges_between_same_nodes() {
         let mut doc = DiagramDocument::default();
@@ -862,6 +898,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_creating_edge_with_duplicate_id() {
         let mut doc = DiagramDocument::default();
@@ -881,6 +919,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_deleting_missing_edge() {
         let mut doc = DiagramDocument::default();
@@ -891,6 +931,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_cascading_deletion_handles_multiple_edges_on_same_node() {
         let mut doc = DiagramDocument::default();
@@ -913,6 +955,8 @@ mod tests {
         assert!(doc.document.edges.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_cascading_deletion_handles_self_loop() {
         let mut doc = DiagramDocument::default();
@@ -926,31 +970,43 @@ mod tests {
         assert!(doc.document.edges.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_precondition_source_node_must_exist() {
         edg_012_invalid_edge_missing_source();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_precondition_target_node_must_exist() {
         edg_013_invalid_edge_missing_target();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_precondition_edge_id_must_be_unique() {
         test_returns_error_when_creating_edge_with_duplicate_id();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_edge_exists_after_creation() {
         edg_011_valid_edge_creation();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_cascading_delete_maintains_invariants() {
         edg_015_node_deletion_cascades_edges();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_all_edges_reference_existing_nodes() {
         let mut doc = DiagramDocument::default();
@@ -971,16 +1027,22 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p1_violation_returns_node_not_found() {
         edg_012_invalid_edge_missing_source();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p2_violation_returns_node_not_found() {
         edg_013_invalid_edge_missing_target();
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p3_violation_returns_edge_already_exists() {
         test_returns_error_when_creating_edge_with_duplicate_id();
@@ -998,12 +1060,16 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn ordered_float_nan_breaks_eq(_ in Just(f64::NAN)) {
             let of = OrderedFloat(f64::NAN);
             let _ = of == of;
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn ordered_float_inf_comparison(_ in Just(f64::INFINITY)) {
             let of = OrderedFloat(f64::INFINITY);
@@ -1012,6 +1078,8 @@ mod proptests {
             let _ = of.partial_cmp(&OrderedFloat(f64::NEG_INFINITY));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn node_with_nan_coordinates_roundtrip(
             width in 10.0f64..=100.0,
@@ -1043,6 +1111,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn document_roundtrip_with_special_floats(use_nan in any::<bool>(), use_inf in any::<bool>()) {
             let mut doc = DiagramDocument::default();
@@ -1059,6 +1129,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn node_with_negative_dimensions(
             width in -100.0f64..=-0.001,
@@ -1089,6 +1161,8 @@ mod proptests {
             assert!(parsed.height.0 < 0.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn edge_self_loop_same_source_target(id in "n[0-9]+") {
             let node_id = NodeId::new(id.clone());
@@ -1115,6 +1189,8 @@ mod proptests {
             assert_eq!(parsed.source, parsed.target);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[should_panic(expected = "overflow")]
         fn revision_overflow(start in (u64::MAX - 1)..=u64::MAX) {
@@ -1125,6 +1201,8 @@ mod proptests {
             assert_eq!(incremented, parsed);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn editor_state_extreme_zoom(zoom in -1e308f64..=1e308f64) {
             let mut state = EditorState::default();
@@ -1137,6 +1215,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn ordered_float_arithmetic_with_zero_divisor(a in -1e6f64..=1e6f64) {
             let of_a = OrderedFloat(a);
@@ -1144,6 +1224,8 @@ mod proptests {
             assert!(result.0.is_infinite() || result.0.is_nan());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn ordered_float_subtraction_underflow(a in 0.0f64..=1e6, b in 1e6f64..=1e308) {
             let of_a = OrderedFloat(a);
@@ -1152,6 +1234,8 @@ mod proptests {
             assert!(result.0 <= 0.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn node_id_special_characters(id in "[\\x00-\\x7F]{1,20}") {
             let node_id = NodeId::new(id.clone());
@@ -1160,6 +1244,8 @@ mod proptests {
             assert_eq!(node_id, parsed);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn edge_id_unicode(id in "\\PC*") {
             let edge_id = EdgeId::new(id.clone());
@@ -1168,6 +1254,8 @@ mod proptests {
             assert_eq!(edge_id, parsed);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn document_with_many_nodes(node_count in 0usize..100) {
             let mut doc = DiagramDocument::default();
@@ -1199,6 +1287,8 @@ mod proptests {
             assert_eq!(parsed.document.nodes.len(), node_count);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn ordered_float_neg_zero_comparison(_pos in Just(0.0f64), _neg in Just(-0.0f64)) {
             let pos = OrderedFloat(0.0f64);
@@ -1206,6 +1296,8 @@ mod proptests {
             assert!(pos == neg || pos.0.is_nan() || neg.0.is_nan());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn edge_with_empty_source_target(_ in Just(())) {
             let edge = Edge {

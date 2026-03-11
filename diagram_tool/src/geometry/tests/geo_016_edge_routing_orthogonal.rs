@@ -42,6 +42,8 @@ pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_edge_routing_orthogonal_l_shape() {
     // Given: source at (0, 0), target at (100, 50)
@@ -57,6 +59,8 @@ fn test_edge_routing_orthogonal_l_shape() {
     assert!((route.points[1].y - 50.0).abs() < TOLERANCE); // max y
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_edge_routing_orthogonal_vertical() {
     // Given: vertically aligned points
@@ -70,6 +74,8 @@ fn test_edge_routing_orthogonal_vertical() {
     assert_eq!(route.points.len(), 2);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_edge_routing_orthogonal_horizontal() {
     // Given: horizontally aligned points

@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-031: AABB for Rotated Rectangle at Cardinal Angles ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_rotated_0_degrees() {
     // Given: a rectangle rotated 0 degrees (no rotation)
@@ -25,6 +27,8 @@ fn test_aabb_rotated_0_degrees() {
     assert!((aabb.max_y - 70.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_rotated_90_degrees_cardinal() {
     // Given: a rectangle rotated 90 degrees (PI/2)
@@ -45,6 +49,8 @@ fn test_aabb_rotated_90_degrees_cardinal() {
     assert!((aabb.max_y - (center_y + 50.0)).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_rotated_180_degrees_cardinal() {
     // Given: a rectangle rotated 180 degrees (PI)
@@ -60,6 +66,8 @@ fn test_aabb_rotated_180_degrees_cardinal() {
     assert!((aabb.max_y - 70.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_rotated_270_degrees_cardinal() {
     // Given: a rectangle rotated 270 degrees (3*PI/2)
@@ -77,6 +85,8 @@ fn test_aabb_rotated_270_degrees_cardinal() {
     assert!((aabb.max_y - (center_y + 50.0)).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_rotated_360_degrees_cardinal() {
     // Given: a rectangle rotated 360 degrees (2*PI)

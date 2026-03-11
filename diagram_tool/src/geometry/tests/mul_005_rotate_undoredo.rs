@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== MUL-005: Rotate Undo/Redo ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_rotate_undo_redo() {
     // Given: initial positions of multiple items
@@ -49,6 +51,8 @@ fn test_mul_rotate_undo_redo() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_rotate_undo_redo_with_history() {
     // This test uses the History pattern to verify undo/redo behavior

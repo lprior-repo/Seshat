@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== MUL-002: Mixed Rotation Combine ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_mixed_rotation_combine() {
     // Given: a point and multiple rotation angles
@@ -31,6 +33,8 @@ fn test_mul_mixed_rotation_combine() {
     assert!((after_a_then_b.y - after_combined.y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_mixed_rotation_combine_multiple() {
     // Given: a point and three rotation angles

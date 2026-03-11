@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-006: Scale Around Anchor Point ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor() {
     // Given: a point and anchor
@@ -26,6 +28,8 @@ fn test_scale_around_anchor() {
     assert!((scaled.y - 150.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_keeps_anchor_fixed() {
     // Given: anchor point as the point to scale
@@ -39,6 +43,8 @@ fn test_scale_around_anchor_keeps_anchor_fixed() {
     assert!((scaled.y - anchor.y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_scale_around_anchor_shrink() {
     // Given: a point and anchor

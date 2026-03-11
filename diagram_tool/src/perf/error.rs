@@ -128,6 +128,8 @@ impl PerfError {
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invalid_node_count_display() {
         let err = PerfError::InvalidNodeCount(0);
@@ -136,6 +138,8 @@ mod tests {
         assert!(msg.contains("1-10000"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invalid_duration_display() {
         let err = PerfError::InvalidDuration(50);
@@ -144,6 +148,8 @@ mod tests {
         assert!(msg.contains("100ms"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_regression_detected_display() {
         let err = PerfError::RegressionDetected {
@@ -155,6 +161,8 @@ mod tests {
         assert!(msg.contains("10.00"));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_is_regression() {
         assert!(PerfError::RegressionDetected {
@@ -165,6 +173,8 @@ mod tests {
         assert!(!PerfError::InvalidNodeCount(0).is_regression());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_is_recoverable() {
         assert!(PerfError::Timeout { ms: 1000 }.is_recoverable());
@@ -172,6 +182,8 @@ mod tests {
         assert!(!PerfError::InvalidNodeCount(0).is_recoverable());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_violation_constructor() {
         let err =

@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-023: Rotation Then Resize Composition ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotation_then_resize_composition() {
     // Given: a point at (100, 0) relative to origin
@@ -27,6 +29,8 @@ fn test_rotation_then_resize_composition() {
     assert!((final_point.y - 50.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotation_then_resize_45_degrees() {
     // Given: a point at (1, 0)

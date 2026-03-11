@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-026: Repeated Tiny Scales - Scale Drift ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_repeated_tiny_scales_no_drift() {
     // Given: a point at (100, 0) with anchor at origin
@@ -38,6 +40,8 @@ fn test_repeated_tiny_scales_no_drift() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_repeated_tiny_scales_inverse() {
     // Given: a point and scale factors that should cancel

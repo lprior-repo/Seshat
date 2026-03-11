@@ -28,7 +28,7 @@ pub mod types;
 // Re-export main types for convenient access
 pub use types::{
     document_to_projection, is_human_author, projection_to_document, CyclePolicy,
-    DiagramProjection, EventRecord, ReplayError, SUPPORTED_VERSION,
+    DiagramProjection, EventRecord, ProjectionError, ReplayError, SUPPORTED_VERSION,
 };
 
 // Re-export replay functions

@@ -58,6 +58,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_safe_zoom_rejects_extreme_values(zoom: f64) {
@@ -72,6 +74,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_handles_nan_subgraph_coords(
@@ -96,6 +100,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_handles_nan_node_coords(
@@ -120,6 +126,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_degenerate_rectangles(
@@ -143,6 +151,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_infinite_dims(
@@ -160,6 +170,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_exact_boundary(x in -1e6_f64..1e6_f64, y in -1e6_f64..1e6_f64, w in 1e-6_f64..1e6_f64, h in 1e-6_f64..1e6_f64) {
@@ -171,6 +183,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_node_on_edge(x in -1e6_f64..1e6_f64, y in -1e6_f64..1e6_f64, w in 1e-6_f64..1e6_f64, h in 1e-6_f64..1e6_f64) {
@@ -182,6 +196,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_within_exceeds_by_epsilon(x in -1e6_f64..1e6_f64, y in -1e6_f64..1e6_f64, w in 1e-6_f64..1e6_f64, h in 1e-6_f64..1e6_f64) {
@@ -194,6 +210,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_safe_zoom_boundary(
@@ -218,6 +236,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_overflow_safety(
@@ -232,6 +252,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_subnormal_floats(sw in prop::sample::select(&[f64::MIN_POSITIVE, 1e-310]), sh in prop::sample::select(&[f64::MIN_POSITIVE, 1e-310])) {
@@ -244,48 +266,64 @@ mod proptests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_identity_at_zoom_one() {
         let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 1.0);
         assert_eq!(result, Some((100.0, 200.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_scales_with_zoom() {
         let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 2.0);
         assert_eq!(result, Some((50.0, 100.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_shifts_with_camera() {
         let result = screen_to_canvas(0.0, 0.0, 100.0, 50.0, 1.0);
         assert_eq!(result, Some((100.0, 50.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_combined_transform() {
         let result = screen_to_canvas(100.0, 100.0, 500.0, 300.0, 2.0);
         assert_eq!(result, Some((550.0, 350.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_returns_none_for_zero_zoom() {
         let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, 0.0);
         assert!(result.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_returns_none_for_negative_zoom() {
         let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, -1.0);
         assert!(result.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_returns_none_for_infinite_zoom() {
         let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, f64::INFINITY);
         assert!(result.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn screen_to_canvas_returns_none_for_nan_zoom() {
         let result = screen_to_canvas(100.0, 200.0, 0.0, 0.0, f64::NAN);
@@ -294,6 +332,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(128))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_screen_to_canvas_roundtrip(
             client_x in -1e6_f64..1e6_f64,
@@ -313,6 +353,8 @@ mod proptests {
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_screen_to_canvas_zoom_edge_cases(zoom in prop::sample::select(&[
             f64::EPSILON,
@@ -324,6 +366,124 @@ mod proptests {
                 prop_assert!(result.is_some());
             } else {
                 prop_assert!(result.is_none());
+            }
+        }
+    }
+}
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    #[kani::proof]
+    fn kani_safe_zoom() {
+        let zoom: f64 = kani::any();
+        let result = safe_zoom(zoom);
+        if zoom.is_finite() && zoom > f64::EPSILON {
+            kani::assert(result == Some(zoom), "Valid zoom should be accepted");
+        } else {
+            kani::assert(result.is_none(), "Invalid zoom should be rejected");
+        }
+    }
+
+    #[kani::proof]
+    fn kani_within() {
+        let sx: f64 = kani::any();
+        let sy: f64 = kani::any();
+        let sw: f64 = kani::any();
+        let sh: f64 = kani::any();
+        let nx: f64 = kani::any();
+        let ny: f64 = kani::any();
+        let nw: f64 = kani::any();
+        let nh: f64 = kani::any();
+
+        kani::assume(sx.is_finite() && sx.abs() < 1e100);
+        kani::assume(sy.is_finite() && sy.abs() < 1e100);
+        kani::assume(sw.is_finite() && sw.abs() < 1e100);
+        kani::assume(sh.is_finite() && sh.abs() < 1e100);
+        kani::assume(nx.is_finite() && nx.abs() < 1e100);
+        kani::assume(ny.is_finite() && ny.abs() < 1e100);
+        kani::assume(nw.is_finite() && nw.abs() < 1e100);
+        kani::assume(nh.is_finite() && nh.abs() < 1e100);
+
+        let subgraph = (sx, sy, sw, sh);
+        let node = (nx, ny, nw, nh);
+
+        let result = within(subgraph, node);
+        let expected = nx >= sx && ny >= sy && nx + nw <= sx + sw && ny + nh <= sy + sh;
+        kani::assert(
+            result == expected,
+            "within must match the exact bound calculation",
+        );
+    }
+
+    #[kani::proof]
+    fn kani_sanitize_zoom() {
+        let zoom: f64 = kani::any();
+        let min: f64 = kani::any();
+        let max: f64 = kani::any();
+
+        kani::assume(min.is_finite() && max.is_finite() && min <= max);
+        kani::assume(min > f64::EPSILON);
+
+        let result = sanitize_zoom(zoom, min, max);
+        if zoom.is_finite() && zoom > f64::EPSILON {
+            kani::assert(result.is_some(), "Valid zoom should return Some");
+            if let Some(z) = result {
+                kani::assert(
+                    z >= min && z <= max,
+                    "Zoom must be clamped within min and max",
+                );
+            }
+        } else {
+            kani::assert(result.is_none(), "Invalid zoom should return None");
+        }
+    }
+
+    #[kani::proof]
+    fn kani_roundtrip_screen_canvas() {
+        let client_x: f64 = kani::any();
+        let client_y: f64 = kani::any();
+        let camera_x: f64 = kani::any();
+        let camera_y: f64 = kani::any();
+        let zoom: f64 = kani::any();
+
+        kani::assume(client_x.is_finite() && client_x.abs() < 1e4);
+        kani::assume(client_y.is_finite() && client_y.abs() < 1e4);
+        kani::assume(camera_x.is_finite() && camera_x.abs() < 1e4);
+        kani::assume(camera_y.is_finite() && camera_y.abs() < 1e4);
+        kani::assume(zoom.is_finite() && zoom > 0.1 && zoom < 10.0);
+
+        if let Some((cx, cy)) = screen_to_canvas(client_x, client_y, camera_x, camera_y, zoom) {
+            if let Some((sx, sy)) = canvas_to_screen(cx, cy, camera_x, camera_y, zoom) {
+                let diff_x = (sx - client_x).abs();
+                let diff_y = (sy - client_y).abs();
+                kani::assert(diff_x < 1e-4, "X should be inverse");
+                kani::assert(diff_y < 1e-4, "Y should be inverse");
+            }
+        }
+    }
+
+    #[kani::proof]
+    fn kani_roundtrip_canvas_screen() {
+        let world_x: f64 = kani::any();
+        let world_y: f64 = kani::any();
+        let camera_x: f64 = kani::any();
+        let camera_y: f64 = kani::any();
+        let zoom: f64 = kani::any();
+
+        kani::assume(world_x.is_finite() && world_x.abs() < 1e4);
+        kani::assume(world_y.is_finite() && world_y.abs() < 1e4);
+        kani::assume(camera_x.is_finite() && camera_x.abs() < 1e4);
+        kani::assume(camera_y.is_finite() && camera_y.abs() < 1e4);
+        kani::assume(zoom.is_finite() && zoom > 0.1 && zoom < 10.0);
+
+        if let Some((sx, sy)) = canvas_to_screen(world_x, world_y, camera_x, camera_y, zoom) {
+            if let Some((cx, cy)) = screen_to_canvas(sx, sy, camera_x, camera_y, zoom) {
+                let diff_x = (cx - world_x).abs();
+                let diff_y = (cy - world_y).abs();
+                kani::assert(diff_x < 1e-4, "X should be inverse");
+                kani::assert(diff_y < 1e-4, "Y should be inverse");
             }
         }
     }

@@ -20,6 +20,8 @@ fn screen_to_world(screen: Point, camera: Point, zoom: f64) -> Point {
     Point::new(screen.x / zoom + camera.x, screen.y / zoom + camera.y)
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_world_to_screen_round_trip() {
     // Given: a world point, camera position, and zoom level
@@ -36,6 +38,8 @@ fn test_world_to_screen_round_trip() {
     assert!((round_trip.y - world.y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_world_to_screen_round_trip_at_origin() {
     // Given: world point at origin
@@ -52,6 +56,8 @@ fn test_world_to_screen_round_trip_at_origin() {
     assert!((round_trip.y - world.y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_world_to_screen_round_trip_high_zoom() {
     // Given: high zoom level

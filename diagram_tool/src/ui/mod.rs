@@ -1,5 +1,6 @@
 pub mod canvas;
 pub mod commands;
+pub mod dispatch;
 pub mod editor;
 pub mod grid;
 pub mod interaction;

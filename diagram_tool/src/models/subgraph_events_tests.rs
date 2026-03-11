@@ -47,6 +47,8 @@ mod tests {
         (node_id, node)
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_subgraph_bounds_expand_when_child_added() {
         let mut state = create_test_state();
@@ -76,6 +78,8 @@ mod tests {
         assert_eq!(s1.height.0, 70.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_subgraph_z_index_orders_children_above_container() {
         let mut state = create_test_state();
@@ -94,6 +98,8 @@ mod tests {
         assert!(n1_updated.z_index > s1_updated.z_index);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_add_node_updates_parent_reference() {
         let mut state = create_test_state();
@@ -109,6 +115,8 @@ mod tests {
         assert_eq!(n1_updated.parent, Some(s1_id));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_remove_node_clears_parent_reference() {
         let mut state = create_test_state();
@@ -124,6 +132,8 @@ mod tests {
         assert_eq!(n1_updated.parent, None);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_batch_add_updates_multiple_nodes_and_bounds_once() {
         let mut state = create_test_state();
@@ -146,6 +156,8 @@ mod tests {
         assert_eq!(s1_updated.width.0, 70.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_remove_all_nodes_leaves_empty_container() {
         let mut state = create_test_state();
@@ -170,6 +182,8 @@ mod tests {
         assert_eq!(s1_updated.height.0, 0.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_add_node_returns_error_when_subgraph_not_found() {
         let mut state = create_test_state();
@@ -181,6 +195,8 @@ mod tests {
         assert_eq!(result, Err(Error::NodeNotFound(s1_missing)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_add_node_returns_error_when_child_not_found() {
         let mut state = create_test_state();
@@ -192,6 +208,8 @@ mod tests {
         assert_eq!(result, Err(Error::NodeNotFound(n1_missing)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_add_node_returns_error_on_cycle_detection() {
         let mut state = create_test_state();
@@ -207,6 +225,8 @@ mod tests {
         assert_eq!(result, Err(Error::CycleDetected(s2_id, s1_id)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_subgraph_bounds_contract_when_outlier_child_removed() {
         let mut state = create_test_state();
@@ -231,6 +251,8 @@ mod tests {
         assert_eq!(s1_updated.width.0, 50.0); // 10 - 0 + 40
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_batch_add_with_empty_list_does_nothing() {
         let mut state = create_test_state();

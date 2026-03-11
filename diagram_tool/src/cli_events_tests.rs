@@ -18,6 +18,8 @@ mod cli_event_tests {
     use anyhow::{anyhow, Error};
 
     /// Test: Given valid CliEvent, when serialized to JSONL, then produces valid JSON
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_cli_event_when_serialized_then_produces_valid_jsonl() {
         let event = CliEvent::start(String::from("render"));
@@ -43,6 +45,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given error event, when serialized, then contains error details
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_error_event_when_serialized_then_contains_error_details() {
         let event = CliEvent::error(
@@ -69,6 +73,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given parse error, when error_code called, then returns parse_error
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_parse_error_when_error_code_called_then_returns_parse_error() {
         let err = anyhow!("failed to parse JSON: unexpected token");
@@ -81,6 +87,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given schema error, when error_code called, then returns schema_violation
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_schema_error_when_error_code_called_then_returns_schema_violation() {
         let err = anyhow!("schema validation failed: version must be 2");
@@ -93,6 +101,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given DAG cycle error, when error_code called, then returns dag_violation
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_dag_cycle_error_when_error_code_called_then_returns_dag_violation() {
         let err = anyhow!("DAG validation failed: cycle detected in edges");
@@ -105,6 +115,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given stale revision error, when error_code called, then returns stale_revision
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_stale_revision_error_when_error_code_called_then_returns_stale_revision() {
         let err =
@@ -118,6 +130,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given stale revision error, when exit_code called, then returns 1
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_stale_revision_error_when_exit_code_called_then_returns_1() {
         let err = anyhow!("stale_revision: test failed at /revision");
@@ -130,6 +144,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given dangling reference error, when error_code called, then returns dangling_reference
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_dangling_reference_error_when_error_code_called_then_returns_dangling_reference() {
         let err = anyhow!("edge-dangling: Edge e1 target 'nonexistent' does not exist");
@@ -142,6 +158,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given generic error, when error_code called, then returns command_error
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_generic_error_when_error_code_called_then_returns_command_error() {
         let err = anyhow!("Something unexpected went wrong");
@@ -154,6 +172,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given parse error, when exit_code called, then returns 2
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_parse_error_when_exit_code_called_then_returns_2() {
         let err = anyhow!("parse error");
@@ -163,6 +183,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given command error, when exit_code called, then returns 2
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_command_error_when_exit_code_called_then_returns_2() {
         let err = anyhow!("generic command error");
@@ -172,6 +194,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given schema error, when exit_code called, then returns 1
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_schema_error_when_exit_code_called_then_returns_1() {
         let err = anyhow!("schema error");
@@ -181,6 +205,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given MutationError, when error_code derived, then returns structured code
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mutation_error_when_deriving_error_code_then_returns_structured_code() {
         let schema_err = MutationError::Schema(String::from("version must be 2"));
@@ -196,6 +222,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given finish event, when serialized, then has correct structure
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_finish_event_when_serialized_then_has_correct_structure() {
         let event = CliEvent::finish(String::from("validate"), true, String::from("ok"));
@@ -213,6 +241,8 @@ mod cli_event_tests {
     }
 
     /// Test: Given failed finish event, when serialized, then has ok=false
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_failed_finish_event_when_serialized_then_has_ok_false() {
         let event = CliEvent::finish(
@@ -233,6 +263,8 @@ mod cli_event_tests {
     }
 
     /// Test: Multiple events should each be valid JSONL (one JSON per line)
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_events_when_serialized_per_line_then_each_is_valid_json() {
         let events = vec![
@@ -276,6 +308,8 @@ mod rejection_path_tests {
     }
 
     /// Test: Given invalid primary and valid LKG, when loading, then uses LKG and preserves state
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_primary_and_valid_lkg_when_loading_then_uses_lkg() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
@@ -312,6 +346,8 @@ mod rejection_path_tests {
     }
 
     /// Test: Given failed save, when atomic operation fails, then original file untouched
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_failed_save_when_atomic_operation_fails_then_original_untouched() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
@@ -345,6 +381,8 @@ mod rejection_path_tests {
     }
 
     /// Test: Given rejection during mutation pipeline, then last known good is preserved
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_rejection_during_mutation_then_lkg_preserved() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
@@ -376,6 +414,8 @@ mod rejection_path_tests {
     }
 
     /// Test: Given no valid document exists, then returns specific error
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_no_valid_document_when_loading_then_returns_no_valid_document_error() {
         let temp_dir = TempDir::new().expect("Should create temp dir");
@@ -397,6 +437,8 @@ mod revision_feedback_tests {
     use crate::models::document::{DiagramDocument, Revision};
 
     /// Test: Revision should be monotonically increasing
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_revision_when_incremented_then_is_monotonic() {
         let initial = Revision::INITIAL;
@@ -411,6 +453,8 @@ mod revision_feedback_tests {
     }
 
     /// Test: Document should expose revision for UI feedback
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_document_when_accessing_revision_then_provides_feedback() {
         let mut doc = DiagramDocument::default();
@@ -424,6 +468,8 @@ mod revision_feedback_tests {
     }
 
     /// Test: Revision policy preserve should not increment
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_preserve_policy_when_mutation_runs_then_revision_unchanged() {
         use crate::mutation::pipeline::{
@@ -448,6 +494,8 @@ mod revision_feedback_tests {
     }
 
     /// Test: Revision policy increment should increment
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_increment_policy_when_mutation_runs_then_revision_incremented() {
         use crate::mutation::pipeline::{run_mutation, RevisionPolicy};

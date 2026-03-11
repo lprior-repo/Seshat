@@ -382,6 +382,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_degenerate_world_bounds_when_projecting_then_projection_is_finite() {
         let tiny_node = make_node("tiny", 0.0, 0.0, 0.001, 0.001);
@@ -407,6 +409,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_near_zero_node_sizes_when_snapshot_then_bounds_remain_finite() {
         let nodes = vec![
@@ -425,6 +429,8 @@ mod tests {
         assert!(snap.max_y.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_overlapping_nodes_when_projecting_then_no_panic() {
         let nodes = vec![
@@ -449,6 +455,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nan_node_geometry_when_snapshot_built_then_invalid_geometry_is_sanitized_or_ignored() {
         let valid_node = make_node("valid", 100.0, 100.0, 64.0, 64.0);
@@ -481,6 +489,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_inf_node_geometry_when_snapshot_built_then_handles_gracefully() {
         let valid_node = make_node("valid", 100.0, 100.0, 64.0, 64.0);
@@ -499,6 +509,8 @@ mod tests {
         assert!(snapshot.is_some());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_when_projecting_then_bounds_are_correct() {
         let node = make_node("single", 200.0, 150.0, 100.0, 80.0);
@@ -514,6 +526,8 @@ mod tests {
         assert_eq!(snap.max_y, 230.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_document_when_snapshot_then_returns_none() {
         let doc = DocumentData {
@@ -525,6 +539,8 @@ mod tests {
         assert!(snapshot.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nodes_with_edges_when_snapshot_then_edge_segments_included() {
         let node_a = make_node("a", 0.0, 0.0, 100.0, 50.0);
@@ -564,6 +580,8 @@ mod tests {
         assert!(ty.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_very_large_scale_when_projecting_then_sizes_floored_to_minimum() {
         let node = make_node("big", 0.0, 0.0, 1000.0, 1000.0);
@@ -581,6 +599,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_projection_key_when_state_identical_then_keys_equal() {
         let rev = Revision::INITIAL;
@@ -590,6 +610,8 @@ mod tests {
         assert_eq!(key1, key2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_projection_key_when_state_differs_then_keys_differ() {
         let rev = Revision::INITIAL;

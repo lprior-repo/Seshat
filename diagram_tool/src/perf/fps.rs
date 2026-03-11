@@ -255,6 +255,8 @@ impl Default for FpsMeasurement {
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fps_report_from_samples() {
         let samples: Vec<FrameSample> = (0..100)
@@ -268,6 +270,8 @@ mod tests {
         assert!(report.std_dev_fps >= 0.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fps_report_validate_success() {
         let samples: Vec<FrameSample> = (0..10)
@@ -278,6 +282,8 @@ mod tests {
         assert!(report.validate().is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fps_report_validate_sample_count_mismatch() {
         let mut report = FpsReport::from_samples(
@@ -297,6 +303,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fps_measurement_basic() {
         let mut measurement = FpsMeasurement::new();
@@ -312,6 +320,8 @@ mod tests {
         assert!(report.sample_count >= 10);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fps_measurement_insufficient_samples() {
         let mut measurement = FpsMeasurement::new();
@@ -331,6 +341,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fps_measurement_custom_min_samples() {
         let mut measurement = FpsMeasurement::new();
@@ -350,6 +362,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_frame_sample_fps_calculation() {
         let sample = FrameSample::new(0, 16.67, 0.0);

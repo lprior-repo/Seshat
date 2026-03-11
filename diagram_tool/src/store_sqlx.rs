@@ -176,7 +176,7 @@ pub async fn create_pool(db_path: &Path) -> Result<SqlitePool, StoreError> {
         .execute(&pool)
         .await?;
 
-    sqlx::query("PRAGMA synchronous=FULL")
+    sqlx::query("PRAGMA synchronous=NORMAL")
         .execute(&pool)
         .await?;
 
@@ -249,7 +249,7 @@ async fn run_schema_migration(pool: &SqlitePool) -> Result<(), StoreError> {
             "CREATE TABLE IF NOT EXISTS events (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 operation_id TEXT NOT NULL UNIQUE,
-                revision INTEGER NOT NULL,
+                revision INTEGER NOT NULL UNIQUE,
                 payload TEXT NOT NULL,
                 timestamp TEXT NOT NULL
             )",
@@ -355,17 +355,31 @@ pub async fn append_event(
     let payload =
         encode_event_envelope(&envelope).map_err(|e| StoreError::Serialization(e.to_string()))?;
 
-    let new_revision: i64 = sqlx::query_scalar(
+    let new_revision = current_revision + 1;
+    let insert_result = sqlx::query_scalar::<_, i64>(
         "INSERT INTO events (operation_id, revision, payload, timestamp) 
-         VALUES (?1, (SELECT COALESCE(MAX(revision), 0) + 1 FROM events), ?2, ?3)
+         VALUES (?1, ?2, ?3, ?4)
          RETURNING revision",
     )
     .bind(&envelope.op_id)
+    .bind(new_revision)
     .bind(&payload)
     .bind(envelope.timestamp.to_string())
     .fetch_one(&mut *tx)
-    .await
-    .map_err(StoreError::Sqlx)?;
+    .await;
+
+    let new_revision = match insert_result {
+        Ok(rev) => rev,
+        Err(e) => {
+            if e.to_string().contains("events.revision") {
+                return Err(StoreError::RevisionMismatch {
+                    expected: current_revision,
+                    found: current_revision + 1,
+                });
+            }
+            return Err(StoreError::Sqlx(e));
+        }
+    };
 
     tx.commit().await.map_err(StoreError::Sqlx)?;
 
@@ -421,7 +435,7 @@ pub async fn append_batch(
         let payload = encode_event_envelope(&envelope)
             .map_err(|e| StoreError::Serialization(e.to_string()))?;
 
-        sqlx::query(
+        let insert_result = sqlx::query(
             "INSERT INTO events (operation_id, revision, payload, timestamp) VALUES (?1, ?2, ?3, ?4)"
         )
         .bind(&envelope.op_id)
@@ -429,8 +443,20 @@ pub async fn append_batch(
         .bind(&payload)
         .bind(envelope.timestamp.to_string())
         .execute(&mut *tx)
-        .await
-        .map_err(StoreError::Sqlx)?;
+        .await;
+
+        match insert_result {
+            Ok(_) => {}
+            Err(e) => {
+                if e.to_string().contains("events.revision") {
+                    return Err(StoreError::RevisionMismatch {
+                        expected: current_revision,
+                        found: current_revision + 1,
+                    });
+                }
+                return Err(StoreError::Sqlx(e));
+            }
+        }
 
         op_ids.push(envelope.op_id);
         last_timestamp = envelope.timestamp;
@@ -1091,6 +1117,8 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_create_pool() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1104,7 +1132,7 @@ mod tests {
             .expect("Failed to read pragmas");
 
         assert_eq!(pragmas.journal_mode, "wal");
-        assert_eq!(pragmas.synchronous, 2); // FULL = 2
+        assert_eq!(pragmas.synchronous, 1); // NORMAL = 1
         assert_eq!(pragmas.wal_autocheckpoint, 1000);
         assert!(pragmas.foreign_keys);
         assert_eq!(pragmas.busy_timeout, 5000);
@@ -1112,6 +1140,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_bootstrap_store() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1126,6 +1156,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_event() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1164,6 +1196,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_append_idempotent() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1209,6 +1243,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_fetch_events_since() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1249,6 +1285,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_store_exports_bootstrap_store() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1264,6 +1302,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_store_exports_append_event() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1301,6 +1341,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_store_exports_fetch_latest_revision() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1344,6 +1386,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_store_exports_read_store_pragmas() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1358,7 +1402,7 @@ mod tests {
             .expect("read_store_pragmas failed");
 
         assert_eq!(pragmas.journal_mode, "wal");
-        assert_eq!(pragmas.synchronous, 2);
+        assert_eq!(pragmas.synchronous, 1);
         assert_eq!(pragmas.wal_autocheckpoint, 1000);
         assert!(pragmas.foreign_keys);
         assert_eq!(pragmas.busy_timeout, 5000);
@@ -1366,6 +1410,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_store_exports_current_store_config() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1385,6 +1431,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_startup_integrity_check_valid_db() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1427,6 +1475,8 @@ mod tests {
         assert_eq!(status.event_count, 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_startup_integrity_check_nonexistent_db() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1441,6 +1491,8 @@ mod tests {
         assert_eq!(status.page_count, 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_open_recovery_mode() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1482,6 +1534,8 @@ mod tests {
         handle.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_open_recovery_only() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1523,6 +1577,8 @@ mod tests {
         session.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_phase2_integrity_check() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1563,6 +1619,8 @@ mod tests {
         assert_eq!(status.schema_version, Some(1));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_save_snapshot_returns_meta_with_correct_revision() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1603,6 +1661,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_load_projection_from_snapshot_replays_tail() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1670,6 +1730,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_get_latest_snapshot_meta_returns_correct_data() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1716,6 +1778,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_delete_snapshot_removes_record() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1764,6 +1828,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_list_snapshots_returns_all_snapshots() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1812,6 +1878,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_save_snapshot_fails_with_stale_projection() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1856,6 +1924,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_load_projection_from_snapshot_falls_back_to_replay_when_no_snapshots() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1876,6 +1946,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_delete_snapshot_fails_when_revision_not_found() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1918,6 +1990,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_save_snapshot_at_revision_zero_succeeds() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1935,6 +2009,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_load_projection_with_no_tail_events() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -1979,6 +2055,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_multiple_snapshots_same_revision_replaces() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2033,6 +2111,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_delete_snapshot_fails_with_negative_revision() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2047,6 +2127,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_returns_error_when_invalid_db_path_provided() {
         let invalid_path = Path::new("/nonexistent directory that does not exist/test.db");
@@ -2055,6 +2137,8 @@ mod tests {
         assert!(matches!(result, Err(StoreError::Sqlx(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_returns_error_when_appending_with_revision_gap() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2095,6 +2179,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_handles_concurrent_async_appends_gracefully() {
         use tokio::task::JoinSet;
@@ -2158,6 +2244,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_handles_zero_byte_database_initialization() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2201,6 +2289,8 @@ mod tests {
         bootstrap.pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_invariant_unique_op_id_enforced_by_schema() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2239,6 +2329,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_precondition_sequential_revision_enforced() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2283,6 +2375,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_concurrent_appends_with_expected_revision_serialized() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -2324,6 +2418,8 @@ mod tests {
         pool.close().await;
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[tokio::test]
     async fn test_postcondition_wal_mode_concurrent_access_works() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");

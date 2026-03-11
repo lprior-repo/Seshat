@@ -48,6 +48,8 @@ mod tests {
     }
 
     // Happy Path Tests
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clp001_copy_paste_single_node_creates_new_node_with_new_id() {
         let mut doc = DiagramDocument::default();
@@ -78,6 +80,8 @@ mod tests {
         assert_eq!(pasted_node.y.0, original_node.y.0 + 20.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clp002_copy_paste_multiple_nodes_preserves_edges_and_remaps_ids() {
         let mut doc = DiagramDocument::default();
@@ -112,6 +116,8 @@ mod tests {
         assert_ne!(new_edge.target, n2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clp003_copy_paste_subgraph_preserves_parent_child_relationships() {
         let mut doc = DiagramDocument::default();
@@ -154,6 +160,8 @@ mod tests {
         assert_eq!(pasted_child.parent, Some(new_p1.clone()));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clp004_cut_operation_removes_original_nodes_and_places_in_clipboard() {
         let mut doc = DiagramDocument::default();
@@ -173,6 +181,8 @@ mod tests {
         assert_ne!(paste_res.new_nodes[0], n1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_clp005_paste_operation_applies_incremental_offset_based_on_serial() {
         let mut doc = DiagramDocument::default();
@@ -199,6 +209,8 @@ mod tests {
     }
 
     // Error Path Tests
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_copy_returns_error_when_selection_is_empty() {
         let doc = DiagramDocument::default();
@@ -208,6 +220,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_cut_returns_error_when_selection_is_empty() {
         let mut doc = DiagramDocument::default();
@@ -217,6 +231,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_paste_returns_error_when_clipboard_is_empty() {
         let mut doc = DiagramDocument::default();
@@ -227,6 +243,8 @@ mod tests {
     }
 
     // Contract Verification Tests
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p1_violation_returns_empty_selection_error() {
         let doc = DiagramDocument::default();
@@ -234,6 +252,8 @@ mod tests {
         assert!(matches!(result, Err(Error::EmptySelection)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p3_violation_returns_empty_selection_error() {
         let mut doc = DiagramDocument::default();
@@ -241,6 +261,8 @@ mod tests {
         assert!(matches!(result, Err(Error::EmptySelection)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_p4_violation_returns_empty_clipboard_error() {
         let mut doc = DiagramDocument::default();
@@ -248,6 +270,8 @@ mod tests {
         assert!(matches!(result, Err(Error::EmptyClipboard)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_q1_violation_returns_postcondition_error_for_changed_original_id() {
         // Since we test our actual implementation, the best way to verify this contract
@@ -256,6 +280,8 @@ mod tests {
         // But per contract, we expect pure behavior.
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_q6_violation_returns_invalid_edge_reference_error() {
         let mut doc = DiagramDocument::default();
@@ -278,6 +304,8 @@ mod tests {
         assert!(matches!(result, Err(Error::InvalidEdgeReference)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_q7_violation_returns_invalid_parent_reference_error() {
         let mut doc = DiagramDocument::default();

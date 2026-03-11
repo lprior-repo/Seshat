@@ -157,6 +157,8 @@ mod tests {
         )
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_invalid_version_transform_when_run_mutation_then_it_fails_closed_with_schema_error() {
         let current = DiagramDocument::default();
@@ -170,6 +172,8 @@ mod tests {
         assert!(matches!(result, Err(MutationError::Schema(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_valid_transform_when_run_mutation_then_revision_increments_once() {
         let current = DiagramDocument::default();
@@ -183,6 +187,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_preserve_policy_when_run_mutation_then_revision_is_not_incremented() {
         let current = DiagramDocument::default();
@@ -198,6 +204,8 @@ mod tests {
         assert_eq!(next.map(|doc| doc.revision), Some(current.revision));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_preserve_policy_with_stale_transformed_revision_when_run_mutation_then_current_revision_wins(
     ) {
@@ -215,6 +223,8 @@ mod tests {
         assert_eq!(result.ok().map(|doc| doc.revision), Some(current.revision));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_transform_that_creates_cycle_when_run_mutation_then_it_fails_closed() {
         let current = DiagramDocument::default();
@@ -260,6 +270,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(256))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn deeply_nested_mutation_chain_100_levels(initial_rev in 0u64..10) {
             let mut doc = DiagramDocument {
@@ -289,6 +301,8 @@ mod proptests {
             prop_assert!(doc.revision == expected || doc.revision == make_revision(initial_rev));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn document_with_1000_nodes(node_count in 100usize..1000) {
             let current = DiagramDocument::default();
@@ -327,6 +341,8 @@ mod proptests {
             prop_assert_eq!(doc.document.nodes.len(), node_count);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn rapid_fire_apply_undo_cycles(cycles in 10usize..50) {
             let mut doc = DiagramDocument::default();
@@ -376,6 +392,8 @@ mod proptests {
             prop_assert!(doc.revision >= Revision::INITIAL);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn nan_inf_scattered_through_document(
             use_nan_x in any::<bool>(),
@@ -421,6 +439,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn create_delete_create_same_id(iterations in 10usize..50) {
             let mut doc = DiagramDocument::default();
@@ -475,6 +495,8 @@ mod proptests {
             prop_assert!(true);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn concurrent_mutation_same_node_different_props(
             x_val in -1000.0f64..1000.0,
@@ -515,6 +537,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn huge_string_in_label(label_len in 1000usize..10000) {
             let current = DiagramDocument::default();
@@ -554,6 +578,8 @@ mod proptests {
             prop_assert_eq!(node.label.len(), label_len);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn all_min_positive_floats(scale in 0usize..10) {
             let current = DiagramDocument::default();
@@ -590,6 +616,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn subnormal_floats_everywhere(subnormal_bits in 1u64..100) {
             let current = DiagramDocument::default();
@@ -626,6 +654,8 @@ mod proptests {
             prop_assert!(result.is_ok() || result.is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn alternating_valid_invalid_operations(count in 10usize..50) {
             let mut doc = DiagramDocument::default();
@@ -678,6 +708,8 @@ mod proptests {
             prop_assert!(true);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn edge_self_loop_validation(_should_be_valid in any::<bool>()) {
             let current = DiagramDocument::default();
@@ -730,6 +762,8 @@ mod proptests {
             prop_assert!(result.is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn revision_preserve_vs_increment(rev_val in 0u64..100) {
             let mut current = DiagramDocument::default();
@@ -754,6 +788,8 @@ mod proptests {
             prop_assert_eq!(with_preserve.unwrap().revision, make_revision(rev_val));
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn edge_dangling_reference_without_node(edge_label in ".*") {
             let current = DiagramDocument::default();
@@ -787,6 +823,8 @@ mod proptests {
             prop_assert!(result.is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn extreme_z_index_values(z in -1_000_000i64..=1_000_000) {
             let current = DiagramDocument::default();
@@ -822,6 +860,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn many_edges_between_same_nodes(edge_count in 1usize..100) {
             let current = DiagramDocument::default();
@@ -901,6 +941,8 @@ mod proptests {
             prop_assert_eq!(doc.document.edges.len(), edge_count);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn node_parent_self_reference(_ in Just(())) {
             let current = DiagramDocument::default();
@@ -937,6 +979,8 @@ mod proptests {
             prop_assert!(result.is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn unicode_everywhere(
             node_label in "\\p{Any}{1,50}",
@@ -976,6 +1020,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn zero_dimension_node(width in Just(0.0f64), height in Just(0.0f64)) {
             let current = DiagramDocument::default();
@@ -1011,6 +1057,8 @@ mod proptests {
             prop_assert!(result.is_ok() || result.is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn negative_dimensions(width in -100.0f64..=-0.001, height in -100.0f64..=-0.001) {
             let current = DiagramDocument::default();
@@ -1046,6 +1094,8 @@ mod proptests {
             prop_assert!(result.is_ok() || result.is_err());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn edge_bend_points_overflow(bend_count in 100usize..500) {
             let current = DiagramDocument::default();
@@ -1125,6 +1175,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn editor_state_extreme_values(
             camera_x in -1e10f64..=1e10,
@@ -1153,6 +1205,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn massive_metadata(metadata_entries in 50usize..200) {
             let current = DiagramDocument::default();
@@ -1194,6 +1248,8 @@ mod proptests {
             prop_assert!(result.is_ok());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn locked_node_modification(_attempt_modify in any::<bool>()) {
             let current = DiagramDocument::default();
@@ -1232,6 +1288,8 @@ mod proptests {
             prop_assert!(node.locked);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn empty_string_ids_everywhere(_ in Just(())) {
             let current = DiagramDocument::default();

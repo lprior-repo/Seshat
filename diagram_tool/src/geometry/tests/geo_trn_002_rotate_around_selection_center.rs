@@ -13,6 +13,8 @@ const TOLERANCE: f64 = 1e-10;
 // Tests rotation operations centered on the selection's centroid.
 // The selection center is computed as the average of all item positions.
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_selection_center_single_item() {
     // Given: a single rectangle
@@ -30,6 +32,8 @@ fn test_rotate_around_selection_center_single_item() {
     assert!((rotated_pos.y - 0.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_selection_center_multiple_items() {
     // Given: multiple items forming a pattern
@@ -63,6 +67,8 @@ fn test_rotate_around_selection_center_multiple_items() {
     assert!((new_center.y - center.y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_rotate_around_selection_center_45_degrees() {
     // Given: three items at different positions

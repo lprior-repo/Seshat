@@ -87,6 +87,8 @@ mod tests {
         (id, node)
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_to_document_preserves_nodes_and_edges() {
         let (node_id, node) = make_test_node("node-1");
@@ -140,6 +142,8 @@ mod tests {
             .contains_key(&EdgeId::new("edge-1".to_string())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_document_to_projection_preserves_nodes_and_edges() {
         let (node_id, node) = make_test_node("node-1");
@@ -193,6 +197,8 @@ mod tests {
         assert_eq!(projection.cycle_policy, CyclePolicy::Allow);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_to_document_empty_projection() {
         let projection = DiagramProjection::empty();
@@ -204,6 +210,8 @@ mod tests {
         assert!(doc.document.edges.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_document_to_projection_empty_document() {
         let doc = DiagramDocument {
@@ -224,6 +232,8 @@ mod tests {
         assert!(projection.edges.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_mapping_roundtrip_preserves_data() {
         // Start with a document
@@ -280,6 +290,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_projection_to_document_preserves_cycle_policy() {
         let projection = DiagramProjection {

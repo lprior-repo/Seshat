@@ -160,6 +160,8 @@ impl ExtendedText {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_ltr_simple() {
     // Given: simple LTR text
@@ -174,6 +176,8 @@ fn test_text_bounds_ltr_simple() {
     assert!((bounds.min_y - 20.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_rtl_simple() {
     // Given: RTL text (Arabic example)
@@ -189,6 +193,8 @@ fn test_text_bounds_rtl_simple() {
     assert!((bounds.min_y - 20.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_emoji_simple() {
     // Given: text with simple emoji
@@ -202,6 +208,8 @@ fn test_text_bounds_emoji_simple() {
     // Emoji should contribute approximately 2x width of regular char
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_emoji_only() {
     // Given: emoji-only text
@@ -215,6 +223,8 @@ fn test_text_bounds_emoji_only() {
     assert!(bounds.width() >= expected_min_width);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_zwj_emoji() {
     // Given: text with ZWJ sequence emoji (family emoji = person + ZWJ + person + ...)
@@ -229,6 +239,8 @@ fn test_text_bounds_zwj_emoji() {
     // Should be roughly the width of one emoji, not three
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_mixed_ltr_emoji() {
     // Given: mixed text with emoji
@@ -242,6 +254,8 @@ fn test_text_bounds_mixed_ltr_emoji() {
     assert!((bounds.height() - 14.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_skin_tone_modifier() {
     // Given: emoji with skin tone modifier
@@ -254,6 +268,8 @@ fn test_text_bounds_skin_tone_modifier() {
     assert!(bounds.width() > 0.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_text_bounds_empty() {
     // Given: empty text

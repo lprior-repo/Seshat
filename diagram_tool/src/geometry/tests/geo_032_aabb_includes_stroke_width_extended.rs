@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-032: AABB Includes Stroke Width (Extended) ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_stroke_width_thick_stroke() {
     // Given: a rectangle with thick stroke
@@ -26,6 +28,8 @@ fn test_aabb_stroke_width_thick_stroke() {
     assert!((bounds.max_y - 60.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_stroke_width_rotated_shape() {
     // Given: a rotated rectangle with stroke
@@ -44,6 +48,8 @@ fn test_aabb_stroke_width_rotated_shape() {
     assert!((bounds.max_y - expected.max_y).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_aabb_stroke_width_fractional() {
     // Given: a rectangle with fractional stroke width

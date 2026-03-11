@@ -223,6 +223,8 @@ mod tests {
 
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_frame_sample_fps() {
         let sample = FrameSample::new(1, 8.33, 0.0);
@@ -230,6 +232,8 @@ mod tests {
         assert!((fps - 120.0).abs() < 0.5);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_frame_sample_is_valid() {
         let valid = FrameSample::new(1, 8.33, 0.0);
@@ -239,6 +243,8 @@ mod tests {
         assert!(!invalid.is_valid());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_percentiles_from_sorted() {
         let sorted: Vec<f64> = (1..=100).map(f64::from).collect();
@@ -257,6 +263,8 @@ mod tests {
         assert_eq!(p.max, 100.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_percentiles_is_ordered() {
         let p = Percentiles {
@@ -280,6 +288,8 @@ mod tests {
         assert!(!invalid.is_ordered());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_statistics_from_samples() {
         let samples: Vec<f64> = vec![1.0, 2.0, 3.0, 4.0, 5.0];
@@ -291,6 +301,8 @@ mod tests {
         assert!(stats.is_valid());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_statistics_empty_samples() {
         let samples: Vec<f64> = vec![];
@@ -300,6 +312,8 @@ mod tests {
         assert_eq!(stats.mean, 0.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_statistics_no_nan_with_finite_input() {
         let samples: Vec<f64> = (0..100).map(|i| f64::from(i) + 0.5).collect();
@@ -312,6 +326,8 @@ mod tests {
         assert!(stats.ci95_upper.is_finite());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_coefficient_of_variation() {
         let samples: Vec<f64> = vec![10.0, 20.0, 30.0];

@@ -234,6 +234,8 @@ impl FileConfig {
 mod tests {
     use super::*;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_default_database_config() {
         let db = DatabaseConfig::default();
@@ -242,12 +244,16 @@ mod tests {
         assert_eq!(db.wal_autocheckpoint, 1000);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_load_from_environment_uses_defaults() {
         let config = AppConfig::load_from_environment().expect("should load");
         assert_eq!(config.database.journal_mode, "wal");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_file_config_merge() {
         let file_config = FileConfig {

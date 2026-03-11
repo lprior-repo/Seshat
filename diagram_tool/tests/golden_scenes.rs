@@ -55,6 +55,8 @@ fn get_edges(doc: &Value) -> &serde_json::Map<String, Value> {
 // Mixed Selection Scene Tests
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_loads_successfully() {
     let doc = load_fixture("mixed_selection.json");
@@ -62,6 +64,8 @@ fn golden_mixed_selection_loads_successfully() {
     assert_eq!(doc["revision"].as_u64(), Some(0));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_has_required_elements() {
     let doc = load_fixture("mixed_selection.json");
@@ -83,6 +87,8 @@ fn golden_mixed_selection_has_required_elements() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_has_rectangle() {
     let doc = load_fixture("mixed_selection.json");
@@ -93,6 +99,8 @@ fn golden_mixed_selection_has_rectangle() {
     assert_eq!(rect["style"].as_str(), Some("box"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_has_ellipse() {
     let doc = load_fixture("mixed_selection.json");
@@ -103,6 +111,8 @@ fn golden_mixed_selection_has_ellipse() {
     assert_eq!(ellipse["style"].as_str(), Some("cloud"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_has_text() {
     let doc = load_fixture("mixed_selection.json");
@@ -112,6 +122,8 @@ fn golden_mixed_selection_has_text() {
     assert_eq!(text["kind"].as_str(), Some("text"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_has_arrow_edge() {
     let doc = load_fixture("mixed_selection.json");
@@ -122,6 +134,8 @@ fn golden_mixed_selection_has_arrow_edge() {
     assert_eq!(arrow["directed"].as_bool(), Some(true));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_mixed_selection_all_ids_unique() {
     let doc = load_fixture("mixed_selection.json");
@@ -151,12 +165,16 @@ fn golden_mixed_selection_all_ids_unique() {
 // Nested Subgraph Scene Tests
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_nested_subgraph_loads_successfully() {
     let doc = load_fixture("nested_subgraph.json");
     assert_eq!(doc["version"].as_u64(), Some(2));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_nested_subgraph_has_frame() {
     let doc = load_fixture("nested_subgraph.json");
@@ -167,6 +185,8 @@ fn golden_nested_subgraph_has_frame() {
     assert!(frame["parent"].is_null(), "Frame should not have a parent");
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_nested_subgraph_has_group_nested_in_frame() {
     let doc = load_fixture("nested_subgraph.json");
@@ -177,6 +197,8 @@ fn golden_nested_subgraph_has_group_nested_in_frame() {
     assert_eq!(group["parent"].as_str(), Some("frame-1"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_nested_subgraph_shapes_nested_in_group() {
     let doc = load_fixture("nested_subgraph.json");
@@ -191,6 +213,8 @@ fn golden_nested_subgraph_shapes_nested_in_group() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_nested_subgraph_has_crossing_edge() {
     let doc = load_fixture("nested_subgraph.json");
@@ -201,6 +225,8 @@ fn golden_nested_subgraph_has_crossing_edge() {
     assert_eq!(edge["target"].as_str(), Some("external-1"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_nested_subgraph_parent_tree_valid() {
     let doc = load_fixture("nested_subgraph.json");
@@ -230,6 +256,8 @@ fn golden_nested_subgraph_parent_tree_valid() {
 // Operation Snapshot Tests: Move
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_move_snapshot_delta_is_single_move() {
     let before = load_fixture("move_before.json");
@@ -271,6 +299,8 @@ fn golden_move_snapshot_delta_is_single_move() {
 // Operation Snapshot Tests: Resize
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_resize_snapshot_delta_is_single_resize() {
     let before = load_fixture("resize_before.json");
@@ -311,6 +341,8 @@ fn golden_resize_snapshot_delta_is_single_resize() {
 // Operation Snapshot Tests: Rotate
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_rotate_snapshot_delta_is_single_rotation() {
     let before = load_fixture("rotate_before.json");
@@ -349,6 +381,8 @@ fn golden_rotate_snapshot_delta_is_single_rotation() {
 // Operation Snapshot Tests: Group
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_group_snapshot_creates_subgraph() {
     let before = load_fixture("group_before.json");
@@ -370,6 +404,8 @@ fn golden_group_snapshot_creates_subgraph() {
     assert_eq!(group["kind"].as_str(), Some("subgraph"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_group_snapshot_assigns_parent_references() {
     let after = load_fixture("group_after.json");
@@ -386,6 +422,8 @@ fn golden_group_snapshot_assigns_parent_references() {
 // Operation Snapshot Tests: Reparent
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_reparent_snapshot_changes_parent() {
     let before = load_fixture("reparent_before.json");
@@ -522,6 +560,8 @@ fn generate_stress_scene_json() -> Value {
     })
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_stress_scene_generates_5000_nodes() {
     let doc = generate_stress_scene_json();
@@ -533,6 +573,8 @@ fn golden_stress_scene_generates_5000_nodes() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_stress_scene_generates_5000_edges() {
     let doc = generate_stress_scene_json();
@@ -544,6 +586,8 @@ fn golden_stress_scene_generates_5000_edges() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_stress_scene_all_edges_valid() {
     let doc = generate_stress_scene_json();
@@ -569,6 +613,8 @@ fn golden_stress_scene_all_edges_valid() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_stress_scene_no_duplicate_ids() {
     let doc = generate_stress_scene_json();
@@ -586,6 +632,8 @@ fn golden_stress_scene_no_duplicate_ids() {
     assert_eq!(edge_count, edge_ids.len(), "Duplicate edge IDs detected");
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_stress_scene_serializes_reasonably() {
     let doc = generate_stress_scene_json();
@@ -601,6 +649,8 @@ fn golden_stress_scene_serializes_reasonably() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn golden_stress_scene_roundtrips() {
     let doc = generate_stress_scene_json();
@@ -616,6 +666,8 @@ fn golden_stress_scene_roundtrips() {
 // Schema Validation Tests
 // ============================================================================
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn all_fixtures_have_valid_schema_version() {
     let fixtures = [
@@ -645,6 +697,8 @@ fn all_fixtures_have_valid_schema_version() {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn all_fixtures_have_valid_editor_state() {
     let fixtures = [

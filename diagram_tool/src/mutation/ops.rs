@@ -62,6 +62,8 @@ mod tests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_zero_cell_size_returns_unchanged(_ in Just(())) {
             let doc = make_doc_with_nodes(vec![
@@ -73,6 +75,8 @@ mod tests {
             prop_assert_eq!(result.document.nodes.len(), doc.document.nodes.len());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_negative_cell_size_returns_unchanged(cell_size in -1e10_f64..-0.001) {
             let doc = make_doc_with_nodes(vec![("a".into(), 100.0, 100.0, false)]);
@@ -81,6 +85,8 @@ mod tests {
             prop_assert_eq!(result.document.nodes.len(), doc.document.nodes.len());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_with_parent_cycle(_ in Just(())) {
             let n1 = NodeId::new("n1".into());
@@ -96,6 +102,8 @@ mod tests {
             prop_assert!(result.document.nodes.len() == 3);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_extreme_position_preserves_finiteness(coord in -1e15_f64..1e15_f64) {
             let doc = make_doc_with_nodes(vec![
@@ -109,6 +117,8 @@ mod tests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_very_small_cell_size(cell_size in f64::MIN_POSITIVE..1e-10) {
             let doc = make_doc_with_nodes(vec![("a".into(), 1.0, 1.0, false)]);
@@ -116,6 +126,8 @@ mod tests {
             prop_assert!(result.document.nodes.len() == 1);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_subnormal_cell_size(_ in Just(())) {
             let subnormal = f64::from_bits(1_u64);
@@ -124,6 +136,8 @@ mod tests {
             prop_assert!(result.document.nodes.len() == 1);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_inf_cell_size_returns_unchanged(sign in -1_i32..=1) {
             let cell_size = if sign < 0 { f64::NEG_INFINITY } else { f64::INFINITY };
@@ -133,6 +147,8 @@ mod tests {
             prop_assert_eq!(result.document.nodes.len(), doc.document.nodes.len());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_extreme_scale(scale in 1e-15_f64..1e15_f64) {
             let doc = make_doc_with_nodes(vec![
@@ -143,6 +159,8 @@ mod tests {
             prop_assert!(result.document.nodes.len() == 2);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_preserves_node_count(
             node_count in 0_usize..20,
@@ -157,6 +175,8 @@ mod tests {
             prop_assert!(result.document.nodes.len() == node_count);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_apply_layout_locked_nodes_unchanged(
             x in -1e6_f64..1e6_f64,

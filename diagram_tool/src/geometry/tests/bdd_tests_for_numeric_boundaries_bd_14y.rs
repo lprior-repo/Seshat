@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== BDD Tests for Numeric Boundaries (bd-14y) ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_node_with_positive_infinity_x_when_calculating_aabb_then_no_panic() {
     // Given: a rectangle with positive infinity x coordinate
@@ -21,6 +23,8 @@ fn given_node_with_positive_infinity_x_when_calculating_aabb_then_no_panic() {
     assert!(aabb.min_x.is_infinite() || aabb.min_x.is_nan());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_node_with_negative_infinity_y_when_calculating_aabb_then_no_panic() {
     // Given: a rectangle with negative infinity y coordinate
@@ -32,6 +36,8 @@ fn given_node_with_negative_infinity_y_when_calculating_aabb_then_no_panic() {
     assert!(aabb.min_y.is_infinite() || aabb.min_y.is_nan());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_rectangle_with_nan_width_when_calculating_aabb_then_no_panic() {
     // Given: a rectangle with NaN width
@@ -44,6 +50,8 @@ fn given_rectangle_with_nan_width_when_calculating_aabb_then_no_panic() {
     let _ = aabb.min_x;
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_rectangle_with_nan_height_when_calculating_aabb_then_no_panic() {
     // Given: a rectangle with NaN height
@@ -55,6 +63,8 @@ fn given_rectangle_with_nan_height_when_calculating_aabb_then_no_panic() {
     let _ = aabb.min_y;
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_very_large_coordinate_when_calculating_bounds_then_no_overflow() {
     // Given: coordinates at 1e308 (near f64 max)
@@ -69,6 +79,8 @@ fn given_very_large_coordinate_when_calculating_bounds_then_no_overflow() {
     assert!(aabb.max_x.is_infinite() || aabb.max_x.is_finite());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_very_small_positive_coordinate_when_calculating_bounds_then_no_underflow() {
     // Given: coordinates at 1e-308 (near f64 min positive)
@@ -80,6 +92,8 @@ fn given_very_small_positive_coordinate_when_calculating_bounds_then_no_underflo
     assert!(aabb.min_x > 0.0);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_infinity_in_safe_bounds_then_returns_none() {
     // Given: infinity values in bounds
@@ -91,6 +105,8 @@ fn given_infinity_in_safe_bounds_then_returns_none() {
     assert!(safe_bounds(0.0, 0.0, 100.0, f64::INFINITY).is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_all_nan_in_safe_bounds_then_returns_none() {
     // Given: all NaN values
@@ -99,6 +115,8 @@ fn given_all_nan_in_safe_bounds_then_returns_none() {
     assert!(safe_bounds(f64::NAN, f64::NAN, f64::NAN, f64::NAN).is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_subnormal_float_in_bounds_then_preserves_value() {
     // Given: subnormal float value (smaller than f64::MIN_POSITIVE)
@@ -111,6 +129,8 @@ fn given_subnormal_float_in_bounds_then_preserves_value() {
     assert!(result.is_ok() || result.is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_negative_infinity_in_all_coords_then_safe_bounds_returns_none() {
     // Given: negative infinity in all coordinates
@@ -125,6 +145,8 @@ fn given_negative_infinity_in_all_coords_then_safe_bounds_returns_none() {
     .is_err());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_scale_with_infinity_factor_then_no_panic() {
     // Given: scale factor of infinity
@@ -137,6 +159,8 @@ fn given_scale_with_infinity_factor_then_no_panic() {
     assert!(result.x.is_infinite() || result.x.is_nan());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_rotate_with_nan_angle_then_no_panic() {
     // Given: NaN rotation angle
@@ -149,6 +173,8 @@ fn given_rotate_with_nan_angle_then_no_panic() {
     assert!(result.x.is_nan() || result.y.is_nan());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_zoom_with_infinity_factor_then_no_panic() {
     // Given: zoom factor of infinity
@@ -161,6 +187,8 @@ fn given_zoom_with_infinity_factor_then_no_panic() {
     assert!(result.x.is_infinite() || result.x.is_nan());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_resize_with_nan_width_then_handles_gracefully() {
     // Given: NaN new width
@@ -170,6 +198,8 @@ fn given_resize_with_nan_width_then_handles_gracefully() {
     assert!(new_height.is_nan());
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn given_resize_with_zero_original_width_then_returns_new_width() {
     // Given: zero original width (edge case)

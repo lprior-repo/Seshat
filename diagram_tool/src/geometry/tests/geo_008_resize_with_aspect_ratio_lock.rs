@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-008: Resize with Aspect Ratio Lock ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_resize_aspect_lock() {
     // Given: original dimensions 100x50 (2:1 aspect ratio)
@@ -23,6 +25,8 @@ fn test_resize_aspect_lock() {
     assert!((new_height - 100.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_resize_aspect_lock_shrink() {
     // Given: original dimensions 100x50 (2:1 aspect ratio)
@@ -36,6 +40,8 @@ fn test_resize_aspect_lock_shrink() {
     assert!((new_height - 25.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_resize_aspect_lock_square() {
     // Given: square dimensions 100x100

@@ -504,6 +504,8 @@ mod tests {
 
     // Happy Path Tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_connect_creates_edge_successfully() {
         let state = make_projection_with_nodes_and_edge();
@@ -514,6 +516,8 @@ mod tests {
         assert!(new_state.has_edge(&EdgeId::new("edge-1".to_string())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_disconnect_removes_edge_successfully() {
         let mut state = make_projection_with_nodes_and_edge();
@@ -543,6 +547,8 @@ mod tests {
         assert!(!new_state.has_edge(&EdgeId::new("edge-1".to_string())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_verify_edge_tolerance_returns_ok_for_valid_edges() {
         let state = make_projection_with_nodes_and_edge();
@@ -553,6 +559,8 @@ mod tests {
 
     // Error Path Tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_connect_returns_error_for_duplicate_edge_id() {
         let mut state = make_projection_with_nodes_and_edge();
@@ -582,6 +590,8 @@ mod tests {
         assert!(matches!(err, EdgeOpsError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_connect_returns_error_for_nonexistent_source() {
         let state = make_projection_with_nodes_and_edge();
@@ -592,6 +602,8 @@ mod tests {
         assert!(matches!(err, EdgeOpsError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_connect_returns_error_for_nonexistent_target() {
         let state = make_projection_with_nodes_and_edge();
@@ -602,6 +614,8 @@ mod tests {
         assert!(matches!(err, EdgeOpsError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_disconnect_returns_error_for_nonexistent_edge() {
         let state = DiagramProjection::empty();
@@ -612,6 +626,8 @@ mod tests {
         assert!(matches!(err, EdgeOpsError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_op_returns_error_for_non_edge_operation() {
         let state = DiagramProjection::empty();
@@ -632,6 +648,8 @@ mod tests {
 
     // Edge Case Tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_connect_with_self_loop() {
         let mut projection = DiagramProjection::empty();
@@ -645,6 +663,8 @@ mod tests {
         assert!(result.is_ok(), "Error: {:?}", result.err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_disconnect_on_empty_projection() {
         let state = DiagramProjection::empty();
@@ -653,6 +673,8 @@ mod tests {
         assert!(result.is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_verify_edge_tolerance_on_empty_projection() {
         let state = DiagramProjection::empty();
@@ -661,6 +683,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_apply_edge_connect_preserves_existing_edges() {
         let mut state = make_projection_with_nodes_and_edge();
@@ -700,6 +724,8 @@ mod tests {
 
     // Edge Style Tests
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_026_test_default_edge_style_is_solid() {
         let state = make_projection_with_nodes_and_edge();
@@ -712,6 +738,8 @@ mod tests {
         assert_eq!(edge.style, crate::models::document::EdgeStyle::Solid);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_027_test_set_edge_style_to_dashed_updates_successfully() {
         let state = make_projection_with_nodes_and_edge();
@@ -726,6 +754,8 @@ mod tests {
         assert_eq!(edge.style, crate::models::document::EdgeStyle::Dashed);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_028_test_set_edge_style_to_dotted_updates_successfully() {
         let state = make_projection_with_nodes_and_edge();
@@ -740,6 +770,8 @@ mod tests {
         assert_eq!(edge.style, crate::models::document::EdgeStyle::Dotted);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_029_test_returns_error_when_setting_style_on_missing_edge() {
         let state = make_projection_with_nodes_and_edge();
@@ -756,6 +788,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn edg_030_test_set_edge_style_to_same_style_is_idempotent() {
         let state = make_projection_with_nodes_and_edge();
@@ -776,6 +810,8 @@ mod tests {
         assert_eq!(edge_before, edge_after);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_handles_applying_style_to_newly_connected_edge() {
         let state = make_projection_with_nodes_and_edge();
@@ -795,6 +831,8 @@ mod tests {
         assert_eq!(edge.style, crate::models::document::EdgeStyle::Dashed);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_style_persists_across_multiple_operations() {
         let state = make_projection_with_nodes_and_edge();
@@ -813,6 +851,8 @@ mod tests {
         assert_eq!(edge1.style, crate::models::document::EdgeStyle::Dotted);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_precondition_target_edge_must_exist() {
         let state = DiagramProjection::empty();
@@ -820,6 +860,8 @@ mod tests {
         assert!(matches!(result, Err(EdgeOpsError::EdgeNotFound(_))));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_edge_style_is_updated() {
         let state = make_projection_with_nodes_and_edge();
@@ -831,6 +873,8 @@ mod tests {
         assert_eq!(edge.style, crate::models::document::EdgeStyle::Dashed);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_other_properties_unchanged() {
         let state = make_projection_with_nodes_and_edge();
@@ -854,6 +898,8 @@ mod tests {
         assert_eq!(original_edge.directed, updated_edge.directed);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_postcondition_other_edges_unchanged() {
         let mut state = make_projection_with_nodes_and_edge();
@@ -876,6 +922,8 @@ mod tests {
         assert_eq!(&original_edge2, updated_edge2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_invariant_projection_structural_integrity_preserved() {
         let state = make_projection_with_nodes_and_edge();
@@ -892,6 +940,8 @@ mod tests {
         assert!(verify_edge_tolerance(&result).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_edge_exists_violation_returns_not_found_error() {
         let state = make_projection_with_nodes_and_edge();

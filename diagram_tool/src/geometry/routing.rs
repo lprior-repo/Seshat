@@ -149,3 +149,89 @@ pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
     compute_orthogonal_route(from, to)
         .map_or_else(|_| OrthogonalRoute { points: vec![] }, |route| route)
 }
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+
+    fn any_valid_f64() -> f64 {
+        let v: f64 = kani::any();
+        kani::assume(v.is_finite());
+        // Constrain magnitude to prevent overflow when adding 10.0 or computing midpoints
+        kani::assume(v > -1e150 && v < 1e150);
+        v
+    }
+
+    fn any_point() -> Point {
+        Point::new(any_valid_f64(), any_valid_f64())
+    }
+
+    fn any_aabb() -> AABB {
+        let min_x = any_valid_f64();
+        let max_x = any_valid_f64();
+        let min_y = any_valid_f64();
+        let max_y = any_valid_f64();
+        kani::assume(min_x <= max_x);
+        kani::assume(min_y <= max_y);
+        AABB::new(min_x, min_y, max_x, max_y)
+    }
+
+    #[kani::proof]
+    fn verify_compute_orthogonal_route_invariants() {
+        let p1 = any_point();
+        let p2 = any_point();
+
+        if let Ok(route) = compute_orthogonal_route(p1, p2) {
+            // Invariant 1: Route must be orthogonal
+            assert!(is_orthogonal(&route));
+
+            // Invariant 2: Endpoints match inputs exactly
+            let first = route.points.first().unwrap();
+            let last = route.points.last().unwrap();
+            assert_eq!(first.x, p1.x);
+            assert_eq!(first.y, p1.y);
+            assert_eq!(last.x, p2.x);
+            assert_eq!(last.y, p2.y);
+
+            // Invariant 3: Routes have either 2 or 3 points
+            assert!(route.points.len() == 2 || route.points.len() == 3);
+        }
+    }
+
+    #[kani::proof]
+    fn verify_compute_orthogonal_route_avoiding_invariants() {
+        let p1 = any_point();
+        let p2 = any_point();
+        let obstacle = any_aabb();
+
+        if let Ok(route) = compute_orthogonal_route_avoiding(p1, p2, &obstacle) {
+            // Invariant 1: Route must be orthogonal
+            assert!(is_orthogonal(&route));
+
+            // Invariant 2: Endpoints match inputs exactly
+            let first = route.points.first().unwrap();
+            let last = route.points.last().unwrap();
+            assert_eq!(first.x, p1.x);
+            assert_eq!(first.y, p1.y);
+            assert_eq!(last.x, p2.x);
+            assert_eq!(last.y, p2.y);
+
+            // Invariant 3: It does not intersect the obstacle strictly
+            assert!(!route_intersects(&route, &obstacle));
+        }
+    }
+
+    #[kani::proof]
+    fn verify_orthogonal_route_wrapper() {
+        let p1 = any_point();
+        let p2 = any_point();
+        let route = orthogonal_route(p1, p2);
+
+        if route.points.is_empty() {
+            // Error case handling
+            assert!(compute_orthogonal_route(p1, p2).is_err());
+        } else {
+            assert!(is_orthogonal(&route));
+        }
+    }
+}

@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== MUL-003: Rotate Bound Edges Survive ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_mul_rotate_bound_edges_survive() {
     // Given: multiple rectangles representing selected items

@@ -35,7 +35,7 @@ pub enum BridgeError {
 }
 
 pub struct StoreBridge {
-    pool: Arc<Mutex<Option<sqlx::SqlitePool>>>,
+    pool: sqlx::SqlitePool,
     runtime: Runtime,
 }
 
@@ -55,7 +55,7 @@ impl StoreBridge {
             .map_err(BridgeError::AsyncStore)?;
 
         Ok(Self {
-            pool: Arc::new(Mutex::new(Some(bootstrap.pool))),
+            pool: bootstrap.pool,
             runtime,
         })
     }
@@ -72,14 +72,6 @@ impl StoreBridge {
         let pool = self.pool.clone();
 
         self.runtime.block_on(async {
-            let p = {
-                let pool_guard = pool.lock().await;
-                pool_guard
-                    .as_ref()
-                    .ok_or(BridgeError::PoolNotInitialized)?
-                    .clone()
-            };
-
             // Parse at boundary: convert envelope to ValidEvent
             let event = envelope_to_valid_event(envelope).map_err(BridgeError::AsyncStore)?;
 
@@ -89,7 +81,7 @@ impl StoreBridge {
                 None => None,
             };
 
-            append_event_async(&p, event, expected)
+            append_event_async(&pool, event, expected)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
@@ -107,14 +99,6 @@ impl StoreBridge {
         let pool = self.pool.clone();
 
         self.runtime.block_on(async {
-            let p = {
-                let pool_guard = pool.lock().await;
-                pool_guard
-                    .as_ref()
-                    .ok_or(BridgeError::PoolNotInitialized)?
-                    .clone()
-            };
-
             // Parse at boundary: convert envelopes to ValidEvents
             let events: Result<Vec<ValidEvent>, _> =
                 ops.iter().map(envelope_to_valid_event).collect();
@@ -130,7 +114,7 @@ impl StoreBridge {
                 None => None,
             };
 
-            append_batch_async(&p, batch, expected)
+            append_batch_async(&pool, batch, expected)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
@@ -147,14 +131,7 @@ impl StoreBridge {
         let pool = self.pool.clone();
 
         self.runtime.block_on(async {
-            let p = {
-                let pool_guard = pool.lock().await;
-                pool_guard
-                    .as_ref()
-                    .ok_or(BridgeError::PoolNotInitialized)?
-                    .clone()
-            };
-            append_idempotent_async(&p, envelope)
+            append_idempotent_async(&pool, envelope)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
@@ -168,14 +145,7 @@ impl StoreBridge {
         let pool = self.pool.clone();
 
         self.runtime.block_on(async {
-            let p = {
-                let pool_guard = pool.lock().await;
-                pool_guard
-                    .as_ref()
-                    .ok_or(BridgeError::PoolNotInitialized)?
-                    .clone()
-            };
-            fetch_events_since(&p, revision)
+            fetch_events_since(&pool, revision)
                 .await
                 .map_err(BridgeError::AsyncStore)
         })
@@ -187,13 +157,7 @@ impl StoreBridge {
     /// Never returns an error currently, but signature is kept for symmetry.
     pub fn shutdown(self) -> Result<(), BridgeError> {
         self.runtime.block_on(async {
-            let p_opt = {
-                let mut pool_guard = self.pool.lock().await;
-                pool_guard.take()
-            };
-            if let Some(pool) = p_opt {
-                pool.close().await;
-            }
+            self.pool.close().await;
             Ok(())
         })
     }
@@ -204,6 +168,8 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_spawn_and_shutdown() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -213,6 +179,8 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_append_event_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -246,6 +214,8 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_fetch_events_since_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -285,6 +255,8 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_append_batch_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -339,6 +311,8 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_append_idempotent_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");

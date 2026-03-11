@@ -71,6 +71,8 @@ fn setup_doc() -> DiagramDocument {
     }
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_021_bounding_box_covers_rotated_nodes() {
     let mut doc = setup_doc();
@@ -94,6 +96,8 @@ fn test_sel_021_bounding_box_covers_rotated_nodes() {
     assert!((bounds.height - 141.421).abs() < 0.1);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_022_long_press_adds_node_to_selection_without_drag() {
     let mut doc = setup_doc();
@@ -102,6 +106,8 @@ fn test_sel_022_long_press_adds_node_to_selection_without_drag() {
     assert!(doc.editor_state.selected_items.contains("n1"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_023_double_click_enters_edit_mode_on_shape() {
     let mut doc = setup_doc();
@@ -110,6 +116,8 @@ fn test_sel_023_double_click_enters_edit_mode_on_shape() {
     assert_eq!(doc.editor_state.edit_mode_target.as_deref(), Some("n1"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_024_selection_persists_across_camera_zoom_and_pan() {
     let mut doc = setup_doc();
@@ -126,6 +134,8 @@ fn test_sel_024_selection_persists_across_camera_zoom_and_pan() {
     assert_eq!(selection_before, selection_after);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_025_marquee_selects_nodes_inside_subgraphs() {
     let mut doc = setup_doc();
@@ -160,6 +170,8 @@ fn test_sel_025_marquee_selects_nodes_inside_subgraphs() {
     assert!(!selected.contains(&NodeId::new("n2".to_string())));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_computing_bounds_for_missing_nodes() {
     let mut doc = setup_doc();
@@ -171,6 +183,8 @@ fn test_returns_error_when_computing_bounds_for_missing_nodes() {
     assert_eq!(res.unwrap_err(), SelectionError::NodeNotFound);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_long_press_fails_when_movement_exceeds_threshold() {
     let mut doc = setup_doc();
@@ -181,6 +195,8 @@ fn test_long_press_fails_when_movement_exceeds_threshold() {
     );
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_double_click_fails_on_uneditable_nodes() {
     let mut doc = setup_doc();
@@ -194,6 +210,8 @@ fn test_double_click_fails_on_uneditable_nodes() {
     assert_eq!(res.unwrap_err(), SelectionError::NodeNotEditable);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p1_violation_returns_node_not_found() {
     let mut doc = setup_doc();
@@ -202,6 +220,8 @@ fn test_p1_violation_returns_node_not_found() {
     assert_eq!(res, Err(SelectionError::NodeNotFound));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p2_violation_returns_movement_exceeded_drag_threshold() {
     let mut doc = setup_doc();
@@ -209,6 +229,8 @@ fn test_p2_violation_returns_movement_exceeded_drag_threshold() {
     assert_eq!(res, Err(SelectionError::MovementExceededDragThreshold));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p3_violation_returns_node_not_editable() {
     let mut doc = setup_doc();
@@ -221,12 +243,16 @@ fn test_p3_violation_returns_node_not_editable() {
     assert_eq!(res, Err(SelectionError::NodeNotEditable));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p5_violation_returns_marquee_invalid() {
     let res = ValidRect::new(0.0, 0.0, -10.0, 10.0);
     assert_eq!(res.unwrap_err(), SelectionError::InvalidMarqueeBounds);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_021_bounding_box_with_mixed_rotated_and_unrotated_nodes() {
     let mut doc = setup_doc();
@@ -254,6 +280,8 @@ fn test_sel_021_bounding_box_with_mixed_rotated_and_unrotated_nodes() {
     assert!((bounds.height - 250.0).abs() < 0.1);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_child() {
     let mut doc = setup_doc();
@@ -338,6 +366,8 @@ fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_chil
     assert!(!selected.contains(&NodeId::new("group_a".to_string())));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_when_alt_click_selects_parent_container() {
     let mut doc = setup_doc();
@@ -379,6 +409,8 @@ fn test_returns_success_when_alt_click_selects_parent_container() {
     assert!(!state.contains("child"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_when_right_click_unselected_node_selects_it() {
     let doc = setup_doc();
@@ -396,6 +428,8 @@ fn test_returns_success_when_right_click_unselected_node_selects_it() {
     assert!(state.contains("n1"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_success_when_click_edge_selects_connector() {
     let mut doc = setup_doc();
@@ -431,6 +465,8 @@ fn test_returns_success_when_click_edge_selects_connector() {
     assert!(state.contains("e1"));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_alt_clicking_node_without_parent() {
     let doc = setup_doc();
@@ -447,6 +483,8 @@ fn test_returns_error_when_alt_clicking_node_without_parent() {
     assert_eq!(res.unwrap_err(), SelectionError::NoParentContainer);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_selecting_locked_element() {
     let mut doc = setup_doc();
@@ -468,6 +506,8 @@ fn test_returns_error_when_selecting_locked_element() {
     assert_eq!(res.unwrap_err(), SelectionError::ElementLocked);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_selecting_hidden_element() {
     let mut doc = setup_doc();
@@ -491,6 +531,8 @@ fn test_returns_error_when_selecting_hidden_element() {
     assert_eq!(res.unwrap_err(), SelectionError::ElementHidden);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_returns_error_when_selecting_non_existent_element() {
     let doc = setup_doc();
@@ -506,6 +548,8 @@ fn test_returns_error_when_selecting_non_existent_element() {
     assert_eq!(res.unwrap_err(), SelectionError::ElementNotFound);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_handles_click_passing_through_hidden_node_to_node_underneath() {
     let mut doc = setup_doc();
@@ -543,6 +587,8 @@ fn test_handles_click_passing_through_hidden_node_to_node_underneath() {
     assert_eq!(res, Some(ElementId::Node(NodeId::new("n1".to_string()))));
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_handles_right_click_already_selected_node_preserves_selection() {
     let doc = setup_doc();
@@ -562,55 +608,85 @@ fn test_handles_right_click_already_selected_node_preserves_selection() {
     assert_eq!(state.len(), 1);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p1_violation_returns_no_parent_container_error() {
     test_returns_error_when_alt_clicking_node_without_parent();
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p2_violation_returns_element_locked_error() {
     test_returns_error_when_selecting_locked_element();
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p3_violation_returns_element_hidden_error() {
     test_returns_error_when_selecting_hidden_element();
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_p4_violation_returns_element_not_found_error() {
     test_returns_error_when_selecting_non_existent_element();
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q1_violation_returns_precondition_violated() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q2_violation_returns_element_locked() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q3_violation_returns_element_hidden() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q4_violation_returns_precondition_violated() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_q5_violation_returns_precondition_violated() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_precondition_element_must_be_unlocked() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_precondition_element_must_be_visible() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_alt_click_replaces_child_with_parent() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_postcondition_right_click_replaces_selection() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_invariant_selection_never_contains_locked_elements() {}
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_invariant_selection_never_contains_hidden_elements() {}

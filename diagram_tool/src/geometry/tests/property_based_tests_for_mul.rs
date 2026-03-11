@@ -11,6 +11,8 @@ const TOLERANCE: f64 = 1e-10;
 // ============== Property-Based Tests for MUL ==============
 
 proptest! {
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_mul_rotation_preserves_distances(
         x1 in -100.0_f64..100.0,
@@ -39,6 +41,8 @@ proptest! {
         prop_assert!((dist_before - dist_after).abs() < 1e-9);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_mul_full_rotation_returns_to_origin(
         x in -1000.0_f64..1000.0,
@@ -55,6 +59,8 @@ proptest! {
         prop_assert!(drift < 1e-9, "Drift {} exceeds threshold", drift);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_mul_selection_center_unchanged_by_rotation(
         n in 2usize..10,

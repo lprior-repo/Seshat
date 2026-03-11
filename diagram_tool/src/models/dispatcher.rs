@@ -166,6 +166,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_empty_events_when_replaying_then_returns_empty_projection() {
         let events: &[EventRecord] = &[];
@@ -178,6 +180,8 @@ mod tests {
         assert!(projection.edges.is_empty());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_node_add_when_replaying_then_includes_node() {
         let events = [make_event(
@@ -205,6 +209,8 @@ mod tests {
             .contains_key(&crate::models::document::NodeId::new("node-1".to_string())));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_events_when_replaying_then_increments_revision() {
         let events = [
@@ -255,6 +261,8 @@ mod tests {
         assert_eq!(projection.edges.len(), 1);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_revision_gap_when_replaying_then_returns_error() {
         let events = [
@@ -294,6 +302,8 @@ mod tests {
         assert!(matches!(err, ReplayError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_duplicate_node_id_when_replaying_then_returns_error() {
         let events = [
@@ -332,6 +342,8 @@ mod tests {
         assert!(matches!(err, ReplayError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_revision_mismatch_when_apply_event_then_returns_error() {
         let state = DiagramProjection::with_revision(5);
@@ -356,6 +368,8 @@ mod tests {
         assert!(matches!(err, ReplayError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_duplicate_op_id_when_apply_event_then_returns_error() {
         let mut state = DiagramProjection::empty();
@@ -381,6 +395,8 @@ mod tests {
         assert!(matches!(err, ReplayError::InvariantViolation(_)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_ai_author_when_apply_event_then_sets_human_false() {
         let state = DiagramProjection::empty();
@@ -405,6 +421,8 @@ mod tests {
         assert_eq!(projection.author_priority.get("op-1"), Some(&false));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_human_author_when_apply_event_then_sets_human_true() {
         let state = DiagramProjection::empty();

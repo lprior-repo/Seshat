@@ -399,6 +399,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_new_manager_when_created_then_empty() {
         let manager = DiagramLockManager::with_defaults(Duration::from_secs(1));
@@ -406,6 +408,8 @@ mod tests {
         assert_eq!(manager.diagram_count(), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_manager_when_check_unlocked_diagram_then_returns_false() {
         let manager = DiagramLockManager::with_defaults(Duration::from_secs(1));
@@ -414,6 +418,8 @@ mod tests {
         assert!(!manager.is_locked(&diagram_id));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_manager_when_check_queue_length_then_returns_zero() {
         let manager = DiagramLockManager::with_defaults(Duration::from_secs(1));
@@ -422,6 +428,8 @@ mod tests {
         assert_eq!(manager.queue_length(&diagram_id), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_lock_timeout_when_cannot_acquire_then_error() {
         let temp_dir = TempDir::new().unwrap();
@@ -438,6 +446,8 @@ mod tests {
         assert_eq!(result1.unwrap(), 42);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_different_diagrams_when_mutated_then_both_succeed() {
         let temp_dir = TempDir::new().unwrap();
@@ -457,6 +467,8 @@ mod tests {
         assert!(result2.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mutation_with_lock_when_applied_then_document_modified() {
         let temp_dir = TempDir::new().unwrap();
@@ -475,6 +487,8 @@ mod tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_queued_mutations_when_flushed_then_all_applied() {
         let temp_dir = TempDir::new().unwrap();
@@ -508,6 +522,8 @@ mod tests {
         assert_eq!(manager.queue_length(&diagram_id), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_queue_when_cleared_then_empty() {
         let temp_dir = TempDir::new().unwrap();
@@ -531,6 +547,8 @@ mod tests {
         assert_eq!(manager.queue_length(&diagram_id), 0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_operations_same_diagram_when_sequential_then_succeed() {
         let temp_dir = TempDir::new().unwrap();

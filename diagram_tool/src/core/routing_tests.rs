@@ -25,6 +25,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_source_node_missing() {
         let mut doc = DiagramDocument::default();
@@ -44,6 +46,8 @@ mod tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_returns_error_when_attempting_self_loop() {
         let mut doc = DiagramDocument::default();
@@ -60,6 +64,8 @@ mod tests {
         assert_eq!(err, RoutingError::SelfLoop(s1));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_adding_edge_that_creates_cycle_returns_cycle_detected_error() {
         let mut doc = DiagramDocument::default();

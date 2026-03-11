@@ -80,6 +80,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selected_nodes_when_bounds_requested_then_bounds_cover_selection() {
         let mut doc = DiagramDocument::default();
@@ -103,6 +105,8 @@ mod tests {
 
     // ============== SEL-001: Multi-type selection (shape+text+connector) ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multi_type_selection_when_bounds_requested_then_all_types_included() {
         // Given: A document with shape node, text node, and edge connecting them
@@ -144,6 +148,8 @@ mod tests {
 
     // ============== SEL-002: Selection persists across pan/zoom ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selected_items_when_camera_transforms_then_selection_remains_unchanged() {
         // Given: A document with selected items
@@ -191,6 +197,8 @@ mod tests {
 
     // ============== SEL-003: Selection box after undo/redo ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_selection_history_when_undo_redo_then_selection_restored() {
         use crate::history::History;
@@ -263,6 +271,8 @@ mod tests {
 
     // ============== SEL-004: Selection box handles negative coordinates ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nodes_at_negative_coords_when_selected_then_bounds_correct() {
         // Given: A document with nodes at negative coordinates
@@ -316,6 +326,8 @@ mod tests {
     // Note: Double-click to enter edit mode is handled by the UI layer with signals.
     // This test validates that selection state correctly identifies the target for editing.
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiable() {
         // Given: A document with a single selected node (edit mode prerequisite)
@@ -372,6 +384,8 @@ mod tests {
 
     // ============== GEO-024: Locked node exclusion from selection ==============
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_locked_and_unlocked_nodes_when_selection_bounds_then_exclude_locked() {
         // Given: A document with one unlocked node and one locked node
@@ -408,6 +422,8 @@ mod tests {
         assert_eq!(bounds, Some((10.0, 10.0, 50.0, 50.0)));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_all_locked_nodes_when_selection_bounds_then_none() {
         // Given: A document with only locked nodes selected
@@ -438,6 +454,8 @@ mod tests {
         assert_eq!(bounds, None);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mixed_selection_when_selected_node_ids_then_exclude_locked() {
         // Given: A document with mixed locked/unlocked nodes
@@ -474,5 +492,113 @@ mod tests {
         assert_eq!(ids.len(), 1);
         assert!(ids.contains(&unlocked_id));
         assert!(!ids.contains(&locked_id));
+    }
+}
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::{selected_node_ids, selection_bounds};
+    use crate::models::document::{
+        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    };
+
+    fn make_any_node(locked: bool) -> Node {
+        let x: f64 = kani::any();
+        let y: f64 = kani::any();
+        let w: f64 = kani::any();
+        let h: f64 = kani::any();
+
+        kani::assume(x.is_finite());
+        kani::assume(y.is_finite());
+        kani::assume(w.is_finite());
+        kani::assume(h.is_finite());
+        kani::assume(w >= 0.0);
+        kani::assume(h >= 0.0);
+        // Constrain arbitrary values slightly to avoid overflow when adding x + w
+        kani::assume(x > -1e10 && x < 1e10);
+        kani::assume(y > -1e10 && y < 1e10);
+        kani::assume(w < 1e10);
+        kani::assume(h < 1e10);
+
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: String::from("n"),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(w),
+            height: OrderedFloat(h),
+            font_size: None,
+            font_weight: None,
+            locked,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        }
+    }
+
+    #[kani::proof]
+    fn proof_selection_bounds_envelop_all_selected_unlocked_nodes() {
+        let mut doc = DiagramDocument::default();
+
+        let id_a = NodeId::new(String::from("a"));
+        let id_b = NodeId::new(String::from("b"));
+
+        let locked_a: bool = kani::any();
+        let locked_b: bool = kani::any();
+
+        let node_a = make_any_node(locked_a);
+        let node_b = make_any_node(locked_b);
+
+        doc.document.nodes = doc.document.nodes.update(id_a.clone(), node_a.clone());
+        doc.document.nodes = doc.document.nodes.update(id_b.clone(), node_b.clone());
+
+        let _ = doc.editor_state.selected_items.insert(id_a.to_string());
+        let _ = doc.editor_state.selected_items.insert(id_b.to_string());
+
+        if let Some((min_x, min_y, width, height)) = selection_bounds(&doc) {
+            let max_x = min_x + width;
+            let max_y = min_y + height;
+
+            if !locked_a {
+                assert!(node_a.x.0 >= min_x);
+                assert!(node_a.y.0 >= min_y);
+                assert!(node_a.x.0 + node_a.width.0 <= max_x);
+                assert!(node_a.y.0 + node_a.height.0 <= max_y);
+            }
+            if !locked_b {
+                assert!(node_b.x.0 >= min_x);
+                assert!(node_b.y.0 >= min_y);
+                assert!(node_b.x.0 + node_b.width.0 <= max_x);
+                assert!(node_b.y.0 + node_b.height.0 <= max_y);
+            }
+        } else {
+            // If bounds is None, it implies no unlocked nodes are selected
+            assert!(locked_a && locked_b);
+        }
+    }
+
+    #[kani::proof]
+    fn proof_selected_node_ids_filters_locked_nodes() {
+        let mut doc = DiagramDocument::default();
+
+        let id_a = NodeId::new(String::from("a"));
+        let locked_a: bool = kani::any();
+        let node_a = make_any_node(locked_a);
+
+        doc.document.nodes = doc.document.nodes.update(id_a.clone(), node_a.clone());
+        let _ = doc.editor_state.selected_items.insert(id_a.to_string());
+
+        let selected_ids = selected_node_ids(&doc);
+        if locked_a {
+            assert!(selected_ids.is_empty());
+        } else {
+            assert_eq!(selected_ids.len(), 1);
+            assert_eq!(selected_ids[0], id_a);
+        }
     }
 }

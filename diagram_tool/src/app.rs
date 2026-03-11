@@ -73,6 +73,10 @@ pub fn App() -> Element {
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
     use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
+    // AI conflict state - tracks concurrent editing conflicts between AI and human
+    use_context_provider(|| Signal::new(Option::<String>::None));
+    // Pending AI operations - tracks AI op_ids that have been dispatched but not confirmed in WAL
+    use_context_provider(|| Signal::new(std::collections::HashSet::<String>::new()));
 
     use_global_keyboard();
     use_e2e_reset_hook();
@@ -111,15 +115,48 @@ pub fn App() -> Element {
     let last_sync_revision = use_signal(|| 0_i64);
 
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let pending_ai_ops = use_context::<Signal<std::collections::HashSet<String>>>();
+
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let ai_conflict_state = use_context::<Signal<Option<String>>>();
+
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     use_future(move || {
         let store_bridge = store_bridge.clone();
         let mut doc_signal = doc_signal.clone();
         let mut last_sync_revision = last_sync_revision.clone();
-        async move {
+        let mut pending_ai_ops = pending_ai_ops.clone();
+        let mut ai_conflict_state = ai_conflict_state.clone();
+                async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                 let current_rev = *last_sync_revision.read();
                 if let Ok(events) = store_bridge.fetch_events_since_sync(current_rev) {
+                    // Detect dropped AI events using extracted pure function
+                    let pending_ops = pending_ai_ops.read().clone();
+                    let current_conflict = ai_conflict_state.read().clone();
+                    let detection_result = crate::ai_event_detection::detect_dropped_ai_events(
+                        &pending_ops,
+                        &events,
+                        &current_conflict,
+                    );
+
+                    // Update conflict state if drops detected
+                    if detection_result.has_conflict {
+                        if let Some(msg) = detection_result.conflict_message {
+                            ai_conflict_state.set(Some(msg));
+                        }
+                    }
+
+                    // Remove dropped ops from pending
+                    if !detection_result.dropped_op_ids.is_empty() {
+                        pending_ai_ops.with_mut(|ops| {
+                            for op_id in &detection_result.dropped_op_ids {
+                                let _ = ops.remove(op_id);
+                            }
+                        });
+                    }
+
                     if !events.is_empty() {
                         let mut next_rev = current_rev;
                         doc_signal.with_mut(|doc| {
@@ -128,6 +165,17 @@ pub fn App() -> Element {
                                 if let Ok(envelope) =
                                     crate::models::envelope::parse_event_envelope(&event.payload)
                                 {
+                                    // Remove confirmed AI ops from pending
+                                    let op_id = event.op_id.clone();
+                                    let is_ai = !crate::models::projection::types::is_human_author(
+                                        &envelope.author,
+                                    );
+                                    if is_ai {
+                                        pending_ai_ops.with_mut(|ops| {
+                                            let _ = ops.remove(&op_id);
+                                        });
+                                    }
+
                                     let proj_event = crate::models::projection::EventRecord {
                                         op_id: event.op_id.clone(),
                                         revision: doc.revision.value(),

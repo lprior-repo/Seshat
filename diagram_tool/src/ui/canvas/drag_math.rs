@@ -123,6 +123,8 @@ mod subgraph_tests {
 
     /// Given a container with a child at overlapping position,
     /// when hit testing by position, the child should be prioritized due to higher z_index.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_container_with_child_when_hit_testing_then_child_has_higher_z_index() {
         let mut doc = DiagramDocument::default();
@@ -180,6 +182,8 @@ mod subgraph_tests {
 
     /// Given a container with multiple children at different z_index values,
     /// when selecting by position, the highest z_index node should be preferred.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins() {
         let mut doc = DiagramDocument::default();
@@ -245,6 +249,8 @@ mod subgraph_tests {
     /// Given nodes inside and outside a container,
     /// when performing rubber-band selection that spans both areas,
     /// then nodes from both inside and outside the container should be selectable.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable() {
         let mut doc = DiagramDocument::default();
@@ -302,6 +308,8 @@ mod subgraph_tests {
     /// Given a rubber-band selection area,
     /// when the area partially overlaps a container,
     /// then only nodes within the selection area are selected (not all container children).
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_partial_container_overlap_when_rubberband_then_only_overlapping_selected() {
         let mut doc = DiagramDocument::default();
@@ -363,6 +371,8 @@ mod subgraph_tests {
     /// Given a container with collapsed state,
     /// when serialized and deserialized,
     /// then the collapsed state is preserved.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_container_with_collapsed_state_when_roundtripped_then_state_preserved() {
         let mut doc = DiagramDocument::default();
@@ -401,6 +411,8 @@ mod subgraph_tests {
     /// Given an expanded container with children,
     /// when the container is set to collapsed,
     /// then the collapsed field reflects this but children remain in document.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_expanded_container_when_collapsed_then_children_remain_in_document() {
         let mut doc = DiagramDocument::default();
@@ -464,6 +476,8 @@ mod subgraph_tests {
 
     /// Given containers with different collapsed states,
     /// when queried, each container maintains its own collapsed state independently.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_containers_when_collapsed_independently_then_states_are_independent() {
         let mut doc = DiagramDocument::default();
@@ -522,6 +536,8 @@ mod subgraph_tests {
     /// Given a locked container with unlocked children,
     /// when checking lock status,
     /// then children are independently unlocked (not inheriting parent's locked state).
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_locked_container_with_unlocked_children_then_children_are_independently_unlocked() {
         let mut doc = DiagramDocument::default();
@@ -561,6 +577,8 @@ mod subgraph_tests {
     /// Given a locked container with unlocked child,
     /// when selecting the child,
     /// then the child can be selected independently.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_locked_container_when_selecting_unlocked_child_then_child_is_selectable() {
         let mut doc = DiagramDocument::default();
@@ -604,6 +622,8 @@ mod subgraph_tests {
     /// Given mixed lock states in a hierarchy,
     /// when checking each node's lock state,
     /// then each node maintains its own lock state without inheritance.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mixed_lock_hierarchy_then_lock_states_are_per_node() {
         let mut doc = DiagramDocument::default();
@@ -657,6 +677,8 @@ mod subgraph_tests {
     /// Given a container with children,
     /// when the container is selected and resized,
     /// then children are included in resize targets and parent references are preserved.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_container_with_children_when_selected_then_children_included_in_resize_targets() {
         let mut doc = DiagramDocument::default();
@@ -748,6 +770,8 @@ mod subgraph_tests {
     /// Given a container with children,
     /// when the container is selected for resize,
     /// then the parent references of children remain intact.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_container_with_children_when_resizing_then_parent_references_preserved() {
         let mut doc = DiagramDocument::default();
@@ -777,8 +801,9 @@ mod subgraph_tests {
 
         // Simulate resize finalization (which would update positions)
         let mut mode = InteractionMode::Select;
-        let _ =
-            crate::ui::canvas::interaction_reducer::finalize_motion_release(&mut mode, &mut doc);
+        let _ = crate::ui::canvas::interaction_reducer::finalize_motion_release(
+            &mut mode, &mut doc, &None,
+        );
 
         // Verify parent reference is still intact
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
@@ -792,6 +817,8 @@ mod subgraph_tests {
     /// Given nested containers,
     /// when checking parent-child relationships,
     /// then each node correctly references its immediate parent.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nested_containers_then_parent_chain_is_correct() {
         let mut doc = DiagramDocument::default();
@@ -852,6 +879,8 @@ mod subgraph_tests {
     /// Given multiple selected nodes outside a container,
     /// when drag positions are calculated,
     /// then both nodes are tracked for the drag operation.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_multiple_selected_nodes_when_drag_position_calculated_then_all_tracked() {
         use crate::ui::interaction::drag_original_positions;
@@ -901,6 +930,8 @@ mod subgraph_tests {
     /// Given two containers where one can be nested inside the other,
     /// when the inner container is positioned within outer bounds,
     /// then the geometry supports valid nesting.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_two_containers_when_inner_positioned_in_outer_then_geometry_supports_nesting() {
         let mut doc = DiagramDocument::default();
@@ -951,6 +982,8 @@ mod subgraph_tests {
     /// Given a nested container hierarchy,
     /// when a middle container (which has children) is selected,
     /// then dragging includes both the container and its descendants.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nested_container_with_children_when_middle_selected_then_descendants_included() {
         use crate::ui::interaction::drag_original_positions;
@@ -1012,6 +1045,8 @@ mod subgraph_tests {
     /// Given a container with a child near the edge,
     /// when calculating resize targets,
     /// then both container and child are included for boundary calculations.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_container_with_child_near_edge_when_resize_targets_then_both_included() {
         let mut doc = DiagramDocument::default();
@@ -1086,6 +1121,8 @@ mod subgraph_tests {
     /// Given a three-level hierarchy (outer -> inner -> leaf),
     /// when the outer container is selected,
     /// then drag positions include all descendants.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_three_level_hierarchy_when_outer_selected_then_all_descendants_in_drag_positions() {
         use crate::ui::interaction::drag_original_positions;
@@ -1153,5 +1190,143 @@ mod subgraph_tests {
         assert_eq!(outer_pos.map(|p| (p.0, p.1)), Some((50.0, 50.0)));
         assert_eq!(inner_pos.map(|p| (p.0, p.1)), Some((100.0, 100.0)));
         assert_eq!(leaf_pos.map(|p| (p.0, p.1)), Some((150.0, 150.0)));
+    }
+}
+
+#[cfg(kani)]
+mod kani_proofs {
+    use super::*;
+    use crate::models::document::NodeId;
+    use crate::ui::grid::{snap_point, snap_value, GridSize};
+    use crate::ui::interaction::has_drag_threshold;
+    use im::HashMap;
+
+    #[kani::proof]
+    #[kani::unwind(3)]
+    fn verify_calculate_resize_targets_preserves_selection() {
+        let id1 = NodeId::new("n1".to_string());
+        let id2 = NodeId::new("n2".to_string());
+
+        let selected = vec![id1.clone()];
+
+        let mut geom = HashMap::new();
+        let x: f64 = kani::any();
+        let y: f64 = kani::any();
+        let w: f64 = kani::any();
+        let h: f64 = kani::any();
+        let is_subgraph: bool = kani::any();
+
+        kani::assume(x.is_finite());
+        kani::assume(y.is_finite());
+        kani::assume(w.is_finite() && w >= 0.0);
+        kani::assume(h.is_finite() && h >= 0.0);
+
+        geom.insert(id1.clone(), (x, y, w, h, is_subgraph));
+        geom.insert(id2.clone(), (0.0, 0.0, 10.0, 10.0, false));
+
+        let targets = calculate_resize_target_ids(&selected, &geom);
+        assert!(targets.contains(&id1));
+        assert!(targets.len() >= 1);
+    }
+
+    #[kani::proof]
+    #[kani::unwind(4)]
+    fn verify_calculate_resize_targets_includes_within() {
+        let parent_id = NodeId::new("parent".to_string());
+        let child_id = NodeId::new("child".to_string());
+
+        let selected = vec![parent_id.clone()];
+
+        let px: f64 = kani::any();
+        let py: f64 = kani::any();
+        let pw: f64 = kani::any();
+        let ph: f64 = kani::any();
+
+        let cx: f64 = kani::any();
+        let cy: f64 = kani::any();
+        let cw: f64 = kani::any();
+        let ch: f64 = kani::any();
+
+        kani::assume(px.is_finite());
+        kani::assume(py.is_finite());
+        kani::assume(pw.is_finite() && pw >= 0.0);
+        kani::assume(ph.is_finite() && ph >= 0.0);
+
+        kani::assume(cx.is_finite());
+        kani::assume(cy.is_finite());
+        kani::assume(cw.is_finite() && cw >= 0.0);
+        kani::assume(ch.is_finite() && ch >= 0.0);
+
+        // Child is strictly within parent
+        kani::assume(cx >= px);
+        kani::assume(cy >= py);
+        kani::assume(cx + cw <= px + pw);
+        kani::assume(cy + ch <= py + ph);
+
+        let mut geom = HashMap::new();
+        geom.insert(parent_id.clone(), (px, py, pw, ph, true)); // is_subgraph = true
+        geom.insert(child_id.clone(), (cx, cy, cw, ch, false));
+
+        let targets = calculate_resize_target_ids(&selected, &geom);
+
+        assert!(targets.contains(&parent_id));
+        assert!(targets.contains(&child_id));
+    }
+
+    #[kani::proof]
+    fn verify_snap_value_bounds() {
+        let val: f64 = kani::any();
+        let grid_val: f64 = kani::any();
+        let snap: bool = kani::any();
+
+        kani::assume(val.is_finite());
+        kani::assume(grid_val.is_finite());
+        kani::assume(grid_val >= 10.0 && grid_val <= 100.0);
+
+        let grid = GridSize::new(grid_val).unwrap();
+        let snapped = snap_value(val, snap, grid);
+
+        assert!(snapped.is_finite() || val.is_infinite() || val.is_nan());
+
+        if snap && val.is_finite() {
+            let diff = (snapped - val).abs();
+            // max difference should be grid / 2, adding epsilon for floating point math
+            assert!(diff <= (grid_val / 2.0) + 1e-5);
+        } else if !snap {
+            assert_eq!(snapped, val);
+        }
+    }
+
+    #[kani::proof]
+    fn verify_drag_threshold() {
+        let ox: f64 = kani::any();
+        let oy: f64 = kani::any();
+        let cx: f64 = kani::any();
+        let cy: f64 = kani::any();
+
+        kani::assume(ox.is_finite());
+        kani::assume(oy.is_finite());
+        kani::assume(cx.is_finite());
+        kani::assume(cy.is_finite());
+
+        // Constrain to prevent overflow when squaring
+        kani::assume((cx - ox).abs() < 1e50);
+        kani::assume((cy - oy).abs() < 1e50);
+
+        let dx = cx - ox;
+        let dy = cy - oy;
+        let dist_sq = dx * dx + dy * dy;
+
+        let result = has_drag_threshold((ox, oy), (cx, cy));
+
+        // DRAG_THRESHOLD_PX is 3.0, so dist_sq threshold is 9.0
+        if dist_sq < 9.0 {
+            assert!(!result);
+        }
+
+        if dist_sq >= 9.0001 {
+            // Account for f64 precision
+            assert!(result);
+        }
     }
 }

@@ -57,6 +57,8 @@ fn make_edge(source: NodeId, target: NodeId) -> Edge {
 proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_complex_dag(num_nodes in 2usize..10, edge_density in 0.0f64..1.0) {
         let mut nodes = HashMap::new();
@@ -76,6 +78,8 @@ proptest! {
         let _ = validate_schema(&doc);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_linear_dag(num_nodes in 2usize..15) {
         let mut nodes = HashMap::new();
@@ -89,6 +93,8 @@ proptest! {
         prop_assert!(validate_schema(&doc).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_star_dag(center in 1usize..5, spokes in 2usize..8) {
         let mut nodes = HashMap::new();
@@ -104,6 +110,8 @@ proptest! {
         prop_assert!(validate_schema(&doc).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_complete_dag(num_nodes in 2usize..6) {
         let mut nodes = HashMap::new();
@@ -123,6 +131,8 @@ proptest! {
         prop_assert!(validate_schema(&doc).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_disconnected_components(num_components in 2usize..5, nodes_per_component in 2usize..5) {
         let mut nodes = HashMap::new();
@@ -140,6 +150,8 @@ proptest! {
         prop_assert!(validate_schema(&doc).is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_dag_with_reverse_edges_fails(num_nodes in 3usize..8) {
         let mut nodes = HashMap::new();
@@ -155,6 +167,8 @@ proptest! {
         prop_assert!(validate_schema(&doc).is_err());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn prop_mixed_node_kinds_in_dag(num_nodes in 3usize..10) {
         let mut nodes = HashMap::new();

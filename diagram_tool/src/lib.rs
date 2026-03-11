@@ -82,6 +82,8 @@ pub mod store_async;
 pub mod store_bridge;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store_durable;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod ai_event_detection;
 pub mod ui;
 pub mod viewport;
 

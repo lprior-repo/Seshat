@@ -10,6 +10,8 @@ const TOLERANCE: f64 = 1e-10;
 
 // ============== GEO-009: Combined Transform Chain ==============
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_combined_transforms() {
     // Given: a point at (2, 0), anchor at origin
@@ -24,6 +26,8 @@ fn test_combined_transforms() {
     assert!((result.y - 4.0).abs() < TOLERANCE);
 }
 
+#[cfg(kani)]
+#[kani::proof]
 #[test]
 fn test_combined_transforms_order_matters() {
     // Given: a point and anchor

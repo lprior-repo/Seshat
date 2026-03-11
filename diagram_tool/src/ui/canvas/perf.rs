@@ -158,6 +158,8 @@ mod tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nan_wheel_delta_when_wheel_update_then_no_invalid_state_is_emitted() {
         let nan_input = make_input(f64::NAN, 1.0, true, false);
@@ -177,6 +179,8 @@ mod tests {
         assert!(neg_inf_result.is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nan_client_coords_when_wheel_update_then_returns_none() {
         let nan_client_x = WheelInput {
@@ -208,6 +212,8 @@ mod tests {
         assert!(wheel_update(nan_client_y).is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_nan_camera_when_wheel_update_then_returns_none() {
         let nan_camera_x = WheelInput {
@@ -239,6 +245,8 @@ mod tests {
         assert!(wheel_update(nan_camera_y).is_none());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_extreme_zoom_inputs_when_wheel_transform_then_zoom_stays_clamped_and_finite() {
         let very_high_zoom = make_input(-100.0, 1000.0, true, false);
@@ -270,6 +278,8 @@ mod tests {
         assert!(z4 >= ZOOM_MIN && z4 <= ZOOM_MAX);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_discrete_wheel_extreme_deltas_when_transform_then_stays_bounded() {
         let large_positive = make_input(10000.0, 1.0, true, true);
@@ -287,6 +297,8 @@ mod tests {
         assert!(z2 >= ZOOM_MIN && z2 <= ZOOM_MAX);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_continuous_wheel_extreme_deltas_when_transform_then_stays_bounded() {
         let large_positive = make_input(500.0, 1.0, true, false);
@@ -304,6 +316,8 @@ mod tests {
         assert!(z2 >= ZOOM_MIN && z2 <= ZOOM_MAX);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_already_at_zoom_limit_when_wheel_then_no_change() {
         let at_max = make_input(-50.0, ZOOM_MAX, true, false);
@@ -315,6 +329,8 @@ mod tests {
         assert!(result_min.is_none() || result_min.is_some_and(|(_, _, z)| z.0 >= ZOOM_MIN));
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_to_canvas_coords_when_valid_then_returns_finite() {
         let (x, y) = to_canvas_coords(100.0, 200.0, 50.0, 75.0, 2.0);
@@ -324,6 +340,8 @@ mod tests {
         assert_eq!(y, 200.0 / 2.0 + 75.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_to_screen_coords_when_valid_then_returns_finite() {
         let (x, y) = to_screen_coords(100.0, 200.0, 50.0, 75.0, 2.0);
@@ -335,6 +353,8 @@ mod tests {
         assert_eq!(y, (200.0 / 2.0) + 75.0);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_wheel_update_when_all_valid_then_returns_some_with_finite_values() {
         let input = make_input(-50.0, 1.0, true, false);
@@ -347,6 +367,8 @@ mod tests {
         assert!(z.0 >= ZOOM_MIN && z.0 <= ZOOM_MAX);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_wheel_update_when_zero_delta_then_returns_none() {
         let input = make_input(0.0, 1.0, true, false);
@@ -404,6 +426,8 @@ mod proptests {
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         #[allow(clippy::unwrap_used)]
         fn prop_wheel_transform_zoom_always_clamped(input in arb_wheel_input()) {
@@ -413,6 +437,8 @@ mod proptests {
             prop_assert!(zoom <= ZOOM_MAX);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_wheel_transform_coords_always_finite(input in arb_wheel_input()) {
             let (cx, cy, _) = wheel_transform(input);
@@ -420,6 +446,8 @@ mod proptests {
             prop_assert!(cy.is_finite());
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_wheel_update_returns_finite_or_none(input in arb_wheel_input()) {
             if let Some((cx, cy, z)) = wheel_update(input) {
@@ -433,6 +461,8 @@ mod proptests {
 
 
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_coord_transform_roundtrip(
             client_x in arb_finite_f64(),
@@ -452,6 +482,8 @@ mod proptests {
             assert!(world_y.is_finite(), "world_y should be finite");
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_viewport_changed_detects_significant_change(
             w1 in 1.0_f64..2000.0_f64,
@@ -466,6 +498,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_normalize_viewport_always_positive(
             width in -1000.0_f64..1000.0_f64,
@@ -476,6 +510,8 @@ mod proptests {
             prop_assert!(h >= 1.0);
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_discrete_wheel_zoom_factor_consistency(
             zoom in 0.2_f64..3.0_f64,
@@ -503,6 +539,8 @@ mod proptests {
             }
         }
 
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_continuous_wheel_zoom_respects_bounds(
             zoom in 0.2_f64..3.0_f64,
@@ -540,6 +578,8 @@ mod inp_mobile_touch_tests {
     // INP-2: Pinch does not create shape
     // A two-finger pinch gesture should zoom the canvas, not create shapes or subgraphs.
     // The zoom_gesture flag indicates pinch behavior.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_pinch_gesture_when_zoom_in_then_zooms_canvas_not_creates_shape() {
         let pinch_zoom_in = WheelInput {
@@ -564,6 +604,8 @@ mod inp_mobile_touch_tests {
         assert!(z <= ZOOM_MAX, "Zoom should be clamped to max");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_pinch_gesture_when_zoom_out_then_zooms_canvas_not_creates_shape() {
         let pinch_zoom_out = WheelInput {
@@ -588,6 +630,8 @@ mod inp_mobile_touch_tests {
         assert!(z >= ZOOM_MIN, "Zoom should be clamped to min");
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_pinch_at_limits_then_stays_bounded() {
         // Pinch at max zoom should not exceed
@@ -628,6 +672,8 @@ mod inp_mobile_touch_tests {
     // INP-5: Stylus vs Finger mode
     // The system should handle different pointer types without panicking.
     // While we can't distinguish pointer types in wheel events, we verify robustness.
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_stylus_like_input_when_processed_then_no_panic() {
         // Stylus typically has more precise/smaller movements
@@ -653,6 +699,8 @@ mod inp_mobile_touch_tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_finger_like_input_when_processed_then_no_panic() {
         // Finger touch typically has less precise/larger movements
@@ -678,6 +726,8 @@ mod inp_mobile_touch_tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn given_mixed_pointer_inputs_then_all_produce_valid_output() {
         let inputs = vec![
@@ -743,6 +793,8 @@ mod inp_mobile_touch_proptests {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
         // INP-2: Pinch gesture always produces valid zoom
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_pinch_gesture_always_produces_valid_zoom(
             camera_x in -1000.0_f64..1000.0,
@@ -774,6 +826,8 @@ mod inp_mobile_touch_proptests {
         }
 
         // INP-5: Different pointer types all produce valid output
+        #[cfg(kani)]
+        #[kani::proof]
         #[test]
         fn prop_pointer_type_agnostic_handling(
             client_x in 0.0_f64..1000.0,

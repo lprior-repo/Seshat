@@ -21,6 +21,8 @@ mod test_harness_tests {
     // P1: Test Category ID Validity (Compile-Time)
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p1_test_category_enum_is_exhaustive() {
         // Given: The TestCategory enum
@@ -50,6 +52,8 @@ mod test_harness_tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p1_test_category_display_names() {
         // Given: TestCategory enum
@@ -73,6 +77,8 @@ mod test_harness_tests {
     // P2: Golden Scene File Exists
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p2_load_existing_fixture_succeeds() {
         // Given: Known fixture file
@@ -89,6 +95,8 @@ mod test_harness_tests {
         assert!(doc.is_object());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p2_load_nonexistent_fixture_returns_error() {
         // Given: Non-existent fixture name
@@ -110,6 +118,8 @@ mod test_harness_tests {
     // P3: Golden Scene Is Valid JSON
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p3_valid_json_fixture_parses() {
         // Given: Known valid fixture
@@ -131,6 +141,8 @@ mod test_harness_tests {
     // P4: Schema Version Matches
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p4_valid_schema_version_passes() {
         // Given: Valid document with version 2
@@ -149,6 +161,8 @@ mod test_harness_tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn p4_wrong_schema_version_fails() {
         // Given: Document with wrong version
@@ -177,6 +191,8 @@ mod test_harness_tests {
     // Q1: All 228 Test Cases Have Test Stubs
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q1_total_expected_tests_is_228() {
         // Given: All test categories
@@ -189,6 +205,8 @@ mod test_harness_tests {
         assert_eq!(total, 228);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q1_each_category_has_expected_count() {
         // Given: Each test category
@@ -205,6 +223,8 @@ mod test_harness_tests {
     // Q2: Golden Scene Fixtures Load and Validate
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q2_mixed_selection_fixture_loads() {
         // Given: The mixed_selection fixture
@@ -222,6 +242,8 @@ mod test_harness_tests {
         assert!(nodes.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q2_nested_subgraph_fixture_loads() {
         // Given: The nested_subgraph fixture
@@ -236,6 +258,8 @@ mod test_harness_tests {
     // Q3: Test Runner Reports Pass/Fail Per Category
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q3_run_category_tests_returns_report() {
         // Given: A test category
@@ -252,6 +276,8 @@ mod test_harness_tests {
         assert_eq!(report.category, category);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q3_run_all_tests_returns_suite_report() {
         // Given: All test categories
@@ -275,6 +301,8 @@ mod test_harness_tests {
     // Helper Function Tests
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_db_path_generates_unique_paths() {
         // Given: Different test names
@@ -286,6 +314,8 @@ mod test_harness_tests {
         assert_ne!(path1, path2);
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn test_db_path_includes_test_name() {
         // Given: A test name
@@ -302,6 +332,8 @@ mod test_harness_tests {
         );
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn get_nodes_returns_nodes_object() {
         // Given: Loaded fixture
@@ -315,6 +347,8 @@ mod test_harness_tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn get_edges_returns_edges_object() {
         // Given: Loaded fixture
@@ -328,6 +362,8 @@ mod test_harness_tests {
         assert!(result.is_ok());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn get_node_by_id_returns_node_for_valid_id() {
         // Given: Document with a node
@@ -345,6 +381,8 @@ mod test_harness_tests {
         assert!(node.get("kind").is_some());
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn get_node_by_id_returns_error_for_invalid_id() {
         // Given: Document
@@ -362,6 +400,8 @@ mod test_harness_tests {
     // Error Message Quality Tests
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn error_messages_are_actionable() {
         // Given: Various error types
@@ -394,6 +434,8 @@ mod test_harness_tests {
     // Fuzz Report Tests
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn fuzz_document_operations_is_deterministic() {
         // Given: Same seed
@@ -415,6 +457,8 @@ mod test_harness_tests {
     // CI Integration Readiness
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn q4_test_results_are_serializable() {
         // Given: CategoryReport
@@ -443,6 +487,8 @@ mod test_harness_tests {
     // Stress Test Generation
     // ============================================================================
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn generate_stress_scene_produces_5000_nodes() {
         // Given: Seed value
@@ -465,6 +511,8 @@ mod test_harness_tests {
         }
     }
 
+    #[cfg(kani)]
+    #[kani::proof]
     #[test]
     fn generate_stress_scene_is_deterministic() {
         // Given: Same seed
