@@ -1131,6 +1131,7 @@ mod proptests {
                         grid_size: GridSize::default(),
                         snap_to_grid: true,
                         selected_items: im::HashSet::new(),
+                        edit_mode_target: None,
                         editing_edge_id: None,
                         theme: crate::models::document::EditorTheme::System,
                         show_grid: true,

@@ -371,6 +371,8 @@ pub struct EditorState {
     #[serde(default)]
     pub selected_items: im::HashSet<String>,
     #[serde(default)]
+    pub edit_mode_target: Option<String>,
+    #[serde(default)]
     pub editing_edge_id: Option<String>,
     #[serde(default = "default_theme")]
     pub theme: EditorTheme,
@@ -389,6 +391,7 @@ impl Default for EditorState {
             grid_size: GridSize::default(),
             snap_to_grid: true,
             selected_items: im::HashSet::new(),
+            edit_mode_target: None,
             editing_edge_id: None,
             theme: default_theme(),
             show_grid: default_show_grid(),
