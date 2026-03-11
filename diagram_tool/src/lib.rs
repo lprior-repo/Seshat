@@ -57,8 +57,11 @@
 #![forbid(unsafe_code)]
 
 pub mod app;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod backend;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cli;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod cli_persistence;
 pub mod config;
 pub mod export;
@@ -69,6 +72,7 @@ pub mod icons;
 pub mod layout;
 pub mod models;
 pub mod mutation;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod perf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store;

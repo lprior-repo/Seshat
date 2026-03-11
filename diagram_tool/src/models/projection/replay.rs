@@ -9,8 +9,9 @@ use crate::models::envelope::DomainOp;
 
 use crate::models::projection::ops::{
     apply_bring_forward, apply_bring_to_front, apply_edge_connect, apply_edge_disconnect,
-    apply_group, apply_node_add, apply_node_delete, apply_node_move, apply_node_restore,
-    apply_send_backward, apply_send_to_back, apply_ungroup,
+    apply_group, apply_node_add, apply_node_delete, apply_node_move, apply_node_resize,
+    apply_node_restore, apply_send_backward, apply_send_to_back, apply_ungroup,
+    apply_update_edge_style, apply_update_label, apply_update_node_style,
 };
 use crate::models::projection::types::{DiagramProjection, EventRecord, ReplayError};
 
@@ -174,10 +175,14 @@ fn dispatch_operation(
         DomainOp::NodeMove { id, x, y } => apply_node_move(state, id, *x, *y),
         DomainOp::NodeDelete { id } => apply_node_delete(state, id),
         DomainOp::NodeRestore { id } => apply_node_restore(state, id),
+        DomainOp::NodeResize { id, width, height } => apply_node_resize(state, id, *width, *height),
+        DomainOp::UpdateLabel { id, label } => apply_update_label(state, id, label),
+        DomainOp::UpdateNodeStyle { id, style } => apply_update_node_style(state, id, *style),
         DomainOp::EdgeConnect { id, source, target } => {
             apply_edge_connect(state, id, source, target)
         }
         DomainOp::EdgeDisconnect { id } => apply_edge_disconnect(state, id),
+        DomainOp::UpdateEdgeStyle { id, style } => apply_update_edge_style(state, id, *style),
         DomainOp::BringForward { ids } => apply_bring_forward(state, ids),
         DomainOp::SendBackward { ids } => apply_send_backward(state, ids),
         DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),

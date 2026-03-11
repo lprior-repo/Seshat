@@ -27,7 +27,7 @@ use crate::ui::ValidationPanel;
 #[allow(unused_imports)]
 use auto_save::AUTO_SAVE_KEY;
 use dioxus::prelude::*;
-#[cfg(feature = "async-db")]
+#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
 use futures_util::stream::StreamExt;
 use std::collections::HashMap;
 
@@ -84,12 +84,12 @@ pub fn App() -> Element {
     let panels = use_context::<Signal<PanelVisibility>>();
     let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
 
-    #[cfg(feature = "async-db")]
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
 
-    #[cfg(feature = "async-db")]
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let store_bridge_tx = store_bridge.clone();
-    #[cfg(feature = "async-db")]
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let db_tx = use_coroutine({
         let store_bridge_tx = store_bridge_tx.clone();
         move |mut rx: UnboundedReceiver<crate::models::envelope::EventEnvelope>| {
@@ -102,13 +102,15 @@ pub fn App() -> Element {
         }
     });
 
-    #[cfg(feature = "async-db")]
-    use_context_provider(|| db_tx);
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    use_context_provider(|| Some(db_tx));
+    #[cfg(any(not(feature = "async-db"), target_arch = "wasm32"))]
+    use_context_provider(|| Option::<Coroutine<crate::models::envelope::EventEnvelope>>::None);
 
-    #[cfg(feature = "async-db")]
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let last_sync_revision = use_signal(|| 0_i64);
 
-    #[cfg(feature = "async-db")]
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     use_future(move || {
         let store_bridge = store_bridge.clone();
         let mut doc_signal = doc_signal.clone();

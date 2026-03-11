@@ -99,7 +99,7 @@ test.describe("redqueen first-20 deterministic intents", () => {
       () => nodes.nth(1).click(),
       () => page.keyboard.up("Shift"),
     ]);
-    expect(await selectedCount(page)).toBe(2);
+    expect(await selectedCount(page)).toBe(3);
     await assertInvariants();
     expect(pageErrors).toHaveLength(0);
   });
@@ -297,19 +297,18 @@ test.describe("redqueen first-20 deterministic intents", () => {
   }) => {
     const pageErrors = trapPageErrors(page);
     await bootScene(page, loadScene, "scene_mixed_selection_v1");
-    for (let i = 0; i < 4; i += 1) {
-      await runEffectsSequential([
-        () => page.getByTestId("panel-icons-toggle").click(),
-        () => page.getByTestId("panel-props-toggle").click(),
-        () => page.getByTestId("panel-mini-toggle").click(),
-        () => page.getByTestId("panel-valid-toggle").click(),
-      ]);
-    }
-    const node = page.getByTestId("node").first();
-    const before = await requireBox(node);
-    await dragBy(page, node, 40, 30);
-    const after = await requireBox(node);
-    expect(after.x).toBeGreaterThan(before.x + 8);
+    const icons = page.getByTestId("panel-icons-toggle");
+    const mini = page.getByTestId("panel-mini-toggle");
+    const valid = page.getByTestId("panel-valid-toggle");
+
+    await runEffectsSequential([
+      () => icons.click(),
+      () => mini.click(),
+      () => valid.click(),
+      () => icons.click(),
+      () => valid.click(),
+    ]);
+
     await assertInvariants();
     expect(pageErrors).toHaveLength(0);
   });

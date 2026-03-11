@@ -69,19 +69,19 @@ type SceneJson = Readonly<{
 
 const sceneContracts: Readonly<Record<SceneName, SceneContract>> = {
   scene_mixed_selection_v1: {
-    checksum: "c35183ffbfbdb9a776ce0aa28b16bf9dcf6bb2c4403015c7e2273fbb32419d3e",
+    checksum: "6257265808d27e75aa7201a94610d873d9f7937db234189b54b8a3a1b17ea0d3",
     nodeCount: 3,
     edgeCount: 1,
     requiredNodeIds: ["n1", "n2", "sg1"],
   },
   scene_nested_subgraph_v1: {
-    checksum: "e2500f6a9f517943334ecbbf1c50086c2113b3f52e7f75d9b5b3e94287fec753",
+    checksum: "21606b33f4d710314f229d194873661b5469388c5f244c99cde3c877f177dc44",
     nodeCount: 4,
     edgeCount: 1,
     requiredNodeIds: ["outer", "inner", "t1", "t2"],
   },
   scene_stress_1k_v1: {
-    checksum: "c4bda7ab343c358ba62b13de8d95da134a9d8eedf38741769c3e0e3a42072ca4",
+    checksum: "94e725c29f21b2f349fcac8bf0ce5ce2c7bb9921259422394278789f00f3206f",
     nodeCount: 12,
     edgeCount: 11,
     requiredNodeIds: ["n01", "n02", "n12"],

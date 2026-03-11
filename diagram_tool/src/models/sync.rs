@@ -55,9 +55,11 @@ use thiserror::Error;
 
 use crate::models::envelope::parse_event_envelope;
 use crate::models::projection::EventRecord;
+#[cfg(not(target_arch = "wasm32"))]
 use crate::store_async::envelope_to_valid_event;
 
 /// Helper to convert EventEnvelope to ValidEvent (for testing)
+#[cfg(not(target_arch = "wasm32"))]
 #[allow(clippy::unwrap_used)]
 fn to_valid_event(
     envelope: crate::models::envelope::EventEnvelope,
@@ -596,8 +598,13 @@ fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> 
             DomainOp::NodeAdd { id, .. }
             | DomainOp::NodeMove { id, .. }
             | DomainOp::NodeDelete { id }
-            | DomainOp::NodeRestore { id } => {
+            | DomainOp::NodeRestore { id }
+            | DomainOp::UpdateLabel { id, .. }
+            | DomainOp::UpdateNodeStyle { id, .. } => {
                 entities.insert(format!("node:{}", id));
+            }
+            DomainOp::NodeResize { id, .. } => {
+                entities.insert(format!("node:{}", id.as_str()));
             }
             DomainOp::EdgeConnect { id, source, target } => {
                 entities.insert(format!("edge:{}", id));
@@ -605,6 +612,9 @@ fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> 
                 entities.insert(format!("node:{}", target));
             }
             DomainOp::EdgeDisconnect { id } => {
+                entities.insert(format!("edge:{}", id));
+            }
+            DomainOp::UpdateEdgeStyle { id, .. } => {
                 entities.insert(format!("edge:{}", id));
             }
             DomainOp::BringForward { ids }

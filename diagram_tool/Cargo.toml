@@ -46,8 +46,6 @@ tempfile        = "3.10"
 num_cpus        = "1.16"
 dirs            = "5.0"
 regex-lite      = "0.1"
-sqlx = { version = "0.8.6", features = ["sqlite", "runtime-tokio-rustls"] }
-tokio = { version = "1.50.0", features = ["full"] }
 futures-util = "0.3.32"
 
 [features]
@@ -69,6 +67,8 @@ tempfile = "3.10"
 
 [target.'cfg(target_arch = "wasm32")'.dependencies]
 getrandom = { version = "0.3.4", features = ["wasm_js"] }
+getrandom_02 = { package = "getrandom", version = "0.2", features = ["js"] }
+js-sys = "0.3"
 uuid = { version = "1.0", features = ["v4", "serde", "js"] }
 web-sys = { version = "0.3", features = ["Window", "Document", "Element", "DomRect"] }
 

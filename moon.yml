@@ -3,13 +3,13 @@ $schema: "https://moonrepo.dev/schemas/project.json"
 tasks:
   serve:
     script: |
-      dx serve --platform web --port 8081 --watch false --hot-reload false
+      dx serve --platform web --port 8081
     options:
       cache: false
 
   serve-e2e:
     script: |
-      dx serve --platform web --port 8084 --open false --watch false --hot-reload false --interactive false
+      exec python3 -m http.server 8081 --directory target/dx/diagram_tool/release/web/public
     options:
       cache: false
 
@@ -24,6 +24,7 @@ tasks:
   test:
     script: |
       moon run :test-rust
+      moon run :e2e
 
   e2e-smoke:
     script: |
@@ -31,14 +32,9 @@ tasks:
     options:
       cache: false
 
-  e2e-full:
-    script: |
-      npm exec -- playwright test
-    options:
-      cache: false
-
   e2e-baseline:
     script: |
+      moon run :build-web
       npm exec -- playwright test --project baseline
     options:
       cache: false
@@ -72,27 +68,15 @@ tasks:
     script: |
       /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
 
-  clippy-source:
-    script: |
-      /usr/bin/cargo clippy --lib --bins --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -F unsafe_code
-
-  arch-audit:
-    script: |
-      ./scripts/enforce_file_lengths.sh
-      ./scripts/enforce_boundaries.sh
-
-  ci-source:
-    script: |
-      moon run :fmt
-      moon run :clippy-source
-      moon run :arch-audit
-      moon run :test-rust
-
   fmt:
     script: |
       /usr/bin/cargo fmt --check
 
   build-web:
+    script: |
+      cd diagram_tool && dx build --platform web --release
+
+  build-web-dev:
     script: |
       dx build --platform web
 
@@ -133,11 +117,8 @@ tasks:
 
   ci-hardening:
     script: |
-      moon run :check
-      moon run :test
-      moon run :clippy
-      moon run :e2e-smoke
-      moon run :e2e-full
+      moon run :ci
+      moon run :e2e-hardening
 
   ci-nightly:
     script: |

@@ -20,13 +20,18 @@ fn extract_affected_entities(op: &DomainOp) -> Vec<String> {
         DomainOp::NodeAdd { id, .. }
         | DomainOp::NodeMove { id, .. }
         | DomainOp::NodeDelete { id }
-        | DomainOp::NodeRestore { id } => vec![format!("node:{}", id)],
+        | DomainOp::NodeRestore { id }
+        | DomainOp::UpdateLabel { id, .. }
+        | DomainOp::UpdateNodeStyle { id, .. } => vec![format!("node:{}", id)],
+        DomainOp::NodeResize { id, .. } => vec![format!("node:{}", id.as_str())],
         DomainOp::EdgeConnect { id, source, target } => vec![
             format!("edge:{}", id),
             format!("node:{}", source),
             format!("node:{}", target),
         ],
-        DomainOp::EdgeDisconnect { id } => vec![format!("edge:{}", id)],
+        DomainOp::EdgeDisconnect { id } | DomainOp::UpdateEdgeStyle { id, .. } => {
+            vec![format!("edge:{}", id)]
+        }
         DomainOp::BringForward { ids }
         | DomainOp::SendBackward { ids }
         | DomainOp::BringToFront { ids }

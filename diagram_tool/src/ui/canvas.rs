@@ -468,11 +468,19 @@ fn flush_pending_pointer_update(
                                             name: "Local User".to_string(),
                                             email: None,
                                         },
-                                        timestamp: std::time::SystemTime::now()
-                                            .duration_since(std::time::UNIX_EPOCH)
-                                            .unwrap()
-                                            .as_millis()
-                                            as i64,
+                                        timestamp: {
+                                            #[cfg(target_arch = "wasm32")]
+                                            {
+                                                js_sys::Date::now() as i64
+                                            }
+                                            #[cfg(not(target_arch = "wasm32"))]
+                                            {
+                                                std::time::SystemTime::now()
+                                                    .duration_since(std::time::UNIX_EPOCH)
+                                                    .unwrap_or_default()
+                                                    .as_millis() as i64
+                                            }
+                                        },
                                     });
                                 }
                             }
@@ -671,18 +679,11 @@ pub fn Canvas() -> Element {
     let mut pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
     let mut multi_touch_active = use_signal(|| false);
     let mut canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
-    let mut ordered_node_cache = use_signal(Vec::<NodeId>::new);
-    let mut ordered_node_revision = use_signal(|| Option::<Revision>::None);
-    let db_tx = use_context::<Option<Coroutine<crate::models::envelope::EventEnvelope>>>();
-
-    use_effect(move || {
+    let ordered_node_cache = use_memo(move || {
         let doc = doc_signal.read();
-        let revision = doc.revision;
-        if ordered_node_revision.read().as_ref() != Some(&revision) {
-            ordered_node_cache.set(ordered_node_ids(&doc));
-            ordered_node_revision.set(Some(revision));
-        }
+        ordered_node_ids(&doc)
     });
+    let db_tx = use_context::<Option<Coroutine<crate::models::envelope::EventEnvelope>>>();
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -2429,7 +2430,7 @@ pub fn Canvas() -> Element {
                     };
                     let border_mix = if is_hovered && !is_selected { "50" } else { "100" };
                     let bg = if node.kind == NodeKind::Subgraph { NODE_BG_SUBGRAPH } else { NODE_BG };
-                    let z_index = node.z_index + if node.kind == NodeKind::Subgraph { 0 } else { 1000 };
+                    let z_index = node.z_index + if node.kind == NodeKind::Subgraph { 10 } else { 1000 };
                     let is_editing_node = editing_node.read().as_ref() == Some(&id);
                     let font_px = node.font_size.map_or(11.0, |f| f.0) * zoom;
                     let fallback_provider = node.icon.split('/').next().map_or("generic", |p| p);
@@ -2666,7 +2667,11 @@ pub fn Canvas() -> Element {
                                 }
                             } else if node.kind == NodeKind::Subgraph {
                                 div {
-                                    style: "position:absolute; inset:0; border-radius:10px; border:2px dashed {BORDER}; background: color-mix(in oklch, {TEXT_MUTED} 14%, transparent);"
+                                    style: "position: absolute; top: 0; left: 0; right: 0; height: 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; background: color-mix(in oklch, var(--node-bg-subgraph) 80%, transparent); border-radius: 9px 9px 0 0; pointer-events: none;",
+                                    span {
+                                        style: "font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); pointer-events: none;",
+                                        "{node.label}"
+                                    }
                                 }
                                 if is_editing_node {
                                     input {

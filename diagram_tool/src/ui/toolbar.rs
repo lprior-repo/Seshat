@@ -284,6 +284,9 @@ pub fn Toolbar() -> Element {
                 style: "padding: 5px 10px; cursor: pointer; background: {ACCENT}; border: none; border-radius: 4px; color: {BG_BASE};",
                 onclick: move |_| {
                     validate_trigger.with_mut(|t| *t = t.saturating_add(1));
+                    let mut panels = panel_visibility.read().clone();
+                    panels.validation = true;
+                    panel_visibility.set(panels);
                 },
                 "Validate"
             }

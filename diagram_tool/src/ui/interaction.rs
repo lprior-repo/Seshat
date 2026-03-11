@@ -77,6 +77,7 @@ pub fn node_ids_in_rect_with_mode(
     doc.document
         .nodes
         .iter()
+        .filter(|(_, n)| !n.locked)
         .filter(|(_, n)| match mode {
             SelectionMode::Contain => {
                 n.x.0 >= min_x

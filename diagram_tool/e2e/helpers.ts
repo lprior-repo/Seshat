@@ -48,7 +48,7 @@ export async function runEffectsSequential(
 
 export async function waitForUiReady(page: Page) {
   await ensureDeterministicUi(page);
-  await expect(canvas(page)).toBeVisible();
+  await expect(canvas(page)).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(SELECTOR_COUNTER_NODES).first()).toBeVisible({ timeout: 30_000 });
   await waitForNoRebuildOverlay(page);
 }

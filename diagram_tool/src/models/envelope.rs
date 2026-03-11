@@ -14,6 +14,8 @@
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
+use crate::models::document::{EdgeStyle, NodeId, NodeStyle};
+
 /// Error types for domain `op_types`
 #[derive(Debug, Error, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub enum ContractError {
@@ -116,7 +118,20 @@ pub enum DomainOp {
     NodeRestore {
         id: String,
     },
-    // Edge op_types
+    NodeResize {
+        id: NodeId,
+        width: f64,
+        height: f64,
+    },
+    UpdateLabel {
+        id: String,
+        label: String,
+    },
+    UpdateNodeStyle {
+        id: String,
+        style: NodeStyle,
+    },
+    // Edge operations
     EdgeConnect {
         id: String,
         source: String,
@@ -124,6 +139,10 @@ pub enum DomainOp {
     },
     EdgeDisconnect {
         id: String,
+    },
+    UpdateEdgeStyle {
+        id: String,
+        style: EdgeStyle,
     },
     // Z-order op_types
     BringForward {
@@ -155,8 +174,13 @@ impl DomainOp {
             Self::NodeAdd { .. }
             | Self::NodeMove { .. }
             | Self::NodeDelete { .. }
-            | Self::NodeRestore { .. } => OpKind::Node,
-            Self::EdgeConnect { .. } | Self::EdgeDisconnect { .. } => OpKind::Edge,
+            | Self::NodeRestore { .. }
+            | Self::NodeResize { .. }
+            | Self::UpdateLabel { .. }
+            | Self::UpdateNodeStyle { .. } => OpKind::Node,
+            Self::EdgeConnect { .. }
+            | Self::EdgeDisconnect { .. }
+            | Self::UpdateEdgeStyle { .. } => OpKind::Edge,
             Self::BringForward { .. }
             | Self::SendBackward { .. }
             | Self::BringToFront { .. }
@@ -176,19 +200,32 @@ impl DomainOp {
 pub fn parse_domain_op(raw: &str) -> Result<DomainOp, ContractError> {
     let value: serde_json::Value =
         serde_json::from_str(raw).map_err(|e| ContractError::InvalidJson(e.to_string()))?;
+    let op_field = extract_op_type(&value)?;
+    dispatch_domain_op(&value, op_field)
+}
 
-    let op_field = value
+fn extract_op_type(value: &serde_json::Value) -> Result<&str, ContractError> {
+    value
         .get("op")
         .and_then(|v| v.as_str())
-        .ok_or(ContractError::MissingField("op"))?;
+        .ok_or(ContractError::MissingField("op"))
+}
 
+fn dispatch_domain_op(
+    value: &serde_json::Value,
+    op_field: &str,
+) -> Result<DomainOp, ContractError> {
     match op_field {
         "node_add" => parse_node_add(value),
         "node_move" => parse_node_move(value),
         "node_delete" => parse_node_delete(value),
         "node_restore" => parse_node_restore(value),
+        "node_resize" => parse_node_resize(value),
+        "update_label" => parse_update_label(value),
+        "update_node_style" => parse_update_node_style(value),
         "edge_connect" => parse_edge_connect(value),
         "edge_disconnect" => parse_edge_disconnect(value),
+        "update_edge_style" => parse_update_edge_style(value),
         "bring_forward" => parse_bring_forward(value),
         "send_backward" => parse_send_backward(value),
         "bring_to_front" => parse_bring_to_front(value),
@@ -209,28 +246,12 @@ pub const fn domain_op_kind(op: &DomainOp) -> OpKind {
 
 // Helper functions for parsing domain op_types
 
-fn parse_node_add(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-    let x = value
-        .get("x")
-        .and_then(serde_json::Value::as_f64)
-        .ok_or(ContractError::MissingField("x"))?;
-    let y = value
-        .get("y")
-        .and_then(serde_json::Value::as_f64)
-        .ok_or(ContractError::MissingField("y"))?;
-    let width = value
-        .get("width")
-        .and_then(serde_json::Value::as_f64)
-        .ok_or(ContractError::MissingField("width"))?;
-    let height = value
-        .get("height")
-        .and_then(serde_json::Value::as_f64)
-        .ok_or(ContractError::MissingField("height"))?;
+fn parse_node_add(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
+    let x = extract_f64_field(value, "x")?;
+    let y = extract_f64_field(value, "y")?;
+    let width = extract_f64_field(value, "width")?;
+    let height = extract_f64_field(value, "height")?;
     let label = value
         .get("label")
         .and_then(|v| v.as_str())
@@ -247,111 +268,160 @@ fn parse_node_add(value: serde_json::Value) -> Result<DomainOp, ContractError> {
     })
 }
 
-fn parse_node_move(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-    let x = value
-        .get("x")
-        .and_then(serde_json::Value::as_f64)
-        .ok_or(ContractError::MissingField("x"))?;
-    let y = value
-        .get("y")
-        .and_then(serde_json::Value::as_f64)
-        .ok_or(ContractError::MissingField("y"))?;
+fn parse_node_move(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
+    let x = extract_f64_field(value, "x")?;
+    let y = extract_f64_field(value, "y")?;
 
     Ok(DomainOp::NodeMove { id, x, y })
 }
 
-fn parse_node_delete(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-
+fn parse_node_delete(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
     Ok(DomainOp::NodeDelete { id })
 }
 
-fn parse_node_restore(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-
+fn parse_node_restore(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
     Ok(DomainOp::NodeRestore { id })
 }
 
-fn parse_edge_connect(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
+fn parse_node_resize(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id_str = extract_string_field(value, "id")?;
+    let id = require_non_empty_id(&id_str)?;
+    let width = extract_f64_field(value, "width")?;
+    let height = extract_f64_field(value, "height")?;
+
+    Ok(DomainOp::NodeResize { id, width, height })
+}
+
+fn parse_update_label(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
+    let label = value
+        .get("label")
         .and_then(|v| v.as_str())
         .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-    let source = value
-        .get("source")
+        .unwrap_or_default();
+
+    Ok(DomainOp::UpdateLabel { id, label })
+}
+
+fn parse_update_node_style(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
+    let style_str = value
+        .get("style")
+        .and_then(|v| v.as_str())
+        .ok_or(ContractError::MissingField("style"))?;
+    let style = match style_str {
+        "box" => NodeStyle::Box,
+        "cloud" => NodeStyle::Cloud,
+        "cylinder" => NodeStyle::Cylinder,
+        "dashed" => NodeStyle::Dashed,
+        _ => NodeStyle::Box,
+    };
+
+    Ok(DomainOp::UpdateNodeStyle { id, style })
+}
+
+fn parse_update_edge_style(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
+    let style_str = value
+        .get("style")
+        .and_then(|v| v.as_str())
+        .ok_or(ContractError::MissingField("style"))?;
+    let style = match style_str {
+        "solid" => EdgeStyle::Solid,
+        "dashed" => EdgeStyle::Dashed,
+        "dotted" => EdgeStyle::Dotted,
+        _ => EdgeStyle::Solid,
+    };
+
+    Ok(DomainOp::UpdateEdgeStyle { id, style })
+}
+
+// Helper functions for NodeResize parsing
+fn extract_string_field(value: &serde_json::Value, field: &str) -> Result<String, ContractError> {
+    value
+        .get(field)
         .and_then(|v| v.as_str())
         .map(String::from)
-        .ok_or(ContractError::MissingField("source"))?;
-    let target = value
-        .get("target")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("target"))?;
+        .ok_or(ContractError::MissingField(Box::leak(
+            field.to_string().into_boxed_str(),
+        )))
+}
+
+fn extract_f64_field(value: &serde_json::Value, field: &str) -> Result<f64, ContractError> {
+    value
+        .get(field)
+        .and_then(serde_json::Value::as_f64)
+        .ok_or(ContractError::MissingField(Box::leak(
+            field.to_string().into_boxed_str(),
+        )))
+}
+
+fn require_non_empty_id(id: &str) -> Result<NodeId, ContractError> {
+    if id.is_empty() {
+        return Err(ContractError::InvalidPayload(
+            "node id cannot be empty".to_string(),
+        ));
+    }
+    Ok(NodeId::new(id.to_string()))
+}
+
+fn validate_positive_finite(value: f64, field_name: &str) -> Result<f64, ContractError> {
+    if !value.is_finite() {
+        return Err(ContractError::InvalidPayload(format!(
+            "{field_name} must be finite"
+        )));
+    }
+    if value <= 0.0 {
+        return Err(ContractError::InvalidPayload(format!(
+            "{field_name} must be positive"
+        )));
+    }
+    Ok(value)
+}
+
+fn parse_edge_connect(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
+    let source = extract_string_field(value, "source")?;
+    let target = extract_string_field(value, "target")?;
 
     Ok(DomainOp::EdgeConnect { id, source, target })
 }
 
-fn parse_edge_disconnect(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-
+fn parse_edge_disconnect(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
     Ok(DomainOp::EdgeDisconnect { id })
 }
 
-fn parse_bring_forward(value: serde_json::Value) -> Result<DomainOp, ContractError> {
+fn parse_bring_forward(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
     let ids = parse_string_array(value.get("ids"))?;
-
     Ok(DomainOp::BringForward { ids })
 }
 
-fn parse_send_backward(value: serde_json::Value) -> Result<DomainOp, ContractError> {
+fn parse_send_backward(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
     let ids = parse_string_array(value.get("ids"))?;
-
     Ok(DomainOp::SendBackward { ids })
 }
 
-fn parse_bring_to_front(value: serde_json::Value) -> Result<DomainOp, ContractError> {
+fn parse_bring_to_front(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
     let ids = parse_string_array(value.get("ids"))?;
-
     Ok(DomainOp::BringToFront { ids })
 }
 
-fn parse_send_to_back(value: serde_json::Value) -> Result<DomainOp, ContractError> {
+fn parse_send_to_back(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
     let ids = parse_string_array(value.get("ids"))?;
-
     Ok(DomainOp::SendToBack { ids })
 }
 
-fn parse_group(value: serde_json::Value) -> Result<DomainOp, ContractError> {
+fn parse_group(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
     let ids = parse_string_array(value.get("ids"))?;
-
     Ok(DomainOp::Group { ids })
 }
 
-fn parse_ungroup(value: serde_json::Value) -> Result<DomainOp, ContractError> {
-    let id = value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .map(String::from)
-        .ok_or(ContractError::MissingField("id"))?;
-
+fn parse_ungroup(value: &serde_json::Value) -> Result<DomainOp, ContractError> {
+    let id = extract_string_field(value, "id")?;
     Ok(DomainOp::Ungroup { id })
 }
 
@@ -421,80 +491,80 @@ pub fn encode_envelope(op: &EventEnvelope) -> Result<String, ContractError> {
 /// Returns `ContractError::InvalidAuthor` if author validation fails
 /// Returns `ContractError::UnknownOpType` if the `op_type` type is invalid
 pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError> {
-    // First do a lightweight validation to check required fields
     let value: serde_json::Value =
         serde_json::from_str(input).map_err(|e| ContractError::InvalidJson(e.to_string()))?;
 
-    // Validate required top-level fields exist
+    validate_envelope_fields(&value)?;
+    deserialize_envelope(input)
+}
+
+fn validate_envelope_fields(value: &serde_json::Value) -> Result<(), ContractError> {
     let _ = value
         .get("op_id")
         .ok_or(ContractError::MissingField("op_id"))?;
-
-    let _ = value
-        .get("author")
-        .ok_or(ContractError::MissingField("author"))?;
-
     let author_value = value
         .get("author")
         .ok_or(ContractError::MissingField("author"))?;
+    validate_author(author_value)?;
+    let _ = value
+        .get("timestamp")
+        .ok_or(ContractError::MissingField("timestamp"))?;
+    Ok(())
+}
 
+fn validate_author(author_value: &serde_json::Value) -> Result<(), ContractError> {
     let _ = author_value
         .get("id")
         .and_then(|v| v.as_str())
         .ok_or_else(|| ContractError::InvalidAuthor("missing id field".to_string()))?;
-
     let _ = author_value
         .get("name")
         .and_then(|v| v.as_str())
         .ok_or_else(|| ContractError::InvalidAuthor("missing name field".to_string()))?;
+    Ok(())
+}
 
-    let _ = value
-        .get("timestamp")
-        .ok_or(ContractError::MissingField("timestamp"))?;
+fn deserialize_envelope(input: &str) -> Result<EventEnvelope, ContractError> {
+    serde_json::from_str(input).map_err(convert_serde_error)
+}
 
-    // Now try to deserialize the full envelope - serde will handle the DomainOp parsing
-    serde_json::from_str(input).map_err(|e| {
-        // Convert deserialization errors to our ContractError types
-        let err_msg = e.to_string();
-        if err_msg.contains("unknown variant") {
-            // Extract the unknown variant name
-            let unknown = err_msg
-                .split("unknown variant ")
-                .nth(1)
-                .unwrap_or("unknown")
-                .trim()
-                .trim_matches('\"')
-                .to_string();
-            ContractError::UnknownOpType(unknown)
-        } else if err_msg.contains("missing field") {
-            let field = err_msg
-                .split("missing field ")
-                .nth(1)
-                .unwrap_or("unknown")
-                .trim()
-                .trim_matches('\"')
-                .trim_matches('`')
-                .split_whitespace()
-                .next()
-                .unwrap_or("unknown");
-            // Use static str for known fields, otherwise use "unknown"
-            if field == "author" {
-                ContractError::MissingField("author")
-            } else if field == "timestamp" {
-                ContractError::MissingField("timestamp")
-            } else if field == "domain_op" {
-                ContractError::MissingField("domain_op")
-            } else if field == "op_id" {
-                ContractError::MissingField("op_id")
-            } else if field == "operation" {
-                ContractError::MissingField("operation")
-            } else {
-                ContractError::MissingField("unknown")
-            }
-        } else {
-            ContractError::InvalidJson(err_msg)
-        }
-    })
+fn convert_serde_error(e: serde_json::Error) -> ContractError {
+    let err_msg = e.to_string();
+    if err_msg.contains("unknown variant") {
+        let unknown = err_msg
+            .split("unknown variant ")
+            .nth(1)
+            .unwrap_or("unknown")
+            .trim()
+            .trim_matches('\"')
+            .to_string();
+        ContractError::UnknownOpType(unknown)
+    } else if err_msg.contains("missing field") {
+        let field = err_msg
+            .split("missing field ")
+            .nth(1)
+            .unwrap_or("unknown")
+            .trim()
+            .trim_matches('\"')
+            .trim_matches('`')
+            .split_whitespace()
+            .next()
+            .unwrap_or("unknown");
+        map_missing_field_error(field)
+    } else {
+        ContractError::InvalidJson(err_msg)
+    }
+}
+
+fn map_missing_field_error(field: &str) -> ContractError {
+    match field {
+        "author" => ContractError::MissingField("author"),
+        "timestamp" => ContractError::MissingField("timestamp"),
+        "domain_op" => ContractError::MissingField("domain_op"),
+        "op_id" => ContractError::MissingField("op_id"),
+        "operation" => ContractError::MissingField("operation"),
+        _ => ContractError::MissingField("unknown"),
+    }
 }
 
 /// Encode an `EventEnvelope` to a JSON string
@@ -1023,6 +1093,78 @@ mod tests {
     }
 
     #[test]
+    fn given_update_label_op_when_getting_kind_then_returns_node_kind() {
+        let op = DomainOp::UpdateLabel {
+            id: "node-1".to_string(),
+            label: "Test Label".to_string(),
+        };
+
+        let kind = domain_op_kind(&op);
+
+        assert_eq!(kind, OpKind::Node);
+    }
+
+    #[test]
+    fn given_update_label_with_very_long_label_when_parsing_then_succeeds() {
+        let long_label = "x".repeat(15_000);
+        let raw = format!(
+            r#"{{"op": "update_label", "id": "n1", "label": "{}"}}"#,
+            long_label
+        );
+
+        let result = parse_domain_op(&raw);
+
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let op = result.unwrap();
+        match op {
+            DomainOp::UpdateLabel { label, .. } => {
+                assert_eq!(label.len(), 15_000);
+            }
+            _ => panic!("Expected UpdateLabel"),
+        }
+    }
+
+    #[test]
+    fn given_update_label_with_mixed_direction_text_when_parsing_then_succeeds() {
+        let raw = r#"{"op": "update_label", "id": "n1", "label": "Hello مرحبا World 🌍"}"#;
+
+        let result = parse_domain_op(raw);
+
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let op = result.unwrap();
+        match op {
+            DomainOp::UpdateLabel { label, .. } => {
+                assert_eq!(label, "Hello مرحبا World 🌍");
+            }
+            _ => panic!("Expected UpdateLabel"),
+        }
+    }
+
+    #[test]
+    fn given_update_label_json_missing_op_field_when_parsing_then_returns_missing_field_error() {
+        let raw = r#"{"id": "n1", "label": "New Label"}"#;
+
+        let result = parse_domain_op(raw);
+
+        assert!(result.is_err());
+        match result {
+            Err(ContractError::MissingField(f)) => assert_eq!(f, "op"),
+            _ => panic!("Expected MissingField error for 'op'"),
+        }
+    }
+
+    #[test]
+    fn given_valid_update_label_json_when_parsing_then_returns_domain_op() {
+        let raw = r#"{"op": "update_label", "id": "node-1", "label": "New Label"}"#;
+
+        let result = parse_domain_op(raw);
+
+        assert!(result.is_ok(), "Expected Ok, got: {:?}", result.err());
+        let op = result.unwrap();
+        assert!(matches!(op, DomainOp::UpdateLabel { .. }));
+    }
+
+    #[test]
     fn given_edge_connect_op_when_getting_kind_then_returns_edge_kind() {
         let op = DomainOp::EdgeConnect {
             id: "edge-1".to_string(),
@@ -1161,8 +1303,12 @@ mod tests {
                 DomainOp::NodeMove { .. } => "NodeMove",
                 DomainOp::NodeDelete { .. } => "NodeDelete",
                 DomainOp::NodeRestore { .. } => "NodeRestore",
+                DomainOp::NodeResize { .. } => "NodeResize",
+                DomainOp::UpdateLabel { .. } => "UpdateLabel",
+                DomainOp::UpdateNodeStyle { .. } => "UpdateNodeStyle",
                 DomainOp::EdgeConnect { .. } => "EdgeConnect",
                 DomainOp::EdgeDisconnect { .. } => "EdgeDisconnect",
+                DomainOp::UpdateEdgeStyle { .. } => "UpdateEdgeStyle",
                 DomainOp::BringForward { .. } => "BringForward",
                 DomainOp::SendBackward { .. } => "SendBackward",
                 DomainOp::BringToFront { .. } => "BringToFront",
@@ -1193,6 +1339,19 @@ mod tests {
             DomainOp::NodeRestore {
                 id: "n1".to_string(),
             },
+            DomainOp::NodeResize {
+                id: NodeId::new("n1".to_string()),
+                width: 80.0,
+                height: 40.0,
+            },
+            DomainOp::UpdateLabel {
+                id: "n1".to_string(),
+                label: "test".to_string(),
+            },
+            DomainOp::UpdateNodeStyle {
+                id: "n1".to_string(),
+                style: NodeStyle::default(),
+            },
             DomainOp::EdgeConnect {
                 id: "e1".to_string(),
                 source: "n1".to_string(),
@@ -1200,6 +1359,10 @@ mod tests {
             },
             DomainOp::EdgeDisconnect {
                 id: "e1".to_string(),
+            },
+            DomainOp::UpdateEdgeStyle {
+                id: "e1".to_string(),
+                style: EdgeStyle::default(),
             },
             DomainOp::BringForward {
                 ids: vec!["n1".to_string()],
