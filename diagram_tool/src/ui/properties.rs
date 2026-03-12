@@ -10,7 +10,7 @@ use crate::models::document::{
     ArrowType, DiagramDocument, EdgeId, EdgeStyle, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
 use crate::models::envelope::EventEnvelope;
-use crate::ui::dispatch::dispatch_update_node_style;
+use crate::ui::dispatch::{dispatch_update_edge_style, dispatch_update_node_style};
 use crate::ui::theme::{
     BG_BASE, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_DIM, TEXT_MAIN, TEXT_MUTED,
 };
@@ -670,10 +670,24 @@ pub fn PropertiesPanel() -> Element {
                                     value: "{edge_style_str(edge.style)}",
                                     onchange: move |evt| {
                                         let eid = eid_style.clone();
-                                        let style = parse_edge_style(&evt.value());
+                                        let new_style = parse_edge_style(&evt.value());
+                                        // Only push history and dispatch if style actually changed (idempotent)
+                                        let has_changes = doc_signal.read()
+                                            .document
+                                            .edges
+                                            .get(&eid)
+                                            .is_some_and(|e| e.style != new_style);
+                                        if has_changes {
+                                            // Push history before mutation
+                                            let current = doc_signal.read().clone();
+                                            let next_h = history.read().push(current);
+                                            *history.write() = next_h;
+                                            // Dispatch to db_tx
+                                            dispatch_update_edge_style(&db_tx, eid.as_str(), new_style).ok();
+                                        }
                                         doc_signal.with_mut(|doc| {
                                             if let Some(e) = doc.document.edges.get_mut(&eid) {
-                                                e.style = style;
+                                                e.style = new_style;
                                                 doc.revision = doc.revision.increment();
                                             }
                                         });
