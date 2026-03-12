@@ -1,5 +1,5 @@
 [workspace]
-members = ["diagram_tool", "dioxus-agent-rs", "nu_runner"]
+members = ["diagram_tool"]
 resolver = "2"
 
 [profile.release]
