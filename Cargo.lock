@@ -4800,6 +4800,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "nu_runner"
+version = "0.1.0"
+dependencies = [
+ "itertools",
+ "tap",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tokio",
+]
+
+[[package]]
 name = "num-bigint"
 version = "0.4.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"

@@ -508,7 +508,7 @@ mod tests {
 
 use dioxus::prelude::*;
 use crate::models::document::DiagramDocument;
-use crate::store_sqlx::SqlitePool;
+use sqlx::SqlitePool;
 use std::time::{Duration, Instant};
 
 /// The PerformanceDriver implements the DSL for ATDD testing of the UI and WAL.

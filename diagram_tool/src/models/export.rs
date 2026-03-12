@@ -473,7 +473,7 @@ fn generate_canonical_events(projection: &DiagramProjection) -> Vec<serde_json::
     // Generate NodeAdd events for all nodes
     for (node_id, node) in &projection.nodes {
         let operation = DomainOp::NodeAdd {
-            id: node_id.to_string(),
+            id: node_id.clone(),
             x: node.x.0,
             y: node.y.0,
             width: node.width.0,
@@ -502,9 +502,9 @@ fn generate_canonical_events(projection: &DiagramProjection) -> Vec<serde_json::
     // Generate EdgeConnect events for all edges
     for (edge_id, edge) in &projection.edges {
         let operation = DomainOp::EdgeConnect {
-            id: edge_id.to_string(),
-            source: edge.source.to_string(),
-            target: edge.target.to_string(),
+            id: edge_id.clone(),
+            source: edge.source.clone(),
+            target: edge.target.clone(),
         };
 
         let event = EventRecord {

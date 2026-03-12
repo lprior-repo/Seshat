@@ -20,7 +20,7 @@ type NodeMap = HashMap<NodeId, Node>;
 /// Apply Group operation - creates a subgraph and assigns all specified nodes as children
 pub fn apply_group(
     state: DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
     let valid_ids = validate_group_ids(&state, ids)?;
     let (min_x, min_y, max_x, max_y) = compute_bounding_box(&state, &valid_ids)?;
@@ -40,22 +40,24 @@ pub fn apply_group(
 /// Validate IDs for grouping operation
 fn validate_group_ids(
     state: &DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<Vec<NodeId>, ReplayError> {
     if ids.is_empty() {
         return Err(ReplayError::NoNodesSpecified);
     }
 
-    let node_ids: Vec<NodeId> = ids.iter().map(|s| NodeId::new(s.clone())).collect();
-
-    let valid_ids: Vec<NodeId> = node_ids
+    let valid_ids: Vec<NodeId> = ids
         .iter()
         .filter(|id| state.has_node(id))
         .cloned()
         .collect();
 
     if valid_ids.len() < 2 {
-        let invalid_ids = ids.join(", ");
+        let invalid_ids = ids
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
         return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
@@ -170,11 +172,13 @@ fn add_group_and_update_children(
 }
 
 /// Apply Ungroup operation - removes the subgraph node and clears parent on all children
-pub fn apply_ungroup(state: DiagramProjection, id: &str) -> Result<DiagramProjection, ReplayError> {
-    let subgraph_id = NodeId::new(id.to_string());
-    validate_subgraph_exists(&state, &subgraph_id, id)?;
-    let children = find_child_nodes(&state, &subgraph_id);
-    let new_nodes = unparent_children_and_remove_group(&state, &subgraph_id, &children);
+pub fn apply_ungroup(
+    state: DiagramProjection,
+    id: &NodeId,
+) -> Result<DiagramProjection, ReplayError> {
+    validate_subgraph_exists(&state, id, &id.to_string())?;
+    let children = find_child_nodes(&state, id);
+    let new_nodes = unparent_children_and_remove_group(&state, id, &children);
 
     Ok(DiagramProjection {
         version: state.version,
@@ -247,7 +251,7 @@ pub fn apply_group_op(
     op: &DomainOp,
 ) -> Result<DiagramProjection, ReplayError> {
     match op {
-        DomainOp::Group { ids } => apply_group(state, ids),
+        DomainOp::Group { ids } => apply_group(state, ids.as_slice()),
         DomainOp::Ungroup { id } => apply_ungroup(state, id),
         _ => Err(ReplayError::InvalidEvent(format!(
             "not a group operation: {:?}",

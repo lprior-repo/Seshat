@@ -171,9 +171,9 @@ pub fn apply_edge_op(
 ) -> Result<DiagramProjection, ReplayError> {
     match op {
         DomainOp::EdgeConnect { id, source, target } => {
-            apply_edge_connect_checked(state, id, source, target)
+            apply_edge_connect_checked(state, id.as_str(), source.as_str(), target.as_str())
         }
-        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect_checked(state, id),
+        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect_checked(state, id.as_str()),
         _ => Err(ReplayError::InvalidEvent(format!(
             "not an edge operation: {:?}",
             op.kind()
@@ -315,6 +315,31 @@ pub fn apply_update_edge_label(
     if let Some(edge) = state.edges.get(&edge_id) {
         let mut updated_edge = edge.clone();
         updated_edge.label = label.clone();
+
+        let new_edges = state.edges.update(edge_id, updated_edge);
+
+        Ok(DiagramProjection {
+            edges: new_edges,
+            ..state
+        })
+    } else {
+        Err(ReplayError::InvariantViolation(format!(
+            "edge not found: {id}"
+        )))
+    }
+}
+
+/// Apply update edge style operation
+pub fn apply_update_edge_style(
+    state: DiagramProjection,
+    id: &str,
+    style: EdgeStyle,
+) -> Result<DiagramProjection, ReplayError> {
+    let edge_id = EdgeId::new(id.to_string());
+
+    if let Some(edge) = state.edges.get(&edge_id) {
+        let mut updated_edge = edge.clone();
+        updated_edge.style = style;
 
         let new_edges = state.edges.update(edge_id, updated_edge);
 

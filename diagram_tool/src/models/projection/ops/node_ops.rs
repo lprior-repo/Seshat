@@ -8,7 +8,7 @@
 
 use im::HashMap;
 
-use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
 use crate::models::envelope::DomainOp;
 
 use crate::models::projection::types::{DiagramProjection, ReplayError};
@@ -214,6 +214,72 @@ pub fn apply_node_op(
             op.kind()
         ))),
     }
+}
+
+/// Apply `UpdateLabel` operation to a node
+pub fn apply_update_label(
+    state: DiagramProjection,
+    target_id: &str,
+    new_label: &str,
+) -> Result<DiagramProjection, ReplayError> {
+    let node_id = NodeId::new(target_id.to_string());
+
+    // Check node exists
+    let node = state
+        .nodes
+        .get(&node_id)
+        .ok_or_else(|| ReplayError::InvariantViolation(format!("node not found: {target_id}")))?
+        .clone();
+
+    // Create updated node with new label
+    let updated_node = Node {
+        label: new_label.to_string(),
+        ..node
+    };
+
+    let new_nodes = state.nodes.update(node_id, updated_node);
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
+/// Apply `UpdateNodeStyle` operation to a node
+pub fn apply_update_node_style(
+    state: DiagramProjection,
+    id: &str,
+    style: NodeStyle,
+) -> Result<DiagramProjection, ReplayError> {
+    let node_id = NodeId::new(id.to_string());
+
+    // Check node exists
+    let node = state
+        .nodes
+        .get(&node_id)
+        .ok_or_else(|| ReplayError::InvariantViolation(format!("node not found: {id}")))?
+        .clone();
+
+    // Create updated node with new style
+    let updated_node = Node {
+        style: Some(style),
+        ..node
+    };
+
+    let new_nodes = state.nodes.update(node_id, updated_node);
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
 }
 
 // ============== GEO-026: Nested Container Bounds Propagation ==============

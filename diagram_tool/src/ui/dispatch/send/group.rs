@@ -4,8 +4,8 @@ use dioxus::prelude::*;
 
 use crate::models::envelope::EventEnvelope;
 
-use super::create::{create_group_envelope, create_ungroup_envelope};
-use super::errors::{DispatchError, DispatchResult};
+use super::super::create::{create_group_envelope, create_ungroup_envelope};
+use super::super::errors::{DispatchError, DispatchResult};
 
 /// Dispatch Group operation to db_tx
 ///

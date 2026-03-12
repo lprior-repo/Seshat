@@ -25,7 +25,7 @@ type NodeMap = HashMap<NodeId, Node>;
 /// Returns `ReplayError::AllNodesInvalid` if no valid nodes found
 fn validate_and_collect_selected(
     state: &DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<BTreeSet<NodeId>, ReplayError> {
     if ids.is_empty() {
         return Err(ReplayError::NoNodesSpecified);
@@ -33,12 +33,16 @@ fn validate_and_collect_selected(
 
     let selected: BTreeSet<NodeId> = ids
         .iter()
-        .map(|s| NodeId::new(s.clone()))
         .filter(|id| state.has_node(id))
+        .cloned()
         .collect();
 
     if selected.is_empty() {
-        let invalid_ids = ids.join(", ");
+        let invalid_ids = ids
+            .iter()
+            .map(|id| id.to_string())
+            .collect::<Vec<_>>()
+            .join(", ");
         return Err(ReplayError::AllNodesInvalid(invalid_ids));
     }
 
@@ -103,7 +107,7 @@ fn build_result(state: DiagramProjection, new_nodes: NodeMap) -> DiagramProjecti
 /// Apply z-ordering using a custom reorder function
 fn apply_z_order(
     state: DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
     reorder_fn: impl FnOnce(Vec<NodeId>, &BTreeSet<NodeId>) -> Vec<NodeId>,
 ) -> Result<DiagramProjection, ReplayError> {
     let selected = validate_and_collect_selected(&state, ids)?;
@@ -120,7 +124,7 @@ fn apply_z_order(
 /// Apply `BringForward` operation (z-order)
 pub fn apply_bring_forward(
     state: DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
     apply_z_order(state, ids, |mut node_ids, selected| {
         for idx in (0..node_ids.len() - 1).rev() {
@@ -137,7 +141,7 @@ pub fn apply_bring_forward(
 /// Apply `SendBackward` operation (z-order)
 pub fn apply_send_backward(
     state: DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
     apply_z_order(state, ids, |mut node_ids, selected| {
         for idx in 1..node_ids.len() {
@@ -154,7 +158,7 @@ pub fn apply_send_backward(
 /// Apply `BringToFront` operation (z-order)
 pub fn apply_bring_to_front(
     state: DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
     apply_z_order(state, ids, |node_ids, selected| {
         let reordered: Vec<NodeId> = node_ids
@@ -170,7 +174,7 @@ pub fn apply_bring_to_front(
 /// Apply `SendToBack` operation (z-order)
 pub fn apply_send_to_back(
     state: DiagramProjection,
-    ids: &[String],
+    ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
     apply_z_order(state, ids, |node_ids, selected| {
         let reordered: Vec<NodeId> = node_ids
@@ -197,7 +201,7 @@ pub fn apply_z_order_op(
         DomainOp::BringForward { ids } => apply_bring_forward(state, ids),
         DomainOp::SendBackward { ids } => apply_send_backward(state, ids),
         DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),
-        DomainOp::SendToBack { ids } => apply_send_to_back(state, ids),
+        DomainOp::SendToBack { ids } => apply_send_to_back(state, ids.as_slice()),
         _ => Err(ReplayError::InvalidEvent(format!(
             "not a z-order operation: {:?}",
             op.kind()

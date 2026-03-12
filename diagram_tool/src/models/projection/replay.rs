@@ -193,11 +193,7 @@ fn dispatch_operation(
             old_label: _,
             new_label,
         } => match target_type {
-            LabelTargetType::Node => apply_update_label(state, target_id, new_label).map_err(
-                |e: crate::models::projection::types::ProjectionError| {
-                    ReplayError::InvalidEvent(e.to_string())
-                },
-            ),
+            LabelTargetType::Node => apply_update_label(state, target_id, new_label),
             LabelTargetType::Edge => apply_update_edge_label(state, target_id, new_label),
         },
         DomainOp::UpdateNodeStyle { id, style } => {
@@ -217,27 +213,12 @@ fn dispatch_operation(
         DomainOp::UpdateEdgeStyle { id, style } => {
             apply_update_edge_style(state, id.as_str(), style.clone())
         }
-        DomainOp::BringForward { ids } => {
-            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-            apply_bring_forward(state, &str_ids)
-        }
-        DomainOp::SendBackward { ids } => {
-            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-            apply_send_backward(state, &str_ids)
-        }
-        DomainOp::BringToFront { ids } => {
-            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-            apply_bring_to_front(state, &str_ids)
-        }
-        DomainOp::SendToBack { ids } => {
-            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-            apply_send_to_back(state, &str_ids)
-        }
-        DomainOp::Group { ids } => {
-            let str_ids: Vec<String> = ids.iter().map(|id| id.to_string()).collect();
-            apply_group(state, &str_ids)
-        }
-        DomainOp::Ungroup { id } => apply_ungroup(state, id.as_str()),
+        DomainOp::BringForward { ids } => apply_bring_forward(state, ids),
+        DomainOp::SendBackward { ids } => apply_send_backward(state, ids),
+        DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),
+        DomainOp::SendToBack { ids } => apply_send_to_back(state, ids),
+        DomainOp::Group { ids } => apply_group(state, ids),
+        DomainOp::Ungroup { id } => apply_ungroup(state, id),
     }
 }
 

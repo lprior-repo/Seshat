@@ -13,6 +13,7 @@ mod persistence_compat;
 
 use crate::history::History;
 use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
+use crate::models::envelope::EventEnvelope;
 use crate::mutation::error::MutationError;
 use crate::ui::editor::ToolMode;
 use crate::ui::panels::PanelVisibility;
@@ -47,6 +48,7 @@ pub fn Toolbar() -> Element {
     let mut validate_trigger = use_context::<Signal<u64>>();
     let toolbar_stats = use_context::<Signal<ToolbarStats>>();
     let stats = *toolbar_stats.read();
+    let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
 
     let save_label = if cfg!(target_arch = "wasm32") {
         "Save to Server"
@@ -203,14 +205,14 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-send-to-back",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::send_to_back(doc_signal, history_signal),
+                onclick: move |_| actions::send_to_back(doc_signal, history_signal, db_tx.clone()),
                 disabled: stats.selected_count == 0,
                 "To Back"
             }
             button {
                 "data-testid": "toolbar-bring-to-front",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::bring_to_front(doc_signal, history_signal),
+                onclick: move |_| actions::bring_to_front(doc_signal, history_signal, db_tx.clone()),
                 disabled: stats.selected_count == 0,
                 "To Front"
             }

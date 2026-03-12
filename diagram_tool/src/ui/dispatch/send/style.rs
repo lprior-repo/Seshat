@@ -5,11 +5,11 @@ use dioxus::prelude::*;
 use crate::models::document::{EdgeStyle, NodeStyle};
 use crate::models::envelope::{EventEnvelope, LabelTargetType};
 
-use super::create::{
+use super::super::create::{
     create_update_edge_style_envelope, create_update_label_envelope,
     create_update_node_style_envelope,
 };
-use super::errors::{DispatchError, DispatchResult};
+use super::super::errors::{DispatchError, DispatchResult};
 
 /// Dispatch UpdateLabel operation to db_tx
 pub fn dispatch_update_label(

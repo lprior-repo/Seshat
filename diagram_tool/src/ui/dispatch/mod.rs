@@ -24,5 +24,6 @@ pub use send::{
     dispatch_edge_disconnect, dispatch_group, dispatch_node_add, dispatch_node_delete,
     dispatch_node_delete_batch, dispatch_node_resize, dispatch_send_backward,
     dispatch_send_to_back, dispatch_ungroup, dispatch_update_edge_style, dispatch_update_label,
-    dispatch_update_node_style, ResizeBounds,
+    dispatch_update_node_style, handle_edge_drawing_complete, validate_edge_connect_preconditions,
+    ResizeBounds,
 };

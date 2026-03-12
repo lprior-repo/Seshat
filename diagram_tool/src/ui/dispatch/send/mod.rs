@@ -6,7 +6,10 @@ pub mod node;
 pub mod style;
 pub mod zorder;
 
-pub use edge::{dispatch_edge_connect, dispatch_edge_disconnect};
+pub use edge::{
+    dispatch_edge_connect, dispatch_edge_disconnect, handle_edge_drawing_complete,
+    validate_edge_connect_preconditions,
+};
 pub use group::{dispatch_group, dispatch_ungroup};
 pub use node::{
     dispatch_node_add, dispatch_node_delete, dispatch_node_delete_batch, dispatch_node_resize,

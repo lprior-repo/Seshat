@@ -88,20 +88,20 @@ pub fn evaluate_human_priority_with_projection(
             DomainOp::NodeMove { id, .. }
             | DomainOp::NodeDelete { id }
             | DomainOp::NodeRestore { id } => {
-                if !projection.has_node(&NodeId::new(id.clone())) {
+                if !projection.has_node(id) {
                     return Err(ConflictError::MissingEntity(format!("node:{}", id)));
                 }
             }
             DomainOp::EdgeDisconnect { id } => {
-                if !projection.has_edge(&EdgeId::new(id.clone())) {
+                if !projection.has_edge(id) {
                     return Err(ConflictError::MissingEntity(format!("edge:{}", id)));
                 }
             }
             DomainOp::EdgeConnect { source, target, .. } => {
-                if !projection.has_node(&NodeId::new(source.clone())) {
+                if !projection.has_node(source) {
                     return Err(ConflictError::MissingEntity(format!("node:{}", source)));
                 }
-                if !projection.has_node(&NodeId::new(target.clone())) {
+                if !projection.has_node(target) {
                     return Err(ConflictError::MissingEntity(format!("node:{}", target)));
                 }
             }

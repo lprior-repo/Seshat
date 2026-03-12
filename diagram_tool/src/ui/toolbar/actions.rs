@@ -1,6 +1,7 @@
 use crate::history::History;
 use crate::layout::dag::{dag_layout, DagLayoutSettings};
 use crate::models::document::DiagramDocument;
+use crate::models::envelope::EventEnvelope;
 use crate::mutation::pipeline::run_mutation;
 use crate::ui::commands::{
     apply_align_selection, apply_bring_forward, apply_bring_to_front, apply_copy_selection,
@@ -9,6 +10,7 @@ use crate::ui::commands::{
     apply_zoom_reset, clipboard_has_content, AlignmentAxis, AlignmentMode, ClipboardData,
     DistributionAxis,
 };
+use crate::ui::dispatch::send::zorder::{dispatch_bring_to_front, dispatch_send_to_back};
 use crate::ui::toast::ToastApi;
 use dioxus::prelude::*;
 
@@ -98,11 +100,45 @@ pub fn send_backward(doc_signal: Signal<DiagramDocument>, history_signal: Signal
     let _ = apply_send_backward(doc_signal, history_signal);
 }
 
-pub fn bring_to_front(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn bring_to_front(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    db_tx: Option<Coroutine<EventEnvelope>>,
+) {
+    // Get selected node IDs for dispatch
+    let selected_ids: Vec<String> = doc_signal
+        .read()
+        .editor_state
+        .selected_items
+        .iter()
+        .cloned()
+        .collect();
+
+    // Dispatch to WAL if db_tx is available
+    let _ = dispatch_bring_to_front(&db_tx, &selected_ids);
+
+    // Apply local mutation for optimistic UI
     let _ = apply_bring_to_front(doc_signal, history_signal);
 }
 
-pub fn send_to_back(doc_signal: Signal<DiagramDocument>, history_signal: Signal<History>) {
+pub fn send_to_back(
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    db_tx: Option<Coroutine<EventEnvelope>>,
+) {
+    // Get selected node IDs for dispatch
+    let selected_ids: Vec<String> = doc_signal
+        .read()
+        .editor_state
+        .selected_items
+        .iter()
+        .cloned()
+        .collect();
+
+    // Dispatch to WAL if db_tx is available
+    let _ = dispatch_send_to_back(&db_tx, &selected_ids);
+
+    // Apply local mutation for optimistic UI
     let _ = apply_send_to_back(doc_signal, history_signal);
 }
 
