@@ -36,6 +36,7 @@ use selection_geometry::{selected_node_ids, selection_bounds};
 use serde_json::Value;
 use uuid::Uuid;
 
+use crate::ui::dispatch::send::node::dispatch_node_delete_batch;
 use crate::{
     app::DraggedIconPayload,
     history::History,
@@ -790,7 +791,28 @@ pub fn Canvas() -> Element {
                     }
                     match key {
                         "Delete" | "Backspace" => {
-                            let _ = apply_delete_selected(doc_signal, history_signal);
+                            // Extract selected node IDs (filters out locked nodes)
+                            let node_ids: Vec<String> = {
+                                let doc = doc_signal.read();
+                                selected_node_ids(&doc)
+                                    .into_iter()
+                                    .map(|id| id.to_string())
+                                    .collect()
+                            };
+
+                            // Try event sourcing path first (dispatch to db_tx)
+                            let dispatch_result = dispatch_node_delete_batch(&db_tx, &node_ids);
+
+                            match dispatch_result {
+                                Ok(_) => {
+                                    // Successful dispatch - clear selection
+                                    apply_clear_selection(doc_signal);
+                                }
+                                Err(_) => {
+                                    // db_tx unavailable - fall back to local mutation
+                                    let _ = apply_delete_selected(doc_signal, history_signal);
+                                }
+                            }
                         }
                         "Escape" => {
                             if editing_node.read().is_some() || editing_edge.read().is_some() {
