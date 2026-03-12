@@ -20,7 +20,7 @@ use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
 use crate::ui::panels::PanelVisibility;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
-use crate::ui::toast::{ToastQueue, Toaster};
+use crate::ui::toast::{show_conflict_toast, AiConflictState, ToastQueue, Toaster};
 use crate::ui::toolbar::{auto_save, Toolbar, ToolbarStats};
 
 use crate::ui::ValidationPanel;
@@ -75,11 +75,44 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     // AI conflict state - tracks concurrent editing conflicts between AI and human
     use_context_provider(|| Signal::new(Option::<String>::None));
+    // Track if conflict toast has been shown to avoid duplicates
+    use_context_provider(|| Signal::new(false));
     // Pending AI operations - tracks AI op_ids that have been dispatched but not confirmed in WAL
     use_context_provider(|| Signal::new(std::collections::HashSet::<String>::new()));
 
     use_global_keyboard();
     use_e2e_reset_hook();
+
+    // Get toast queue and conflict state for displaying conflict toasts
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let toast_queue = use_context::<Signal<ToastQueue>>();
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let ai_conflict_state = use_context::<Signal<Option<String>>>();
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let conflict_toast_shown = use_context::<Signal<bool>>();
+
+    // Display conflict toast when ai_conflict_state is set
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    {
+        let toast_queue = toast_queue.clone();
+        let ai_conflict_state = ai_conflict_state.clone();
+        let mut conflict_toast_shown = conflict_toast_shown.clone();
+        use_effect(move || {
+            let has_conflict = ai_conflict_state.read().is_some();
+            let already_shown = *conflict_toast_shown.read();
+            if has_conflict && !already_shown {
+                if let Some(msg) = ai_conflict_state.read().as_ref() {
+                    let conflict_state = AiConflictState::new(Some(msg.clone()), Vec::new());
+                    let toast_api = crate::ui::toast::ToastApi::from_signal(toast_queue.clone());
+                    let _ = show_conflict_toast(&conflict_state, toast_api);
+                    conflict_toast_shown.set(true);
+                }
+            }
+            if !has_conflict {
+                conflict_toast_shown.set(false);
+            }
+        });
+    }
 
     let mut doc_signal = use_context::<Signal<DiagramDocument>>();
     let mut history_signal = use_context::<Signal<History>>();
