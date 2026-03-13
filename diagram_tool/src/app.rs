@@ -74,7 +74,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(0_u64));
     use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     // AI conflict state - tracks concurrent editing conflicts between AI and human
-    use_context_provider(|| Signal::new(Option::<String>::None));
+    use_context_provider(|| Signal::new(Option::<AiConflictState>::None));
     // Track if conflict toast has been shown to avoid duplicates
     use_context_provider(|| Signal::new(false));
     // Pending AI operations - tracks AI op_ids that have been dispatched but not confirmed in WAL
@@ -87,7 +87,7 @@ pub fn App() -> Element {
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let toast_queue = use_context::<Signal<ToastQueue>>();
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let ai_conflict_state = use_context::<Signal<Option<String>>>();
+    let ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let conflict_toast_shown = use_context::<Signal<bool>>();
 
@@ -101,10 +101,9 @@ pub fn App() -> Element {
             let has_conflict = ai_conflict_state.read().is_some();
             let already_shown = *conflict_toast_shown.read();
             if has_conflict && !already_shown {
-                if let Some(msg) = ai_conflict_state.read().as_ref() {
-                    let conflict_state = AiConflictState::new(Some(msg.clone()), Vec::new());
+                if let Some(conflict_state) = ai_conflict_state.read().as_ref() {
                     let toast_api = crate::ui::toast::ToastApi::from_signal(toast_queue.clone());
-                    let _ = show_conflict_toast(&conflict_state, toast_api);
+                    let _ = show_conflict_toast(conflict_state, toast_api);
                     conflict_toast_shown.set(true);
                 }
             }
@@ -151,7 +150,7 @@ pub fn App() -> Element {
     let pending_ai_ops = use_context::<Signal<std::collections::HashSet<String>>>();
 
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let ai_conflict_state = use_context::<Signal<Option<String>>>();
+    let ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
 
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     use_future(move || {
@@ -176,8 +175,8 @@ pub fn App() -> Element {
 
                     // Update conflict state if drops detected
                     if detection_result.has_conflict {
-                        if let Some(msg) = detection_result.conflict_message {
-                            ai_conflict_state.set(Some(msg));
+                        if let Some(conflict_state) = detection_result.conflict_state {
+                            ai_conflict_state.set(Some(conflict_state));
                         }
                     }
 

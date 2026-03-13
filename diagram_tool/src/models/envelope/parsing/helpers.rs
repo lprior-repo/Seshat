@@ -36,21 +36,23 @@ pub fn extract_f64_field(value: &serde_json::Value, field: &str) -> Result<f64, 
 }
 
 pub fn require_non_empty_id(id: &str) -> Result<NodeId, ContractError> {
-    if id.is_empty() {
+    let trimmed = id.trim();
+    if trimmed.is_empty() {
         return Err(ContractError::InvalidNodeId(
             "node id cannot be empty".to_string(),
         ));
     }
-    Ok(NodeId::new(id.to_string()))
+    Ok(NodeId::new(trimmed.to_string()))
 }
 
 pub fn require_non_empty_edge_id(id: &str) -> Result<EdgeId, ContractError> {
-    if id.is_empty() {
+    let trimmed = id.trim();
+    if trimmed.is_empty() {
         return Err(ContractError::InvalidEdgeId(
             "edge id cannot be empty".to_string(),
         ));
     }
-    Ok(EdgeId::new(id.to_string()))
+    Ok(EdgeId::new(trimmed.to_string()))
 }
 
 pub fn validate_positive_finite(value: f64, field_name: &str) -> Result<f64, ContractError> {

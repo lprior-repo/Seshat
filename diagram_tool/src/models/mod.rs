@@ -31,6 +31,11 @@ pub mod export;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod harness;
 pub mod port;
+pub mod physical_io;
+
+#[cfg(test)]
+pub mod physical_io_tests;
+
 pub mod projection;
 pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas

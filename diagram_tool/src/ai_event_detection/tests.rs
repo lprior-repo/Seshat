@@ -88,7 +88,7 @@ fn test_generate_conflict_message_empty() {
 fn test_detect_dropped_ai_events_no_pending() {
     let pending: HashSet<String> = HashSet::new();
     let fetched = vec![create_event("ai-op-1")];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
@@ -100,7 +100,7 @@ fn test_detect_dropped_ai_events_no_pending() {
 fn test_detect_dropped_ai_events_all_confirmed() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
     let fetched = vec![create_event("ai-op-1")];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
@@ -112,27 +112,30 @@ fn test_detect_dropped_ai_events_all_confirmed() {
 fn test_detect_dropped_ai_events_with_drop() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
     let fetched = vec![];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
     assert_eq!(result.dropped_op_ids.len(), 1);
     assert!(result.has_conflict);
-    assert!(result.conflict_message.is_some());
+    assert!(result.conflict_state.is_some());
 }
 
 #[test]
 fn test_detect_dropped_ai_events_existing_conflict() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
     let fetched = vec![];
-    let conflict_state: Option<String> = Some("existing conflict".to_string());
+    let conflict_state: Option<AiConflictState> = Some(AiConflictState::new(
+        Some("existing conflict".to_string()),
+        Vec::new(),
+    ));
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
     // Should detect but not report conflict (to avoid overwriting)
     assert_eq!(result.dropped_op_ids.len(), 1);
     assert!(!result.has_conflict);
-    assert!(result.conflict_message.is_none());
+    assert!(result.conflict_state.is_none());
 }
 
 #[test]
@@ -154,7 +157,7 @@ fn test_drop_detection_result_no_drops() {
 
     assert!(result.dropped_op_ids.is_empty());
     assert!(!result.has_conflict);
-    assert!(result.conflict_message.is_none());
+    assert!(result.conflict_state.is_none());
 }
 
 #[test]
@@ -163,7 +166,7 @@ fn test_drop_detection_result_with_drops() {
 
     assert_eq!(result.dropped_op_ids.len(), 1);
     assert!(result.has_conflict);
-    assert!(result.conflict_message.is_some());
+    assert!(result.conflict_state.is_some());
 }
 
 // Happy Path Tests from martin-fowler-tests.md
@@ -173,14 +176,17 @@ fn test_drop_detection_result_with_drops() {
 fn test_detects_dropped_ai_event_when_not_in_wal() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
     let fetched = vec![]; // No events in WAL
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
     assert_eq!(result.dropped_op_ids, vec!["ai-op-1"]);
     assert!(result.has_conflict);
     assert!(result
-        .conflict_message
+        .conflict_state
+        .as_ref()
+        .unwrap()
+        .reason
         .as_ref()
         .unwrap()
         .contains("AI operation rejected"));
@@ -191,7 +197,7 @@ fn test_detects_dropped_ai_event_when_not_in_wal() {
 fn test_no_conflict_when_ai_event_appears_in_wal() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
     let fetched = vec![create_event("ai-op-1")];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
@@ -204,7 +210,7 @@ fn test_no_conflict_when_ai_event_appears_in_wal() {
 fn test_handles_empty_pending_set_gracefully() {
     let pending: HashSet<String> = HashSet::new();
     let fetched = vec![];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
@@ -225,7 +231,7 @@ fn test_multiple_dropped_ai_events_detected_together() {
     .into_iter()
     .collect();
     let fetched = vec![];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 
@@ -240,7 +246,7 @@ fn test_mixed_dropped_and_confirmed_events() {
         .into_iter()
         .collect();
     let fetched = vec![create_event("ai-op-1")];
-    let conflict_state: Option<String> = None;
+    let conflict_state: Option<AiConflictState> = None;
 
     let result = detect_dropped_ai_events(&pending, &fetched, &conflict_state);
 

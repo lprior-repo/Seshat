@@ -1,5 +1,6 @@
 //! Phase 4 Tests: Model updates for rusqlite → sqlx migration
 
+use diagram_tool::models::document::NodeId;
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::models::projection::{replay_events_from, DiagramProjection, EventRecord};
 use diagram_tool::store::Revision;
@@ -48,7 +49,7 @@ fn create_test_envelope(op_id: &str, revision: i64) -> EventEnvelope {
             email: None,
         },
         operation: DomainOp::NodeAdd {
-            id: format!("node-{}", revision),
+            id: NodeId::new(format!("node-{}", revision)),
             x: 100.0 * revision as f64,
             y: 200.0 * revision as f64,
             width: 80.0,

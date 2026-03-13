@@ -4,6 +4,7 @@
 //! It follows the Data->Calc->Actions pattern with pure calculation functions.
 
 use crate::store_async::EventRecord;
+use crate::ui::toast::AiConflictState;
 use std::collections::HashSet;
 use thiserror::Error;
 
@@ -78,8 +79,8 @@ pub struct DropDetectionResult {
     pub dropped_op_ids: Vec<String>,
     /// Whether conflict state should be updated
     pub has_conflict: bool,
-    /// The conflict message if there's a conflict
-    pub conflict_message: Option<String>,
+    /// The conflict state if there's a conflict
+    pub conflict_state: Option<AiConflictState>,
 }
 
 impl DropDetectionResult {
@@ -89,7 +90,7 @@ impl DropDetectionResult {
         Self {
             dropped_op_ids: Vec::new(),
             has_conflict: false,
-            conflict_message: None,
+            conflict_state: None,
         }
     }
 
@@ -97,11 +98,13 @@ impl DropDetectionResult {
     #[must_use]
     pub fn with_drops(dropped_op_ids: Vec<String>) -> Self {
         let has_conflict = !dropped_op_ids.is_empty();
-        let conflict_message = has_conflict.then(|| generate_conflict_message(&dropped_op_ids));
+        let conflict_state = has_conflict.then(|| {
+            AiConflictState::new(Some(generate_conflict_message(&dropped_op_ids)), Vec::new())
+        });
         Self {
             dropped_op_ids,
             has_conflict,
-            conflict_message,
+            conflict_state,
         }
     }
 }
@@ -122,7 +125,7 @@ impl DropDetectionResult {
 pub fn detect_dropped_ai_events(
     pending_ops: &PendingOps,
     fetched_events: &[EventRecord],
-    current_conflict_state: &Option<String>,
+    current_conflict_state: &Option<AiConflictState>,
 ) -> DropDetectionResult {
     // If no pending ops, no drops possible
     if pending_ops.is_empty() {
@@ -137,18 +140,18 @@ pub fn detect_dropped_ai_events(
         return DropDetectionResult::no_drops();
     }
 
-    // Only update conflict if there's no existing conflict message (avoid overwriting)
+    // Only update conflict if there's no existing conflict state (avoid overwriting)
     let has_conflict = current_conflict_state.is_none();
 
     if has_conflict {
         DropDetectionResult::with_drops(dropped_op_ids)
     } else {
         // Conflict already exists - still report the drops (for removal from pending)
-        // but don't update the conflict message
+        // but don't update the conflict state
         DropDetectionResult {
             dropped_op_ids,
             has_conflict: false,
-            conflict_message: None,
+            conflict_state: None,
         }
     }
 }

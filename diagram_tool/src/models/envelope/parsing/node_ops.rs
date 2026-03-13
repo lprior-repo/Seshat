@@ -119,22 +119,22 @@ pub fn parse_update_label(value: &serde_json::Value) -> Result<DomainOp, Contrac
         _ => LabelTargetType::Node,
     };
 
-    // Parse target_id based on target type
+    // Parse target_id based on target type - check for missing field first
     let target_id = match target_type {
         LabelTargetType::Node => {
-            let id_str = value
-                .get("id")
+            // Check both "target_id" (new) and "id" (legacy) fields
+            let id_value = value.get("target_id").or_else(|| value.get("id"));
+            let id_str = id_value
                 .and_then(|v| v.as_str())
-                .or_else(|| value.get("target_id").and_then(|v| v.as_str()))
-                .unwrap_or("");
+                .ok_or(ContractError::MissingField("target_id"))?;
             LabelTargetId::Node(require_non_empty_id(id_str)?)
         }
         LabelTargetType::Edge => {
-            let id_str = value
-                .get("id")
+            // Check both "target_id" (new) and "id" (legacy) fields
+            let id_value = value.get("target_id").or_else(|| value.get("id"));
+            let id_str = id_value
                 .and_then(|v| v.as_str())
-                .or_else(|| value.get("target_id").and_then(|v| v.as_str()))
-                .unwrap_or("");
+                .ok_or(ContractError::MissingField("target_id"))?;
             LabelTargetId::Edge(super::helpers::require_non_empty_edge_id(id_str)?)
         }
     };

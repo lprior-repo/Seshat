@@ -7,7 +7,7 @@ mod tests {
 
     // ========== SNP-001: Snap to Grid ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_basic_grid_snap_rounds_to_nearest_intersection() {
@@ -18,7 +18,7 @@ mod tests {
         assert!((result.y - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_node_already_on_grid_stays_unchanged() {
@@ -28,7 +28,7 @@ mod tests {
         assert_eq!(result, position);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_negative_coordinates_snap_correctly() {
@@ -39,7 +39,7 @@ mod tests {
         assert!((result.y - (-50.0)).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_half_grid_offset_rounds_up() {
@@ -50,7 +50,7 @@ mod tests {
         assert!((result.y - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_invalid_grid_size_returns_original_position() {
@@ -60,7 +60,7 @@ mod tests {
         assert_eq!(result, position);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_nan_coordinates_produce_nan_result() {
@@ -72,7 +72,7 @@ mod tests {
 
     // ========== SNP-002: Snap to Guides ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snaps_to_horizontal_guide_within_threshold() {
@@ -83,7 +83,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 50.0)));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snaps_to_vertical_guide_within_threshold() {
@@ -94,7 +94,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 100.0)));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_position_outside_threshold_returns_none() {
@@ -105,7 +105,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_multiple_guides_selects_closest() {
@@ -116,7 +116,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 50.0)));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_empty_guide_list_returns_none() {
@@ -127,7 +127,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_invalid_guide_coordinates_are_filtered() {
@@ -148,7 +148,7 @@ mod tests {
         ]
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snaps_to_left_edge_of_target_node() {
@@ -164,7 +164,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 125.0)));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snaps_to_center_of_target_node() {
@@ -179,7 +179,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(150.0, 125.0)));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snaps_to_right_edge_of_target_node() {
@@ -195,7 +195,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(200.0, 125.0)));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snap_fails_when_outside_threshold() {
@@ -210,7 +210,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_empty_target_list_returns_none() {
@@ -221,7 +221,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_selects_closest_snap_target() {
@@ -246,7 +246,7 @@ mod tests {
         ]
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_align_left_moves_all_nodes_to_leftmost_x() {
@@ -262,7 +262,7 @@ mod tests {
         assert_eq!(result[2].y, 300.0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_align_center_moves_all_nodes_to_average_center() {
@@ -278,7 +278,7 @@ mod tests {
         assert!((result[2].x - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_align_right_moves_all_nodes_to_rightmost_x() {
@@ -293,7 +293,7 @@ mod tests {
         assert!((result[2].x - 100.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_align_top_moves_all_nodes_to_topmost_y() {
@@ -306,7 +306,7 @@ mod tests {
         assert_eq!(result[2].y, 100.0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_align_middle_moves_all_nodes_to_average_middle() {
@@ -322,7 +322,7 @@ mod tests {
         assert!((result[2].y - 200.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_align_bottom_moves_all_nodes_to_bottommost_y() {
@@ -337,7 +337,7 @@ mod tests {
         assert!((result[2].y - 300.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_empty_selection_returns_empty_result() {
@@ -347,7 +347,7 @@ mod tests {
         assert_eq!(result.len(), 0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_single_node_remains_unchanged() {
@@ -374,7 +374,7 @@ mod tests {
         ]
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_distribute_horizontally_spaces_nodes_evenly() {
@@ -387,7 +387,7 @@ mod tests {
         assert!((result[1].x - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_distribute_vertically_spaces_nodes_evenly() {
@@ -400,7 +400,7 @@ mod tests {
         assert!((result[1].y - 200.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_fewer_than_three_nodes_returns_error() {
@@ -418,7 +418,7 @@ mod tests {
         ));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_distribution_maintains_node_order() {
@@ -442,7 +442,7 @@ mod tests {
         assert_eq!(result[2].y, 200.0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_distribution_preserves_first_and_last_positions() {
@@ -455,42 +455,42 @@ mod tests {
 
     // ========== SNP-006: Snap Threshold ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snap_applies_when_distance_within_threshold() {
         assert_eq!(should_snap(5.0, 10.0), true);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snap_applies_when_exactly_at_threshold() {
         assert_eq!(should_snap(10.0, 10.0), true);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_snap_does_not_apply_when_outside_threshold() {
         assert_eq!(should_snap(11.0, 10.0), false);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_zero_threshold_only_snaps_exact_matches() {
         assert_eq!(should_snap(0.0, 0.0), true);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_negative_threshold_treated_as_zero() {
         assert_eq!(should_snap(5.0, -1.0), false);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_infinity_threshold_always_snaps() {
@@ -501,7 +501,7 @@ mod tests {
 
     // ========== SNP-007: Snap During Drag ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_drag_with_snap_updates_preview_and_final() {
@@ -514,7 +514,7 @@ mod tests {
         assert_eq!(final_pos, Point::new(50.0, 50.0));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_drag_without_snap_preserves_original() {
@@ -527,7 +527,7 @@ mod tests {
         assert_eq!(final_pos, current);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_multi_node_drag_preserves_relative_offsets() {
@@ -546,7 +546,7 @@ mod tests {
 
     // ========== SNP-008: Snap During Resize ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_resize_width_snaps_to_grid() {
@@ -559,7 +559,7 @@ mod tests {
         assert_eq!(result.height, 40.0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_resize_from_different_handle() {
@@ -572,7 +572,7 @@ mod tests {
         assert_eq!(result.width, 90.0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_aspect_ratio_lock_with_snap() {
@@ -591,7 +591,7 @@ mod tests {
         assert!((result.height - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_resize_snap_affects_both_dimensions() {
@@ -608,7 +608,7 @@ mod tests {
 
     // ========== SNP-009: Multi-Node Snap ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_all_nodes_snap_together() {
@@ -625,7 +625,7 @@ mod tests {
         assert!(results.iter().all(|p| (p.y % 10.0).abs() < f64::EPSILON));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_relative_positions_preserved() {
@@ -642,7 +642,7 @@ mod tests {
         assert!((new_offset.1 - 100.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_primary_selection_determines_snap_target() {
@@ -657,7 +657,7 @@ mod tests {
         assert_eq!(results[1], Point::new(150.0, 150.0));
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_empty_node_list_returns_empty() {
@@ -668,7 +668,7 @@ mod tests {
         assert_eq!(results.len(), 0);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_single_node_snaps_independently() {
@@ -687,21 +687,21 @@ mod tests {
 
     // ========== SNP-010: Snap Toggle ==========
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_toggle_from_disabled_to_enabled() {
         assert_eq!(toggle_snap(ToggleState::Off), ToggleState::On);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_toggle_from_enabled_to_disabled() {
         assert_eq!(toggle_snap(ToggleState::On), ToggleState::Off);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_query_snap_state() {
@@ -709,7 +709,7 @@ mod tests {
         assert_eq!(is_snap_enabled(state), true);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_toggle_during_drag_commits_at_current_position() {
@@ -721,7 +721,7 @@ mod tests {
         assert_eq!(committed, SnapMode::Disabled);
     }
 
-    #[cfg(kani)]
+    #[cfg(any(test, kani))]
     #[kani::proof]
     #[test]
     fn story_toggle_persists_across_operations() {

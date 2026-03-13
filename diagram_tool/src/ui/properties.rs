@@ -7,142 +7,19 @@
 
 use crate::history::History;
 use crate::models::document::{
-    ArrowType, DiagramDocument, EdgeId, EdgeStyle, NodeId, NodeKind, NodeStyle, OrderedFloat,
+    DiagramDocument, EdgeId, EdgeStyle, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
 use crate::models::envelope::EventEnvelope;
 use crate::ui::dispatch::{dispatch_update_edge_style, dispatch_update_node_style};
+use crate::ui::properties_helpers::{
+    arrow_type_str, edge_style_str, node_kind_str, node_label_with_id_fallback, node_style_str,
+    parse_arrow_type, parse_edge_style, parse_node_style, remove_selected, StyleError,
+};
 use crate::ui::theme::{
     BG_BASE, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_DIM, TEXT_MAIN, TEXT_MUTED,
 };
+use crate::ui::toast::use_toast;
 use dioxus::prelude::*;
-
-#[allow(dead_code)]
-fn remove_selected(doc: &mut DiagramDocument) {
-    let selected = doc.editor_state.selected_items.clone();
-    if selected.is_empty() {
-        return;
-    }
-
-    doc.document.nodes = doc
-        .document
-        .nodes
-        .iter()
-        .filter(|(id, _)| !selected.contains(&id.to_string()))
-        .map(|(id, node)| (id.clone(), node.clone()))
-        .collect();
-
-    let node_ids: im::HashSet<NodeId> = doc.document.nodes.keys().cloned().collect();
-    doc.document.edges = doc
-        .document
-        .edges
-        .iter()
-        .filter(|(id, edge)| {
-            node_ids.contains(&edge.source)
-                && node_ids.contains(&edge.target)
-                && !selected.contains(&id.to_string())
-        })
-        .map(|(id, edge)| (id.clone(), edge.clone()))
-        .collect();
-
-    doc.editor_state.selected_items.clear();
-    doc.revision = doc.revision.increment();
-}
-
-#[allow(dead_code)]
-fn parse_edge_style(v: &str) -> EdgeStyle {
-    match v {
-        "dashed" => EdgeStyle::Dashed,
-        "dotted" => EdgeStyle::Dotted,
-        _ => EdgeStyle::Solid,
-    }
-}
-
-#[allow(dead_code)]
-fn parse_arrow_type(v: &str) -> ArrowType {
-    match v {
-        "straight" | "open" => ArrowType::Straight,
-        "step" | "diamond" => ArrowType::Step,
-        "curved" | "circle" => ArrowType::Curved,
-        "sharp" | "none" => ArrowType::Sharp,
-        _ => ArrowType::Default,
-    }
-}
-
-#[allow(dead_code)]
-const fn edge_style_str(v: EdgeStyle) -> &'static str {
-    match v {
-        EdgeStyle::Solid => "solid",
-        EdgeStyle::Dashed => "dashed",
-        EdgeStyle::Dotted => "dotted",
-    }
-}
-
-#[allow(dead_code)]
-const fn arrow_type_str(v: ArrowType) -> &'static str {
-    match v {
-        ArrowType::Default => "default",
-        ArrowType::Straight => "straight",
-        ArrowType::Step => "step",
-        ArrowType::Curved => "curved",
-        ArrowType::Sharp => "sharp",
-    }
-}
-
-#[allow(dead_code)]
-const fn node_kind_str(kind: &NodeKind) -> &'static str {
-    match kind {
-        NodeKind::Node => "node",
-        NodeKind::Subgraph => "subgraph",
-        NodeKind::Text => "text",
-    }
-}
-
-#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
-pub enum StyleError {
-    #[error("Invalid node style: {0}")]
-    InvalidNodeStyle(String),
-    #[error("Invalid edge style: {0}")]
-    InvalidEdgeStyle(String),
-    #[error("Invalid arrow type: {0}")]
-    InvalidArrowType(String),
-}
-
-#[allow(dead_code)]
-fn parse_node_style(v: &str) -> Result<NodeStyle, StyleError> {
-    match v {
-        "box" => Ok(NodeStyle::Box),
-        "cloud" => Ok(NodeStyle::Cloud),
-        "cylinder" => Ok(NodeStyle::Cylinder),
-        "dashed" => Ok(NodeStyle::Dashed),
-        _ => Err(StyleError::InvalidNodeStyle(v.to_string())),
-    }
-}
-
-#[allow(dead_code)]
-fn node_style_str(style: &Option<NodeStyle>) -> &'static str {
-    match style.as_ref() {
-        Some(NodeStyle::Box) => "box",
-        Some(NodeStyle::Cloud) => "cloud",
-        Some(NodeStyle::Cylinder) => "cylinder",
-        Some(NodeStyle::Dashed) => "dashed",
-        None => "box",
-    }
-}
-
-#[allow(dead_code)]
-fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
-    doc.document.nodes.get(id).map_or_else(
-        || id.to_string(),
-        |node| {
-            let trimmed = node.label.trim();
-            if trimmed.is_empty() {
-                id.to_string()
-            } else {
-                trimmed.to_string()
-            }
-        },
-    )
-}
 
 #[component]
 #[allow(clippy::approx_constant, clippy::float_cmp)]
@@ -150,8 +27,9 @@ pub fn PropertiesPanel() -> Element {
     let mut doc_signal = use_context::<Signal<DiagramDocument>>();
     let mut history = use_context::<Signal<History>>();
     let mut edge_style_default = use_context::<Signal<EdgeStyle>>();
-    let mut arrow_type_default = use_context::<Signal<ArrowType>>();
+    let mut arrow_type_default = use_context::<Signal<crate::models::document::ArrowType>>();
     let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
+    let toast = use_toast();
 
     let selected_ids = use_memo(move || doc_signal.read().editor_state.selected_items.clone());
     let selected_items: Vec<String> = selected_ids.read().iter().cloned().collect();
@@ -682,8 +560,10 @@ pub fn PropertiesPanel() -> Element {
                                             let current = doc_signal.read().clone();
                                             let next_h = history.read().push(current);
                                             *history.write() = next_h;
-                                            // Dispatch to db_tx
-                                            dispatch_update_edge_style(&db_tx, eid.as_str(), new_style).ok();
+                                            // Dispatch to db_tx - show error toast if dispatch fails
+                                            if let Err(e) = dispatch_update_edge_style(&db_tx, eid.as_str(), new_style) {
+                                                let _ = toast.error("Failed to save", Some(format!("{:?}", e)));
+                                            }
                                         }
                                         doc_signal.with_mut(|doc| {
                                             if let Some(e) = doc.document.edges.get_mut(&eid) {

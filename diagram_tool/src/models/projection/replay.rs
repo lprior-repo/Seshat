@@ -218,13 +218,6 @@ fn dispatch_operation(
         DomainOp::UpdateEdgeStyle { id, style } => {
             apply_update_edge_style(state, id.as_str(), style.clone())
         }
-        DomainOp::EdgeConnect { id, source, target } => {
-            apply_edge_connect(state, id.as_str(), source.as_str(), target.as_str())
-        }
-        DomainOp::EdgeDisconnect { id } => apply_edge_disconnect(state, id.as_str()),
-        DomainOp::UpdateEdgeStyle { id, style } => {
-            apply_update_edge_style(state, id.as_str(), style.clone())
-        }
         DomainOp::BringForward { ids } => apply_bring_forward(state, ids),
         DomainOp::SendBackward { ids } => apply_send_backward(state, ids),
         DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),

@@ -75,15 +75,67 @@ The original test at `store_async.rs:1002` still has `#[cfg(kani)]` but the new 
 
 ## DEFECT-007: Multiple Assertions Per Test
 
-**Status**: FIXED ✅
+**Status**: NOT FULLY FIXED ⚠️
 
-**Solution**: Tests split to have single assertion focus:
-- `given_pool_created_when_synchronous_queried_then_returns_one` - single assertion
-- `given_pool_created_when_journal_mode_queried_then_returns_wal` - single assertion
-- `given_pool_created_when_wal_autocheckpoint_queried_then_returns_1000` - single assertion
-- etc.
+**Issue**: While individual tests exist for single assertions, the test file still contains multi-assertion tests:
 
-Exception: Grouped assertions for closely related pragmas (e.g., all pragma values in one test)
+1. `given_pool_created_when_pragma_values_queried_then_all_are_correct` (lines 80-92 in pragma_tests)
+   - Contains 5 assertions checking journal_mode, synchronous, wal_autocheckpoint, foreign_keys, busy_timeout
+   - This is a regression from the stated fix
+
+2. `given_pool_lifetime_when_pragmas_queried_multiple_times_then_values_stable` (lines 198-223)
+   - Contains 3 assertions checking synchronous, journal_mode, wal_autocheckpoint stability
+
+**Kent Beck TDD Violation**: Each test should have ONE logical assertion focus.
+
+**Fix Required**: Split these tests into separate tests following the pattern:
+- `given_pool_created_when_synchronous_queried_then_returns_one`
+- `given_pool_created_when_journal_mode_queried_then_returns_wal`
+- `given_pool_created_when_wal_autocheckpoint_queried_then_returns_1000`
+- `given_pool_created_when_foreign_keys_queried_then_returns_true`
+- `given_pool_created_when_busy_timeout_queried_then_returns_5000`
+
+---
+
+## NEW DEFECT-T2: Missing P3 (Non-WAL Mode) Test
+
+**Status**: NOT IMPLEMENTED ❌
+
+**Issue**: The martin-fowler-tests.md specifies a test for detecting non-WAL mode (P3), but it is NOT implemented in the test file.
+
+**Expected test from martin-fowler-tests.md**:
+```rust
+/// test_given_delete_mode_not_wal_when_synchronous_set_then_mismatch_possible
+/// Purpose: VIOLATES P3 - detecting non-WAL mode
+/// Given: A pool with journal_mode="delete" instead of "wal"
+/// When: read_store_pragmas_async(pool) is called
+/// Then: Returns journal_mode != "wal"
+```
+
+**Fix Required**: Add test that creates a pool without WAL mode and verifies journal_mode != "wal"
+
+---
+
+## NEW DEFECT-T3: Incomplete Async/Sync Parity Test
+
+**Status**: NOT FULLY IMPLEMENTED ❌
+
+**Issue**: Test `given_async_store_configuration_should_match_sync_store_contract` only verifies async store against documented contract, NOT actual parity with sync store.
+
+**Current behavior** (line 463):
+```rust
+// Then: should match sync store contract (synchronous=NORMAL)
+// The sync store (store_sqlx.rs line 179) uses PRAGMA synchronous=NORMAL
+assert_eq!(pragmas.synchronous, 1, ...);
+```
+
+**Problem**: This test doesn't actually create and compare with the sync store. It only checks async store matches what the docs say sync store should have.
+
+**Fix Required**: Create a test that:
+1. Creates async pool with `create_async_pool`
+2. Creates sync pool with `store_sqlx::create_pool`
+3. Reads PRAGMAs from both
+4. Asserts both have identical synchronous values
 
 ---
 

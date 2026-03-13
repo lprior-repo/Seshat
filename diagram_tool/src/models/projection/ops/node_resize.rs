@@ -55,17 +55,14 @@ mod tests {
     use im::hashmap;
 
     fn create_test_projection() -> DiagramProjection {
-        let node = crate::models::document::Node::new(
-            NodeId::new("test-node".to_string()),
-            0.0,
-            0.0,
-            100.0,
-            50.0,
-            "Test",
-        );
+        use crate::models::projection::ops::node_ops::create_default_node;
+        use im::hashmap;
+
+        let node_id = NodeId::new("test-node".to_string());
+        let node = create_default_node(0.0, 0.0, 100.0, 50.0, "test-node");
         DiagramProjection {
             version: 1,
-            nodes: hashmap! { node.id.clone() => node },
+            nodes: hashmap! { node_id => node },
             edges: hashmap! {},
             revision: 1,
             ..Default::default()

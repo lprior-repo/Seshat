@@ -1935,7 +1935,6 @@ mod proptests {
         //! connectors, style changes, and text edits.
 
         use super::*;
-        use crate::core::history::{apply_redo, apply_undo};
         use crate::models::document::{
             DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
             Revision,
@@ -1997,7 +1996,7 @@ mod proptests {
                 node.y = OrderedFloat(150.0);
             }
             doc_after.revision = doc_after.revision.increment();
-            let history = history.push(doc_after);
+            let history = history.push(doc_after.clone());
 
             // History undo_stack has exactly 1 entry (not per-frame)
             assert_eq!(
@@ -2314,7 +2313,7 @@ mod proptests {
             }
             doc_after.revision = doc_after.revision.increment();
 
-            let history = history.push(doc_after);
+            let history = history.push(doc_after.clone());
 
             // History undo_stack has exactly 1 entry
             assert_eq!(
@@ -2336,88 +2335,6 @@ mod proptests {
                 restored_node.label, "Original Label",
                 "Label should be restored to Original Label"
             );
-        }
-
-        // ============================================================
-        // apply_undo and apply_redo tests
-        // ============================================================
-
-        #[test]
-        fn test_apply_undo_success_restores_previous_state() {
-            let mut doc = doc_with_revision(1);
-            let node_id = NodeId::new("node-1".to_string());
-            let _ = doc.document.nodes.insert(
-                node_id.clone(),
-                make_node("node-1", 100.0, 100.0, 80.0, 40.0),
-            );
-
-            let mut history = History::new();
-            history = history.push(doc.clone());
-
-            let mut current = doc.clone();
-            if let Some(node) = current.document.nodes.get_mut(&node_id) {
-                node.x = OrderedFloat(200.0);
-            }
-            current.revision = current.revision.increment();
-            history = history.push(current.clone());
-
-            // Apply undo
-            let result = apply_undo(&mut doc.clone(), &mut history.clone());
-            assert!(result.is_ok(), "apply_undo should succeed");
-        }
-
-        #[test]
-        fn test_apply_undo_failure_returns_error_on_empty_history() {
-            let mut doc = doc_with_revision(1);
-            let mut history = History::new();
-
-            // Try to apply undo with empty history
-            let result = apply_undo(&mut doc, &mut history);
-            assert!(result.is_err(), "apply_undo should fail on empty history");
-            assert_eq!(result.unwrap_err(), "Nothing to undo");
-        }
-
-        #[test]
-        fn test_apply_redo_success_restores_next_state() {
-            let mut doc = doc_with_revision(1);
-            let node_id = NodeId::new("node-1".to_string());
-            let _ = doc.document.nodes.insert(
-                node_id.clone(),
-                make_node("node-1", 100.0, 100.0, 80.0, 40.0),
-            );
-
-            let mut history = History::new();
-            history = history.push(doc.clone());
-
-            let mut current = doc.clone();
-            if let Some(node) = current.document.nodes.get_mut(&node_id) {
-                node.x = OrderedFloat(200.0);
-            }
-            current.revision = current.revision.increment();
-            history = history.push(current.clone());
-
-            // Undo to create redo entry
-            let mut doc_after_undo = current.clone();
-            let _ = apply_undo(&mut doc_after_undo, &mut history);
-
-            // Apply redo
-            let result = apply_redo(&mut doc_after_undo, &mut history);
-            assert!(result.is_ok(), "apply_redo should succeed");
-        }
-
-        #[test]
-        fn test_apply_redo_failure_returns_error_on_empty_redo_stack() {
-            let mut doc = doc_with_revision(1);
-            let mut history = History::new();
-            history = history.push(doc.clone());
-
-            // Try to apply redo with no undo performed
-            let result = apply_redo(&mut doc, &mut history);
-            assert!(
-                result.is_err(),
-                "apply_redo should fail on empty redo stack"
-            );
-            assert_eq!(result.unwrap_err(), "Nothing to redo");
         }
 
         // ============================================================

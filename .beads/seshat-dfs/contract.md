@@ -1,23 +1,35 @@
+---
+bead_id: seshat-dfs
+bead_title: UI Dispatch: Node Creation
+phase: contract-synthesis
+updated_at: 2026-03-12T00:00:00Z
+---
+
 # Contract Specification
 
 ## Context
 - **Feature**: UI Dispatch: Node Creation
 - **Bead ID**: seshat-dfs
 - **Parent of**: seshat-6pi (double-click), seshat-8xu (toolbar button)
+- **Source files**:
+  - Canvas double-click handler: `diagram_tool/src/ui/canvas.rs` (line ~1694-1788)
+  - Envelope creation: `diagram_tool/src/ui/dispatch/create.rs` (create_node_add_envelope)
+  - Dispatch function: `diagram_tool/src/ui/dispatch/send/node.rs` (dispatch_node_add)
+  - DomainOp definition: `diagram_tool/src/models/envelope/domain_ops.rs` (NodeAdd variant)
 - **Domain terms**:
-  - `DomainOp::NodeAdd` - diagram operation containing `id`, `x`, `y`, `width`, `height`, `label`
-  - `EventEnvelope` - wrapper containing `op_id`, `operation` (DomainOp), `author`, `timestamp`
-  - `db_tx` - `Option<Coroutine<EventEnvelope>>` for dispatching to WAL backend
+  - `DomainOp::NodeAdd` - diagram operation containing `id: NodeId`, `x: f64`, `y: f64`, `width: f64`, `height: f64`, `label: String`
+  - `EventEnvelope` - wrapper containing `op_id: String`, `operation: DomainOp`, `author: Author`, `timestamp: i64`
+  - `db_tx` - `Option<Coroutine<EventEnvelope>>` obtained via `use_context()` from Dioxus context
   - `dispatch_node_add` - function in `ui/dispatch/send/node.rs` that sends envelope to db_tx
-  - `create_node_add_envelope` - function in `ui/dispatch/create.rs` that creates the envelope
+  - `create_node_add_envelope` - function in `ui/dispatch/create.rs` that creates the envelope with validation
 - **Assumptions**:
   - Double-click on empty canvas triggers node creation in Select mode
-  - Toolbar button (to be added) triggers node creation
+  - Toolbar button (to be added in `toolbar.rs`) triggers node creation at viewport center
   - `db_tx` is provided via Dioxus context (may be None when WAL disconnected)
   - Node ID generated via `Uuid::new_v4()`
-  - Default node dimensions: 64x64 pixels
-  - Default node label: "Node"
-  - Coordinates snapped to grid if snap_to_grid is enabled
+  - Default node dimensions: 64x64 pixels (see canvas.rs line 1766-1767)
+  - Default node label: "Node" (see canvas.rs line 1763)
+  - Coordinates snapped to grid if snap_to_grid is enabled (see canvas.rs line 1753-1757)
 - **Open questions**:
   - Should toolbar add node at center of viewport or at mouse position? (Defaulting to center of viewport for now)
 
@@ -59,7 +71,10 @@
 
 ## Contract Signatures
 ```rust
-// In canvas.rs - double-click handler
+// In canvas.rs - double-click handler (existing inline logic, needs dispatch call added)
+// Lines ~1745-1787: inline node creation logic with local state updates
+
+// New function to be added in canvas.rs or as helper
 fn handle_canvas_double_click_node_creation(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
@@ -68,11 +83,12 @@ fn handle_canvas_double_click_node_creation(
     coords: (f64, f64),
 ) -> Result<DispatchResult, DispatchError>
 
-// In toolbar.rs - add node button handler
+// In toolbar.rs - add node button handler (to be added)
 fn handle_toolbar_add_node(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
     db_tx: Option<Coroutine<EventEnvelope>>,
+    viewport_center: (f64, f64),
 ) -> Result<DispatchResult, DispatchError>
 ```
 

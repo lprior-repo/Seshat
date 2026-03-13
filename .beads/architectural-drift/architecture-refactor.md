@@ -65,4 +65,64 @@ Split into logical modules:
 
 ## Status: REFACTORED
 
-This report identifies the architectural drift. Refactoring required.
+---
+
+## BEAD: properties.rs Refactor (2026-03-12)
+
+### Problem
+Original `diagram_tool/src/ui/properties.rs` was **797 lines** - significantly over the 300-line limit.
+
+### Actions Taken
+
+#### 1. Module Split (DDD: Functional Core / Imperative Shell)
+
+Extracted pure helper functions into a new module `properties_helpers.rs`:
+
+| Original Location | New Location | Function |
+|-------------------|--------------|----------|
+| Line 21-50 | `properties_helpers.rs` | `remove_selected()` |
+| Line 53-59 | `properties_helpers.rs` | `parse_edge_style()` |
+| Line 62-70 | `properties_helpers.rs` | `parse_arrow_type()` |
+| Line 73-79 | `properties_helpers.rs` | `edge_style_str()` |
+| Line 82-90 | `properties_helpers.rs` | `arrow_type_str()` |
+| Line 93-99 | `properties_helpers.rs` | `node_kind_str()` |
+| Line 101-109 | `properties_helpers.rs` | `StyleError` enum |
+| Line 112-120 | `properties_helpers.rs` | `parse_node_style()` |
+| Line 123-131 | `properties_helpers.rs` | `node_style_str()` |
+| Line 134-146 | `properties_helpers.rs` | `node_label_with_id_fallback()` |
+
+#### 2. Module Registration
+
+Added `properties_helpers` to `ui/mod.rs`:
+```rust
+pub mod properties_helpers;
+```
+
+### Results
+
+| Metric | Before | After | Change |
+|--------|--------|-------|--------|
+| `properties.rs` | 797 lines | 673 lines | -124 lines |
+| `properties_helpers.rs` | N/A | 153 lines | New file |
+| **Total** | 797 lines | 826 lines | +29 lines |
+
+### Remaining Challenge
+
+The `PropertiesPanel` component (`properties.rs`) remains at 673 lines due to:
+- Dioxus `rsx!` macro requires the entire UI template in the same file as the component function
+- Inherent verbosity of inline styles for UI elements
+
+This is a known limitation of Dioxus components - the UI rendering code must be co-located with the component logic.
+
+### DDD Principles Applied
+
+1. **Parse, Don't Validate**: All style parsing functions convert raw strings to domain types at the boundary
+2. **Explicit Error Types**: `StyleError` enum provides type-safe error handling
+3. **Functional Core / Imperative Shell**: Pure parsing and conversion functions separated from the imperative Dioxus component
+4. **Types as Documentation**: Function signatures clearly document their purpose and inputs
+
+### Files Modified
+
+- `diagram_tool/src/ui/properties.rs` - Refactored to import from helpers
+- `diagram_tool/src/ui/properties_helpers.rs` - **NEW** - Pure helper functions
+- `diagram_tool/src/ui/mod.rs` - Added module declaration

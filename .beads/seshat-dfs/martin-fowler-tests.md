@@ -1,12 +1,20 @@
+---
+bead_id: seshat-dfs
+bead_title: UI Dispatch: Node Creation
+phase: contract-verification
+updated_at: 2026-03-12T00:00:00Z
+---
+
 # Martin Fowler Test Plan
 
 ## Happy Path Tests
 
 ### test_double_click_empty_canvas_creates_node_and_dispatches_to_wal
 Given: User double-clicks on empty canvas (no nodes/edges at coordinates) with Select tool active, and db_tx is Some(coroutine)
-When: handle_canvas_double_click_node_creation is invoked
+When: handle_canvas_double_click_node_creation is invoked (or canvas.rs ondoubleclick handler runs)
 Then:
-- Node is inserted into document.nodes with generated UUID
+- Node is inserted into document.nodes with generated UUID (Uuid::new_v4())
+- Node appears at position (x-32, y-32) due to centering in canvas.rs line 1764-1765
 - New node ID is inserted into editor_state.selected_items
 - Document revision is incremented by 1
 - editing_node and editing_edge are set to None
@@ -15,7 +23,7 @@ Then:
 - DispatchResult with nodes_affected=1, dispatches_sent=1 is returned
 
 ### test_toolbar_add_node_button_creates_node_and_dispatches_to_wal
-Given: User clicks Add Node button in toolbar, and db_tx is Some(coroutine)
+Given: User clicks Add Node button in toolbar (to be added in toolbar.rs), and db_tx is Some(coroutine)
 When: handle_toolbar_add_node is invoked
 Then:
 - Node is inserted into document.nodes with generated UUID at viewport center

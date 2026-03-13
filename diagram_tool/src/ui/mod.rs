@@ -8,6 +8,7 @@ pub mod minimap;
 pub mod mobile;
 pub mod panels;
 pub mod properties;
+pub mod properties_helpers;
 pub mod sidebar;
 pub mod sidebar_persistence;
 pub mod sidebar_primitives;

@@ -482,7 +482,7 @@ impl ToastQueue {
 #[component]
 pub fn Toaster() -> Element {
     let mut toasts = use_context::<Signal<ToastQueue>>();
-    let ai_conflict_state: Option<Signal<Option<String>>> = use_context();
+    let mut ai_conflict_state: Signal<Option<AiConflictState>> = use_context();
     let items = toasts.read().items().to_vec();
     let mut pending_remove: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
     let mut pending_dismiss: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
@@ -508,7 +508,7 @@ pub fn Toaster() -> Element {
             let _ = pending_dismiss.write().insert(id);
             let mut toasts_signal = toasts;
             let mut pending_signal = pending_dismiss;
-            let conflict_state = ai_conflict_state;
+            let mut conflict_state_clone = ai_conflict_state.clone();
             let mut eval = document::eval(&format!(
                 "setTimeout(() => dioxus.send({{ kind: 'dismiss-conflict', id: {} }}), {});",
                 id.0, CONFLICT_TOAST_DISMISS_MS
@@ -519,9 +519,7 @@ pub fn Toaster() -> Element {
                         let _ = queue.dismiss(id);
                     });
                     // Clear conflict state after auto-dismiss
-                    if let Some(mut state) = conflict_state {
-                        *state.write() = None;
-                    }
+                    conflict_state_clone.write().take();
                     let _ = pending_signal.write().remove(&id);
                 }
             });
@@ -621,16 +619,14 @@ pub fn Toaster() -> Element {
                                         "{action.label}"
                                     }
                                 }
-                                button {
+                                    button {
                                     style: "flex-shrink: 0; width: 22px; height: 22px; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_SURFACE}; color: {TEXT_MUTED}; font-size: 12px; line-height: 1; cursor: pointer;",
                                     onclick: move |_| {
                                         toasts.with_mut(|queue| {
                                             let _ = queue.dismiss_target(Some(id));
                                         });
                                         // Clear conflict state on manual dismiss
-                                        if let Some(mut state) = ai_conflict_state {
-                                            *state.write() = None;
-                                        }
+                                        ai_conflict_state.set(None);
                                     },
                                     "x"
                                 }
