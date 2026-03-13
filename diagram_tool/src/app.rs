@@ -64,15 +64,12 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(EdgeStyle::Solid));
     use_context_provider(|| Signal::new(ArrowType::Default));
     use_context_provider(|| Signal::new(ToastQueue::default()));
-    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     use_context_provider(|| Signal::new(PanelVisibility::default()));
     use_context_provider(|| Signal::new(ToolbarStats::default()));
     use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
-    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     // Shared counter that the Validate button can increment to force re-validation.
     use_context_provider(|| Signal::new(0_u64));
-    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
     // AI conflict state - tracks concurrent editing conflicts between AI and human
     use_context_provider(|| Signal::new(Option::<AiConflictState>::None));
     // Track if conflict toast has been shown to avoid duplicates
