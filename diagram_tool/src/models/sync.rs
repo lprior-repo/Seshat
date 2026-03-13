@@ -53,9 +53,9 @@ use std::time::Duration;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
 
-use crate::models::envelope::parse_event_envelope;
+use crate::models::envelope::{parse_event_envelope, LabelTargetId, LabelTargetType};
 use crate::models::projection::EventRecord;
-#[cfg(not(target_arch = "wasm32"))]
+use crate::models::document::NodeId;
 use crate::store_async::envelope_to_valid_event;
 
 /// Helper to convert EventEnvelope to ValidEvent (for testing)
@@ -588,7 +588,7 @@ pub fn apply_tail_batch(
 /// This function examines the events and collects all affected entity IDs
 /// (nodes and edges) for targeted UI updates.
 fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> {
-    use crate::models::envelope::{DomainOp, LabelTargetType};
+    use crate::models::envelope::{DomainOp, LabelTargetId, LabelTargetType};
     use std::collections::HashSet;
 
     let mut entities: HashSet<String> = HashSet::new();
@@ -604,8 +604,16 @@ fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> 
             }
             DomainOp::UpdateLabel { target_id, target_type, .. } => {
                 match target_type {
-                    LabelTargetType::Node => entities.insert(format!("node:{}", target_id)),
-                    LabelTargetType::Edge => entities.insert(format!("edge:{}", target_id)),
+                    LabelTargetType::Node => {
+                        if let LabelTargetId::Node(node_id) = target_id {
+                            entities.insert(format!("node:{}", node_id.as_str()));
+                        }
+                    }
+                    LabelTargetType::Edge => {
+                        if let LabelTargetId::Edge(edge_id) = target_id {
+                            entities.insert(format!("edge:{}", edge_id.as_str()));
+                        }
+                    }
                 };
             }
             DomainOp::NodeResize { id, .. } => {
@@ -718,7 +726,7 @@ mod tests {
                 email: None,
             },
             operation: DomainOp::NodeAdd {
-                id: format!("node-{revision}"),
+                id: NodeId::new(format!("node-{revision}")),
                 x: 100.0 * revision as f64,
                 y: 200.0 * revision as f64,
                 width: 80.0,

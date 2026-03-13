@@ -1,6 +1,44 @@
 # Black Hat Defect Report: seshat-2wb
 
-## Defects Fixed
+## Review Date: 2026-03-12
+
+## New Critical Defects Found
+
+### DEFECT: Silent Default Instead of Parse Error (Lines 422-428)
+
+**Severity**: CRITICAL
+**Phase**: PHASE 3 - NASA-Level Functional Rust (The Big 6)
+**Contract Clause**: P1 (Parse, Don't Validate)
+
+**Description**: 
+The `parse_update_node_style` function silently defaults invalid style values to `NodeStyle::Box` instead of returning an error. This violates the "Parse, Don't Validate" principle.
+
+**Location**: `diagram_tool/src/models/envelope.rs:422-428`
+
+**Current Code**:
+```rust
+let style = match style_str {
+    "box" => NodeStyle::Box,
+    "cloud" => NodeStyle::Cloud,
+    "cylinder" => NodeStyle::Cylinder,
+    "dashed" => NodeStyle::Dashed,
+    _ => NodeStyle::Box,  // BUG: Silent default!
+};
+```
+
+**Impact**:
+- Invalid style strings like `"invalid_style"` or `"rectangle"` are accepted but produce incorrect behavior
+- Creates a gap between compile-time type safety (enum) and runtime parsing
+- Violates contract precondition P1 enforcement
+
+**Fix Required**:
+```rust
+_ => return Err(ContractError::InvalidPayload(format!("unknown NodeStyle: {style_str}"))),
+```
+
+---
+
+## Previous Defects (Already Fixed)
 
 ### P2: Missing test for empty ID validation
 

@@ -5,7 +5,7 @@
 #![allow(dead_code)]
 #![allow(unused_imports)]
 
-use crate::models::envelope::{DomainOp, LabelTargetType};
+use crate::models::envelope::{DomainOp, LabelTargetId, LabelTargetType};
 
 use crate::models::projection::ops::{
     apply_bring_forward, apply_bring_to_front, apply_edge_connect, apply_edge_disconnect,
@@ -193,8 +193,20 @@ fn dispatch_operation(
             old_label: _,
             new_label,
         } => match target_type {
-            LabelTargetType::Node => apply_update_label(state, target_id, new_label),
-            LabelTargetType::Edge => apply_update_edge_label(state, target_id, new_label),
+            LabelTargetType::Node => {
+                if let LabelTargetId::Node(node_id) = target_id {
+                    apply_update_label(state, node_id.as_str(), new_label)
+                } else {
+                    Err(ReplayError::InvalidEvent("Expected Node target".into()))
+                }
+            }
+            LabelTargetType::Edge => {
+                if let LabelTargetId::Edge(edge_id) = target_id {
+                    apply_update_edge_label(state, edge_id.as_str(), new_label)
+                } else {
+                    Err(ReplayError::InvalidEvent("Expected Edge target".into()))
+                }
+            }
         },
         DomainOp::UpdateNodeStyle { id, style } => {
             apply_update_node_style(state, id.as_str(), style.clone())

@@ -7,6 +7,7 @@
 
 use crate::history::History;
 use crate::models::document::DiagramDocument;
+use crate::models::envelope::EventEnvelope;
 use crate::ui::commands::{
     apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
     apply_redo, apply_select_all, apply_undo, apply_ungroup_selection, ClipboardData,
@@ -21,6 +22,7 @@ pub fn use_global_keyboard() {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
     let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
+    let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -95,7 +97,7 @@ pub fn use_global_keyboard() {
                             );
                         }
                         (true, "g") => {
-                            let _ = apply_ungroup_selection(doc_signal, history_signal);
+                            let _ = apply_ungroup_selection(doc_signal, history_signal, db_tx);
                         }
                         (false, "g") => {
                             let _ = apply_group_selection(doc_signal, history_signal);

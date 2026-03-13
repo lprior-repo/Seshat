@@ -8,6 +8,7 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+pub mod hit_test_margin;
 pub mod operations;
 pub mod polygon;
 pub mod primitives;
@@ -15,6 +16,7 @@ pub mod routing;
 pub mod snap;
 pub mod transforms;
 
+pub use hit_test_margin::{hit_test_with_margin, screen_to_world_margin, HitTestError};
 pub use operations::*;
 pub use polygon::*;
 pub use primitives::*;

@@ -67,8 +67,8 @@ mod tests {
             version: 1,
             nodes: hashmap! { node.id.clone() => node },
             edges: hashmap! {},
-            groups: hashmap! {},
             revision: 1,
+            ..Default::default()
         }
     }
 

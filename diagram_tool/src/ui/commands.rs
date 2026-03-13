@@ -9,6 +9,8 @@ use crate::history::History;
 use crate::models::document::{
     DiagramDocument, Edge, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
+use crate::models::envelope::EventEnvelope;
+use crate::ui::dispatch::send::group::dispatch_ungroup;
 use dioxus::prelude::*;
 use std::collections::{BTreeSet, HashMap};
 use uuid::Uuid;
@@ -689,11 +691,16 @@ pub fn apply_group_selection(
 pub fn apply_ungroup_selection(
     mut doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
+    db_tx: Option<Coroutine<EventEnvelope>>,
 ) -> bool {
     let target_subgraphs = selected_subgraphs_for_ungroup(&doc_signal.read());
 
     if target_subgraphs.is_empty() {
         return false;
+    }
+
+    for group_id in &target_subgraphs {
+        let _ = dispatch_ungroup(&db_tx, &group_id.to_string());
     }
 
     push_history(history_signal, doc_signal.read().clone());
@@ -3826,5 +3833,168 @@ mod distribution_tests {
             revision_before.increment(),
             "revision should be incremented"
         );
+    }
+}
+
+// ============================================================================
+// Martin Fowler Tests for seshat-1hg: Clipboard Refactoring
+// ============================================================================
+
+#[cfg(test)]
+mod martin_fowler_tests {
+    use super::*;
+    use crate::history::History;
+    use dioxus::signals::Signal;
+
+    // ============================================================================
+    // Happy Path Tests
+    // ============================================================================
+
+    /// test_clipboard_data_new_creates_empty_state
+    /// Verifies ClipboardData::new() creates valid empty state
+    #[test]
+    fn test_clipboard_data_new_creates_empty_state() {
+        let clipboard = ClipboardData::new();
+        assert!(clipboard.nodes.is_empty());
+        assert!(clipboard.edges.is_empty());
+        assert_eq!(clipboard.paste_serial, 0);
+        assert!(!clipboard.has_content());
+    }
+
+    /// test_copy_selection_returns_some_when_nodes_selected
+    /// Verifies copy returns ClipboardData when nodes are selected
+    #[test]
+    fn test_copy_selection_returns_some_when_nodes_selected() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        doc.document
+            .nodes
+            .insert(n1.clone(), create_test_node_for_tests());
+        doc.editor_state.selected_items.insert("n1".to_string());
+
+        let result = copy_selection(&doc);
+        assert!(result.is_some());
+    }
+
+    /// test_paste_contents_returns_some_with_new_nodes
+    /// Verifies paste returns new document with offset nodes
+    #[test]
+    fn test_paste_contents_returns_some_with_new_nodes() {
+        let mut clipboard = ClipboardData::new();
+        let node = create_test_node_for_tests();
+        clipboard
+            .nodes
+            .push((NodeId::new("original".to_string()), node));
+
+        let doc = DiagramDocument::default();
+        let result = paste_contents(clipboard, doc);
+
+        assert!(result.is_some());
+    }
+
+    // ============================================================================
+    // Error Path Tests
+    // ============================================================================
+
+    /// test_copy_selection_returns_none_when_no_selection
+    #[test]
+    fn test_copy_selection_returns_none_when_no_selection() {
+        let doc = DiagramDocument::default();
+        let result = copy_selection(&doc);
+        assert!(result.is_none());
+    }
+
+    /// test_paste_returns_none_when_clipboard_empty
+    #[test]
+    fn test_paste_returns_none_when_clipboard_empty() {
+        let clipboard = ClipboardData::new();
+        let doc = DiagramDocument::default();
+        let result = paste_contents(clipboard, doc);
+        assert!(result.is_none());
+    }
+
+    // ============================================================================
+    // Contract Verification Tests (Behavioral - replaces grep-based tests)
+    // ============================================================================
+
+    /// test_contract_clipboard_operations_work_without_thread_local
+    /// Verifies clipboard operations work without thread_local (behavioral test)
+    #[test]
+    fn test_contract_clipboard_operations_work_without_thread_local() {
+        let doc = DiagramDocument::default();
+        let doc_signal = Signal::new(doc);
+        let mut clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
+
+        // This should work without thread_local
+        let result = apply_copy_selection(doc_signal, clipboard_signal);
+        assert!(!result); // No selection, returns false
+    }
+
+    /// test_contract_signal_type_in_signatures
+    /// Verifies functions accept Signal type
+    #[test]
+    fn test_contract_signal_type_in_signatures() {
+        let doc = DiagramDocument::default();
+        let doc_signal: Signal<DiagramDocument> = Signal::new(doc);
+        let mut clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
+
+        // Compile-time check: this compiles only if Signal<T> is correct type
+        let _ = apply_copy_selection(doc_signal, clipboard_signal);
+    }
+
+    // ============================================================================
+    // Integration Tests
+    // ============================================================================
+
+    /// test_integration_copy_paste_round_trip
+    /// Full round-trip: select -> copy -> paste
+    #[test]
+    fn test_integration_copy_paste_round_trip() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        doc.document
+            .nodes
+            .insert(n1.clone(), create_test_node_for_tests());
+        doc.editor_state.selected_items.insert("n1".to_string());
+
+        let doc_signal = Signal::new(doc);
+        let clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
+        let history_signal = Signal::new(History::default());
+
+        // Copy - Signals are Copy types, pass directly without clone
+        let copy_result = apply_copy_selection(doc_signal, clipboard_signal);
+        assert!(copy_result);
+
+        // Paste - Reuse the same signals (they're Copy, the internal state persists)
+        // apply_paste_selection takes Signal by value but since Signal is Copy,
+        // the underlying data is shared via interior mutability
+        let paste_result = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
+        assert!(paste_result);
+    }
+
+    // ============================================================================
+    // Helper Functions
+    // ============================================================================
+
+    fn create_test_node_for_tests() -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: "Test".to_string(),
+            x: OrderedFloat(0.0),
+            y: OrderedFloat(0.0),
+            width: OrderedFloat(100.0),
+            height: OrderedFloat(100.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
     }
 }

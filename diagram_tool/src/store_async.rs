@@ -228,7 +228,7 @@ pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreE
         .execute(&pool)
         .await?;
 
-    sqlx::query("PRAGMA synchronous=FULL")
+    sqlx::query("PRAGMA synchronous=NORMAL")
         .execute(&pool)
         .await?;
 

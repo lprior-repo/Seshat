@@ -3,7 +3,7 @@
 use super::errors::DispatchError;
 use super::validators::{validate_coordinates, validate_dimensions};
 use crate::models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
-use crate::models::envelope::{Author, DomainOp, EventEnvelope, LabelTargetType};
+use crate::models::envelope::{Author, DomainOp, EventEnvelope, LabelTargetId, LabelTargetType};
 
 /// Local author for dispatched operations
 fn local_author() -> Author {
@@ -232,7 +232,7 @@ pub fn create_send_to_back_envelope(ids: Vec<String>) -> EventEnvelope {
 
 /// Create an EventEnvelope for an UpdateLabel operation
 pub fn create_update_label_envelope(
-    target_id: String,
+    target_id: LabelTargetId,
     target_type: LabelTargetType,
     old_label: String,
     new_label: String,

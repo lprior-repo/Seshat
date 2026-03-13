@@ -19,6 +19,7 @@ use canvas_view::{
     edge_label_position, edge_marker_ref, edge_path, edge_preview_overlay, find_edge_at,
     rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay, SCREEN_HIT_MARGIN,
 };
+use crate::geometry::hit_test_margin;
 use dioxus::{
     html::{geometry::WheelDelta, input_data::MouseButton},
     prelude::*,
@@ -206,10 +207,8 @@ fn ordered_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
 }
 
 fn find_node_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<NodeId> {
-    // Screen-consistent hit margin: margin in screen pixels scaled to world coordinates
-    // This ensures hit testing behaves consistently regardless of zoom level
     let zoom = doc.editor_state.zoom.0;
-    let hit_margin_world = SCREEN_HIT_MARGIN / zoom;
+    let hit_margin_world = hit_test_margin::screen_to_world_margin(SCREEN_HIT_MARGIN, zoom).unwrap_or(5.0);
 
     ordered_node_ids(doc)
         .iter()

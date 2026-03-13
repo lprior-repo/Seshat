@@ -1783,147 +1783,1077 @@ mod proptests {
     }
 
     proptest! {
-        #![proptest_config(ProptestConfig::with_cases(64))]
+            #![proptest_config(ProptestConfig::with_cases(64))]
 
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_undo_on_empty_returns_none(rev in 0..1000u64) {
-            let history = History::new();
-            let current = doc_with_revision(rev);
-            prop_assert!(history.undo(current).is_none());
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_undo_on_empty_returns_none(rev in 0..1000u64) {
+                let history = History::new();
+                let current = doc_with_revision(rev);
+                prop_assert!(history.undo(current).is_none());
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_redo_on_empty_returns_none(rev in 0..1000u64) {
+                let history = History::new().push(doc_with_revision(rev));
+                let current = doc_with_revision(rev + 100);
+                prop_assert!(history.redo(current).is_none());
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_push_undo_roundtrip(current_rev in 0..1000u64, push_rev in 0..1000u64) {
+                let history = History::new().push(doc_with_revision(push_rev));
+                let current = doc_with_revision(current_rev);
+
+                let (restored, after_undo) = history.undo(current.clone()).unwrap();
+                prop_assert_eq!(restored.revision, doc_with_revision(push_rev).revision);
+
+                let (redo_doc, _) = after_undo.redo(restored.clone()).unwrap();
+                prop_assert_eq!(redo_doc.revision, current.revision);
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_undo_stack_bounded_at_100(pushes in 0..200usize) {
+                let history = (0..pushes as u64).fold(History::new(), |acc, i| {
+                    acc.push(doc_with_revision(i))
+                });
+                prop_assert!(history.undo_stack.len() <= 100);
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_redo_stack_bounded_at_100(undos in 1..150usize) {
+                let total_pushes = undos + 10;
+                let history = (0..total_pushes as u64).fold(History::new(), |acc, i| {
+                    acc.push(doc_with_revision(i))
+                });
+                let current = doc_with_revision(10_000);
+
+                let final_history = (0..undos).fold(Some((current, history)), |state, _| {
+                    state.and_then(|(curr, h)| h.undo(curr))
+                }).map(|(_, h)| h);
+
+                if let Some(h) = final_history {
+                    prop_assert!(h.redo_stack.len() <= 100);
+                }
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_sequential_pushes_recoverable(pushes in 1..50usize) {
+                let history = (0..pushes as u64).fold(History::new(), |acc, i| {
+                    acc.push(doc_with_revision(i))
+                });
+
+                let mut current = doc_with_revision(10_000);
+                let mut h = history;
+
+                for expected_rev in (0..pushes as u64).rev() {
+                    let (restored, new_h) = h.undo(current.clone()).unwrap();
+                    prop_assert_eq!(restored.revision, doc_with_revision(expected_rev).revision);
+                    current = restored;
+                    h = new_h;
+                }
+                prop_assert!(h.undo(current).is_none());
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_capacity_maintained_after_many_ops(ops in 0..300usize) {
+                let mut history = History::new();
+                for i in 0..ops {
+                    history = history.push(doc_with_revision(i as u64));
+                }
+                prop_assert!(history.undo_stack.len() <= 100);
+                prop_assert!(history.redo_stack.len() <= 100);
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_push_clears_redo_stack(initial_pushes in 1..20usize, undos in 1..10usize) {
+                let history = (0..initial_pushes as u64).fold(History::new(), |acc, i| {
+                    acc.push(doc_with_revision(i))
+                });
+
+                let undos_to_do = undos.min(initial_pushes - 1).max(1);
+                let current = doc_with_revision(10_000);
+
+                let (_, after_undo) = (0..undos_to_do).fold(
+                    (current.clone(), history),
+                    |(curr, h), _| h.undo(curr).unwrap()
+                );
+
+                prop_assert!(!after_undo.redo_stack.is_empty());
+
+                let after_push = after_undo.push(doc_with_revision(999));
+                prop_assert!(after_push.redo_stack.is_empty());
+            }
+
+            #[cfg(kani)]
+            #[kani::proof]
+            #[test]
+            #[allow(clippy::unwrap_used)]
+            fn prop_undo_redo_idempotent(push_rev in 0..100u64, current_rev in 0..100u64) {
+                let history = History::new().push(doc_with_revision(push_rev));
+                let current = doc_with_revision(current_rev);
+
+                let (undo_doc, after_undo) = history.undo(current.clone()).unwrap();
+                let (redo_doc, _) = after_undo.redo(undo_doc.clone()).unwrap();
+
+                let (undo_doc2, after_undo2) = history.undo(current.clone()).unwrap();
+                let (redo_doc2, _) = after_undo2.redo(undo_doc2.clone()).unwrap();
+
+                prop_assert_eq!(redo_doc.revision, redo_doc2.revision);
+            prop_assert_eq!(undo_doc.revision, undo_doc2.revision);
         }
+    }
 
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_redo_on_empty_returns_none(rev in 0..1000u64) {
-            let history = History::new().push(doc_with_revision(rev));
-            let current = doc_with_revision(rev + 100);
-            prop_assert!(history.redo(current).is_none());
-        }
+    #[cfg(test)]
+    mod his003_to_his008_tests {
+        //! Unit tests for HIS-003..HIS-008
+        //! These tests verify the history system's undo/redo functionality
+        //! for various document mutations including drag, grouping, reparenting,
+        //! connectors, style changes, and text edits.
 
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_push_undo_roundtrip(current_rev in 0..1000u64, push_rev in 0..1000u64) {
-            let history = History::new().push(doc_with_revision(push_rev));
-            let current = doc_with_revision(current_rev);
+        use super::*;
+        use crate::core::history::{apply_redo, apply_undo};
+        use crate::models::document::{
+            DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+            Revision,
+        };
 
-            let (restored, after_undo) = history.undo(current.clone()).unwrap();
-            prop_assert_eq!(restored.revision, doc_with_revision(push_rev).revision);
-
-            let (redo_doc, _) = after_undo.redo(restored.clone()).unwrap();
-            prop_assert_eq!(redo_doc.revision, current.revision);
-        }
-
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_undo_stack_bounded_at_100(pushes in 0..200usize) {
-            let history = (0..pushes as u64).fold(History::new(), |acc, i| {
-                acc.push(doc_with_revision(i))
-            });
-            prop_assert!(history.undo_stack.len() <= 100);
-        }
-
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_redo_stack_bounded_at_100(undos in 1..150usize) {
-            let total_pushes = undos + 10;
-            let history = (0..total_pushes as u64).fold(History::new(), |acc, i| {
-                acc.push(doc_with_revision(i))
-            });
-            let current = doc_with_revision(10_000);
-
-            let final_history = (0..undos).fold(Some((current, history)), |state, _| {
-                state.and_then(|(curr, h)| h.undo(curr))
-            }).map(|(_, h)| h);
-
-            if let Some(h) = final_history {
-                prop_assert!(h.redo_stack.len() <= 100);
+        fn doc_with_revision(steps: u64) -> DiagramDocument {
+            let mut revision = Revision::INITIAL;
+            for _ in 0..steps {
+                revision = revision.increment();
+            }
+            DiagramDocument {
+                revision,
+                ..DiagramDocument::default()
             }
         }
 
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_sequential_pushes_recoverable(pushes in 1..50usize) {
-            let history = (0..pushes as u64).fold(History::new(), |acc, i| {
-                acc.push(doc_with_revision(i))
-            });
-
-            let mut current = doc_with_revision(10_000);
-            let mut h = history;
-
-            for expected_rev in (0..pushes as u64).rev() {
-                let (restored, new_h) = h.undo(current.clone()).unwrap();
-                prop_assert_eq!(restored.revision, doc_with_revision(expected_rev).revision);
-                current = restored;
-                h = new_h;
+        fn make_node(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: label.to_string(),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(width),
+                height: OrderedFloat(height),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
             }
-            prop_assert!(h.undo(current).is_none());
         }
 
-        #[cfg(kani)]
-        #[kani::proof]
+        // ============================================================
+        // HIS-003: Drag gesture creates single history entry
+        // ============================================================
+
         #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_capacity_maintained_after_many_ops(ops in 0..300usize) {
-            let mut history = History::new();
-            for i in 0..ops {
-                history = history.push(doc_with_revision(i as u64));
-            }
-            prop_assert!(history.undo_stack.len() <= 100);
-            prop_assert!(history.redo_stack.len() <= 100);
-        }
-
-        #[cfg(kani)]
-        #[kani::proof]
-        #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_push_clears_redo_stack(initial_pushes in 1..20usize, undos in 1..10usize) {
-            let history = (0..initial_pushes as u64).fold(History::new(), |acc, i| {
-                acc.push(doc_with_revision(i))
-            });
-
-            let undos_to_do = undos.min(initial_pushes - 1).max(1);
-            let current = doc_with_revision(10_000);
-
-            let (_, after_undo) = (0..undos_to_do).fold(
-                (current.clone(), history),
-                |(curr, h), _| h.undo(curr).unwrap()
+        fn test_his003_drag_creates_single_history_entry() {
+            let mut doc_before = DiagramDocument::default();
+            let node_id = NodeId::new("node-1".to_string());
+            let _ = doc_before.document.nodes.insert(
+                node_id.clone(),
+                make_node("node-1", 100.0, 100.0, 80.0, 40.0),
             );
 
-            prop_assert!(!after_undo.redo_stack.is_empty());
+            // Push initial state
+            let history = History::new().push(doc_before.clone());
 
-            let after_push = after_undo.push(doc_with_revision(999));
-            prop_assert!(after_push.redo_stack.is_empty());
+            // Move node to new position (150, 150) and push once
+            let mut doc_after = doc_before.clone();
+            if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
+                node.x = OrderedFloat(150.0);
+                node.y = OrderedFloat(150.0);
+            }
+            doc_after.revision = doc_after.revision.increment();
+            let history = history.push(doc_after);
+
+            // History undo_stack has exactly 1 entry (not per-frame)
+            assert_eq!(
+                history.undo_stack.len(),
+                1,
+                "History should have exactly 1 entry"
+            );
+
+            // Undo restores original position (100, 100)
+            let Some((restored, _)) = history.undo(doc_after) else {
+                panic!("undo should succeed");
+            };
+            let restored_node = restored
+                .document
+                .nodes
+                .get(&node_id)
+                .expect("node should exist");
+            assert_eq!(
+                restored_node.x.0, 100.0,
+                "Undo should restore original x position"
+            );
+            assert_eq!(
+                restored_node.y.0, 100.0,
+                "Undo should restore original y position"
+            );
         }
 
-        #[cfg(kani)]
-        #[kani::proof]
+        // ============================================================
+        // HIS-004: Group undo removes group
+        // ============================================================
+
         #[test]
-        #[allow(clippy::unwrap_used)]
-        fn prop_undo_redo_idempotent(push_rev in 0..100u64, current_rev in 0..100u64) {
-            let history = History::new().push(doc_with_revision(push_rev));
-            let current = doc_with_revision(current_rev);
+        fn test_his004_group_undo_removes_group() {
+            let mut doc_before = DiagramDocument::default();
+            let node_a = NodeId::new("node-a".to_string());
+            let node_b = NodeId::new("node-b".to_string());
 
-            let (undo_doc, after_undo) = history.undo(current.clone()).unwrap();
-            let (redo_doc, _) = after_undo.redo(undo_doc.clone()).unwrap();
+            let _ = doc_before.document.nodes.insert(
+                node_a.clone(),
+                make_node("node-a", 100.0, 100.0, 80.0, 40.0),
+            );
+            let _ = doc_before.document.nodes.insert(
+                node_b.clone(),
+                make_node("node-b", 200.0, 100.0, 80.0, 40.0),
+            );
 
-            let (undo_doc2, after_undo2) = history.undo(current.clone()).unwrap();
-            let (redo_doc2, _) = after_undo2.redo(undo_doc2.clone()).unwrap();
+            // Verify nodes have no parent
+            assert!(doc_before
+                .document
+                .nodes
+                .get(&node_a)
+                .unwrap()
+                .parent
+                .is_none());
+            assert!(doc_before
+                .document
+                .nodes
+                .get(&node_b)
+                .unwrap()
+                .parent
+                .is_none());
 
-            prop_assert_eq!(redo_doc.revision, redo_doc2.revision);
-            prop_assert_eq!(undo_doc.revision, undo_doc2.revision);
+            // Push initial state
+            let history = History::new().push(doc_before.clone());
+
+            // Create group (subgraph) containing nodes
+            let mut doc_after = doc_before.clone();
+            let group_id = NodeId::new("group-1".to_string());
+
+            if let Some(node) = doc_after.document.nodes.get_mut(&node_a) {
+                node.parent = Some(group_id.clone());
+            }
+            if let Some(node) = doc_after.document.nodes.get_mut(&node_b) {
+                node.parent = Some(group_id.clone());
+            }
+
+            let _ = doc_after.document.nodes.insert(
+                group_id.clone(),
+                Node {
+                    kind: NodeKind::Subgraph,
+                    icon: String::new(),
+                    label: "Group".to_string(),
+                    x: OrderedFloat(76.0),
+                    y: OrderedFloat(76.0),
+                    width: OrderedFloat(228.0),
+                    height: OrderedFloat(88.0),
+                    font_size: None,
+                    font_weight: None,
+                    locked: true,
+                    parent: None,
+                    dag_rank: None,
+                    tags: im::Vector::new(),
+                    metadata: im::HashMap::new(),
+                    z_index: -1,
+                    style: Some(NodeStyle::Box),
+                    collapsed: Some(false),
+                },
+            );
+            doc_after.revision = doc_after.revision.increment();
+
+            let history = history.push(doc_after.clone());
+
+            // Undo should remove group
+            let Some((restored, _)) = history.undo(doc_after) else {
+                panic!("undo should succeed");
+            };
+
+            // Group should be removed
+            assert!(
+                !restored.document.nodes.contains_key(&group_id),
+                "Group should be removed after undo"
+            );
+
+            // Nodes should have no parent
+            let restored_a = restored
+                .document
+                .nodes
+                .get(&node_a)
+                .expect("node-a should exist");
+            let restored_b = restored
+                .document
+                .nodes
+                .get(&node_b)
+                .expect("node-b should exist");
+            assert!(
+                restored_a.parent.is_none(),
+                "node-a parent should be None after undo"
+            );
+            assert!(
+                restored_b.parent.is_none(),
+                "node-b parent should be None after undo"
+            );
+        }
+
+        // ============================================================
+        // HIS-005: Reparent undo restores parent
+        // ============================================================
+
+        #[test]
+        fn test_his005_reparent_undo_restores_parent() {
+            let mut doc_before = DiagramDocument::default();
+            let parent1 = NodeId::new("parent-1".to_string());
+            let parent2 = NodeId::new("parent-2".to_string());
+            let child = NodeId::new("child".to_string());
+
+            let _ = doc_before.document.nodes.insert(
+                parent1.clone(),
+                make_node("parent-1", 0.0, 0.0, 200.0, 150.0),
+            );
+            let _ = doc_before.document.nodes.insert(
+                parent2.clone(),
+                make_node("parent-2", 300.0, 0.0, 200.0, 150.0),
+            );
+
+            let mut child_node = make_node("child", 50.0, 50.0, 80.0, 40.0);
+            child_node.parent = Some(parent1.clone());
+            let _ = doc_before.document.nodes.insert(child.clone(), child_node);
+
+            // Push initial state
+            let history = History::new().push(doc_before.clone());
+
+            // Reparent child to parent2
+            let mut doc_after = doc_before.clone();
+            if let Some(node) = doc_after.document.nodes.get_mut(&child) {
+                node.parent = Some(parent2.clone());
+            }
+            doc_after.revision = doc_after.revision.increment();
+
+            let history = history.push(doc_after.clone());
+
+            // Undo should restore original parent
+            let Some((restored, _)) = history.undo(doc_after) else {
+                panic!("undo should succeed");
+            };
+
+            let restored_child = restored
+                .document
+                .nodes
+                .get(&child)
+                .expect("child should exist");
+            assert_eq!(
+                restored_child.parent,
+                Some(parent1.clone()),
+                "Child's parent should be restored to parent-1"
+            );
+        }
+
+        // ============================================================
+        // HIS-006: Connector create undo removes edge
+        // ============================================================
+
+        #[test]
+        fn test_his006_connector_create_undo_removes_edge() {
+            let mut doc_before = DiagramDocument::default();
+            let node_a = NodeId::new("node-a".to_string());
+            let node_b = NodeId::new("node-b".to_string());
+
+            let _ = doc_before
+                .document
+                .nodes
+                .insert(node_a.clone(), make_node("node-a", 0.0, 0.0, 80.0, 40.0));
+            let _ = doc_before
+                .document
+                .nodes
+                .insert(node_b.clone(), make_node("node-b", 200.0, 0.0, 80.0, 40.0));
+
+            // Initially no edges
+            assert!(doc_before.document.edges.is_empty());
+
+            // Push initial state
+            let history = History::new().push(doc_before.clone());
+
+            // Create edge
+            let mut doc_after = doc_before.clone();
+            let edge_id = EdgeId::new("edge-1".to_string());
+            let edge = Edge {
+                source: node_a,
+                target: node_b,
+                label: String::new(),
+                style: crate::models::document::EdgeStyle::default(),
+                arrow_type: crate::models::document::ArrowType::default(),
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: im::Vector::new(),
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                font_size: None,
+                source_port: None,
+                target_port: None,
+            };
+            let _ = doc_after.document.edges.insert(edge_id, edge);
+            doc_after.revision = doc_after.revision.increment();
+
+            let history = history.push(doc_after.clone());
+
+            // Undo should remove edge
+            let Some((restored, _)) = history.undo(doc_after) else {
+                panic!("undo should succeed");
+            };
+
+            assert!(
+                restored.document.edges.is_empty(),
+                "Edges should be empty after undo"
+            );
+        }
+
+        // ============================================================
+        // HIS-007: Style change undo restores style
+        // ============================================================
+
+        #[test]
+        fn test_his007_style_change_undo_restores_style() {
+            let mut doc_before = DiagramDocument::default();
+            let node_id = NodeId::new("node-1".to_string());
+            let mut node = make_node("node-1", 100.0, 100.0, 80.0, 40.0);
+            node.style = Some(NodeStyle::Box);
+            let _ = doc_before.document.nodes.insert(node_id.clone(), node);
+
+            // Push initial state
+            let history = History::new().push(doc_before.clone());
+
+            // Change style to Dashed
+            let mut doc_after = doc_before.clone();
+            if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
+                node.style = Some(NodeStyle::Dashed);
+            }
+            doc_after.revision = doc_after.revision.increment();
+
+            let history = history.push(doc_after.clone());
+
+            // Undo should restore original style
+            let Some((restored, _)) = history.undo(doc_after) else {
+                panic!("undo should succeed");
+            };
+
+            let restored_node = restored
+                .document
+                .nodes
+                .get(&node_id)
+                .expect("node should exist");
+            assert_eq!(
+                restored_node.style,
+                Some(NodeStyle::Box),
+                "Style should be restored to Box"
+            );
+        }
+
+        // ============================================================
+        // HIS-008: Text edit creates single entry
+        // ============================================================
+
+        #[test]
+        fn test_his008_text_edit_creates_single_entry() {
+            let mut doc_before = DiagramDocument::default();
+            let node_id = NodeId::new("node-1".to_string());
+            let mut node = make_node("node-1", 100.0, 100.0, 80.0, 40.0);
+            node.label = "Original Label".to_string();
+            let _ = doc_before.document.nodes.insert(node_id.clone(), node);
+
+            // Push initial state
+            let history = History::new().push(doc_before.clone());
+            assert_eq!(
+                history.undo_stack.len(),
+                1,
+                "Should have one history entry after first push"
+            );
+
+            // Change label and push
+            let mut doc_after = doc_before.clone();
+            if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
+                node.label = "New Label".to_string();
+            }
+            doc_after.revision = doc_after.revision.increment();
+
+            let history = history.push(doc_after);
+
+            // History undo_stack has exactly 1 entry
+            assert_eq!(
+                history.undo_stack.len(),
+                2,
+                "Should have exactly 2 history entries"
+            );
+
+            // Undo restores original label
+            let Some((restored, _)) = history.undo(doc_after) else {
+                panic!("undo should succeed");
+            };
+            let restored_node = restored
+                .document
+                .nodes
+                .get(&node_id)
+                .expect("node should exist");
+            assert_eq!(
+                restored_node.label, "Original Label",
+                "Label should be restored to Original Label"
+            );
+        }
+
+        // ============================================================
+        // apply_undo and apply_redo tests
+        // ============================================================
+
+        #[test]
+        fn test_apply_undo_success_restores_previous_state() {
+            let mut doc = doc_with_revision(1);
+            let node_id = NodeId::new("node-1".to_string());
+            let _ = doc.document.nodes.insert(
+                node_id.clone(),
+                make_node("node-1", 100.0, 100.0, 80.0, 40.0),
+            );
+
+            let mut history = History::new();
+            history = history.push(doc.clone());
+
+            let mut current = doc.clone();
+            if let Some(node) = current.document.nodes.get_mut(&node_id) {
+                node.x = OrderedFloat(200.0);
+            }
+            current.revision = current.revision.increment();
+            history = history.push(current.clone());
+
+            // Apply undo
+            let result = apply_undo(&mut doc.clone(), &mut history.clone());
+            assert!(result.is_ok(), "apply_undo should succeed");
+        }
+
+        #[test]
+        fn test_apply_undo_failure_returns_error_on_empty_history() {
+            let mut doc = doc_with_revision(1);
+            let mut history = History::new();
+
+            // Try to apply undo with empty history
+            let result = apply_undo(&mut doc, &mut history);
+            assert!(result.is_err(), "apply_undo should fail on empty history");
+            assert_eq!(result.unwrap_err(), "Nothing to undo");
+        }
+
+        #[test]
+        fn test_apply_redo_success_restores_next_state() {
+            let mut doc = doc_with_revision(1);
+            let node_id = NodeId::new("node-1".to_string());
+            let _ = doc.document.nodes.insert(
+                node_id.clone(),
+                make_node("node-1", 100.0, 100.0, 80.0, 40.0),
+            );
+
+            let mut history = History::new();
+            history = history.push(doc.clone());
+
+            let mut current = doc.clone();
+            if let Some(node) = current.document.nodes.get_mut(&node_id) {
+                node.x = OrderedFloat(200.0);
+            }
+            current.revision = current.revision.increment();
+            history = history.push(current.clone());
+
+            // Undo to create redo entry
+            let mut doc_after_undo = current.clone();
+            let _ = apply_undo(&mut doc_after_undo, &mut history);
+
+            // Apply redo
+            let result = apply_redo(&mut doc_after_undo, &mut history);
+            assert!(result.is_ok(), "apply_redo should succeed");
+        }
+
+        #[test]
+        fn test_apply_redo_failure_returns_error_on_empty_redo_stack() {
+            let mut doc = doc_with_revision(1);
+            let mut history = History::new();
+            history = history.push(doc.clone());
+
+            // Try to apply redo with no undo performed
+            let result = apply_redo(&mut doc, &mut history);
+            assert!(
+                result.is_err(),
+                "apply_redo should fail on empty redo stack"
+            );
+            assert_eq!(result.unwrap_err(), "Nothing to redo");
+        }
+
+        // ============================================================
+        // Error path tests
+        // ============================================================
+
+        #[test]
+        fn test_undo_on_empty_history_returns_none() {
+            let history = History::new();
+            let current = doc_with_revision(1);
+
+            let result = history.undo(current);
+            assert!(result.is_none(), "undo on empty history should return None");
+        }
+
+        #[test]
+        fn test_redo_on_empty_redo_stack_returns_none() {
+            let history = History::new().push(doc_with_revision(1));
+            let current = doc_with_revision(2);
+
+            let result = history.redo(current);
+            assert!(
+                result.is_none(),
+                "redo on empty redo stack should return None"
+            );
+        }
+
+        #[test]
+        fn test_multiple_redo_on_exhausted_stack_returns_none() {
+            // push(A), push(B), undo (back to A), redo (forward to B)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+            let Some((_, after_redo)) = after_undo.redo(doc_with_revision(2)) else {
+                panic!("redo should succeed");
+            };
+
+            // Now redo stack is empty, redo should return None
+            let result = after_redo.redo(doc_with_revision(1));
+            assert!(
+                result.is_none(),
+                "redo on exhausted stack should return None"
+            );
+        }
+
+        // ============================================================
+        // Edge case tests
+        // ============================================================
+
+        #[test]
+        fn test_undo_stack_bounded_at_100() {
+            // Push 101 documents
+            let history =
+                (0..101_u64).fold(History::new(), |acc, i| acc.push(doc_with_revision(i)));
+
+            assert_eq!(
+                history.undo_stack.len(),
+                100,
+                "undo_stack should be capped at 100"
+            );
+        }
+
+        #[test]
+        fn test_multiple_operations_create_multiple_entries() {
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2))
+                .push(doc_with_revision(3));
+
+            assert_eq!(history.undo_stack.len(), 3, "Should have 3 entries");
+        }
+
+        #[test]
+        fn test_push_after_undo_clears_redo_stack() {
+            // push(A), push(B), undo (back to A, redo has B)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+
+            assert!(
+                !after_undo.redo_stack.is_empty(),
+                "redo stack should have entries after undo"
+            );
+
+            // push(C)
+            let after_push = after_undo.push(doc_with_revision(4));
+
+            assert!(
+                after_push.redo_stack.is_empty(),
+                "redo stack should be empty after push"
+            );
+            assert_eq!(
+                after_push.undo_stack.len(),
+                2,
+                "undo stack should have A and C"
+            );
+        }
+
+        #[test]
+        fn test_can_undo_returns_correct_state() {
+            let history = History::new();
+            assert!(
+                !history.can_undo(),
+                "can_undo should return false for fresh history"
+            );
+
+            let history = history.push(doc_with_revision(1));
+            assert!(history.can_undo(), "can_undo should return true after push");
+        }
+
+        #[test]
+        fn test_can_redo_returns_correct_state() {
+            let history = History::new();
+            assert!(
+                !history.can_redo(),
+                "can_redo should return false for fresh history"
+            );
+
+            let history = history.push(doc_with_revision(1));
+            let current = doc_with_revision(2);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+            assert!(
+                after_undo.can_redo(),
+                "can_redo should return true after undo"
+            );
+        }
+
+        // ============================================================
+        // Integration tests
+        // ============================================================
+
+        #[test]
+        fn test_integration_e2e_full_history_workflow() {
+            let mut doc = DiagramDocument::default();
+            let node_id = NodeId::new("node-1".to_string());
+            let _ = doc
+                .document
+                .nodes
+                .insert(node_id.clone(), make_node("node-1", 0.0, 0.0, 80.0, 40.0));
+
+            // Initialize history with initial state
+            let mut history = History::new().push(doc.clone());
+
+            // Step 1: Move to (100, 100) and push
+            if let Some(node) = doc.document.nodes.get_mut(&node_id) {
+                node.x = OrderedFloat(100.0);
+                node.y = OrderedFloat(100.0);
+            }
+            doc.revision = doc.revision.increment();
+            history = history.push(doc.clone());
+            assert_eq!(
+                history.undo_stack.len(),
+                1,
+                "After step 1: undo_stack.len() = 1"
+            );
+
+            // Step 2: Move to (200, 200) and push
+            if let Some(node) = doc.document.nodes.get_mut(&node_id) {
+                node.x = OrderedFloat(200.0);
+                node.y = OrderedFloat(200.0);
+            }
+            doc.revision = doc.revision.increment();
+            history = history.push(doc.clone());
+            assert_eq!(
+                history.undo_stack.len(),
+                2,
+                "After step 2: undo_stack.len() = 2"
+            );
+
+            // Step 3: Undo
+            let Some((doc_restored, h)) = history.undo(doc.clone()) else {
+                panic!("undo should succeed");
+            };
+            doc = doc_restored;
+            history = h;
+            assert!(history.can_redo(), "After step 3: can_redo() = true");
+            assert_eq!(
+                history.undo_stack.len(),
+                1,
+                "After step 3: undo_stack.len() = 1"
+            );
+
+            // Step 4: Undo again
+            let Some((doc_restored, h)) = history.undo(doc.clone()) else {
+                panic!("undo should succeed");
+            };
+            doc = doc_restored;
+            history = h;
+            assert!(history.can_redo(), "After step 4: can_redo() = true");
+            assert_eq!(
+                history.undo_stack.len(),
+                0,
+                "After step 4: undo_stack.len() = 0"
+            );
+
+            // Step 5: Redo
+            let Some((doc_redo, h)) = history.redo(doc.clone()) else {
+                panic!("redo should succeed");
+            };
+            doc = doc_redo;
+            history = h;
+            assert!(history.can_undo(), "After step 5: can_undo() = true");
+            assert_eq!(
+                history.undo_stack.len(),
+                1,
+                "After step 5: undo_stack.len() = 1"
+            );
+
+            // Step 6: Redo again
+            let Some((doc_redo, h)) = history.redo(doc.clone()) else {
+                panic!("redo should succeed");
+            };
+            doc = doc_redo;
+            history = h;
+            assert!(history.can_undo(), "After step 6: can_undo() = true");
+            assert_eq!(
+                history.undo_stack.len(),
+                2,
+                "After step 6: undo_stack.len() = 2"
+            );
+
+            // Verify final position
+            let node = doc.document.nodes.get(&node_id).expect("node should exist");
+            assert_eq!(node.x.0, 200.0, "Final document position should be x=200");
+            assert_eq!(node.y.0, 200.0, "Final document position should be y=200");
+        }
+
+        // ============================================================
+        // Contract verification tests
+        // ============================================================
+
+        #[test]
+        fn test_precondition_p2_undo_requires_nonempty_stack() {
+            // Fresh history with empty undo_stack
+            let history = History::new();
+            let current = doc_with_revision(1);
+
+            // undo() returns None (not panic)
+            let result = history.undo(current);
+            assert!(result.is_none(), "undo on empty stack should return None");
+        }
+
+        #[test]
+        fn test_precondition_p3_redo_requires_nonempty_stack() {
+            // History with push(A), undo (at A, redo has A)
+            // redo (at original, redo empty)
+            let history = History::new().push(doc_with_revision(1));
+
+            let current = doc_with_revision(2);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+
+            // First redo should work
+            let result = after_undo.redo(doc_with_revision(1));
+            assert!(result.is_some(), "first redo should succeed");
+
+            // Second redo should return None
+            if let Some((_, after_redo)) = result {
+                let result2 = after_redo.redo(doc_with_revision(0));
+                assert!(result2.is_none(), "second redo should return None");
+            }
+        }
+
+        #[test]
+        fn test_postcondition_q2_push_clears_redo_stack() {
+            // History with push(A), push(B), undo (back to A, redo has B)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+
+            assert!(
+                !after_undo.redo_stack.is_empty(),
+                "redo stack should have entries"
+            );
+
+            // push(C) should clear redo stack
+            let after_push = after_undo.push(doc_with_revision(4));
+
+            assert!(
+                after_push.redo_stack.is_empty(),
+                "redo stack should be empty after push"
+            );
+        }
+
+        #[test]
+        fn test_postcondition_q8_single_entry_per_operation() {
+            // History with push(A)
+            let history = History::new().push(doc_with_revision(1));
+
+            // Single push(B) representing completed drag gesture
+            let history = history.push(doc_with_revision(2));
+
+            // undo_stack should have exactly 2 (A and B)
+            assert_eq!(
+                history.undo_stack.len(),
+                2,
+                "undo_stack should have exactly 2 entries"
+            );
+        }
+
+        #[test]
+        fn test_invariant_i1_undo_stack_is_reverse_chronological() {
+            // History with push(A), push(B), push(C)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2))
+                .push(doc_with_revision(3));
+
+            // Collect revisions in order from the stack
+            let revisions: Vec<_> = history
+                .undo_stack
+                .iter()
+                .map(|d| d.revision.value())
+                .collect();
+
+            // undo_stack[0] = A (oldest), undo_stack[1] = B, undo_stack[2] = C (newest)
+            assert_eq!(revisions[0], 1, "First entry should be revision 1 (oldest)");
+            assert_eq!(revisions[1], 2, "Second entry should be revision 2");
+            assert_eq!(revisions[2], 3, "Third entry should be revision 3 (newest)");
+        }
+
+        #[test]
+        fn test_invariant_i2_redo_stack_is_chronological() {
+            // History with push(A), push(B)
+            // Undo (back to A), undo (back to initial)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, h1)) = history.undo(current) else {
+                panic!("undo 1 should succeed");
+            };
+            let Some((_, h2)) = h1.undo(doc_with_revision(1)) else {
+                panic!("undo 2 should succeed");
+            };
+
+            // Collect revisions from redo stack
+            let revisions: Vec<_> = h2.redo_stack.iter().map(|d| d.revision.value()).collect();
+
+            // redo_stack[0] = A (oldest redo), redo_stack[1] = B (newest redo)
+            assert_eq!(
+                revisions[0], 1,
+                "First redo entry should be revision 1 (oldest)"
+            );
+            assert_eq!(
+                revisions[1], 2,
+                "Second redo entry should be revision 2 (newest)"
+            );
+        }
+
+        #[test]
+        fn test_invariant_i3_after_push_redo_stack_is_empty() {
+            // History with push(A), push(B), undo (back to A, redo has B)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+
+            assert!(!after_undo.redo_stack.is_empty(), "redo should have B");
+
+            // push(C) creates new timeline branch
+            let after_push = after_undo.push(doc_with_revision(4));
+
+            assert!(
+                after_push.redo_stack.is_empty(),
+                "redo stack should be empty after push"
+            );
+            assert_eq!(
+                after_push.undo_stack.len(),
+                2,
+                "undo stack should have A and C"
+            );
+        }
+
+        #[test]
+        fn test_invariant_i4_after_undo_can_redo_is_true() {
+            // History with push(A), push(B)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+
+            assert!(
+                after_undo.can_redo(),
+                "can_redo should return true after undo"
+            );
+        }
+
+        #[test]
+        fn test_invariant_i5_after_redo_can_undo_is_true() {
+            // History with push(A), push(B), undo performed (at A, redo has B)
+            let history = History::new()
+                .push(doc_with_revision(1))
+                .push(doc_with_revision(2));
+
+            let current = doc_with_revision(3);
+            let Some((_, after_undo)) = history.undo(current) else {
+                panic!("undo should succeed");
+            };
+
+            // Redo performed (at B)
+            let Some((_, after_redo)) = after_undo.redo(doc_with_revision(1)) else {
+                panic!("redo should succeed");
+            };
+
+            assert!(
+                after_redo.can_undo(),
+                "can_undo should return true after redo"
+            );
         }
     }
 }
