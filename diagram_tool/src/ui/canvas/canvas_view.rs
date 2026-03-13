@@ -23,6 +23,11 @@ use crate::{
     },
 };
 
+/// Screen-space hit test margin in pixels.
+/// This margin is consistent regardless of zoom level - it's applied in screen space
+/// and converted to world coordinates based on the current zoom.
+pub const SCREEN_HIT_MARGIN: f64 = 5.0;
+
 #[must_use]
 pub(super) fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
     let a = px - x1;

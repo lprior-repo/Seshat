@@ -17,7 +17,7 @@ mod selection_geometry;
 use base64::{engine::general_purpose, Engine as _};
 use canvas_view::{
     edge_label_position, edge_marker_ref, edge_path, edge_preview_overlay, find_edge_at,
-    rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay,
+    rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay, SCREEN_HIT_MARGIN,
 };
 use dioxus::{
     html::{geometry::WheelDelta, input_data::MouseButton},
@@ -206,15 +206,20 @@ fn ordered_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
 }
 
 fn find_node_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<NodeId> {
+    // Screen-consistent hit margin: margin in screen pixels scaled to world coordinates
+    // This ensures hit testing behaves consistently regardless of zoom level
+    let zoom = doc.editor_state.zoom.0;
+    let hit_margin_world = SCREEN_HIT_MARGIN / zoom;
+
     ordered_node_ids(doc)
         .iter()
         .rev()
         .find(|id| {
             doc.document.nodes.get(*id).is_some_and(|node| {
-                x >= node.x.0
-                    && x <= node.x.0 + node.width.0
-                    && y >= node.y.0
-                    && y <= node.y.0 + node.height.0
+                x >= node.x.0 - hit_margin_world
+                    && x <= node.x.0 + node.width.0 + hit_margin_world
+                    && y >= node.y.0 - hit_margin_world
+                    && y <= node.y.0 + node.height.0 + hit_margin_world
             })
         })
         .cloned()
