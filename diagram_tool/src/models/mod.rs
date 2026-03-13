@@ -71,3 +71,5 @@ pub mod subgraph_events_tests;
 
 #[cfg(test)]
 pub mod subgraph_persistence_tests;
+
+pub mod vdom_test_driver;
