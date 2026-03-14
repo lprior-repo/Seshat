@@ -274,9 +274,13 @@ mod tests {
         // Then: S1 should be removed
         assert!(!new_projection.nodes.contains_key(&s1_id));
 
-        // Then: S2 should have parent cleared (root level)
+        // Then: S2 should have parent = Root (grandparent, since S1's parent is Root)
         let s2 = new_projection.nodes.get(&s2_id).unwrap();
-        assert!(s2.parent.is_none(), "S2 should be at root level");
+        assert_eq!(
+            s2.parent.as_ref().map(|id| id.as_str()),
+            Some("Root"),
+            "S2 should have parent = Root (grandparent)"
+        );
 
         // Then: N1 should still have parent = S2 (not affected)
         let n1 = new_projection.nodes.get(&n1_id).unwrap();
@@ -417,11 +421,11 @@ mod tests {
         // Then: S1 should be removed
         assert!(!new_projection.nodes.contains_key(&s1_id));
 
-        // Then: Children should have no parent (root level)
+        // Then: Children should have parent = Root (the grandparent)
         let n1 = new_projection.nodes.get(&n1_id).unwrap();
         let n2 = new_projection.nodes.get(&n2_id).unwrap();
-        assert!(n1.parent.is_none());
-        assert!(n2.parent.is_none());
+        assert_eq!(n1.parent.as_ref().map(|id| id.as_str()), Some("Root"));
+        assert_eq!(n2.parent.as_ref().map(|id| id.as_str()), Some("Root"));
 
         // Then: Root should still exist
         assert!(new_projection.nodes.contains_key(&root_id));
@@ -462,9 +466,13 @@ mod tests {
         // Then: S1 removed
         assert!(!new_projection.nodes.contains_key(&s1_id));
 
-        // Then: S2 should have parent cleared (becomes root level)
+        // Then: S2 should have parent = Root (the grandparent)
         let s2 = new_projection.nodes.get(&s2_id).unwrap();
-        assert!(s2.parent.is_none(), "S2 should be at root level");
+        assert_eq!(
+            s2.parent.as_ref().map(|id| id.as_str()),
+            Some("Root"),
+            "S2 should have parent = Root"
+        );
 
         // N1 should still exist and have S2 as parent
         assert!(new_projection.nodes.contains_key(&n1_id));
