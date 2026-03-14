@@ -79,8 +79,9 @@ pub fn apply_distribute_selection(
     }
 
     // Calculate the space to distribute
-    let first = node_data.first().unwrap();
-    let last = node_data.last().unwrap();
+    // Safety: len() >= 3 checked at line 77, so first/last are guaranteed to be Some
+    let first = node_data.first().expect("node_data has at least 3 elements");
+    let last = node_data.last().expect("node_data has at least 3 elements");
     let total_extent = (last.1 + last.2) - first.1;
 
     let total_sizes: f64 = node_data.iter().map(|(_, _, size)| size).sum();
