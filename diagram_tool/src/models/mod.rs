@@ -25,6 +25,9 @@ pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
 pub mod document;
+#[cfg(test)]
+pub mod document_serialization_tests;
+
 pub mod envelope;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod export;

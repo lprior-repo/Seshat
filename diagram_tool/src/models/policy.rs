@@ -288,6 +288,12 @@ fn apply_operation_internal(
         DomainOp::NodeMove { id, x, y } => apply_node_move(state, id, *x, *y),
         DomainOp::NodeDelete { id } => apply_node_delete(state, id),
         DomainOp::NodeRestore { id } => apply_node_restore(state, id),
+        DomainOp::UpdateLabel { target_id, target_type, old_label, new_label } => {
+            apply_update_label(state, target_id, target_type, old_label, new_label)
+        }
+        DomainOp::UpdateNodeStyle { id, style } => {
+            apply_update_node_style(state, id, style.clone())
+        }
         // Edge operations
         DomainOp::EdgeConnect { id, source, target } => {
             apply_edge_connect(state, id, source, target)
