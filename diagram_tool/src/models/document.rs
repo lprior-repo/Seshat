@@ -83,6 +83,76 @@ impl fmt::Display for EdgeId {
     }
 }
 
+/// Newtype for Author Identifier to prevent primitive obsession
+#[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct AuthorId(String);
+
+impl AuthorId {
+    #[must_use]
+    pub const fn new(id: String) -> Self {
+        Self(id)
+    }
+
+    /// Create a new `AuthorId`, returning error for empty strings
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `id` is an empty string.
+    pub fn try_new(id: String) -> Result<Self, &'static str> {
+        if id.is_empty() {
+            Err("AuthorId cannot be empty")
+        } else {
+            Ok(Self(id))
+        }
+    }
+
+    #[must_use]
+    pub fn as_str(&self) -> &str {
+        &self.0
+    }
+}
+
+impl fmt::Display for AuthorId {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
+/// Newtype for Timestamp (Unix timestamp in seconds)
+#[derive(Clone, Copy, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
+pub struct Timestamp(i64);
+
+impl Timestamp {
+    #[must_use]
+    pub const fn new(timestamp: i64) -> Self {
+        Self(timestamp)
+    }
+
+    /// Create a new `Timestamp`, returning error for negative timestamps
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if `timestamp` is negative.
+    pub fn try_new(timestamp: i64) -> Result<Self, &'static str> {
+        if timestamp < 0 {
+            Err("Timestamp cannot be negative")
+        } else {
+            Ok(Self(timestamp))
+        }
+    }
+
+    #[must_use]
+    pub const fn value(self) -> i64 {
+        self.0
+    }
+}
+
+impl fmt::Display for Timestamp {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.0)
+    }
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
 pub struct DiagramDocument {
@@ -1096,6 +1166,24 @@ mod tests {
     #[test]
     fn test_p3_violation_returns_edge_already_exists() {
         test_returns_error_when_creating_edge_with_duplicate_id();
+    }
+
+    // Test for AuthorId newtype (seshat-uhsq)
+    #[test]
+    fn author_id_try_new_with_empty_string_then_it_returns_error() {
+        use super::AuthorId;
+        let result = AuthorId::try_new(String::new());
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "AuthorId cannot be empty");
+    }
+
+    // Test for Timestamp newtype (seshat-uhsq)
+    #[test]
+    fn timestamp_try_new_with_negative_value_then_it_returns_error() {
+        use super::Timestamp;
+        let result = Timestamp::try_new(-1);
+        assert!(result.is_err());
+        assert_eq!(result.unwrap_err(), "Timestamp cannot be negative");
     }
 }
 
