@@ -154,6 +154,56 @@ pub struct Node {
     pub collapsed: Option<bool>,
 }
 
+impl Node {
+    /// Gets the world coordinates of the node.
+    ///
+    /// # Errors
+    /// Returns `Error::NodeNotFound` if a parent node is missing from the provided map.
+    pub fn get_world_coords(
+        &self,
+        nodes: &std::collections::HashMap<NodeId, Node>,
+    ) -> Result<(f64, f64), String> {
+        let mut world_x = self.x.0;
+        let mut world_y = self.y.0;
+        let mut current_parent_id = self.parent.as_ref();
+
+        while let Some(parent_id) = current_parent_id {
+            let parent_node = nodes
+                .get(parent_id)
+                .ok_or_else(|| format!("Parent node not found: {}", parent_id.0))?;
+            world_x += parent_node.x.0;
+            world_y += parent_node.y.0;
+            current_parent_id = parent_node.parent.as_ref();
+        }
+
+        Ok((world_x, world_y))
+    }
+
+    /// Gets the world coordinates of the node using an `im::HashMap`.
+    ///
+    /// # Errors
+    /// Returns `Error` if a parent node is missing from the provided map.
+    pub fn get_world_coords_im(
+        &self,
+        nodes: &im::HashMap<NodeId, Node>,
+    ) -> Result<(f64, f64), String> {
+        let mut world_x = self.x.0;
+        let mut world_y = self.y.0;
+        let mut current_parent_id = self.parent.as_ref();
+
+        while let Some(parent_id) = current_parent_id {
+            let parent_node = nodes
+                .get(parent_id)
+                .ok_or_else(|| format!("Parent node not found: {}", parent_id.0))?;
+            world_x += parent_node.x.0;
+            world_y += parent_node.y.0;
+            current_parent_id = parent_node.parent.as_ref();
+        }
+
+        Ok((world_x, world_y))
+    }
+}
+
 /// Error type for `OrderedFloat` construction
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
 pub enum OrderedFloatError {

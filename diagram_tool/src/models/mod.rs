@@ -18,7 +18,7 @@
 //! ### Invariants
 //! - I1: Each Node has unique `NodeId`
 //! - I2: Each Edge has unique `EdgeId`
-//! - I3: Node positions in world coordinates (independent of viewport)
+//! - I3: Node positions relative to parent (or world space if no parent)
 //! - I4: Document revision monotonically increases
 
 pub mod canonical_json;
@@ -80,3 +80,6 @@ pub mod subgraph_cascade_tests;
 
 #[cfg(test)]
 pub mod subgraph_persistence_tests;
+
+#[cfg(test)]
+pub mod subgraph_relative_tests;

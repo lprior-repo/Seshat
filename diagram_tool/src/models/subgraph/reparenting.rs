@@ -79,6 +79,19 @@ pub fn set_node_parent(
     parent_id: NodeId,
     canvas: &mut CanvasState,
 ) -> Result<(), Error> {
+    set_node_parent_ext(child_id, parent_id, canvas, true)
+}
+
+/// Sets the parent of a node with an option to keep its world position.
+///
+/// # Errors
+/// Returns errors if nodes are missing or if a cycle is detected.
+pub fn set_node_parent_ext(
+    child_id: NodeId,
+    parent_id: NodeId,
+    canvas: &mut CanvasState,
+    keep_world_pos: bool,
+) -> Result<(), Error> {
     // P1: Child must exist
     validate_child_exists(canvas, &child_id)?;
     // P2: Parent must exist
@@ -92,7 +105,41 @@ pub fn set_node_parent(
     // P4: Check for cycle
     validate_no_cycle(canvas, &child_id, &parent_id)?;
 
-    update_node_parent(canvas, child_id, parent_id)
+    if keep_world_pos {
+        let (world_x, world_y) = canvas
+            .nodes
+            .get(&child_id)
+            .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?
+            .get_world_coords_im(&canvas.nodes)
+            .map_err(|_| Error::NodeNotFound(child_id.clone()))?;
+
+        let (parent_world_x, parent_world_y) = canvas
+            .nodes
+            .get(&parent_id)
+            .ok_or_else(|| Error::NodeNotFound(parent_id.clone()))?
+            .get_world_coords_im(&canvas.nodes)
+            .map_err(|_| Error::NodeNotFound(parent_id.clone()))?;
+
+        let rel_x =
+            crate::models::document::OrderedFloat::new(world_x - parent_world_x).map_err(|_| {
+                Error::InvalidTransform // Or a more appropriate error
+            })?;
+        let rel_y = crate::models::document::OrderedFloat::new(world_y - parent_world_y)
+            .map_err(|_| Error::InvalidTransform)?;
+
+        let mut node = canvas
+            .nodes
+            .get(&child_id)
+            .cloned()
+            .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?;
+        node.parent = Some(parent_id.clone());
+        node.x = rel_x;
+        node.y = rel_y;
+        canvas.nodes = canvas.nodes.update(child_id, node);
+        Ok(())
+    } else {
+        update_node_parent(canvas, child_id, parent_id)
+    }
 }
 
 /// Removes the parent reference from a node, effectively moving it to root level.
@@ -101,18 +148,52 @@ pub fn set_node_parent(
 /// # Errors
 /// Returns `Error::NodeNotFound` if the child doesn't exist.
 pub fn unparent_node(child_id: NodeId, canvas: &mut CanvasState) -> Result<(), Error> {
+    unparent_node_ext(child_id, canvas, true)
+}
+
+/// Removes the parent reference from a node with an option to keep its world position.
+///
+/// # Errors
+/// Returns `Error::NodeNotFound` if the child doesn't exist.
+pub fn unparent_node_ext(
+    child_id: NodeId,
+    canvas: &mut CanvasState,
+    keep_world_pos: bool,
+) -> Result<(), Error> {
     // P1: Child must exist
     if !canvas.nodes.contains_key(&child_id) {
         return Err(Error::NodeNotFound(child_id));
     }
 
-    let updated_node = canvas
-        .nodes
-        .get(&child_id)
-        .cloned()
-        .map(|n| crate::models::document::Node { parent: None, ..n })
-        .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?;
+    if keep_world_pos {
+        let (world_x, world_y) = canvas
+            .nodes
+            .get(&child_id)
+            .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?
+            .get_world_coords_im(&canvas.nodes)
+            .map_err(|_| Error::NodeNotFound(child_id.clone()))?;
 
-    canvas.nodes = canvas.nodes.update(child_id, updated_node);
-    Ok(())
+        let mut node = canvas
+            .nodes
+            .get(&child_id)
+            .cloned()
+            .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?;
+        node.parent = None;
+        node.x = crate::models::document::OrderedFloat::new(world_x)
+            .map_err(|_| Error::InvalidTransform)?;
+        node.y = crate::models::document::OrderedFloat::new(world_y)
+            .map_err(|_| Error::InvalidTransform)?;
+        canvas.nodes = canvas.nodes.update(child_id, node);
+        Ok(())
+    } else {
+        let updated_node = canvas
+            .nodes
+            .get(&child_id)
+            .cloned()
+            .map(|n| crate::models::document::Node { parent: None, ..n })
+            .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?;
+
+        canvas.nodes = canvas.nodes.update(child_id, updated_node);
+        Ok(())
+    }
 }

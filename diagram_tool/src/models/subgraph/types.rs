@@ -104,6 +104,10 @@ pub fn apply_viewport_transform(
 ///
 /// # Errors
 /// Returns `Error::InvariantViolation` if calculating bounds fails or no children exist.
+/// Calculates the bounding box that encapsulates all given child nodes plus the specified padding.
+///
+/// # Errors
+/// Returns `Error::InvariantViolation` if calculating bounds fails or no children exist.
 pub fn calculate_container_bounds(
     children: &[crate::models::document::Node],
     padding: Padding,
@@ -130,17 +134,47 @@ pub fn calculate_container_bounds(
         max_y + f64::from(padding.bottom),
     );
 
-    // Q1 Postcondition validation - ensure container bounds encapsulate all children + padding
-    let valid = children.iter().all(|n| {
-        bounds.min_x <= n.x.0 - f64::from(padding.left)
-            && bounds.min_y <= n.y.0 - f64::from(padding.top)
-            && bounds.max_x >= n.x.0 + n.width.0 + f64::from(padding.right)
-            && bounds.max_y >= n.y.0 + n.height.0 + f64::from(padding.bottom)
-    });
+    Ok(bounds)
+}
 
-    if !valid {
-        return Err(Error::InvariantViolation);
+/// Calculates the bounding box in world space that encapsulates all given child nodes plus the specified padding.
+///
+/// # Errors
+/// Returns `Error::InvariantViolation` if calculating bounds fails.
+pub fn calculate_container_bounds_from_ids(
+    canvas: &DocumentData,
+    child_ids: &[NodeId],
+    padding: Padding,
+) -> Result<BoundingBox, Error> {
+    if child_ids.is_empty() {
+        return Ok(BoundingBox::new(0.0, 0.0, 0.0, 0.0));
     }
+
+    let mut min_x = f64::INFINITY;
+    let mut min_y = f64::INFINITY;
+    let mut max_x = f64::NEG_INFINITY;
+    let mut max_y = f64::NEG_INFINITY;
+
+    for id in child_ids {
+        let node = canvas
+            .nodes
+            .get(id)
+            .ok_or_else(|| Error::NodeNotFound(id.clone()))?;
+        let (wx, wy) = node
+            .get_world_coords_im(&canvas.nodes)
+            .map_err(|_| Error::InvariantViolation)?;
+        min_x = f64::min(min_x, wx);
+        min_y = f64::min(min_y, wy);
+        max_x = f64::max(max_x, wx + node.width.0);
+        max_y = f64::max(max_y, wy + node.height.0);
+    }
+
+    let bounds = BoundingBox::new(
+        min_x - f64::from(padding.left),
+        min_y - f64::from(padding.top),
+        max_x + f64::from(padding.right),
+        max_y + f64::from(padding.bottom),
+    );
 
     Ok(bounds)
 }

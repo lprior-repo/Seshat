@@ -22,8 +22,7 @@ pub fn create_subgraph_from_nodes(
     child_ids: &[NodeId],
     canvas: &mut CanvasState,
 ) -> Result<Node, Error> {
-    let children = collect_children(canvas, child_ids)?;
-    let bounds = calculate_bounds_with_padding(&children)?;
+    let bounds = calculate_bounds_with_padding(canvas, child_ids)?;
     let subgraph = create_subgraph_node(&id, &bounds)?;
 
     canvas.nodes = canvas.nodes.update(id.clone(), subgraph.clone());
@@ -34,22 +33,13 @@ pub fn create_subgraph_from_nodes(
     Ok(subgraph)
 }
 
-fn collect_children(canvas: &CanvasState, child_ids: &[NodeId]) -> Result<Vec<Node>, Error> {
-    child_ids
-        .iter()
-        .map(|cid| {
-            canvas
-                .nodes
-                .get(cid)
-                .cloned()
-                .ok_or_else(|| Error::NodeNotFound(cid.clone()))
-        })
-        .collect()
-}
-
-fn calculate_bounds_with_padding(children: &[Node]) -> Result<BoundingBox, Error> {
-    calculate_container_bounds(
-        children,
+fn calculate_bounds_with_padding(
+    canvas: &CanvasState,
+    child_ids: &[NodeId],
+) -> Result<BoundingBox, Error> {
+    super::types::calculate_container_bounds_from_ids(
+        canvas,
+        child_ids,
         Padding {
             top: 20,
             right: 20,
@@ -156,8 +146,14 @@ fn validate_children_unlocked(canvas: &CanvasState, child_ids: &[NodeId]) -> Res
 fn capture_child_bounds(canvas: &CanvasState, child_ids: &[NodeId]) -> Vec<(f64, f64, f64, f64)> {
     child_ids
         .iter()
-        .filter_map(|id| canvas.nodes.get(id))
-        .map(|n| (n.x.0, n.y.0, n.width.0, n.height.0))
+        .filter_map(|id| {
+            canvas.nodes.get(id).map(|n| {
+                let (wx, wy) = n
+                    .get_world_coords_im(&canvas.nodes)
+                    .unwrap_or((n.x.0, n.y.0));
+                (wx, wy, n.width.0, n.height.0)
+            })
+        })
         .collect()
 }
 
@@ -257,12 +253,18 @@ fn reparent_children_to_grandparent(
     new_parent: &Option<NodeId>,
 ) {
     for child_id in children {
-        if let Some(child) = canvas.nodes.get(child_id) {
-            let updated_child = Node {
-                parent: new_parent.clone(),
-                ..child.clone()
-            };
-            canvas.nodes = canvas.nodes.update(child_id.clone(), updated_child);
+        match new_parent {
+            Some(pid) => {
+                let _ = super::reparenting::set_node_parent_ext(
+                    child_id.clone(),
+                    pid.clone(),
+                    canvas,
+                    true,
+                );
+            }
+            None => {
+                let _ = super::reparenting::unparent_node_ext(child_id.clone(), canvas, true);
+            }
         }
     }
 }
