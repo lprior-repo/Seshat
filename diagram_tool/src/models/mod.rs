@@ -48,6 +48,7 @@ pub mod multi_select_tests;
 pub mod subgraph;
 
 pub mod selection_ops;
+pub mod spatial_index;
 
 #[cfg(test)]
 pub mod selection_ops_tests;
