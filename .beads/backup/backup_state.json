@@ -1,30 +1,8 @@
-{
-%%%%%%% diff from: zkzmmxvx 7e537e7c "fix: Implement SnapResult for smart alignment, fix pre-existing issues" (parents of rebased revision)
-\\\\\\\        to: pxunnrzv 637c1a6f "feat: Implement subgraph parent validation (SUB-001)" (rebase destination)
--  "last_dolt_commit": "r9aj93etf2csatdh5em38fogehtc0n3i",
-+  "last_dolt_commit": "gitv1mrkt3qnohmc54kk27m4bhmblsb0",
-+++++++ sovvuwyl 78011260 (rebased revision)
-  "last_dolt_commit": "5psdg59f7ol9fvu68mkpui2i60s0tbup",
-  "last_event_id": 0,
-%%%%%%% diff from: zkzmmxvx 7e537e7c "fix: Implement SnapResult for smart alignment, fix pre-existing issues" (parents of rebased revision)
-\\\\\\\        to: pxunnrzv 637c1a6f "feat: Implement subgraph parent validation (SUB-001)" (rebase destination)
--  "timestamp": "2026-03-14T18:50:15.020618403Z",
-+  "timestamp": "2026-03-14T20:52:47.764304532Z",
-+++++++ sovvuwyl 78011260 (rebased revision)
-  "timestamp": "2026-03-14T20:55:54.042999395Z",
-  "counts": {
-%%%%%%% diff from: zkzmmxvx 7e537e7c "fix: Implement SnapResult for smart alignment, fix pre-existing issues" (parents of rebased revision)
-\\\\\\\        to: pxunnrzv 637c1a6f "feat: Implement subgraph parent validation (SUB-001)" (rebase destination)
--    "issues": 169,
--    "events": 176,
-+    "issues": 178,
-+    "events": 208,
-+++++++ sovvuwyl 78011260 (rebased revision)
-    "issues": 178,
-    "events": 211,
-    "comments": 0,
-    "dependencies": 0,
-    "labels": 0,
-    "config": 11
-  }
-}
+Error: Failed to parse revset: Syntax error
+Caused by:  --> 1:6
+  |
+1 | main:.beads/backup/backup_state.json
+  |      ^---
+  |
+  = expected <EOI>, <identifier>, <string_literal>, <raw_string_literal>, `|`, `&`, `~`, or <primary>
+Hint: See https://docs.jj-vcs.dev/latest/revsets/ or use `jj help -k revsets` for revsets syntax and how to quote symbols.
