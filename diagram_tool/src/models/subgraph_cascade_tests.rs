@@ -828,8 +828,8 @@ mod tests {
         let result = assert_children_reparented(&state, &["N1"], Some("Wrong"));
         assert!(result.is_err());
 
-        // Test verify_cascade_deletion fails in wrong mode
-        let result = verify_cascade_deletion(&state, &s1_id, &["N1"], "delete");
+        // Test verify_cascade_delete_mode fails when child has parent
+        let result = verify_cascade_delete_mode(&state, &s1_id, &["N1"]);
         assert!(result.is_err());
     }
 }
