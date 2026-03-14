@@ -33,6 +33,7 @@ pub mod geo_017_edge_routing_avoid_obstacle;
 pub mod geo_018_fit_to_content;
 pub mod geo_019_hit_test_with_margin;
 pub mod geo_020_hit_test_rotated_shape;
+pub mod geo_021_line_intersection;
 pub mod geo_021_world_to_screen_round_trip;
 pub mod geo_022_aabb_at_various_angles;
 pub mod geo_023_rotation_then_resize_composition;
