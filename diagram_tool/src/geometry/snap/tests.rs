@@ -682,4 +682,18 @@ mod tests {
         state = state.toggle();
         assert_eq!(state.is_enabled(), true);
     }
+
+    // SNP-006: Smart Alignment SnapResult
+    #[cfg(test)]
+    #[test]
+    fn story_snap_result_contains_target_info() {
+        use crate::geometry::snap::mod_types::SnapType;
+        let active = SnapNode::new(NodeId("active".to_string()), 110.0, 100.0, 80.0, 40.0);
+        let targets = vec![SnapNode::new(NodeId("target".to_string()), 100.0, 100.0, 100.0, 50.0)];
+        let result = snap_to_nodes(&active, &targets, 10.0);
+
+        assert!(result.active);
+        assert_eq!(result.target_node_id, NodeId("target".to_string()));
+        assert_eq!(result.snap_type, SnapType::EdgeLeft);
+    }
 }

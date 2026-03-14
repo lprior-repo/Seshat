@@ -1,12 +1,12 @@
 {
-  "session_id": "1ee82a87-6063-4501-8016-6b10c9902927",
-  "transcript_path": "/home/lewis/.claude/projects/-home-lewis-src-seshat/1ee82a87-6063-4501-8016-6b10c9902927.jsonl",
+  "session_id": "657dddbc-0e88-463d-a6be-023b3147fbe6",
+  "transcript_path": "/home/lewis/.claude/projects/-home-lewis-src-seshat/657dddbc-0e88-463d-a6be-023b3147fbe6.jsonl",
   "hook_event_name": "PreToolUse",
   "tool_name": "Edit",
   "tool_input": {
-    "file_path": "/home/lewis/src/seshat/diagram_tool/src/geometry/snap/mod_types.rs",
-    "old_string": "use crate::geometry::primitives::Point;\nuse thiserror::Error;\n\n#[derive(Debug, Clone, PartialEq, Eq, Hash)]\npub struct NodeId(pub String);\n\n#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]",
-    "new_string": "use crate::geometry::primitives::Point;\nuse thiserror::Error;\n\n#[derive(Debug, Clone, PartialEq, Eq, Hash)]\npub struct NodeId(pub String);\n\n/// Snap threshold configuration for smart alignment (SNP-006)\n#[derive(Debug, Clone, Copy, PartialEq)]\npub struct SnapThreshold {\n    /// Threshold in pixels for center snapping\n    pub center: f64,\n    /// Threshold in pixels for edge snapping\n    pub edge: f64,\n}\n\nimpl SnapThreshold {\n    #[must_use]\n    pub const fn new(center: f64, edge: f64) -> Self {\n        Self { center, edge }\n    }\n\n    #[must_use]\n    pub const fn default_threshold() -> Self {\n        Self { center: 10.0, edge: 10.0 }\n    }\n}\n\nimpl Default for SnapThreshold {\n    fn default() -> Self {\n        Self::default_threshold()\n    }\n}\n\n/// Type of snap detected during drag (SNP-007, SNP-008)\n#[derive(Debug, Clone, Copy, PartialEq, Eq)]\npub enum SnapType {\n    /// Snap to horizontal center\n    CenterX,\n    /// Snap to vertical center\n    CenterY,\n    /// Snap to top edge\n    EdgeTop,\n    /// Snap to bottom edge\n    EdgeBottom,\n    /// Snap to left edge\n    EdgeLeft,\n    /// Snap to right edge\n    EdgeRight,\n}\n\nimpl SnapType {\n    #[must_use]\n    pub const fn is_horizontal(&self) -> bool {\n        matches!(self, Self::CenterX | Self::EdgeLeft | Self::EdgeRight)\n    }\n\n    #[must_use]\n    pub const fn is_vertical(&self) -> bool {\n        matches!(self, Self::CenterY | Self::EdgeTop | Self::EdgeBottom)\n    }\n}\n\n/// Result of smart alignment snap detection (SNP-010)\n#[derive(Debug, Clone, PartialEq)]\npub struct SnapResult {\n    /// Whether snapping is active\n    pub active: bool,\n    /// Type of snap detected\n    pub snap_type: Option<SnapType>,\n    /// ID of the target node being snapped to\n    pub target_node_id: Option<NodeId>,\n    /// Snapped position\n    pub snapped_position: Point,\n}\n\nimpl Default for SnapResult {\n    fn default() -> Self {\n        Self {\n            active: false,\n            snap_type: None,\n            target_node_id: None,\n            snapped_position: Point::new(0.0, 0.0),\n        }\n    }\n}\n\n#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]",
+    "file_path": "/home/lewis/src/seshat/diagram_tool/src/ui/commands/distribution.rs",
+    "old_string": "/// - Horizontal distribution preserves Y positions\n/// - Vertical distribution preserves X positions\n/// - Z-order is preserved\n#[must_use]\npub fn apply_distribute_selection(",
+    "new_string": "/// - Horizontal distribution preserves Y positions\n/// - Vertical distribution preserves X positions\n/// - Z-order is preserved\n#[must_use]\n#[allow(clippy::expect_used)]\npub fn apply_distribute_selection(",
     "replace_all": false
   }
 }
