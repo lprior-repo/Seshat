@@ -7,8 +7,7 @@ mod tests {
 
     // ========== SNP-001: Snap to Grid ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_basic_grid_snap_rounds_to_nearest_intersection() {
         let position = Point::new(47.0, 53.0);
@@ -18,8 +17,7 @@ mod tests {
         assert!((result.y - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_node_already_on_grid_stays_unchanged() {
         let position = Point::new(50.0, 100.0);
@@ -28,8 +26,7 @@ mod tests {
         assert_eq!(result, position);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_negative_coordinates_snap_correctly() {
         let position = Point::new(-47.0, -53.0);
@@ -39,8 +36,7 @@ mod tests {
         assert!((result.y - (-50.0)).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_half_grid_offset_rounds_up() {
         let position = Point::new(45.0, 45.0);
@@ -50,8 +46,7 @@ mod tests {
         assert!((result.y - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_invalid_grid_size_returns_original_position() {
         let position = Point::new(47.0, 53.0);
@@ -60,8 +55,7 @@ mod tests {
         assert_eq!(result, position);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_nan_coordinates_produce_nan_result() {
         let position = Point::new(f64::NAN, 53.0);
@@ -72,8 +66,7 @@ mod tests {
 
     // ========== SNP-002: Snap to Guides ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snaps_to_horizontal_guide_within_threshold() {
         let position = Point::new(100.0, 52.0);
@@ -83,8 +76,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 50.0)));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snaps_to_vertical_guide_within_threshold() {
         let position = Point::new(102.0, 100.0);
@@ -94,8 +86,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 100.0)));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_position_outside_threshold_returns_none() {
         let position = Point::new(100.0, 60.0);
@@ -105,8 +96,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_multiple_guides_selects_closest() {
         let position = Point::new(100.0, 52.0);
@@ -116,8 +106,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 50.0)));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_empty_guide_list_returns_none() {
         let position = Point::new(100.0, 52.0);
@@ -127,8 +116,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_invalid_guide_coordinates_are_filtered() {
         let position = Point::new(100.0, 52.0);
@@ -148,8 +136,7 @@ mod tests {
         ]
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snaps_to_left_edge_of_target_node() {
         // Position active so center is close to target's left edge
@@ -164,8 +151,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(100.0, 125.0)));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snaps_to_center_of_target_node() {
         // Position active so center is close to target's center
@@ -179,8 +165,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(150.0, 125.0)));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snaps_to_right_edge_of_target_node() {
         // Position active so center is close to target's right edge
@@ -195,8 +180,7 @@ mod tests {
         assert_eq!(result, Some(Point::new(200.0, 125.0)));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snap_fails_when_outside_threshold() {
         // Position active node far from all targets
@@ -210,8 +194,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_empty_target_list_returns_none() {
         let active = SnapNode::new(NodeId("active".to_string()), 110.0, 100.0, 80.0, 40.0);
@@ -221,8 +204,7 @@ mod tests {
         assert_eq!(result, None);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_selects_closest_snap_target() {
         let active = SnapNode::new(NodeId("active".to_string()), 148.0, 100.0, 80.0, 40.0);
@@ -246,8 +228,7 @@ mod tests {
         ]
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_align_left_moves_all_nodes_to_leftmost_x() {
         let nodes = make_aligned_nodes();
@@ -262,8 +243,7 @@ mod tests {
         assert_eq!(result[2].y, 300.0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_align_center_moves_all_nodes_to_average_center() {
         let nodes = make_aligned_nodes();
@@ -278,8 +258,7 @@ mod tests {
         assert!((result[2].x - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_align_right_moves_all_nodes_to_rightmost_x() {
         let nodes = make_aligned_nodes();
@@ -293,8 +272,7 @@ mod tests {
         assert!((result[2].x - 100.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_align_top_moves_all_nodes_to_topmost_y() {
         let nodes = make_aligned_nodes();
@@ -306,8 +284,7 @@ mod tests {
         assert_eq!(result[2].y, 100.0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_align_middle_moves_all_nodes_to_average_middle() {
         let nodes = make_aligned_nodes();
@@ -322,8 +299,7 @@ mod tests {
         assert!((result[2].y - 200.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_align_bottom_moves_all_nodes_to_bottommost_y() {
         let nodes = make_aligned_nodes();
@@ -337,8 +313,7 @@ mod tests {
         assert!((result[2].y - 300.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_empty_selection_returns_empty_result() {
         let nodes: Vec<SnapNode> = vec![];
@@ -347,8 +322,7 @@ mod tests {
         assert_eq!(result.len(), 0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_single_node_remains_unchanged() {
         let nodes = vec![SnapNode::new(
@@ -374,8 +348,7 @@ mod tests {
         ]
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_distribute_horizontally_spaces_nodes_evenly() {
         let nodes = make_distributed_nodes();
@@ -387,8 +360,7 @@ mod tests {
         assert!((result[1].x - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_distribute_vertically_spaces_nodes_evenly() {
         let nodes = make_distributed_nodes();
@@ -400,8 +372,7 @@ mod tests {
         assert!((result[1].y - 200.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_fewer_than_three_nodes_returns_error() {
         let nodes = vec![
@@ -418,8 +389,7 @@ mod tests {
         ));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_distribution_maintains_node_order() {
         let nodes = vec![
@@ -442,8 +412,7 @@ mod tests {
         assert_eq!(result[2].y, 200.0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_distribution_preserves_first_and_last_positions() {
         let nodes = make_distributed_nodes();
@@ -455,43 +424,37 @@ mod tests {
 
     // ========== SNP-006: Snap Threshold ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snap_applies_when_distance_within_threshold() {
         assert_eq!(should_snap(5.0, 10.0), true);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snap_applies_when_exactly_at_threshold() {
         assert_eq!(should_snap(10.0, 10.0), true);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_snap_does_not_apply_when_outside_threshold() {
         assert_eq!(should_snap(11.0, 10.0), false);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_zero_threshold_only_snaps_exact_matches() {
         assert_eq!(should_snap(0.0, 0.0), true);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_negative_threshold_treated_as_zero() {
         assert_eq!(should_snap(5.0, -1.0), false);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_infinity_threshold_always_snaps() {
         // f64::INFINITY.is_finite() returns false, so should_snap returns false
@@ -501,8 +464,7 @@ mod tests {
 
     // ========== SNP-007: Snap During Drag ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_drag_with_snap_updates_preview_and_final() {
         let start = Point::new(40.0, 40.0);
@@ -514,8 +476,7 @@ mod tests {
         assert_eq!(final_pos, Point::new(50.0, 50.0));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_drag_without_snap_preserves_original() {
         let start = Point::new(40.0, 40.0);
@@ -527,8 +488,7 @@ mod tests {
         assert_eq!(final_pos, current);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_multi_node_drag_preserves_relative_offsets() {
         let nodes = vec![
@@ -546,8 +506,7 @@ mod tests {
 
     // ========== SNP-008: Snap During Resize ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_resize_width_snaps_to_grid() {
         let original = Rect::new(0.0, 0.0, 80.0, 40.0);
@@ -559,8 +518,7 @@ mod tests {
         assert_eq!(result.height, 40.0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_resize_from_different_handle() {
         let original = Rect::new(100.0, 0.0, 80.0, 40.0);
@@ -572,8 +530,7 @@ mod tests {
         assert_eq!(result.width, 90.0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_aspect_ratio_lock_with_snap() {
         let original = Rect::new(0.0, 0.0, 80.0, 40.0);
@@ -591,8 +548,7 @@ mod tests {
         assert!((result.height - 50.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_resize_snap_affects_both_dimensions() {
         let original = Rect::new(0.0, 0.0, 80.0, 40.0);
@@ -608,8 +564,7 @@ mod tests {
 
     // ========== SNP-009: Multi-Node Snap ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_all_nodes_snap_together() {
         let nodes = vec![
@@ -625,8 +580,7 @@ mod tests {
         assert!(results.iter().all(|p| (p.y % 10.0).abs() < f64::EPSILON));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_relative_positions_preserved() {
         let nodes = vec![
@@ -642,8 +596,7 @@ mod tests {
         assert!((new_offset.1 - 100.0).abs() < f64::EPSILON);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_primary_selection_determines_snap_target() {
         let nodes = vec![
@@ -657,8 +610,7 @@ mod tests {
         assert_eq!(results[1], Point::new(150.0, 150.0));
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_empty_node_list_returns_empty() {
         let nodes: Vec<SnapNode> = vec![];
@@ -668,8 +620,7 @@ mod tests {
         assert_eq!(results.len(), 0);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_single_node_snaps_independently() {
         let nodes = vec![SnapNode::new(
@@ -687,30 +638,26 @@ mod tests {
 
     // ========== SNP-010: Snap Toggle ==========
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_toggle_from_disabled_to_enabled() {
         assert_eq!(toggle_snap(ToggleState::Off), ToggleState::On);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_toggle_from_enabled_to_disabled() {
         assert_eq!(toggle_snap(ToggleState::On), ToggleState::Off);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_query_snap_state() {
         let state = SnapState::new(SnapMode::Enabled, 10.0, 5.0);
         assert_eq!(is_snap_enabled(state), true);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_toggle_during_drag_commits_at_current_position() {
         let position = Point::new(47.0, 53.0);
@@ -721,8 +668,7 @@ mod tests {
         assert_eq!(committed, SnapMode::Disabled);
     }
 
-    #[cfg(any(test, kani))]
-    #[kani::proof]
+    #[cfg(test)]
     #[test]
     fn story_toggle_persists_across_operations() {
         let mut state = SnapState::default();
