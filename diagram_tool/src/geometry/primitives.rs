@@ -66,6 +66,12 @@ impl AABB {
         )
     }
 
+    #[must_use]
+    pub fn contains_point(&self, point: &Point) -> bool {
+        point.x >= self.min_x && point.x <= self.max_x
+            && point.y >= self.min_y && point.y <= self.max_y
+    }
+
     /// Compute the union of two AABBs
     #[must_use]
     pub fn union(&self, other: &Self) -> Self {

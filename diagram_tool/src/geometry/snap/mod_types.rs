@@ -85,6 +85,36 @@ impl SnapNode {
         Point::new(self.center_x(), self.center_y())
     }
 }
+// SnapType for smart alignment
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SnapType { CenterX, CenterY, EdgeTop, EdgeBottom, EdgeLeft, EdgeRight }
+
+// SnapResult for smart alignment
+#[derive(Debug, Clone, PartialEq)]
+pub struct SnapResult {
+    pub active: bool,
+    pub snap_type: SnapType,
+    pub target_node_id: NodeId,
+    pub snapped_position: Point,
+}
+
+impl SnapResult {
+    pub const fn to_position(&self) -> Option<Point> { if self.active { Some(self.snapped_position) } else { None } }
+    pub const fn inactive() -> Self { Self { active: false, snap_type: SnapType::CenterX, target_node_id: NodeId(String::new()), snapped_position: Point::new(0.0, 0.0) } }
+    pub const fn new(snap_type: SnapType, target_node_id: NodeId, snapped_position: Point) -> Self { Self { active: true, snap_type, target_node_id, snapped_position } }
+}
+
+impl Default for SnapResult { fn default() -> Self { Self::inactive() } }
+
+// SnapThreshold for validated thresholds
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct SnapThreshold(f64);
+impl SnapThreshold {
+    pub const fn new(value: f64) -> Self { Self(if value < 0.0 { 0.0 } else { value }) }
+    pub const fn value(&self) -> f64 { self.0 }
+}
+impl Default for SnapThreshold { fn default() -> Self { Self(10.0) } }
+
 
 #[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct SnapState {

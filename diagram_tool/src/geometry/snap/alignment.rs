@@ -1,6 +1,6 @@
 use crate::geometry::primitives::Point;
 use crate::geometry::snap::grid::snap_to_grid;
-use crate::geometry::snap::mod_types::{SnapError, SnapNode};
+use crate::geometry::snap::mod_types::{NodeId, SnapError, SnapNode, SnapResult, SnapType};
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub enum Guide {
@@ -118,71 +118,79 @@ fn closest_guide(val: f64, guides: &[&Guide], threshold: f64, is_horiz: bool) ->
 }
 
 #[must_use]
-pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> Option<Point> {
+pub fn snap_to_guides(point: Point, guides: &[Guide], threshold: f64) -> SnapResult {
     if threshold < 0.0 || !threshold.is_finite() {
-        return None;
+        return SnapResult::inactive();
     }
     let valid_guides: Vec<&Guide> = guides
         .iter()
         .filter(|g| g.coordinate().is_finite())
         .collect();
     if valid_guides.is_empty() {
-        return None;
+        return SnapResult::inactive();
     }
 
     let snap_y = closest_guide(point.y, &valid_guides, threshold, true);
     let snap_x = closest_guide(point.x, &valid_guides, threshold, false);
 
     match (snap_x, snap_y) {
-        (Some(x), Some(y)) => Some(Point::new(x, y)),
-        (Some(x), None) => Some(Point::new(x, point.y)),
-        (None, Some(y)) => Some(Point::new(point.x, y)),
-        (None, None) => None,
+        (Some(x), Some(y)) => SnapResult::new(SnapType::CenterX, NodeId("guide".into()), Point::new(x, y)),
+        (Some(x), None) => SnapResult::new(SnapType::CenterX, NodeId("guide".into()), Point::new(x, point.y)),
+        (None, Some(y)) => SnapResult::new(SnapType::CenterY, NodeId("guide".into()), Point::new(point.x, y)),
+        (None, None) => SnapResult::inactive(),
     }
 }
 
-fn closest_node_x(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<(f64, f64)> {
-    targets
-        .iter()
-        .filter(|t| t.id != active.id)
-        .flat_map(|t| [t.left(), t.center_x(), t.right()])
-        .map(|x| (x, (active.center_x() - x).abs()))
-        .filter(|&(_, dist)| dist <= threshold)
-        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-}
-
-fn closest_node_y(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<(f64, f64)> {
-    targets
-        .iter()
-        .filter(|t| t.id != active.id)
-        .flat_map(|t| [t.top(), t.center_y(), t.bottom()])
-        .map(|y| (y, (active.center_y() - y).abs()))
-        .filter(|&(_, dist)| dist <= threshold)
-        .min_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal))
-}
 
 #[must_use]
-pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> Option<Point> {
-    if threshold < 0.0 || !threshold.is_finite() || targets.is_empty() {
-        return None;
-    }
-    if !active.x.is_finite()
-        || !active.y.is_finite()
-        || !targets.iter().all(|t| t.x.is_finite() && t.y.is_finite())
-    {
-        return None;
+pub fn snap_to_nodes(active: &SnapNode, targets: &[SnapNode], threshold: f64) -> SnapResult {
+    if threshold < 0.0 || !threshold.is_finite() || targets.is_empty() { return SnapResult::inactive(); }
+    if !active.x.is_finite() || !active.y.is_finite() || !targets.iter().all(|t| t.x.is_finite() && t.y.is_finite()) { return SnapResult::inactive(); }
+
+    // Find best snap target considering all 6 snap points
+    let mut best: Option<(f64, f64, f64, NodeId, SnapType)> = None;
+
+    for target in targets.iter().filter(|t| t.id != active.id) {
+        // X snap points
+        let dist_left = (active.center_x() - target.left()).abs();
+        if dist_left <= threshold {
+            let candidate = (target.left(), target.center_y(), dist_left, target.id.clone(), SnapType::EdgeLeft);
+            best = match best { None => Some(candidate), Some((_,_,best_dist,_,_)) if dist_left < best_dist => Some(candidate), _ => best };
+        }
+        let dist_center_x = (active.center_x() - target.center_x()).abs();
+        if dist_center_x <= threshold {
+            let candidate = (target.center_x(), target.center_y(), dist_center_x, target.id.clone(), SnapType::CenterX);
+            best = match best { None => Some(candidate), Some((_,_,best_dist,_,_)) if dist_center_x < best_dist => Some(candidate), _ => best };
+        }
+        let dist_right = (active.center_x() - target.right()).abs();
+        if dist_right <= threshold {
+            let candidate = (target.right(), target.center_y(), dist_right, target.id.clone(), SnapType::EdgeRight);
+            best = match best { None => Some(candidate), Some((_,_,best_dist,_,_)) if dist_right < best_dist => Some(candidate), _ => best };
+        }
+        // Y snap points  
+        let dist_top = (active.center_y() - target.top()).abs();
+        if dist_top <= threshold {
+            let candidate = (target.center_x(), target.top(), dist_top, target.id.clone(), SnapType::EdgeTop);
+            best = match best { None => Some(candidate), Some((_,_,best_dist,_,_)) if dist_top < best_dist => Some(candidate), _ => best };
+        }
+        let dist_center_y = (active.center_y() - target.center_y()).abs();
+        if dist_center_y <= threshold {
+            let candidate = (target.center_x(), target.center_y(), dist_center_y, target.id.clone(), SnapType::CenterY);
+            best = match best { None => Some(candidate), Some((_,_,best_dist,_,_)) if dist_center_y < best_dist => Some(candidate), _ => best };
+        }
+        let dist_bottom = (active.center_y() - target.bottom()).abs();
+        if dist_bottom <= threshold {
+            let candidate = (target.center_x(), target.bottom(), dist_bottom, target.id.clone(), SnapType::EdgeBottom);
+            best = match best { None => Some(candidate), Some((_,_,best_dist,_,_)) if dist_bottom < best_dist => Some(candidate), _ => best };
+        }
     }
 
-    let snap_x = closest_node_x(active, targets, threshold);
-    let snap_y = closest_node_y(active, targets, threshold);
-
-    match (snap_x, snap_y) {
-        (Some((x, _)), Some((y, _))) => Some(Point::new(x, y)),
-        (Some((x, _)), None) => Some(Point::new(x, active.y)),
-        (None, Some((y, _))) => Some(Point::new(active.x, y)),
-        (None, None) => None,
+    match best {
+        Some((x, y, _, id, st)) => SnapResult::new(st, id, Point::new(x, y)),
+        None => SnapResult::inactive(),
     }
 }
+
 
 #[must_use]
 pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {

@@ -73,7 +73,7 @@ mod tests {
         let guides = vec![Guide::Horizontal(50.0), Guide::Horizontal(100.0)];
         let result = snap_to_guides(position, &guides, 5.0);
 
-        assert_eq!(result, Some(Point::new(100.0, 50.0)));
+        assert_eq!(result.to_position(), Some(Point::new(100.0, 50.0)));
     }
 
     #[cfg(test)]
@@ -83,7 +83,7 @@ mod tests {
         let guides = vec![Guide::Vertical(100.0), Guide::Vertical(200.0)];
         let result = snap_to_guides(position, &guides, 5.0);
 
-        assert_eq!(result, Some(Point::new(100.0, 100.0)));
+        assert_eq!(result.to_position(), Some(Point::new(100.0, 100.0)));
     }
 
     #[cfg(test)]
@@ -93,7 +93,7 @@ mod tests {
         let guides = vec![Guide::Horizontal(50.0)];
         let result = snap_to_guides(position, &guides, 5.0);
 
-        assert_eq!(result, None);
+        assert_eq!(result.to_position(), None);
     }
 
     #[cfg(test)]
@@ -103,7 +103,7 @@ mod tests {
         let guides = vec![Guide::Horizontal(50.0), Guide::Horizontal(55.0)];
         let result = snap_to_guides(position, &guides, 10.0);
 
-        assert_eq!(result, Some(Point::new(100.0, 50.0)));
+        assert_eq!(result.to_position(), Some(Point::new(100.0, 50.0)));
     }
 
     #[cfg(test)]
@@ -113,7 +113,7 @@ mod tests {
         let guides: Vec<Guide> = vec![];
         let result = snap_to_guides(position, &guides, 5.0);
 
-        assert_eq!(result, None);
+        assert_eq!(result.to_position(), None);
     }
 
     #[cfg(test)]
@@ -123,7 +123,7 @@ mod tests {
         let guides = vec![Guide::Horizontal(f64::NAN), Guide::Horizontal(50.0)];
         let result = snap_to_guides(position, &guides, 5.0);
 
-        assert_eq!(result, Some(Point::new(100.0, 50.0)));
+        assert_eq!(result.to_position(), Some(Point::new(100.0, 50.0)));
     }
 
     // ========== SNP-003: Snap to Other Nodes ==========
@@ -148,7 +148,7 @@ mod tests {
 
         // Active center X = 102, target left = 100, distance = 2
         // Active center Y = 120, target center Y = 125, distance = 5
-        assert_eq!(result, Some(Point::new(100.0, 125.0)));
+        assert_eq!(result.to_position(), Some(Point::new(100.0, 125.0)));
     }
 
     #[cfg(test)]
@@ -162,7 +162,7 @@ mod tests {
 
         // Active center X = 152, target center = 150, distance = 2
         // Active center Y = 120, target center Y = 125, distance = 5
-        assert_eq!(result, Some(Point::new(150.0, 125.0)));
+        assert_eq!(result.to_position(), Some(Point::new(150.0, 125.0)));
     }
 
     #[cfg(test)]
@@ -177,7 +177,7 @@ mod tests {
 
         // Active center X = 202, target right = 200, distance = 2
         // Active center Y = 120, target center Y = 125, distance = 5
-        assert_eq!(result, Some(Point::new(200.0, 125.0)));
+        assert_eq!(result.to_position(), Some(Point::new(200.0, 125.0)));
     }
 
     #[cfg(test)]
@@ -191,7 +191,7 @@ mod tests {
         // Active center is (540, 520)
         // Target centers are (150, 125), (350, 125), (250, 225)
         // All are far outside threshold of 10
-        assert_eq!(result, None);
+        assert_eq!(result.to_position(), None);
     }
 
     #[cfg(test)]
@@ -201,7 +201,7 @@ mod tests {
         let targets: Vec<SnapNode> = vec![];
         let result = snap_to_nodes(&active, &targets, 10.0);
 
-        assert_eq!(result, None);
+        assert_eq!(result.to_position(), None);
     }
 
     #[cfg(test)]
@@ -215,7 +215,7 @@ mod tests {
         let result = snap_to_nodes(&active, &targets, 50.0);
 
         // Should snap to center of n2 (200, 125)
-        assert_eq!(result, Some(Point::new(200.0, 125.0)));
+        assert_eq!(result.to_position(), Some(Point::new(200.0, 125.0)));
     }
 
     // ========== SNP-004: Alignment Tools ==========
