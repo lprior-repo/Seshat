@@ -17,6 +17,9 @@ use std::ops::{Add, Div, Mul, Sub};
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub struct NodeId(String);
 
+/// Maximum nesting depth for subgraphs
+pub const MAX_SUBGRAPH_NESTING_DEPTH: usize = 5;
+
 impl NodeId {
     #[must_use]
     pub const fn new(id: String) -> Self {

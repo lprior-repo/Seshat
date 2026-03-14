@@ -32,7 +32,7 @@ use im::HashMap;
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
-use crate::models::document::{EdgeId, NodeId};
+use crate::models::document::{EdgeId, NodeId, NodeKind, MAX_SUBGRAPH_NESTING_DEPTH};
 use crate::models::envelope::{Author, DomainOp};
 
 /// Errors that can occur during policy enforcement
@@ -48,6 +48,8 @@ pub enum PolicyError {
     InvalidEvent(String),
     #[error("invariant violation: {0}")]
     InvariantViolation(String),
+    #[error("nested subgraph limit exceeded (max {0})")]
+    NestedSubgraphLimitExceeded(usize),
 }
 
 /// Cycle policy for a diagram
@@ -819,6 +821,34 @@ fn apply_send_to_back(
     })
 }
 
+/// Count nesting depth of a node in the graph
+fn count_nesting_depth(
+    nodes: &HashMap<NodeId, crate::models::document::Node>,
+    parent: Option<&NodeId>,
+) -> usize {
+    parent.and_then(|pid| nodes.get(pid)).map_or(0, |node| {
+        1 + count_nesting_depth(nodes, node.parent.as_ref())
+    })
+}
+
+/// Check if grouping these nodes would exceed max nesting depth
+fn check_nesting_depth(
+    nodes: &HashMap<NodeId, crate::models::document::Node>,
+    ids: &[NodeId],
+) -> Result<(), PolicyError> {
+    for id in ids {
+        if let Some(node) = nodes.get(id) {
+            let depth = count_nesting_depth(nodes, node.parent.as_ref());
+            if depth >= MAX_SUBGRAPH_NESTING_DEPTH {
+                return Err(PolicyError::NestedSubgraphLimitExceeded(
+                    MAX_SUBGRAPH_NESTING_DEPTH,
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Apply Group operation - creates a subgraph and assigns all specified nodes as children
 fn apply_group(state: DiagramProjection, ids: &[String]) -> Result<DiagramProjection, PolicyError> {
     if ids.is_empty() {
@@ -841,6 +871,8 @@ fn apply_group(state: DiagramProjection, ids: &[String]) -> Result<DiagramProjec
             "all nodes invalid or not found: {invalid_ids}"
         )));
     }
+
+    check_nesting_depth(&state.nodes, &valid_ids)?;
 
     let (min_x, min_y, max_x, max_y) = {
         let mut min_x = f64::INFINITY;
@@ -1290,6 +1322,81 @@ mod tests {
         match result {
             Err(PolicyError::CycleViolation(_)) => {}
             _ => panic!("Expected PolicyError::CycleViolation"),
+        }
+    }
+
+    /// Test: Nested subgraph depth limit is enforced
+    #[test]
+    fn given_max_nesting_depth_when_grouping_beyond_limit_then_fails() {
+        let mut projection = DiagramProjection::empty();
+
+        // Create a chain of subgraphs: S1 > S2 > S3 > S4 > S5
+        let mut last_parent = None;
+        for i in 1..=MAX_SUBGRAPH_NESTING_DEPTH {
+            let id = format!("s{}", i);
+            let mut node = crate::models::document::Node {
+                kind: NodeKind::Subgraph,
+                icon: String::new(),
+                label: format!("S{}", i),
+                x: crate::models::document::OrderedFloat(0.0),
+                y: crate::models::document::OrderedFloat(0.0),
+                width: crate::models::document::OrderedFloat(100.0),
+                height: crate::models::document::OrderedFloat(100.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: last_parent.clone(),
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            let node_id = NodeId::new(id.clone());
+            projection.nodes.insert(node_id.clone(), node);
+            last_parent = Some(node_id);
+        }
+
+        // Now we have S1(0) > S2(1) > S3(2) > S4(3) > S5(4)
+        // Add two nodes inside S5 (depth 5)
+        let n1_id = NodeId::new("n1".to_string());
+        let n2_id = NodeId::new("n2".to_string());
+        let n_template = crate::models::document::Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: "N".to_string(),
+            x: crate::models::document::OrderedFloat(10.0),
+            y: crate::models::document::OrderedFloat(10.0),
+            width: crate::models::document::OrderedFloat(10.0),
+            height: crate::models::document::OrderedFloat(10.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: last_parent.clone(),
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        };
+        projection.nodes.insert(n1_id.clone(), n_template.clone());
+        projection.nodes.insert(n2_id.clone(), n_template);
+
+        // Try to group n1 and n2. This should fail because they are already at depth 5.
+        // Grouping them would create S6(5) and move n1, n2 to depth 6.
+        let result = apply_group(projection, &["n1".to_string(), "n2".to_string()]);
+
+        assert!(result.is_err());
+        match result {
+            Err(PolicyError::NestedSubgraphLimitExceeded(limit)) => {
+                assert_eq!(limit, MAX_SUBGRAPH_NESTING_DEPTH);
+            }
+            _ => panic!(
+                "Expected NestedSubgraphLimitExceeded error, got {:?}",
+                result
+            ),
         }
     }
 }

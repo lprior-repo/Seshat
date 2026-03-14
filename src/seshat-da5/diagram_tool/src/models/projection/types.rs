@@ -58,6 +58,8 @@ pub enum ReplayError {
     AllNodesInvalid(String),
     #[error("z-index overflow")]
     ZIndexOverflow,
+    #[error("nested subgraph limit exceeded (max {0})")]
+    NestedSubgraphLimitExceeded(usize),
 }
 
 /// Event record for replay - contains all information needed to reconstruct state

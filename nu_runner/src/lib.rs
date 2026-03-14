@@ -43,6 +43,7 @@ pub use validation::{validate_command, validate_timeout, validate_working_direct
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::time::Duration;
     use tempfile::TempDir;
 
     /// TC-001: P1 - Empty or whitespace command returns InvalidCommand

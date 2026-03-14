@@ -9,7 +9,7 @@
 use im::HashMap;
 use uuid::Uuid;
 
-use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat, MAX_SUBGRAPH_NESTING_DEPTH};
 use crate::models::envelope::DomainOp;
 
 use crate::models::projection::types::{DiagramProjection, ReplayError};
@@ -17,12 +17,35 @@ use crate::models::projection::types::{DiagramProjection, ReplayError};
 /// Type alias for node map
 type NodeMap = HashMap<NodeId, Node>;
 
+/// Count nesting depth of a node in the graph
+fn count_nesting_depth(nodes: &NodeMap, parent: Option<&NodeId>) -> usize {
+    parent.and_then(|pid| nodes.get(pid)).map_or(0, |node| {
+        1 + count_nesting_depth(nodes, node.parent.as_ref())
+    })
+}
+
+/// Check if grouping these nodes would exceed max nesting depth
+fn check_nesting_depth(nodes: &NodeMap, ids: &[NodeId]) -> Result<(), ReplayError> {
+    for id in ids {
+        if let Some(node) = nodes.get(id) {
+            let depth = count_nesting_depth(nodes, node.parent.as_ref());
+            if depth >= MAX_SUBGRAPH_NESTING_DEPTH {
+                return Err(ReplayError::NestedSubgraphLimitExceeded(
+                    MAX_SUBGRAPH_NESTING_DEPTH,
+                ));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Apply Group operation - creates a subgraph and assigns all specified nodes as children
 pub fn apply_group(
     state: DiagramProjection,
     ids: &[String],
 ) -> Result<DiagramProjection, ReplayError> {
     let valid_ids = validate_group_ids(&state, ids)?;
+    check_nesting_depth(&state.nodes, &valid_ids)?;
     let (min_x, min_y, max_x, max_y) = compute_bounding_box(&state, &valid_ids)?;
     let (group_node, group_id) = create_group_node(min_x, min_y, max_x, max_y)?;
     let new_nodes = add_group_and_update_children(state.nodes, &group_node, &group_id, &valid_ids);
@@ -253,5 +276,119 @@ pub fn apply_group_op(
             "not a group operation: {:?}",
             op.kind()
         ))),
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::models::document::{Node, NodeId, NodeKind, MAX_SUBGRAPH_NESTING_DEPTH};
+
+    #[test]
+    fn test_count_nesting_depth_recursive() {
+        let mut nodes = HashMap::new();
+        let s1_id = NodeId::new("s1".to_string());
+        let s2_id = NodeId::new("s2".to_string());
+        let n1_id = NodeId::new("n1".to_string());
+
+        let mut s1 = Node {
+            kind: NodeKind::Subgraph,
+            icon: String::new(),
+            label: "S1".to_string(),
+            x: OrderedFloat(0.0),
+            y: OrderedFloat(0.0),
+            width: OrderedFloat(100.0),
+            height: OrderedFloat(100.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        };
+        let mut s2 = s1.clone();
+        s2.parent = Some(s1_id.clone());
+        let mut n1 = s1.clone();
+        n1.kind = NodeKind::Node;
+        n1.parent = Some(s2_id.clone());
+
+        nodes.insert(s1_id.clone(), s1);
+        nodes.insert(s2_id.clone(), s2);
+        nodes.insert(n1_id.clone(), n1);
+
+        assert_eq!(count_nesting_depth(&nodes, None), 0);
+        assert_eq!(count_nesting_depth(&nodes, Some(&s1_id)), 1);
+        assert_eq!(count_nesting_depth(&nodes, Some(&s2_id)), 2);
+    }
+
+    #[test]
+    fn test_apply_group_depth_limit() {
+        let mut state = DiagramProjection::empty();
+
+        // Setup S1 > S2 > S3 > S4 > S5
+        let mut last_parent = None;
+        for i in 1..=MAX_SUBGRAPH_NESTING_DEPTH {
+            let id = format!("s{}", i);
+            let mut node = Node {
+                kind: NodeKind::Subgraph,
+                icon: String::new(),
+                label: format!("S{}", i),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(0.0),
+                width: OrderedFloat(100.0),
+                height: OrderedFloat(100.0),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: last_parent.clone(),
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            };
+            let node_id = NodeId::new(id.clone());
+            state.nodes.insert(node_id.clone(), node);
+            last_parent = Some(node_id);
+        }
+
+        // Add nodes at depth 5
+        let n1_id = NodeId::new("n1".to_string());
+        let n2_id = NodeId::new("n2".to_string());
+        let n_template = Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: "N".to_string(),
+            x: OrderedFloat(10.0),
+            y: OrderedFloat(10.0),
+            width: OrderedFloat(10.0),
+            height: OrderedFloat(10.0),
+            font_size: None,
+            font_weight: None,
+            locked: false,
+            parent: last_parent,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        };
+        state.nodes.insert(n1_id.clone(), n_template.clone());
+        state.nodes.insert(n2_id.clone(), n_template);
+
+        let result = apply_group(state, &["n1".to_string(), "n2".to_string()]);
+        assert!(result.is_err());
+        match result {
+            Err(ReplayError::NestedSubgraphLimitExceeded(limit)) => {
+                assert_eq!(limit, MAX_SUBGRAPH_NESTING_DEPTH);
+            }
+            _ => panic!("Expected NestedSubgraphLimitExceeded, got {:?}", result),
+        }
     }
 }
