@@ -36,14 +36,89 @@ pub enum Error {
 }
 
 pub fn save_document(path: &Path, doc: &DiagramDocument) -> Result<(), Error> {
+    // Validate document floats BEFORE serialization
+    // (serde_json converts NaN to null, making it undetectable after serialization)
+    validate_document_floats(doc)?;
+
     let json_value =
         serde_json::to_value(doc).map_err(|e| Error::SerializationFailed(e.to_string()))?;
     validate_serialization(&json_value)?;
 
     let file = File::create(path)?;
-    let writer = BufWriter::new(file);
-    serde_json::to_writer(writer, &json_value)
+    let mut writer = BufWriter::new(file);
+    serde_json::to_writer(&mut writer, &json_value)
         .map_err(|e| Error::SerializationFailed(e.to_string()))?;
+    // Explicitly flush to catch IO errors (e.g., disk full)
+    writer.flush().map_err(|e| Error::IoError(e))?;
+
+    Ok(())
+}
+
+/// Validates that all float fields in the document are finite.
+/// Must be called BEFORE serde_json::to_value because that function converts NaN to null.
+fn validate_document_floats(doc: &DiagramDocument) -> Result<(), Error> {
+    // Check editor state
+    if !doc.editor_state.camera_x.0.is_finite() {
+        return Err(Error::SerializationFailed("Non-finite camera_x".into()));
+    }
+    if !doc.editor_state.camera_y.0.is_finite() {
+        return Err(Error::SerializationFailed("Non-finite camera_y".into()));
+    }
+    if !doc.editor_state.zoom.0.is_finite() {
+        return Err(Error::SerializationFailed("Non-finite zoom".into()));
+    }
+
+    // Check all nodes (ID is the map key, not a field on Node)
+    for (node_id, node) in &doc.document.nodes {
+        if !node.x.0.is_finite() {
+            return Err(Error::SerializationFailed(format!(
+                "Non-finite x in node {}",
+                node_id
+            )));
+        }
+        if !node.y.0.is_finite() {
+            return Err(Error::SerializationFailed(format!(
+                "Non-finite y in node {}",
+                node_id
+            )));
+        }
+        if !node.width.0.is_finite() {
+            return Err(Error::SerializationFailed(format!(
+                "Non-finite width in node {}",
+                node_id
+            )));
+        }
+        if !node.height.0.is_finite() {
+            return Err(Error::SerializationFailed(format!(
+                "Non-finite height in node {}",
+                node_id
+            )));
+        }
+    }
+
+    // Check all edges (ID is the map key, not a field on Edge)
+    for (edge_id, edge) in &doc.document.edges {
+        if !edge.label_offset_t.0.is_finite() {
+            return Err(Error::SerializationFailed(format!(
+                "Non-finite label_offset_t in edge {}",
+                edge_id
+            )));
+        }
+        if !edge.thickness.0.is_finite() {
+            return Err(Error::SerializationFailed(format!(
+                "Non-finite thickness in edge {}",
+                edge_id
+            )));
+        }
+        if let Some(ref fs) = &edge.font_size {
+            if !fs.0.is_finite() {
+                return Err(Error::SerializationFailed(format!(
+                    "Non-finite font_size in edge {}",
+                    edge_id
+                )));
+            }
+        }
+    }
 
     Ok(())
 }

@@ -48,14 +48,7 @@ fn truncate_stack(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
     stack.iter().take(MAX_HISTORY).cloned().collect()
 }
 
-fn drop_last(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    let len = stack.len();
-    if len <= 1 {
-        return List::new();
-    }
-    stack.iter().take(len - 1).cloned().collect()
-}
-
+/// Drops the first element from the list
 fn drop_first(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
     let len = stack.len();
     if len <= 1 {
@@ -64,14 +57,18 @@ fn drop_first(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
     stack.iter().skip(1).cloned().collect()
 }
 
-/// Pushes to the back of the list (chronological order - oldest first, newest last)
-fn push_back(stack: &List<DiagramDocument>, doc: DiagramDocument) -> List<DiagramDocument> {
-    stack.iter().cloned().chain(std::iter::once(doc)).collect()
+/// Drops the first two elements from the list (used when current matches first)
+fn drop_first_two(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
+    let len = stack.len();
+    if len <= 2 {
+        return List::new();
+    }
+    stack.iter().skip(2).cloned().collect()
 }
 
-/// Gets the last element from the list
-fn last_element(stack: &List<DiagramDocument>) -> Option<&DiagramDocument> {
-    stack.iter().last()
+/// Gets the second element from the list
+fn second_element(stack: &List<DiagramDocument>) -> Option<DiagramDocument> {
+    stack.iter().nth(1).cloned()
 }
 
 impl History {
@@ -2005,27 +2002,30 @@ mod proptests {
                 make_node("node-1", 100.0, 100.0, 80.0, 40.0),
             );
 
-            // Push initial state
+            // Push initial state as a checkpoint (this is the "before" state for undo)
             let history = History::new().push(doc_before.clone());
 
-            // Move node to new position (150, 150) and push once
+            // Simulate drag: move node to new position (150, 150)
+            // This creates the current state after the drag operation
+            // Note: We do NOT push doc_after - it represents the current working state
             let mut doc_after = doc_before.clone();
             if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
                 node.x = OrderedFloat(150.0);
                 node.y = OrderedFloat(150.0);
             }
             doc_after.revision = doc_after.revision.increment();
-            let history = history.push(doc_after.clone());
 
-            // History undo_stack has exactly 2 entries (initial state + drag result)
-            // The key assertion is that drag creates ONE entry (not per-frame updates)
+            // History undo_stack has exactly 1 entry (the checkpoint we saved before drag)
+            // This verifies that a drag operation creates a single history entry,
+            // not multiple per-frame entries during the drag gesture
             assert_eq!(
                 history.undo_stack.len(),
-                2,
-                "History should have exactly 2 entries (initial + drag)"
+                1,
+                "History should have exactly 1 entry (the pre-drag checkpoint)"
             );
 
             // Undo restores original position (100, 100)
+            // We pass doc_after as the current state to be stored in redo
             let Some((restored, _)) = history.undo(doc_after) else {
                 panic!("undo should succeed");
             };
@@ -2506,7 +2506,13 @@ mod proptests {
                 .insert(node_id.clone(), make_node("node-1", 0.0, 0.0, 80.0, 40.0));
 
             // Initialize history with initial state
+            // This counts as 1 entry in undo_stack
             let mut history = History::new().push(doc.clone());
+            assert_eq!(
+                history.undo_stack.len(),
+                1,
+                "After initial push: undo_stack.len() = 1"
+            );
 
             // Step 1: Move to (100, 100) and push
             if let Some(node) = doc.document.nodes.get_mut(&node_id) {
@@ -2517,8 +2523,8 @@ mod proptests {
             history = history.push(doc.clone());
             assert_eq!(
                 history.undo_stack.len(),
-                1,
-                "After step 1: undo_stack.len() = 1"
+                2,
+                "After step 1: undo_stack.len() = 2 (initial + step1)"
             );
 
             // Step 2: Move to (200, 200) and push
@@ -2530,8 +2536,8 @@ mod proptests {
             history = history.push(doc.clone());
             assert_eq!(
                 history.undo_stack.len(),
-                2,
-                "After step 2: undo_stack.len() = 2"
+                3,
+                "After step 2: undo_stack.len() = 3 (initial + step1 + step2)"
             );
 
             // Step 3: Undo
@@ -2543,8 +2549,8 @@ mod proptests {
             assert!(history.can_redo(), "After step 3: can_redo() = true");
             assert_eq!(
                 history.undo_stack.len(),
-                1,
-                "After step 3: undo_stack.len() = 1"
+                2,
+                "After step 3: undo_stack.len() = 2 (step2 removed)"
             );
 
             // Step 4: Undo again
@@ -2556,8 +2562,8 @@ mod proptests {
             assert!(history.can_redo(), "After step 4: can_redo() = true");
             assert_eq!(
                 history.undo_stack.len(),
-                0,
-                "After step 4: undo_stack.len() = 0"
+                1,
+                "After step 4: undo_stack.len() = 1 (only initial remains)"
             );
 
             // Step 5: Redo
@@ -2569,8 +2575,8 @@ mod proptests {
             assert!(history.can_undo(), "After step 5: can_undo() = true");
             assert_eq!(
                 history.undo_stack.len(),
-                1,
-                "After step 5: undo_stack.len() = 1"
+                2,
+                "After step 5: undo_stack.len() = 2 (current added back)"
             );
 
             // Step 6: Redo again
@@ -2582,8 +2588,8 @@ mod proptests {
             assert!(history.can_undo(), "After step 6: can_undo() = true");
             assert_eq!(
                 history.undo_stack.len(),
-                2,
-                "After step 6: undo_stack.len() = 2"
+                3,
+                "After step 6: undo_stack.len() = 3 (current added back)"
             );
 
             // Verify final position

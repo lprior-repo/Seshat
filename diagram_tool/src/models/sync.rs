@@ -53,10 +53,12 @@ use std::time::Duration;
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
 
-use crate::models::envelope::{parse_event_envelope, LabelTargetId, LabelTargetType};
+use crate::models::envelope::parse_event_envelope;
 use crate::models::projection::EventRecord;
-use crate::models::document::NodeId;
 use crate::store_async::envelope_to_valid_event;
+
+#[cfg(kani)]
+use crate::models::document::NodeId;
 
 /// Helper to convert EventEnvelope to ValidEvent (for testing)
 #[cfg(not(target_arch = "wasm32"))]
@@ -702,6 +704,7 @@ pub fn schedule_ui_update(summary: ApplySummary) -> Result<(), SyncError> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::models::document::NodeId;
     use crate::models::envelope::{Author, DomainOp, EventEnvelope};
     use crate::store_async as store;
     use std::sync::mpsc::{channel, RecvTimeoutError};

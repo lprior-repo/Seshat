@@ -391,12 +391,12 @@ pub fn Toolbar() -> Element {
             }
             button {
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| export_actions::export_svg(doc_signal),
+                onclick: move |_| export_actions::export_svg(doc_signal, toasts),
                 "Export SVG"
             }
             button {
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| export_actions::export_json(doc_signal),
+                onclick: move |_| export_actions::export_json(doc_signal, toasts),
                 "Export JSON"
             }
 

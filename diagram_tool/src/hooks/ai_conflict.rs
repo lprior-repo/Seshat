@@ -50,7 +50,8 @@ mod tests {
     use super::*;
     use dioxus::prelude::*;
 
-    /// Creates a minimal VirtualDom and runs the test closure inside the Dioxus runtime.
+    /// Creates a minimal VirtualDom and runs the test closure inside the Dioxus runtime
+    /// with a scope context (required for Signal::new).
     fn dioxus_test_harness<F, R>(test: F) -> R
     where
         F: FnOnce() -> R,
@@ -58,8 +59,9 @@ mod tests {
         // Create a minimal VirtualDom with an empty component
         let dom = VirtualDom::new(|| rsx! {});
 
-        // Run the test inside the Dioxus runtime context
-        dom.in_runtime(test)
+        // Run the test inside the Dioxus runtime AND scope context
+        // ScopeId::ROOT provides the necessary scope for Signal::new
+        dom.in_scope(ScopeId::ROOT, test)
     }
 
     #[test]

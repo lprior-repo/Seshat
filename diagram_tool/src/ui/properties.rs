@@ -6,14 +6,12 @@
 #![forbid(unsafe_code)]
 
 use crate::history::History;
-use crate::models::document::{
-    DiagramDocument, EdgeId, EdgeStyle, NodeId, NodeKind, NodeStyle, OrderedFloat,
-};
+use crate::models::document::{DiagramDocument, EdgeId, EdgeStyle, NodeId, OrderedFloat};
 use crate::models::envelope::EventEnvelope;
 use crate::ui::dispatch::{dispatch_update_edge_style, dispatch_update_node_style};
 use crate::ui::properties_helpers::{
     arrow_type_str, edge_style_str, node_kind_str, node_label_with_id_fallback, node_style_str,
-    parse_arrow_type, parse_edge_style, parse_node_style, remove_selected, StyleError,
+    parse_arrow_type, parse_edge_style, parse_node_style, remove_selected,
 };
 use crate::ui::theme::{
     BG_BASE, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_DIM, TEXT_MAIN, TEXT_MUTED,

@@ -1,6 +1,7 @@
 //! Tests for event envelope module
 
 #![allow(dead_code)]
+#![allow(unused_imports)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
 #![deny(clippy::unwrap_used)]
@@ -8,9 +9,13 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+#[cfg(kani)]
 use crate::models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
+#[cfg(kani)]
 use crate::models::envelope::parsing::parse_domain_op;
+#[cfg(kani)]
 use crate::models::envelope::types::{ContractError, LabelTargetId, LabelTargetType, OpKind};
+#[cfg(kani)]
 use crate::models::envelope::{
     domain_op_kind, encode_event_envelope, parse_event_envelope, Author, DomainOp, EventEnvelope,
 };

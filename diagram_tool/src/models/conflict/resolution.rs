@@ -81,7 +81,6 @@ pub fn evaluate_human_priority_with_projection(
     state: &ProjectionState,
     projection: &DiagramProjection,
 ) -> Result<ConflictDecision, ConflictError> {
-    use crate::models::document::{EdgeId, NodeId};
     let decision = evaluate_human_priority(op, state)?;
     if decision == ConflictDecision::Allow {
         match &op.operation {

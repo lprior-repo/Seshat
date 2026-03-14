@@ -10,7 +10,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{EdgeId, EdgeStyle};
+use crate::models::document::EdgeStyle;
 use crate::models::envelope::domain_ops::DomainOp;
 use crate::models::envelope::types::ContractError;
 

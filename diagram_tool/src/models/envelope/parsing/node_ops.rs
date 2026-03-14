@@ -10,7 +10,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{NodeId, NodeStyle};
+use crate::models::document::NodeStyle;
 use crate::models::envelope::domain_ops::DomainOp;
 use crate::models::envelope::types::{ContractError, LabelTargetId, LabelTargetType};
 
