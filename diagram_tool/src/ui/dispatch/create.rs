@@ -151,10 +151,11 @@ pub fn create_edge_disconnect_envelope(id: String) -> EventEnvelope {
 // =============================================================================
 
 /// Create an EventEnvelope for a Group operation
-pub fn create_group_envelope(ids: Vec<String>) -> EventEnvelope {
+pub fn create_group_envelope(group_id: String, ids: Vec<String>) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
         operation: DomainOp::Group {
+            id: NodeId::new(group_id),
             ids: ids.into_iter().map(NodeId::new).collect(),
         },
         author: local_author(),

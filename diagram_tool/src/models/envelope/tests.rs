@@ -283,12 +283,14 @@ fn given_event_envelope_with_complex_operation_when_encoding_then_roundtrip_work
     let original = EventEnvelope {
         op_id: "evt-complex".to_string(),
         operation: DomainOp::Group {
+            id: NodeId::new("group-1".to_string()),
             ids: vec![
                 NodeId::new("node-1".to_string()),
                 NodeId::new("node-2".to_string()),
                 NodeId::new("node-3".to_string()),
             ],
         },
+
         author: Author {
             id: "user-2".to_string(),
             name: "Charlie".to_string(),
@@ -814,6 +816,25 @@ fn given_op_kind_as_str_then_returns_correct_string() {
 #[cfg(kani)]
 #[kani::proof]
 #[test]
+fn given_domain_op_group_then_parses_correctly() {
+    let raw = r#"{
+        "op": "group",
+        "id": "group-1",
+        "ids": ["node-1", "node-2", "node-3"]
+    }"#;
+
+    let result = parse_domain_op(raw);
+
+    assert!(result.is_ok());
+    let op = result.unwrap();
+    assert!(
+        matches!(op, DomainOp::Group { ref id, ref ids } if id == &NodeId::new("group-1".to_string()) && ids.len() == 3)
+    );
+}
+
+#[cfg(kani)]
+#[kani::proof]
+#[test]
 fn given_domain_op_kind_method_then_matches_free_function() {
     let ops = [
         DomainOp::NodeAdd {
@@ -856,6 +877,7 @@ fn given_domain_op_kind_method_then_matches_free_function() {
             ids: vec![NodeId::new("n1".to_string())],
         },
         DomainOp::Group {
+            id: NodeId::new("g1".to_string()),
             ids: vec![NodeId::new("n1".to_string())],
         },
         DomainOp::Ungroup {
@@ -961,6 +983,7 @@ fn given_all_domain_op_variants_exhaustive_match_then_all_cases_handled() {
             ids: vec![NodeId::new("n1".to_string())],
         },
         DomainOp::Group {
+            id: NodeId::new("g1".to_string()),
             ids: vec![NodeId::new("n1".to_string())],
         },
         DomainOp::Ungroup {

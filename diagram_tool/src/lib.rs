@@ -64,6 +64,7 @@ pub mod cli;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli_persistence;
 pub mod config;
+pub mod core;
 pub mod export;
 pub mod geometry;
 pub mod history;

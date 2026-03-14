@@ -838,6 +838,153 @@ mod tests {
     }
 
     /// Fuzz test: sequential group/ungroup operations
+    /// SUB-003: LCA parent assignment
+    #[test]
+    fn test_sub003_mixed_parent_grouping_reparents_to_common_ancestor() {
+        let mut doc = DiagramDocument::default();
+        let s1_id = NodeId::new("s1".to_string());
+        doc.document.nodes.insert(s1_id.clone(), test_subgraph());
+
+        let n1_id = NodeId::new("n1".to_string());
+        let mut n1 = test_node(10.0, 10.0, 20.0, 20.0);
+        n1.parent = Some(s1_id.clone());
+        doc.document.nodes.insert(n1_id.clone(), n1);
+
+        let n2_id = NodeId::new("n2".to_string());
+        let mut n2 = test_node(40.0, 40.0, 20.0, 20.0);
+        n2.parent = Some(s1_id.clone());
+        doc.document.nodes.insert(n2_id.clone(), n2);
+
+        doc.editor_state
+            .selected_items
+            .insert(n1_id.as_str().to_string());
+        doc.editor_state
+            .selected_items
+            .insert(n2_id.as_str().to_string());
+
+        let group_id = NodeId::new("g1".to_string());
+        group_selection(&mut doc, &group_id).unwrap();
+
+        let group = doc.document.nodes.get(&group_id).unwrap();
+        assert_eq!(group.parent, Some(s1_id));
+        assert_eq!(
+            doc.document.nodes.get(&n1_id).unwrap().parent,
+            Some(group_id.clone())
+        );
+        assert_eq!(
+            doc.document.nodes.get(&n2_id).unwrap().parent,
+            Some(group_id)
+        );
+    }
+
+    /// SUB-006: Z-index consistency
+    #[test]
+    fn test_sub006_z_index_is_min_of_children_minus_one() {
+        let mut doc = DiagramDocument::default();
+        let n1_id = NodeId::new("n1".to_string());
+        let mut n1 = test_node(0.0, 0.0, 10.0, 10.0);
+        n1.z_index = 100;
+        doc.document.nodes.insert(n1_id.clone(), n1);
+
+        let n2_id = NodeId::new("n2".to_string());
+        let mut n2 = test_node(20.0, 20.0, 10.0, 10.0);
+        n2.z_index = 50;
+        doc.document.nodes.insert(n2_id.clone(), n2);
+
+        doc.editor_state
+            .selected_items
+            .insert(n1_id.as_str().to_string());
+        doc.editor_state
+            .selected_items
+            .insert(n2_id.as_str().to_string());
+
+        let group_id = NodeId::new("g1".to_string());
+        group_selection(&mut doc, &group_id).unwrap();
+
+        let group = doc.document.nodes.get(&group_id).unwrap();
+        assert_eq!(group.z_index, 49);
+    }
+
+    /// SUB-002: Error on locked nodes (returns all)
+    #[test]
+    fn test_err_locked_node_returns_all_locked_ids() {
+        let mut doc = DiagramDocument::default();
+        let n1_id = NodeId::new("n1".to_string());
+        let mut n1 = test_node(0.0, 0.0, 10.0, 10.0);
+        n1.locked = true;
+        doc.document.nodes.insert(n1_id.clone(), n1);
+
+        let n2_id = NodeId::new("n2".to_string());
+        let mut n2 = test_node(20.0, 20.0, 10.0, 10.0);
+        n2.locked = true;
+        doc.document.nodes.insert(n2_id.clone(), n2);
+
+        doc.editor_state
+            .selected_items
+            .insert(n1_id.as_str().to_string());
+        doc.editor_state
+            .selected_items
+            .insert(n2_id.as_str().to_string());
+
+        let group_id = NodeId::new("g1".to_string());
+        let result = group_selection(&mut doc, &group_id);
+
+        match result {
+            Err(GroupingError::LockedNode(ids)) => {
+                assert!(ids.contains(&n1_id));
+                assert!(ids.contains(&n2_id));
+                assert_eq!(ids.len(), 2);
+            }
+            _ => panic!("Expected LockedNode error with multiple IDs"),
+        }
+    }
+
+    /// P2: Error on node not found
+    #[test]
+    fn test_err_node_not_found_returns_error() {
+        let mut doc = DiagramDocument::default();
+        doc.editor_state
+            .selected_items
+            .insert("missing".to_string());
+
+        let group_id = NodeId::new("g1".to_string());
+        let result = group_selection(&mut doc, &group_id);
+        assert_eq!(
+            result,
+            Err(GroupingError::NodeNotFound(NodeId::new(
+                "missing".to_string()
+            )))
+        );
+    }
+
+    /// P5: Error on nesting limit
+    #[test]
+    fn test_err_nesting_depth_exceeded_returns_error() {
+        let mut doc = DiagramDocument::default();
+        let mut last_id = None;
+        for i in 0..5 {
+            let id = NodeId::new(format!("s{}", i));
+            let mut s = test_subgraph();
+            s.parent = last_id;
+            doc.document.nodes.insert(id.clone(), s);
+            last_id = Some(id);
+        }
+
+        let n_id = NodeId::new("n".to_string());
+        let mut n = test_node(0.0, 0.0, 10.0, 10.0);
+        n.parent = last_id;
+        doc.document.nodes.insert(n_id.clone(), n);
+
+        doc.editor_state
+            .selected_items
+            .insert(n_id.as_str().to_string());
+
+        let group_id = NodeId::new("g1".to_string());
+        let result = group_selection(&mut doc, &group_id);
+        assert_eq!(result, Err(GroupingError::NestedSubgraphLimitExceeded(5)));
+    }
+
+    /// Fuzz test: sequential group/ungroup operations
     #[test]
     fn fuzz_sequential_group_ungroup_invariants() {
         for seed in 0..50u32 {

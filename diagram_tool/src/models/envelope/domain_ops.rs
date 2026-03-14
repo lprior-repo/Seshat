@@ -90,6 +90,7 @@ pub enum DomainOp {
     },
     // Composite op_types
     Group {
+        id: NodeId,
         ids: Vec<NodeId>,
     },
     Ungroup {

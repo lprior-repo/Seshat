@@ -222,7 +222,7 @@ fn dispatch_operation(
         DomainOp::SendBackward { ids } => apply_send_backward(state, ids),
         DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),
         DomainOp::SendToBack { ids } => apply_send_to_back(state, ids),
-        DomainOp::Group { ids } => apply_group(state, ids),
+        DomainOp::Group { id, ids } => apply_group(state, id, ids),
         DomainOp::Ungroup { id } => apply_ungroup(state, id),
     }
 }

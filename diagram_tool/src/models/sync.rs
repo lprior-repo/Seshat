@@ -635,10 +635,15 @@ fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> 
             DomainOp::BringForward { ids }
             | DomainOp::SendBackward { ids }
             | DomainOp::BringToFront { ids }
-            | DomainOp::SendToBack { ids }
-            | DomainOp::Group { ids } => {
+            | DomainOp::SendToBack { ids } => {
                 for id in ids {
                     entities.insert(format!("node:{}", id));
+                }
+            }
+            DomainOp::Group { id, ids } => {
+                entities.insert(format!("node:{}", id));
+                for node_id in ids {
+                    entities.insert(format!("node:{}", node_id));
                 }
             }
             DomainOp::Ungroup { id } => {

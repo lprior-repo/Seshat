@@ -42,8 +42,12 @@ fn extract_affected_entities(op: &DomainOp) -> Vec<String> {
         DomainOp::BringForward { ids }
         | DomainOp::SendBackward { ids }
         | DomainOp::BringToFront { ids }
-        | DomainOp::SendToBack { ids }
-        | DomainOp::Group { ids } => ids.iter().map(|id| format!("node:{}", id)).collect(),
+        | DomainOp::SendToBack { ids } => ids.iter().map(|id| format!("node:{}", id)).collect(),
+        DomainOp::Group { id, ids } => {
+            let mut entities: Vec<String> = ids.iter().map(|id| format!("node:{}", id)).collect();
+            entities.push(format!("node:{}", id));
+            entities
+        }
         DomainOp::Ungroup { id } => vec![format!("group:{}", id)],
     }
 }

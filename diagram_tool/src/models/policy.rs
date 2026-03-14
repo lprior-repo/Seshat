@@ -299,9 +299,114 @@ fn apply_operation_internal(
         DomainOp::BringToFront { ids } => apply_bring_to_front(state, ids),
         DomainOp::SendToBack { ids } => apply_send_to_back(state, ids),
         // Composite operations
-        DomainOp::Group { ids } => apply_group(state, ids),
+        DomainOp::Group { id, ids } => apply_group(state, id, ids),
         DomainOp::Ungroup { id } => apply_ungroup(state, id),
     }
+}
+
+/// Apply Group operation - creates a subgraph and assigns all specified nodes as children
+fn apply_group(
+    state: DiagramProjection,
+    group_id: &NodeId,
+    ids: &[NodeId],
+) -> Result<DiagramProjection, PolicyError> {
+    if ids.is_empty() {
+        return Err(PolicyError::InvalidEvent(
+            "no nodes specified for group operation".to_string(),
+        ));
+    }
+
+    let valid_ids: Vec<NodeId> = ids
+        .iter()
+        .filter(|id| state.has_node(id))
+        .cloned()
+        .collect();
+
+    if valid_ids.len() < 1 {
+        let invalid_ids = ids.iter().map(|id| id.to_string()).collect::<Vec<_>>().join(", ");
+        return Err(PolicyError::InvariantViolation(format!(
+            "all nodes invalid or not found: {invalid_ids}"
+        )));
+    }
+
+    let selected: im::HashSet<String> = ids.iter().map(|id| id.as_str().to_string()).collect();
+
+    let (padded_min_x, padded_min_y, width, height) =
+        crate::core::grouping::compute_padded_bounds(&state.nodes, &selected)
+            .map_err(|e| PolicyError::InvariantViolation(e.to_string()))?;
+
+    let min_z = valid_ids
+        .iter()
+        .filter_map(|id| state.nodes.get(id).map(|n| n.z_index))
+        .min()
+        .unwrap_or(0);
+
+    let parent_id = crate::core::grouping::find_lca(&state.nodes, &selected);
+
+    let subgraph = crate::core::grouping::create_subgraph_node(
+        padded_min_x,
+        padded_min_y,
+        width,
+        height,
+        min_z - 1,
+        parent_id,
+    )
+    .ok_or_else(|| {
+        PolicyError::InvariantViolation("invalid node coordinates for grouping".to_string())
+    })?;
+
+    let mut new_nodes = state.nodes.clone();
+    new_nodes.insert(group_id.clone(), subgraph);
+
+    for id in &valid_ids {
+        if let Some(node) = new_nodes.get(id) {
+            let mut updated_node = node.clone();
+            updated_node.parent = Some(group_id.clone());
+            new_nodes.insert(id.clone(), updated_node);
+        }
+    }
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: state.edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
+/// Apply Ungroup operation - removes the subgraph node and clears parent on all children
+fn apply_ungroup(state: DiagramProjection, id: &NodeId) -> Result<DiagramProjection, PolicyError> {
+    if !state.has_node(id) {
+        return Err(PolicyError::InvariantViolation(format!(
+            "subgraph not found: {id}"
+        )));
+    }
+
+    let node = state.nodes.get(id).ok_or_else(|| PolicyError::InvariantViolation("node not found".to_string()))?;
+    if node.kind != crate::models::document::NodeKind::Subgraph {
+        return Err(PolicyError::InvariantViolation(format!(
+            "node is not a subgraph: {id}"
+        )));
+    }
+
+    let mut target_subgraphs = std::collections::BTreeSet::new();
+    target_subgraphs.insert(id.clone());
+
+    let (new_nodes, _) = crate::core::grouping::calculate_ungroup(&state.nodes, &target_subgraphs);
+    let new_edges = crate::core::grouping::calculate_edge_cleanup(&state.edges, &target_subgraphs);
+
+    Ok(DiagramProjection {
+        version: state.version,
+        revision: state.revision,
+        nodes: new_nodes,
+        edges: new_edges,
+        author_priority: state.author_priority,
+        cycle_policy: state.cycle_policy,
+    })
+}
+
 }
 
 /// Apply `NodeAdd` operation

@@ -100,7 +100,7 @@ pub fn use_global_keyboard() {
                             let _ = apply_ungroup_selection(doc_signal, history_signal, db_tx);
                         }
                         (false, "g") => {
-                            let _ = apply_group_selection(doc_signal, history_signal);
+                            let _ = apply_group_selection(doc_signal, history_signal, db_tx);
                         }
                         _ => {}
                     }

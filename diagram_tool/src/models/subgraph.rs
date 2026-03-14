@@ -20,7 +20,6 @@
 #![forbid(unsafe_code)]
 
 pub mod collapse;
-pub mod grouping;
 pub mod reparenting;
 pub mod selection;
 pub mod transform;
@@ -33,7 +32,6 @@ pub use types::{
 };
 
 pub use collapse::toggle_collapse;
-pub use grouping::{create_subgraph_from_nodes, group_nodes, ungroup_nodes};
 pub use reparenting::{set_node_parent, unparent_node};
 pub use selection::{evaluate_selection, SelectionModifiers, SelectionResult};
 pub use transform::{scale_group, GroupTransformError, Subgraph};

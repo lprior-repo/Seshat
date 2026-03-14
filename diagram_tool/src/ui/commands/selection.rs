@@ -118,91 +118,33 @@ pub fn apply_nudge_selection(
 pub fn apply_group_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
+    db_tx: Option<Coroutine<EventEnvelope>>,
 ) -> bool {
-    let selected_nodes = {
-        let doc = doc_signal.read();
-        selected_node_ids(&doc)
-            .into_iter()
-            .filter(|id| {
-                doc.document
-                    .nodes
-                    .get(id)
-                    .is_some_and(|node| node.kind != NodeKind::Subgraph)
-            })
-            .collect::<Vec<_>>()
-    };
-    if selected_nodes.len() < 2 {
-        return false;
-    }
-
-    let (min_x, min_y, max_x, max_y) = {
-        let doc = doc_signal.read();
-        selected_nodes.iter().fold(
-            (
-                f64::INFINITY,
-                f64::INFINITY,
-                f64::NEG_INFINITY,
-                f64::NEG_INFINITY,
-            ),
-            |(min_x, min_y, max_x, max_y), node_id| {
-                doc.document
-                    .nodes
-                    .get(node_id)
-                    .map_or((min_x, min_y, max_x, max_y), |node| {
-                        (
-                            min_x.min(node.x.0),
-                            min_y.min(node.y.0),
-                            max_x.max(node.x.0 + node.width.0),
-                            max_y.max(node.y.0 + node.height.0),
-                        )
-                    })
-            },
-        )
-    };
-
-    if !min_x.is_finite() || !min_y.is_finite() || !max_x.is_finite() || !max_y.is_finite() {
-        return false;
-    }
+    let group_id = NodeId::new(Uuid::new_v4().to_string());
 
     let history = history_signal.read().clone();
     *history_signal.write() = history.push(doc_signal.read().clone());
 
-    let group_id = NodeId::new(Uuid::new_v4().to_string());
-    let member_ids = selected_nodes;
-    doc_signal.with_mut(|doc| {
-        for node_id in &member_ids {
-            if let Some(node) = doc.document.nodes.get_mut(node_id) {
-                node.parent = Some(group_id.clone());
-            }
+    let (result, selected_ids) = doc_signal.with_mut(|doc| {
+        let selected = doc.editor_state.selected_items.clone();
+        let res = crate::core::grouping::group_selection(doc, &group_id);
+        if res.is_ok() {
+            doc.revision = doc.revision.increment();
         }
-
-        // Create a group node (Subgraph)
-        let group_node = Node {
-            kind: NodeKind::Subgraph,
-            icon: String::new(),
-            label: "Group".to_string(),
-            x: OrderedFloat(min_x),
-            y: OrderedFloat(min_y),
-            width: OrderedFloat(max_x - min_x),
-            height: OrderedFloat(max_y - min_y),
-            font_size: None,
-            font_weight: None,
-            locked: false,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        };
-        let _ = doc.document.nodes.insert(group_id.clone(), group_node);
-
-        doc.editor_state.selected_items.clear();
-        let _ = doc.editor_state.selected_items.insert(group_id.to_string());
-        doc.revision = doc.revision.increment();
+        (res, selected)
     });
-    true
+
+    if result.is_ok() {
+        if let Some(tx) = db_tx {
+            let ids: Vec<String> = selected_ids.into_iter().collect();
+            let envelope =
+                crate::ui::dispatch::create::create_group_envelope(group_id.to_string(), ids);
+            tx.send(envelope);
+        }
+        true
+    } else {
+        false
+    }
 }
 
 /// Ungroup a selected group node, releasing its children
@@ -210,62 +152,33 @@ pub fn apply_group_selection(
 pub fn apply_ungroup_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
-    _db_tx: Option<Coroutine<EventEnvelope>>,
+    db_tx: Option<Coroutine<EventEnvelope>>,
 ) -> bool {
-    let selected = doc_signal.read().editor_state.selected_items.clone();
-
-    let group_ids: Vec<NodeId> = selected
-        .iter()
-        .filter_map(|id| NodeId::new(id.clone()).into())
-        .filter(|id| {
-            doc_signal
-                .read()
-                .document
-                .nodes
-                .get(id)
-                .is_some_and(|node| node.kind == NodeKind::Subgraph)
-        })
-        .collect();
-
-    if group_ids.is_empty() {
-        return false;
-    }
-
     let history = history_signal.read().clone();
     *history_signal.write() = history.push(doc_signal.read().clone());
 
-    doc_signal.with_mut(|doc| {
-        for group_id in &group_ids {
-            // Get member IDs before removing the group
-            let member_ids: Vec<NodeId> = doc
-                .document
-                .nodes
-                .iter()
-                .filter(|(_, node)| node.parent.as_ref() == Some(group_id))
-                .map(|(id, _)| id.clone())
-                .collect();
-
-            // Clear parent reference for all members
-            for member_id in &member_ids {
-                if let Some(node) = doc.document.nodes.get_mut(member_id) {
-                    node.parent = None;
-                }
-            }
-
-            // Update selection to include the members
-            for member_id in &member_ids {
-                let _ = doc
-                    .editor_state
-                    .selected_items
-                    .insert(member_id.to_string());
-            }
-
-            // Remove the group node
-            doc.document.nodes.remove(group_id);
+    let (result, target_ids) = doc_signal.with_mut(|doc| {
+        let targets: Vec<String> = doc.editor_state.selected_items.iter().cloned().collect();
+        let res = crate::core::grouping::ungroup_selection(doc);
+        if res.is_ok() {
+            doc.revision = doc.revision.increment();
         }
-        doc.revision = doc.revision.increment();
+        (res, targets)
     });
-    true
+
+    if result.is_ok() {
+        if let Some(tx) = db_tx {
+            for id in target_ids {
+                // We only dispatch ungroup for nodes that were actually subgraphs.
+                // The reducer in group_ops will handle the validation.
+                let envelope = crate::ui::dispatch::create::create_ungroup_envelope(id);
+                tx.send(envelope);
+            }
+        }
+        true
+    } else {
+        false
+    }
 }
 
 // Private helper functions
