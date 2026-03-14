@@ -52,6 +52,7 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
+use tokio::time::sleep;
 
 use crate::models::envelope::parse_event_envelope;
 use crate::models::projection::EventRecord;
@@ -896,7 +897,7 @@ mod tests {
         let _handle = start_event_tail_watcher(db_path.clone(), tx).unwrap();
 
         // Give the watcher time to start
-        std::thread::sleep(Duration::from_millis(200));
+        sleep(Duration::from_millis(200)).await;
 
         // Modify the database
         let envelope = make_test_envelope("op-new", 1);
