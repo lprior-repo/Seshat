@@ -75,10 +75,13 @@ fn main() {
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     {
         let db_path = std::path::PathBuf::from("diagram.db");
-        let bridge = std::sync::Arc::new(
-            crate::store_bridge::StoreBridge::spawn_async_pool(&db_path)
-                .expect("Failed to spawn async pool"),
-        );
+        let bridge = match crate::store_bridge::StoreBridge::spawn_async_pool(&db_path) {
+            Ok(b) => std::sync::Arc::new(b),
+            Err(e) => {
+                eprintln!("ERROR: Failed to spawn async pool: {}", e);
+                std::process::exit(1);
+            }
+        };
         builder = builder.with_context(bridge);
     }
 

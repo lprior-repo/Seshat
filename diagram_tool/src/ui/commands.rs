@@ -3844,7 +3844,19 @@ mod distribution_tests {
 mod martin_fowler_tests {
     use super::*;
     use crate::history::History;
-    use dioxus::signals::Signal;
+    use dioxus::prelude::*;
+
+    /// Creates a minimal VirtualDom and runs the test closure inside the Dioxus runtime.
+    fn dioxus_test_harness<F, R>(test: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        // Create a minimal VirtualDom with an empty component
+        let dom = VirtualDom::new(|| rsx! {});
+
+        // Run the test inside the Dioxus runtime context
+        dom.in_runtime(test)
+    }
 
     // ============================================================================
     // Happy Path Tests
@@ -3921,25 +3933,29 @@ mod martin_fowler_tests {
     /// Verifies clipboard operations work without thread_local (behavioral test)
     #[test]
     fn test_contract_clipboard_operations_work_without_thread_local() {
-        let doc = DiagramDocument::default();
-        let doc_signal = Signal::new(doc);
-        let mut clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
+        dioxus_test_harness(|| {
+            let doc = DiagramDocument::default();
+            let doc_signal = Signal::new(doc);
+            let clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
 
-        // This should work without thread_local
-        let result = apply_copy_selection(doc_signal, clipboard_signal);
-        assert!(!result); // No selection, returns false
+            // This should work without thread_local
+            let result = apply_copy_selection(doc_signal, clipboard_signal);
+            assert!(!result); // No selection, returns false
+        });
     }
 
     /// test_contract_signal_type_in_signatures
     /// Verifies functions accept Signal type
     #[test]
     fn test_contract_signal_type_in_signatures() {
-        let doc = DiagramDocument::default();
-        let doc_signal: Signal<DiagramDocument> = Signal::new(doc);
-        let mut clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
+        dioxus_test_harness(|| {
+            let doc = DiagramDocument::default();
+            let doc_signal: Signal<DiagramDocument> = Signal::new(doc);
+            let clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
 
-        // Compile-time check: this compiles only if Signal<T> is correct type
-        let _ = apply_copy_selection(doc_signal, clipboard_signal);
+            // Compile-time check: this compiles only if Signal<T> is correct type
+            let _ = apply_copy_selection(doc_signal, clipboard_signal);
+        });
     }
 
     // ============================================================================
@@ -3950,26 +3966,28 @@ mod martin_fowler_tests {
     /// Full round-trip: select -> copy -> paste
     #[test]
     fn test_integration_copy_paste_round_trip() {
-        let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("n1".to_string());
-        doc.document
-            .nodes
-            .insert(n1.clone(), create_test_node_for_tests());
-        doc.editor_state.selected_items.insert("n1".to_string());
+        dioxus_test_harness(|| {
+            let mut doc = DiagramDocument::default();
+            let n1 = NodeId::new("n1".to_string());
+            doc.document
+                .nodes
+                .insert(n1.clone(), create_test_node_for_tests());
+            doc.editor_state.selected_items.insert("n1".to_string());
 
-        let doc_signal = Signal::new(doc);
-        let clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
-        let history_signal = Signal::new(History::default());
+            let doc_signal = Signal::new(doc);
+            let clipboard_signal: Signal<Option<ClipboardData>> = Signal::new(None);
+            let history_signal = Signal::new(History::default());
 
-        // Copy - Signals are Copy types, pass directly without clone
-        let copy_result = apply_copy_selection(doc_signal, clipboard_signal);
-        assert!(copy_result);
+            // Copy - Signals are Copy types, pass directly without clone
+            let copy_result = apply_copy_selection(doc_signal, clipboard_signal);
+            assert!(copy_result);
 
-        // Paste - Reuse the same signals (they're Copy, the internal state persists)
-        // apply_paste_selection takes Signal by value but since Signal is Copy,
-        // the underlying data is shared via interior mutability
-        let paste_result = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
-        assert!(paste_result);
+            // Paste - Reuse the same signals (they're Copy, the internal state persists)
+            // apply_paste_selection takes Signal by value but since Signal is Copy,
+            // the underlying data is shared via interior mutability
+            let paste_result = apply_paste_selection(doc_signal, clipboard_signal, history_signal);
+            assert!(paste_result);
+        });
     }
 
     // ============================================================================

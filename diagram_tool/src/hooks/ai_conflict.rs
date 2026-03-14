@@ -48,6 +48,19 @@ pub fn clear_conflict(signal: &mut Signal<Option<String>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use dioxus::prelude::*;
+
+    /// Creates a minimal VirtualDom and runs the test closure inside the Dioxus runtime.
+    fn dioxus_test_harness<F, R>(test: F) -> R
+    where
+        F: FnOnce() -> R,
+    {
+        // Create a minimal VirtualDom with an empty component
+        let dom = VirtualDom::new(|| rsx! {});
+
+        // Run the test inside the Dioxus runtime context
+        dom.in_runtime(test)
+    }
 
     #[test]
     fn test_signal_initializes_with_none() {
@@ -72,9 +85,11 @@ mod tests {
 
     #[test]
     fn test_clear_conflict() {
-        // Test that clearing sets to None
-        let mut signal = Signal::new(Some("conflict message".to_string()));
-        clear_conflict(&mut signal);
-        assert!(signal.read().is_none());
+        dioxus_test_harness(|| {
+            // Test that clearing sets to None
+            let mut signal = Signal::new(Some("conflict message".to_string()));
+            clear_conflict(&mut signal);
+            assert!(signal.read().is_none());
+        });
     }
 }

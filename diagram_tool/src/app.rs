@@ -86,20 +86,18 @@ pub fn App() -> Element {
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let conflict_toast_shown = use_context::<Signal<bool>>();
+    let mut conflict_toast_shown = use_context::<Signal<bool>>();
 
     // Display conflict toast when ai_conflict_state is set
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     {
-        let toast_queue = toast_queue.clone();
-        let ai_conflict_state = ai_conflict_state.clone();
-        let mut conflict_toast_shown = conflict_toast_shown.clone();
+        // Signals implement Copy, so we can use them directly in the closure
         use_effect(move || {
             let has_conflict = ai_conflict_state.read().is_some();
             let already_shown = *conflict_toast_shown.read();
             if has_conflict && !already_shown {
                 if let Some(conflict_state) = ai_conflict_state.read().as_ref() {
-                    let toast_api = crate::ui::toast::ToastApi::from_signal(toast_queue.clone());
+                    let toast_api = crate::ui::toast::ToastApi::from_signal(toast_queue);
                     let _ = show_conflict_toast(conflict_state, toast_api);
                     conflict_toast_shown.set(true);
                 }
@@ -152,10 +150,10 @@ pub fn App() -> Element {
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     use_future(move || {
         let store_bridge = store_bridge.clone();
-        let mut doc_signal = doc_signal.clone();
-        let mut last_sync_revision = last_sync_revision.clone();
-        let mut pending_ai_ops = pending_ai_ops.clone();
-        let mut ai_conflict_state = ai_conflict_state.clone();
+        let mut doc_signal = doc_signal;
+        let mut last_sync_revision = last_sync_revision;
+        let mut pending_ai_ops = pending_ai_ops;
+        let mut ai_conflict_state = ai_conflict_state;
                 async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;

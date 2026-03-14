@@ -3,7 +3,6 @@ use crate::export::png::export_png as export_png_file;
 use crate::export::svg::generate_svg_string;
 use crate::models::canonical_json::to_canonical_pretty_json;
 use crate::models::document::DiagramDocument;
-#[cfg(target_arch = "wasm32")]
 use crate::ui::toast::ToastIntent;
 use crate::ui::toast::ToastQueue;
 #[cfg(target_arch = "wasm32")]
@@ -49,7 +48,7 @@ fn wasm_export_png_from_svg(svg: String, filename: &str, mut toasts: Signal<Toas
     });
 }
 
-pub fn export_png(doc_signal: Signal<DiagramDocument>, toasts: Signal<ToastQueue>) {
+pub fn export_png(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQueue>) {
     #[cfg(target_arch = "wasm32")]
     {
         let doc = doc_signal.read().clone();
@@ -58,13 +57,20 @@ pub fn export_png(doc_signal: Signal<DiagramDocument>, toasts: Signal<ToastQueue
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = toasts;
         let doc = doc_signal.read();
-        let _ = export_png_file(&doc, "diagram.png");
+        if let Err(e) = export_png_file(&doc, "diagram.png") {
+            toasts.with_mut(|queue| {
+                let _ = queue.add(
+                    ToastIntent::Error,
+                    "PNG export failed",
+                    Some(format!("Failed to export PNG: {}", e)),
+                );
+            });
+        }
     }
 }
 
-pub fn export_svg(doc_signal: Signal<DiagramDocument>) {
+pub fn export_svg(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQueue>) {
     #[cfg(target_arch = "wasm32")]
     {
         let doc = doc_signal.read().clone();
@@ -75,13 +81,32 @@ pub fn export_svg(doc_signal: Signal<DiagramDocument>) {
     {
         let doc = doc_signal.read();
         let svg = generate_svg_string(&doc);
-        if let Ok(mut file) = File::create("diagram.svg") {
-            let _ = file.write_all(svg.as_bytes());
+        match File::create("diagram.svg") {
+            Ok(mut file) => {
+                if let Err(e) = file.write_all(svg.as_bytes()) {
+                    toasts.with_mut(|queue| {
+                        let _ = queue.add(
+                            ToastIntent::Error,
+                            "SVG export failed",
+                            Some(format!("Failed to write SVG: {}", e)),
+                        );
+                    });
+                }
+            }
+            Err(e) => {
+                toasts.with_mut(|queue| {
+                    let _ = queue.add(
+                        ToastIntent::Error,
+                        "SVG export failed",
+                        Some(format!("Failed to create SVG file: {}", e)),
+                    );
+                });
+            }
         }
     }
 }
 
-pub fn export_json(doc_signal: Signal<DiagramDocument>) {
+pub fn export_json(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQueue>) {
     let doc = doc_signal.read().clone();
     if let Ok(json) = to_canonical_pretty_json(&doc) {
         let bytes = json.into_bytes();
@@ -91,9 +116,36 @@ pub fn export_json(doc_signal: Signal<DiagramDocument>) {
         }
         #[cfg(not(target_arch = "wasm32"))]
         {
-            if let Ok(mut file) = File::create("diagram.json") {
-                let _ = file.write_all(&bytes);
+            match File::create("diagram.json") {
+                Ok(mut file) => {
+                    if let Err(e) = file.write_all(&bytes) {
+                        toasts.with_mut(|queue| {
+                            let _ = queue.add(
+                                ToastIntent::Error,
+                                "JSON export failed",
+                                Some(format!("Failed to write JSON: {}", e)),
+                            );
+                        });
+                    }
+                }
+                Err(e) => {
+                    toasts.with_mut(|queue| {
+                        let _ = queue.add(
+                            ToastIntent::Error,
+                            "JSON export failed",
+                            Some(format!("Failed to create JSON file: {}", e)),
+                        );
+                    });
+                }
             }
         }
+    } else {
+        toasts.with_mut(|queue| {
+            let _ = queue.add(
+                ToastIntent::Error,
+                "JSON export failed",
+                Some("Failed to serialize document".to_string()),
+            );
+        });
     }
 }

@@ -14,6 +14,7 @@ use crate::errors::NuError;
 use crate::state::RunnerState;
 use crate::types::{NuConfig, NuOutput, NuRunner};
 use crate::validation::{parse_output, validate_config};
+use crate::newtypes::TimeoutMs;
 
 // =============================================================================
 // COMMAND BUILDING
@@ -88,12 +89,20 @@ impl NuRunner {
     ///
     /// # Postcondition (Q3)
     /// Timeout is enforced (30s default).
+    /// Zero duration is ignored (keeps default).
     #[must_use]
     #[allow(clippy::cast_possible_truncation, clippy::missing_const_for_fn)]
     pub fn with_timeout(mut self, duration: Duration) -> Self {
         let ms = duration.as_millis() as u64;
+        // Guard ensures ms > 0, so TimeoutMs::new() will always succeed
+        // (it only returns Err for ZeroTimeout, i.e., ms == 0)
         if ms != 0 {
-            self.config.timeout_ms = TimeoutMs(ms);
+            self.config.timeout_ms = match TimeoutMs::new(ms) {
+                Ok(t) => t,
+                // This branch is unreachable due to the guard above,
+                // but kept for explicitness and defense in depth
+                Err(_) => TimeoutMs::default(),
+            };
         }
         self
     }
