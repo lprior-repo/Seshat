@@ -457,9 +457,11 @@ pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<Edge
     // Screen-consistent hit radius: 17.0 screen pixels scaled to world coordinates
     // This ensures hit testing behaves consistently regardless of zoom level
     let zoom = doc.editor_state.zoom.0;
+    // Use safe_zoom to prevent division by zero or invalid zoom values
+    let safe_zoom = crate::ui::canvas::math::safe_zoom(zoom).unwrap_or(1.0);
     let screen_hit_radius = 17.0;
-    let hit_radius_world = screen_hit_radius / zoom;
-    let endpoint_hit_radius_world = 21.0 / zoom;
+    let hit_radius_world = screen_hit_radius / safe_zoom;
+    let endpoint_hit_radius_world = 21.0 / safe_zoom;
     doc.document
         .edges
         .iter()

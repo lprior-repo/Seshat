@@ -162,8 +162,8 @@ pub fn calculate_fit_zoom(
 pub fn apply_reset(viewport: &mut ViewportState) -> bool {
     const EPSILON: f64 = 1e-9;
     let changed = (viewport.zoom() - 1.0).abs() > EPSILON
-        || viewport.camera_x() != 0.0
-        || viewport.camera_y() != 0.0;
+        || (viewport.camera_x() - 0.0).abs() > EPSILON
+        || (viewport.camera_y() - 0.0).abs() > EPSILON;
 
     if changed {
         viewport.set_zoom(1.0);

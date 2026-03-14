@@ -254,16 +254,24 @@ pub fn Sidebar() -> Element {
     use_effect(|| {
         document::eval(
             r"
+            if (window.__seshat_drag_fix_cleanup) {
+                window.__seshat_drag_fix_cleanup();
+            }
+            
             if (!window.__seshat_drag_fix) {
                 window.__seshat_drag_fix = true;
-                document.addEventListener('dragstart', (e) => {
+                const dragHandler = (e) => {
                     if (e.target && e.target.closest && e.target.closest('.icon-item')) {
                         if (e.dataTransfer) {
                             e.dataTransfer.setData('text/plain', 'icon');
                             e.dataTransfer.effectAllowed = 'copy';
                         }
                     }
-                });
+                };
+                document.addEventListener('dragstart', dragHandler);
+                window.__seshat_drag_fix_cleanup = () => {
+                    document.removeEventListener('dragstart', dragHandler);
+                };
             }
         ",
         );

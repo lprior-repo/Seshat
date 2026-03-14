@@ -46,7 +46,7 @@ pub(super) fn to_screen_coords(
     cam_y: f64,
     zoom: f64,
 ) -> (f64, f64) {
-    math::screen_to_canvas(world_x, world_y, cam_x, cam_y, zoom)
+    math::canvas_to_screen(world_x, world_y, cam_x, cam_y, zoom)
         .unwrap_or(((world_x - cam_x) * zoom, (world_y - cam_y) * zoom))
 }
 
@@ -347,10 +347,11 @@ mod tests {
         let (x, y) = to_screen_coords(100.0, 200.0, 50.0, 75.0, 2.0);
         assert!(x.is_finite());
         assert!(y.is_finite());
-        // Note: The implementation incorrectly uses screen_to_canvas instead of canvas_to_screen
-        // so the actual result differs from the mathematically correct result
-        assert_eq!(x, (100.0 / 2.0) + 50.0);
-        assert_eq!(y, (200.0 / 2.0) + 75.0);
+        // Correct calculation: (world - camera) * zoom
+        // x = (100 - 50) * 2 = 100
+        // y = (200 - 75) * 2 = 250
+        assert_eq!(x, (100.0 - 50.0) * 2.0);
+        assert_eq!(y, (200.0 - 75.0) * 2.0);
     }
 
     #[cfg(kani)]

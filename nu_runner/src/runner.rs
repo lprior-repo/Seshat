@@ -91,7 +91,10 @@ impl NuRunner {
     #[must_use]
     #[allow(clippy::cast_possible_truncation, clippy::missing_const_for_fn)]
     pub fn with_timeout(mut self, duration: Duration) -> Self {
-        self.config.timeout_ms.0 = duration.as_millis() as u64;
+        let ms = duration.as_millis() as u64;
+        if ms != 0 {
+            self.config.timeout_ms = TimeoutMs(ms);
+        }
         self
     }
 
