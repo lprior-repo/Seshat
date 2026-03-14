@@ -160,13 +160,15 @@ pub fn paste(
         .into_iter()
         .map(|(_, new_id, node)| {
             let remapped_parent = match node.parent.as_ref() {
-                Some(parent) => id_map.get(parent).cloned().map(Some).ok_or_else(|| {
-                    if !doc.document.nodes.contains_key(parent) {
-                        Error::InvalidParentReference
+                Some(parent) => {
+                    if let Some(new_parent) = id_map.get(parent) {
+                        Some(new_parent.clone())
+                    } else if doc.document.nodes.contains_key(parent) {
+                        Some(parent.clone())
                     } else {
-                        Error::InvalidParentReference // For completeness, though should be caught by earlier checks if needed
+                        return Err(Error::InvalidParentReference);
                     }
-                })?,
+                }
                 None => None,
             };
             Ok((
@@ -184,17 +186,25 @@ pub fn paste(
         .edges
         .iter()
         .map(|(_, edge)| {
-            let new_source = id_map.get(&edge.source).unwrap_or(&edge.source).clone();
-            let new_target = id_map.get(&edge.target).unwrap_or(&edge.target).clone();
+            let is_remapped_source = id_map.contains_key(&edge.source);
+            let is_remapped_target = id_map.contains_key(&edge.target);
 
-            if !doc.document.nodes.contains_key(&new_source)
-                && !id_map.values().any(|x| x == &new_source)
-            {
+            let new_source = if is_remapped_source {
+                id_map.get(&edge.source).unwrap_or(&edge.source).clone()
+            } else {
+                edge.source.clone()
+            };
+
+            let new_target = if is_remapped_target {
+                id_map.get(&edge.target).unwrap_or(&edge.target).clone()
+            } else {
+                edge.target.clone()
+            };
+
+            if !is_remapped_source && !doc.document.nodes.contains_key(&new_source) {
                 return Err(Error::InvalidEdgeReference);
             }
-            if !doc.document.nodes.contains_key(&new_target)
-                && !id_map.values().any(|x| x == &new_target)
-            {
+            if !is_remapped_target && !doc.document.nodes.contains_key(&new_target) {
                 return Err(Error::InvalidEdgeReference);
             }
 
