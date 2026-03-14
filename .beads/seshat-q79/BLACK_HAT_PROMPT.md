@@ -1,0 +1,1 @@
+Load black-hat-reviewer skill. Read ../seshat-q79/.beads/seshat-q79/contract.md and ../seshat-q79/.beads/seshat-q79/implementation.md. Inspect the source files. Ruthlessly enforce the 5 phases of code review. If flawed, write to ../seshat-q79/.beads/seshat-q79/defects.md and output 'STATUS: REJECTED'. If flawless, output 'STATUS: APPROVED'.

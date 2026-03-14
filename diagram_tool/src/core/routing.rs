@@ -1,8 +1,9 @@
 #![allow(dead_code)]
 
 use crate::models::document::{
-    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat,
+    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat, Point,
 };
+use crate::models::port::{compute_port_absolute_position, PortAnchor};
 use thiserror::Error;
 
 /// Constant for maximum number of edges between same node pair
@@ -148,6 +149,39 @@ pub fn create_edge(
     let new_edge = make_default_edge(source, target);
     doc.document.edges.insert(edge_id, new_edge);
     Ok(())
+}
+
+/// Computes a straight-line route between the source and target ports of an edge.
+///
+/// Falls back to center port if no port anchor is specified.
+///
+/// # Errors
+///
+/// Returns `RoutingError::SourceNotFound` if the source node does not exist.
+/// Returns `RoutingError::TargetNotFound` if the target node does not exist.
+pub fn compute_straight_line_route(
+    doc: &DiagramDocument,
+    edge: &Edge,
+) -> Result<(Point, Point), RoutingError> {
+    let source_node = doc
+        .document
+        .nodes
+        .get(&edge.source)
+        .ok_or_else(|| RoutingError::SourceNotFound(edge.source.clone()))?;
+
+    let target_node = doc
+        .document
+        .nodes
+        .get(&edge.target)
+        .ok_or_else(|| RoutingError::TargetNotFound(edge.target.clone()))?;
+
+    let source_port = edge.source_port.as_ref().unwrap_or(&PortAnchor::Center);
+    let target_port = edge.target_port.as_ref().unwrap_or(&PortAnchor::Center);
+
+    let start = compute_port_absolute_position(source_node, source_port);
+    let end = compute_port_absolute_position(target_node, target_port);
+
+    Ok((start, end))
 }
 
 #[cfg(test)]

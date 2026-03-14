@@ -1,104 +1,230 @@
-#[cfg(test)]
-mod tests {
-    use crate::core::routing::{create_edge, RoutingError};
-    use crate::models::document::{DiagramDocument, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
+use super::*;
+use crate::models::document::{DiagramDocument, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
 
-    fn test_node() -> Node {
-        Node {
-            kind: NodeKind::Text,
-            icon: String::new(),
-            label: "Test".to_string(),
-            x: OrderedFloat(0.0),
-            y: OrderedFloat(0.0),
-            width: OrderedFloat(100.0),
-            height: OrderedFloat(100.0),
-            font_size: None,
-            font_weight: None,
-            locked: false,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        }
+fn test_node() -> Node {
+    Node {
+        kind: NodeKind::Text,
+        icon: String::new(),
+        label: "Test".to_string(),
+        x: OrderedFloat(0.0),
+        y: OrderedFloat(0.0),
+        width: OrderedFloat(100.0),
+        height: OrderedFloat(100.0),
+        font_size: None,
+        font_weight: None,
+        locked: false,
+        parent: None,
+        dag_rank: None,
+        tags: im::Vector::new(),
+        metadata: im::HashMap::new(),
+        z_index: 0,
+        style: None,
+        collapsed: None,
     }
+}
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_returns_error_when_source_node_missing() {
-        let mut doc = DiagramDocument::default();
-        let t1 = NodeId::new("t1".to_string());
-        doc.document.nodes.insert(t1.clone(), test_node());
+#[test]
+fn test_returns_error_when_source_node_missing() {
+    let mut doc = DiagramDocument::default();
+    let t1 = NodeId::new("t1".to_string());
+    doc.document.nodes.insert(t1.clone(), test_node());
 
-        let err = create_edge(
-            &mut doc,
-            NodeId::new("s1".to_string()),
-            t1,
-            EdgeId::new("e1".to_string()),
-        )
-        .unwrap_err();
-        assert_eq!(
-            err,
-            RoutingError::SourceNotFound(NodeId::new("s1".to_string()))
-        );
+    let err = create_edge(
+        &mut doc,
+        NodeId::new("s1".to_string()),
+        t1,
+        EdgeId::new("e1".to_string()),
+    )
+    .unwrap_err();
+    assert_eq!(
+        err,
+        RoutingError::SourceNotFound(NodeId::new("s1".to_string()))
+    );
+}
+
+#[test]
+fn test_returns_error_when_attempting_self_loop() {
+    let mut doc = DiagramDocument::default();
+    let s1 = NodeId::new("s1".to_string());
+    doc.document.nodes.insert(s1.clone(), test_node());
+
+    let err = create_edge(
+        &mut doc,
+        s1.clone(),
+        s1.clone(),
+        EdgeId::new("e1".to_string()),
+    )
+    .unwrap_err();
+    assert_eq!(err, RoutingError::SelfLoop(s1));
+}
+
+#[test]
+fn test_adding_edge_that_creates_cycle_returns_cycle_detected_error() {
+    let mut doc = DiagramDocument::default();
+    let n1 = NodeId::new("1".to_string());
+    let n2 = NodeId::new("2".to_string());
+    let n3 = NodeId::new("3".to_string());
+
+    doc.document.nodes.insert(n1.clone(), test_node());
+    doc.document.nodes.insert(n2.clone(), test_node());
+    doc.document.nodes.insert(n3.clone(), test_node());
+
+    create_edge(
+        &mut doc,
+        n1.clone(),
+        n2.clone(),
+        EdgeId::new("e1".to_string()),
+    )
+    .unwrap();
+    create_edge(
+        &mut doc,
+        n2.clone(),
+        n3.clone(),
+        EdgeId::new("e2".to_string()),
+    )
+    .unwrap();
+
+    let err = create_edge(
+        &mut doc,
+        n3.clone(),
+        n1.clone(),
+        EdgeId::new("e3".to_string()),
+    )
+    .unwrap_err();
+    assert_eq!(err, RoutingError::CycleDetected);
+}
+
+use crate::models::document::{Edge, Point};
+use crate::models::port::PortAnchor;
+
+fn create_edge_obj(source: &str, target: &str) -> Edge {
+    Edge {
+        source: NodeId::new(source.to_string()),
+        target: NodeId::new(target.to_string()),
+        label: String::new(),
+        style: Default::default(),
+        arrow_type: Default::default(),
+        label_offset_t: OrderedFloat(0.5),
+        color: None,
+        thickness: OrderedFloat(1.5),
+        directed: true,
+        bend_points: im::Vector::new(),
+        tags: im::Vector::new(),
+        metadata: im::HashMap::new(),
+        font_size: None,
+        source_port: None,
+        target_port: None,
     }
+}
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_returns_error_when_attempting_self_loop() {
-        let mut doc = DiagramDocument::default();
-        let s1 = NodeId::new("s1".to_string());
-        doc.document.nodes.insert(s1.clone(), test_node());
+#[test]
+fn test_compute_straight_line_route_between_centers_successfully() {
+    let mut doc = DiagramDocument::default();
+    let n1_id = NodeId::new("n1".to_string());
+    let n2_id = NodeId::new("n2".to_string());
 
-        let err = create_edge(
-            &mut doc,
-            s1.clone(),
-            s1.clone(),
-            EdgeId::new("e1".to_string()),
-        )
-        .unwrap_err();
-        assert_eq!(err, RoutingError::SelfLoop(s1));
-    }
+    let mut n1 = test_node();
+    n1.x = OrderedFloat(0.0);
+    n1.y = OrderedFloat(0.0);
+    n1.width = OrderedFloat(100.0);
+    n1.height = OrderedFloat(100.0);
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_adding_edge_that_creates_cycle_returns_cycle_detected_error() {
-        let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("1".to_string());
-        let n2 = NodeId::new("2".to_string());
-        let n3 = NodeId::new("3".to_string());
+    let mut n2 = test_node();
+    n2.x = OrderedFloat(200.0);
+    n2.y = OrderedFloat(0.0);
+    n2.width = OrderedFloat(100.0);
+    n2.height = OrderedFloat(100.0);
 
-        doc.document.nodes.insert(n1.clone(), test_node());
-        doc.document.nodes.insert(n2.clone(), test_node());
-        doc.document.nodes.insert(n3.clone(), test_node());
+    doc.document.nodes.insert(n1_id, n1);
+    doc.document.nodes.insert(n2_id, n2);
 
-        create_edge(
-            &mut doc,
-            n1.clone(),
-            n2.clone(),
-            EdgeId::new("e1".to_string()),
-        )
-        .unwrap();
-        create_edge(
-            &mut doc,
-            n2.clone(),
-            n3.clone(),
-            EdgeId::new("e2".to_string()),
-        )
-        .unwrap();
+    let edge = create_edge_obj("n1", "n2");
+    let (start, end) = compute_straight_line_route(&doc, &edge).unwrap();
 
-        let err = create_edge(
-            &mut doc,
-            n3.clone(),
-            n1.clone(),
-            EdgeId::new("e3".to_string()),
-        )
-        .unwrap_err();
-        assert_eq!(err, RoutingError::CycleDetected);
-    }
+    assert_eq!(start.x.0, 50.0);
+    assert_eq!(start.y.0, 50.0);
+    assert_eq!(end.x.0, 250.0);
+    assert_eq!(end.y.0, 50.0);
+}
+
+#[test]
+fn test_compute_straight_line_route_between_named_ports_successfully() {
+    let mut doc = DiagramDocument::default();
+    let n1_id = NodeId::new("n1".to_string());
+    let n2_id = NodeId::new("n2".to_string());
+
+    let mut n1 = test_node();
+    n1.x = OrderedFloat(0.0);
+    n1.y = OrderedFloat(0.0);
+    n1.width = OrderedFloat(100.0);
+    n1.height = OrderedFloat(100.0);
+
+    let mut n2 = test_node();
+    n2.x = OrderedFloat(0.0);
+    n2.y = OrderedFloat(200.0);
+    n2.width = OrderedFloat(100.0);
+    n2.height = OrderedFloat(100.0);
+
+    doc.document.nodes.insert(n1_id, n1);
+    doc.document.nodes.insert(n2_id, n2);
+
+    let mut edge = create_edge_obj("n1", "n2");
+    edge.source_port = Some(PortAnchor::Bottom);
+    edge.target_port = Some(PortAnchor::Top);
+
+    let (start, end) = compute_straight_line_route(&doc, &edge).unwrap();
+
+    assert_eq!(start.x.0, 50.0);
+    assert_eq!(start.y.0, 100.0);
+    assert_eq!(end.x.0, 50.0);
+    assert_eq!(end.y.0, 200.0);
+}
+
+#[test]
+fn test_compute_straight_line_route_for_self_loop_returns_same_points() {
+    let mut doc = DiagramDocument::default();
+    let n1_id = NodeId::new("n1".to_string());
+
+    let mut n1 = test_node();
+    n1.x = OrderedFloat(0.0);
+    n1.y = OrderedFloat(0.0);
+    n1.width = OrderedFloat(100.0);
+    n1.height = OrderedFloat(100.0);
+
+    doc.document.nodes.insert(n1_id, n1);
+
+    let edge = create_edge_obj("n1", "n1");
+    let (start, end) = compute_straight_line_route(&doc, &edge).unwrap();
+
+    assert_eq!(start, end);
+    assert_eq!(start.x.0, 50.0);
+    assert_eq!(start.y.0, 50.0);
+}
+
+#[test]
+fn test_routing_returns_error_when_source_node_missing() {
+    let mut doc = DiagramDocument::default();
+    let n2_id = NodeId::new("n2".to_string());
+    doc.document.nodes.insert(n2_id, test_node());
+
+    let edge = create_edge_obj("n1", "n2");
+    let err = compute_straight_line_route(&doc, &edge).unwrap_err();
+    assert_eq!(
+        err,
+        RoutingError::SourceNotFound(NodeId::new("n1".to_string()))
+    );
+}
+
+#[test]
+fn test_routing_returns_error_when_target_node_missing() {
+    let mut doc = DiagramDocument::default();
+    let n1_id = NodeId::new("n1".to_string());
+    doc.document.nodes.insert(n1_id, test_node());
+
+    let edge = create_edge_obj("n1", "n2");
+    let err = compute_straight_line_route(&doc, &edge).unwrap_err();
+    assert_eq!(
+        err,
+        RoutingError::TargetNotFound(NodeId::new("n2".to_string()))
+    );
 }
