@@ -46,27 +46,14 @@ pub enum PortAnchor {
 
 #[must_use]
 pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
+    let half_w = node.width / 2.0;
+    let half_h = node.height / 2.0;
     match port {
-        PortAnchor::Top => Point {
-            x: node.x + (node.width / 2.0),
-            y: node.y,
-        },
-        PortAnchor::Bottom => Point {
-            x: node.x + (node.width / 2.0),
-            y: node.y + node.height,
-        },
-        PortAnchor::Left => Point {
-            x: node.x,
-            y: node.y + (node.height / 2.0),
-        },
-        PortAnchor::Right => Point {
-            x: node.x + node.width,
-            y: node.y + (node.height / 2.0),
-        },
-        PortAnchor::Center => Point {
-            x: node.x + (node.width / 2.0),
-            y: node.y + (node.height / 2.0),
-        },
+        PortAnchor::Top => Point { x: node.x + half_w, y: node.y },
+        PortAnchor::Bottom => Point { x: node.x + half_w, y: node.y + node.height },
+        PortAnchor::Left => Point { x: node.x, y: node.y + half_h },
+        PortAnchor::Right => Point { x: node.x + node.width, y: node.y + half_h },
+        PortAnchor::Center => Point { x: node.x + half_w, y: node.y + half_h },
         PortAnchor::Custom(offset) => Point {
             x: node.x + (node.width * offset.x.0),
             y: node.y + (node.height * offset.y.0),
@@ -75,7 +62,6 @@ pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
     use crate::models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind};
@@ -122,8 +108,6 @@ mod tests {
         }
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_edge_connects_to_top_port_anchor_successfully() {
         let node = create_test_node(0.0, 0.0, 100.0, 100.0);
@@ -132,8 +116,6 @@ mod tests {
         assert_eq!(pt.y.0, 0.0);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_edge_connects_to_custom_port_anchor_successfully() {
         let node = create_test_node(10.0, 20.0, 100.0, 100.0);
@@ -147,8 +129,6 @@ mod tests {
         assert_eq!(pt.y.0, 95.0);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_returns_error_when_custom_port_offset_is_out_of_bounds() {
         let err = NormalizedOffset::new(
@@ -166,8 +146,6 @@ mod tests {
         assert_eq!(err2, PortError::InvalidPortOffset);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_returns_error_when_setting_port_for_nonexistent_edge() {
         let mut doc = DiagramDocument::default();
@@ -177,8 +155,6 @@ mod tests {
         assert_eq!(err, PortError::EdgeNotFound);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_returns_error_when_node_not_found_for_port_computation() {
         let mut doc = DiagramDocument::default();
@@ -191,8 +167,6 @@ mod tests {
         assert_eq!(err, PortError::NodeNotFound);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_edge_port_anchor_computes_correctly_for_zero_width_node() {
         let node = create_test_node(10.0, 10.0, 0.0, 0.0);
@@ -201,8 +175,6 @@ mod tests {
         assert_eq!(pt.y.0, 10.0);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_custom_port_anchor_at_exact_boundaries_zero_and_one() {
         let offset = NormalizedOffset::new(
@@ -214,8 +186,6 @@ mod tests {
         assert_eq!(offset.y.0, 1.0);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_p2_violation_returns_invalid_port_offset() {
         let res = NormalizedOffset::new(
@@ -225,8 +195,6 @@ mod tests {
         assert_eq!(res.unwrap_err(), PortError::InvalidPortOffset);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_p3_violation_returns_node_not_found() {
         let mut doc = DiagramDocument::default();
@@ -237,8 +205,6 @@ mod tests {
         assert_eq!(res.unwrap_err(), PortError::NodeNotFound);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_postcondition_setting_port_updates_edge_state() {
         let mut doc = DiagramDocument::default();
@@ -261,8 +227,6 @@ mod tests {
         assert_eq!(edge.source_port, Some(PortAnchor::Bottom));
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_postcondition_edge_port_anchors_serialize_and_deserialize() {
         let offset = NormalizedOffset::new(

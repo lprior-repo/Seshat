@@ -19,3 +19,4 @@ pub mod toolbar;
 pub mod validation_panel;
 
 pub use validation_panel::ValidationPanel;
+pub use interaction::has_drag_threshold;

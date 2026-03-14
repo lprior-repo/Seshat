@@ -1496,6 +1496,7 @@ dependencies = [
  "num_cpus",
  "petgraph",
  "proptest",
+ "rand 0.8.5",
  "regex-lite",
  "restate-sdk",
  "resvg",

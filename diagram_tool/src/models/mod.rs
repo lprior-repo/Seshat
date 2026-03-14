@@ -52,6 +52,9 @@ pub mod selection_ops;
 #[cfg(test)]
 pub mod selection_ops_tests;
 
+#[cfg(test)]
+pub mod touch_interaction_tests;
+
 pub mod transform;
 
 #[cfg(test)]
@@ -68,6 +71,9 @@ pub mod clipboard_contract_tests;
 
 #[cfg(test)]
 pub mod subgraph_events_tests;
+
+#[cfg(test)]
+pub mod terminal_shape_tests;
 
 #[cfg(test)]
 pub mod subgraph_persistence_tests;

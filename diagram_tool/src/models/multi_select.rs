@@ -14,6 +14,8 @@ pub enum Error {
     PostconditionViolated,
     #[error("Node not found")]
     NodeNotFound,
+    #[error("Invalid scale factor: must be positive and finite")]
+    InvalidScale,
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -65,6 +67,37 @@ pub struct ClipboardData {
     pub nodes: Vec<Node>,
 }
 
+/// Helper: Convert f64 to OrderedFloat safely
+fn to_ordered(value: f64) -> Result<OrderedFloat, Error> {
+    OrderedFloat::new(value).map_err(|_| Error::InvalidScale)
+}
+
+/// Helper: Compute bounding box of a selection
+fn compute_bounding_box(
+    doc: &DiagramDocument,
+    selection: &[NodeId],
+) -> Result<(f64, f64, f64, f64), Error> {
+    let mut min_x = f64::MAX;
+    let mut min_y = f64::MAX;
+    let mut max_x = f64::MIN;
+    let mut max_y = f64::MIN;
+
+    for id in selection {
+        let node = doc.document.nodes.get(id).ok_or(Error::NodeNotFound)?;
+        let nx = node.x.0;
+        let ny = node.y.0;
+        let nw = node.width.0;
+        let nh = node.height.0;
+
+        min_x = min_x.min(nx);
+        min_y = min_y.min(ny);
+        max_x = max_x.max(nx + nw);
+        max_y = max_y.max(ny + nh);
+    }
+
+    Ok((min_x, min_y, max_x, max_y))
+}
+
 fn check_locked_items(doc: &DiagramDocument, selection: &[NodeId]) -> Result<(), Error> {
     for id in selection {
         let node = doc.document.nodes.get(id).ok_or(Error::NodeNotFound)?;
@@ -99,6 +132,31 @@ fn check_invalid_hierarchy(doc: &DiagramDocument, selection: &[NodeId]) -> Resul
     Ok(())
 }
 
+/// Helper: Apply scale factor to a node relative to a centroid
+fn scale_node(node: &mut Node, centroid: Vector2D, scale_factor: f64) -> Result<(), Error> {
+    let rel_x = node.x.0 - centroid.x;
+    let rel_y = node.y.0 - centroid.y;
+
+    node.x = to_ordered(centroid.x + rel_x * scale_factor)?;
+    node.y = to_ordered(centroid.y + rel_y * scale_factor)?;
+    node.width = to_ordered(node.width.0 * scale_factor)?;
+    node.height = to_ordered(node.height.0 * scale_factor)?;
+
+    Ok(())
+}
+
+/// Helper: Generate unique node ID
+fn generate_unique_id(base_label: &str, doc: &DiagramDocument) -> NodeId {
+    let mut idx = 1;
+    loop {
+        let new_id = NodeId::new(format!("{base_label}_{idx}"));
+        if !doc.document.nodes.contains_key(&new_id) {
+            return new_id;
+        }
+        idx += 1;
+    }
+}
+
 pub fn move_selection(
     doc: &mut DiagramDocument,
     selection: NonEmptyVec<NodeId>,
@@ -108,16 +166,64 @@ pub fn move_selection(
     check_locked_items(doc, selection_slice)?;
     check_invalid_hierarchy(doc, selection_slice)?;
 
+    let delta_x = to_ordered(delta.x)?;
+    let delta_y = to_ordered(delta.y)?;
+
     for id in selection_slice {
         if let Some(node) = doc.document.nodes.get_mut(id) {
-            node.x = node.x + OrderedFloat::new_unchecked(delta.x);
-            node.y = node.y + OrderedFloat::new_unchecked(delta.y);
+            node.x = node.x + delta_x.clone();
+            node.y = node.y + delta_y.clone();
         } else {
             return Err(Error::NodeNotFound);
         }
     }
 
     Ok(())
+}
+
+/// Helper: Apply resize scaling to a single node
+fn apply_resize_scale(
+    node: &mut Node,
+    min_x: f64,
+    min_y: f64,
+    new_x: f64,
+    new_y: f64,
+    scale_x: f64,
+    scale_y: f64,
+) -> Result<(), Error> {
+    let rel_x = node.x.0 - min_x;
+    let rel_y = node.y.0 - min_y;
+
+    node.x = to_ordered(new_x + rel_x * scale_x)?;
+    node.y = to_ordered(new_y + rel_y * scale_y)?;
+    node.width = to_ordered(node.width.0 * scale_x)?;
+    node.height = to_ordered(node.height.0 * scale_y)?;
+
+    Ok(())
+}
+
+/// Helper: Extract resize scale factors from old and new bounds
+fn compute_resize_scales(
+    doc: &DiagramDocument,
+    selection_slice: &[NodeId],
+    new_bounds: Rect,
+) -> Result<(f64, f64, f64, f64, f64, f64), Error> {
+    let (min_x, min_y, max_x, max_y) = compute_bounding_box(doc, selection_slice)?;
+    let old_width = max_x - min_x;
+    let old_height = max_y - min_y;
+
+    if old_width == 0.0 || old_height == 0.0 {
+        return Err(Error::InvalidScale);
+    }
+
+    let scale_x = new_bounds.width / old_width;
+    let scale_y = new_bounds.height / old_height;
+
+    // Validate new bounds coordinates
+    let _ = to_ordered(new_bounds.x)?;
+    let _ = to_ordered(new_bounds.y)?;
+
+    Ok((min_x, min_y, new_bounds.x, new_bounds.y, scale_x, scale_y))
 }
 
 pub fn resize_selection(
@@ -129,52 +235,33 @@ pub fn resize_selection(
     check_locked_items(doc, selection_slice)?;
     check_invalid_hierarchy(doc, selection_slice)?;
 
-    // Q: Does resizing a mixed selection of lines and rectangles proportionally scale the lines' endpoints?
-    // A: In a complete implementation, this would compute the old bounding box and map each node's position and size.
-    // For this minimal implementation per contract:
+    let scales = compute_resize_scales(doc, selection_slice, new_bounds)?;
 
-    // Calculate old bounds to determine scale factors
-    let mut min_x = f64::MAX;
-    let mut min_y = f64::MAX;
-    let mut max_x = f64::MIN;
-    let mut max_y = f64::MIN;
-
-    for id in selection_slice {
-        let node = doc.document.nodes.get(id).ok_or(Error::NodeNotFound)?;
-        let nx = node.x.0;
-        let ny = node.y.0;
-        let nw = node.width.0;
-        let nh = node.height.0;
-
-        min_x = min_x.min(nx);
-        min_y = min_y.min(ny);
-        max_x = max_x.max(nx + nw);
-        max_y = max_y.max(ny + nh);
-    }
-
-    let old_width = max_x - min_x;
-    let old_height = max_y - min_y;
-
-    if old_width == 0.0 || old_height == 0.0 {
-        return Ok(()); // Or return an error depending on semantics, we will ignore scaling zero size
-    }
-
-    let scale_x = new_bounds.width / old_width;
-    let scale_y = new_bounds.height / old_height;
+    let (min_x, min_y, new_x, new_y, scale_x, scale_y) = scales;
 
     for id in selection_slice {
         if let Some(node) = doc.document.nodes.get_mut(id) {
-            let relative_x = node.x.0 - min_x;
-            let relative_y = node.y.0 - min_y;
-
-            node.x = OrderedFloat::new_unchecked(new_bounds.x + relative_x * scale_x);
-            node.y = OrderedFloat::new_unchecked(new_bounds.y + relative_y * scale_y);
-            node.width = OrderedFloat::new_unchecked(node.width.0 * scale_x);
-            node.height = OrderedFloat::new_unchecked(node.height.0 * scale_y);
+            apply_resize_scale(node, min_x, min_y, new_x, new_y, scale_x, scale_y)?;
         }
     }
 
     Ok(())
+}
+
+/// Helper: Verify all nodes removed from document
+fn verify_all_removed(doc: &DiagramDocument, selection_slice: &[NodeId]) -> Result<(), Error> {
+    for id in selection_slice {
+        if doc.document.nodes.contains_key(id) {
+            return Err(Error::PostconditionViolated);
+        }
+    }
+    Ok(())
+}
+
+/// Helper: Remove a node from document and selection
+fn remove_node_from_doc(doc: &mut DiagramDocument, id: &NodeId) {
+    doc.document.nodes.remove(id);
+    doc.editor_state.selected_items.remove(&id.to_string());
 }
 
 pub fn delete_selection(
@@ -184,24 +271,20 @@ pub fn delete_selection(
     let selection_slice = selection.as_slice();
     check_locked_items(doc, selection_slice)?;
 
+    // Verify all nodes exist
     for id in selection_slice {
         if !doc.document.nodes.contains_key(id) {
             return Err(Error::NodeNotFound);
         }
     }
 
+    // Remove all nodes
     for id in selection_slice {
-        doc.document.nodes.remove(id);
-        doc.editor_state.selected_items.remove(&id.to_string());
+        remove_node_from_doc(doc, id);
     }
 
-    for id in selection_slice {
-        if doc.document.nodes.contains_key(id) {
-            return Err(Error::PostconditionViolated);
-        }
-    }
-
-    Ok(())
+    // Postcondition: verify all removed
+    verify_all_removed(doc, selection_slice)
 }
 
 pub fn copy_selection(
@@ -221,38 +304,87 @@ pub fn copy_selection(
     })
 }
 
+/// Helper: Add node to document and selection
+fn add_node_to_doc(doc: &mut DiagramDocument, new_node: Node, new_id: NodeId) -> NodeId {
+    doc.document.nodes.insert(new_id.clone(), new_node);
+    doc.editor_state.selected_items.insert(new_id.to_string());
+    new_id
+}
+
 pub fn paste_selection(
     doc: &mut DiagramDocument,
     clipboard: &ClipboardData,
     offset: Vector2D,
 ) -> Result<Vec<NodeId>, Error> {
-    let mut new_ids = Vec::new();
-
-    // Clear current selection
     doc.editor_state.selected_items.clear();
 
+    let offset_x = to_ordered(offset.x)?;
+    let offset_y = to_ordered(offset.y)?;
+
+    let mut new_ids = Vec::new();
     for node in &clipboard.nodes {
         let mut new_node = node.clone();
-        new_node.x = new_node.x + OrderedFloat::new_unchecked(offset.x);
-        new_node.y = new_node.y + OrderedFloat::new_unchecked(offset.y);
-
-        // Generate a new ID (in a real app, use UUID. Here we just append a counter or timestamp, but since we are pure...)
-        // To be functional and deterministic, let's append "_copy" or use something from the document
-        // We will just do a simple iteration
-        let mut idx = 1;
-        let mut new_id;
-        loop {
-            new_id = NodeId::new(format!("{}_{idx}", node.label)); // simplistic
-            if !doc.document.nodes.contains_key(&new_id) {
-                break;
-            }
-            idx += 1;
-        }
-
-        doc.document.nodes.insert(new_id.clone(), new_node);
-        doc.editor_state.selected_items.insert(new_id.to_string());
-        new_ids.push(new_id);
+        new_node.x = new_node.x + offset_x.clone();
+        new_node.y = new_node.y + offset_y.clone();
+        let new_id = generate_unique_id(&node.label, doc);
+        let id = add_node_to_doc(doc, new_node, new_id);
+        new_ids.push(id);
     }
 
     Ok(new_ids)
+}
+
+/// Compute the centroid (geometric center) of a multi-selection's bounding box
+pub fn compute_selection_centroid(
+    doc: &DiagramDocument,
+    selection: &[NodeId],
+) -> Result<Vector2D, Error> {
+    let (min_x, min_y, max_x, max_y) = compute_bounding_box(doc, selection)?;
+
+    Ok(Vector2D {
+        x: (min_x + max_x) / 2.0,
+        y: (min_y + max_y) / 2.0,
+    })
+}
+
+/// Helper: Validate scale factor
+fn validate_scale_factor(scale_factor: f64) -> Result<(), Error> {
+    if scale_factor > 0.0 && scale_factor.is_finite() {
+        Ok(())
+    } else {
+        Err(Error::InvalidScale)
+    }
+}
+
+/// Helper: Apply scaling to all nodes in selection
+fn apply_scale_to_selection(
+    doc: &mut DiagramDocument,
+    selection_slice: &[NodeId],
+    centroid: Vector2D,
+    scale_factor: f64,
+) -> Result<(), Error> {
+    for id in selection_slice {
+        if let Some(node) = doc.document.nodes.get_mut(id) {
+            scale_node(node, centroid, scale_factor)?;
+        }
+    }
+    Ok(())
+}
+
+/// Scale a multi-selection around its common centroid
+pub fn scale_selection_around_centroid(
+    doc: &mut DiagramDocument,
+    selection: NonEmptyVec<NodeId>,
+    scale_factor: f64,
+) -> Result<(), Error> {
+    validate_scale_factor(scale_factor)?;
+
+    let selection_slice = selection.as_slice();
+    check_locked_items(doc, selection_slice)?;
+    check_invalid_hierarchy(doc, selection_slice)?;
+
+    let centroid = compute_selection_centroid(doc, selection_slice)?;
+    apply_scale_to_selection(doc, selection_slice, centroid, scale_factor)?;
+
+    Ok(())
 }

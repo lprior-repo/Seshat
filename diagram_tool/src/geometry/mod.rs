@@ -16,6 +16,18 @@ pub mod routing;
 pub mod snap;
 pub mod transforms;
 
+#[cfg(kani)]
+pub mod transforms_kani;
+
+#[cfg(kani)]
+pub mod operations_kani;
+
+#[cfg(test)]
+pub mod hit_test_margin_tests;
+
+#[cfg(test)]
+pub mod operations_tests;
+
 pub use hit_test_margin::{hit_test_with_margin, screen_to_world_margin, HitTestError};
 pub use operations::*;
 pub use polygon::*;

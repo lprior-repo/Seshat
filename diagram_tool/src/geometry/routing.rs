@@ -89,22 +89,29 @@ fn is_inside(p: Point, aabb: &AABB) -> bool {
     p.x > aabb.min_x && p.x < aabb.max_x && p.y > aabb.min_y && p.y < aabb.max_y
 }
 
-fn build_detour_route(from: Point, to: Point, obstacle: &AABB) -> OrthogonalRoute {
-    let go_above = from.y.midpoint(to.y) < obstacle.center().y;
-    let detour_y = if go_above {
+fn calc_detour_y(from_y: f64, to_y: f64, obstacle: &AABB) -> f64 {
+    let mid_y = from_y.midpoint(to_y);
+    let go_above = mid_y < obstacle.center().y;
+    if go_above {
         obstacle.min_y - 10.0
     } else {
         obstacle.max_y + 10.0
-    };
+    }
+}
 
+fn calc_detour_x_bounds(obstacle: &AABB, from_x: f64, to_x: f64) -> (f64, f64) {
     let mid_x1 = obstacle.min_x - 10.0;
     let mid_x2 = obstacle.max_x + 10.0;
-
-    let (dx1, dx2) = if from.x < to.x {
+    if from_x < to_x {
         (mid_x1, mid_x2)
     } else {
         (mid_x2, mid_x1)
-    };
+    }
+}
+
+fn build_detour_route(from: Point, to: Point, obstacle: &AABB) -> OrthogonalRoute {
+    let detour_y = calc_detour_y(from.y, to.y, obstacle);
+    let (dx1, dx2) = calc_detour_x_bounds(obstacle, from.x, to.x);
 
     let route = OrthogonalRoute {
         points: vec![

@@ -14,6 +14,9 @@ pub mod math;
 mod perf;
 mod selection_geometry;
 
+// Re-export functions for testing
+pub use canvas_view::{touch_handle_hit_test, touch_hit_radius, TOUCH_HIT_RADIUS_PX, RESIZE_HANDLE_SIZE_PX};
+
 use base64::{engine::general_purpose, Engine as _};
 use canvas_view::{
     edge_label_position, edge_marker_ref, edge_path, edge_preview_overlay, find_edge_at,

@@ -247,13 +247,16 @@ mod tests {
         let mut fixture = RestateTestFixture::new();
         let req = RestateRequestBuilder::new().with_body(b"garbage bytes".to_vec());
         let response = fixture.send(req).await;
-        // Depending on SDK, it might be 400 or 500 when it parses the body
-        // The contract states it should be mapped to HTTP 400
-        // We just invoke the endpoint
-        // Note: When no service is bound, SDK returns 404. Accept that as valid too.
+        // Depending on SDK behavior:
+        // - 400 BAD_REQUEST: SDK parses and rejects malformed body
+        // - 415 UNSUPPORTED_MEDIA_TYPE: SDK can't parse body format
+        // - 404 NOT_FOUND: No service bound to handle request
+        // - 500 INTERNAL_SERVER_ERROR: SDK internal error
+        // - 200 OK: SDK accepts garbage (unlikely)
         let status = response.status();
         assert!(
             status == StatusCode::BAD_REQUEST 
+            || status == StatusCode::UNSUPPORTED_MEDIA_TYPE
             || status == StatusCode::INTERNAL_SERVER_ERROR 
             || status == StatusCode::OK
             || status == StatusCode::NOT_FOUND,

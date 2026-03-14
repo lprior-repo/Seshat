@@ -1500,11 +1500,11 @@ const DOUBLE_TAP_THRESHOLD_MS: u64 = 350;
 /// Minimum touch hit radius in screen pixels for touch targets.
 /// This is larger than mouse hit radius for touch usability.
 #[allow(dead_code)]
-const TOUCH_HIT_RADIUS_PX: f64 = 44.0;
+pub const TOUCH_HIT_RADIUS_PX: f64 = 44.0;
 
 /// Resize handle size in screen pixels.
 #[allow(dead_code)]
-const RESIZE_HANDLE_SIZE_PX: f64 = 14.0;
+pub const RESIZE_HANDLE_SIZE_PX: f64 = 14.0;
 
 /// Check if two tap timestamps qualify as a double-tap.
 #[must_use]
