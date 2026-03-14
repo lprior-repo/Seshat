@@ -76,4 +76,7 @@ pub mod subgraph_events_tests;
 pub mod terminal_shape_tests;
 
 #[cfg(test)]
+pub mod subgraph_cascade_tests;
+
+#[cfg(test)]
 pub mod subgraph_persistence_tests;

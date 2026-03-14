@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
-use crate::models::document::{DocumentData, NodeStyle};
+use crate::models::document::{DocumentData, Node, NodeKind, NodeStyle, OrderedFloat};
 use im::HashMap;
 
 fn mock_canvas() -> CanvasState {

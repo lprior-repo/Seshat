@@ -310,15 +310,11 @@ Tests are written for `ViewportState` methods which can run with `cargo test`:
 - When: zoom_around_point is called with any zoom value
 - Then: viewport.zoom().is_finite() equals true
 
-### given_viewport_at_nonzero_camera_when_zoom_around_point_then_camera_x_unchanged
+### given_viewport_at_nonzero_camera_when_zoom_around_point_then_camera_changes
 - Given: ViewportState at zoom 1.0 with camera_x=100.0, camera_y=50.0
 - When: zoom_around_point(2.0, 100.0, 100.0) is called
-- Then: viewport.camera_x() equals 100.0
-
-### given_viewport_at_nonzero_camera_when_zoom_around_point_then_camera_y_unchanged
-- Given: ViewportState at zoom 1.0 with camera_x=100.0, camera_y=50.0
-- When: zoom_around_point(2.0, 100.0, 100.0) is called
-- Then: viewport.camera_y() equals 50.0
+- Then: viewport.camera_x() does not equal 100.0 OR viewport.camera_y() does not equal 50.0
+- Note: Camera MUST change to keep the screen point anchored in world coordinates
 
 ### given_viewport_when_zoom_around_point_then_screen_point_remains_fixed
 - Given: ViewportState at zoom 1.0, camera at (0.0, 0.0), viewport 800x600
@@ -346,11 +342,11 @@ Tests are written for `ViewportState` methods which can run with `cargo test`:
 - Then: Result zoom always in [0.1, 4.0]
 - Note: Use proptest to test thousands of random inputs
 
-### property_zoom_around_point_camera_unchanged
+### property_zoom_around_point_camera_changes
 - Given: Arbitrary camera position (camera_x, camera_y), arbitrary valid zoom, arbitrary screen point
 - When: zoom_around_point is called
-- Then: camera_x and camera_y remain unchanged
-- Note: Use proptest with arbitrary camera positions
+- Then: camera_x and/or camera_y changes to keep the screen point anchored
+- Note: Use proptest with arbitrary camera positions - camera MUST change to keep screen point fixed in world coords
 
 ### property_zoom_around_point_screen_point_fixed
 - Given: Arbitrary camera position, arbitrary valid zoom, arbitrary screen point (sx, sy)
@@ -527,13 +523,12 @@ Tests are written for `ViewportState` methods which can run with `cargo test`:
 | given_viewport_when_zoom_around_point_with_negative_screen_x_then_returns_true | Q1 | Edge |
 | given_viewport_when_zoom_around_point_with_negative_screen_y_then_returns_true | Q1 | Edge |
 | given_viewport_when_zoom_around_point_with_negative_screen_coords_then_zoom_changes | Q1 | Edge |
-| given_viewport_at_nonzero_camera_when_zoom_around_point_then_camera_x_unchanged | I2 | Contract |
-| given_viewport_at_nonzero_camera_when_zoom_around_point_then_camera_y_unchanged | I3 | Contract |
+| given_viewport_at_nonzero_camera_when_zoom_around_point_then_camera_changes | I2, I3 | Contract |
 | given_viewport_when_zoom_around_point_then_screen_point_remains_fixed | I4 | Contract |
 | given_viewport_when_zoom_around_point_at_corner_then_screen_point_remains_fixed | I4 | Contract |
 | given_viewport_when_zoom_around_point_at_corner_then_screen_point_remains_fixed_opposite | I4 | Contract |
 | property_zoom_around_point_always_in_bounds | Q1 | Property |
-| property_zoom_around_point_camera_unchanged | I2, I3 | Property |
+| property_zoom_around_point_camera_changes | I2, I3 | Property |
 | property_zoom_around_point_screen_point_fixed | I4 | Property |
 | property_set_zoom_always_in_bounds | Q1 | Property |
 | property_zoom_in_always_in_bounds | Q1 | Property |
