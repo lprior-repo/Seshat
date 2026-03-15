@@ -9,14 +9,16 @@ pub enum Error {
     EmptySelection,
     #[error("Empty clipboard")]
     EmptyClipboard,
-    #[error("Invalid clipboard data")]
-    InvalidClipboardData,
+    #[error("Corrupt clipboard")]
+    CorruptClipboard,
     #[error("Duplicate ID created")]
     DuplicateIdCreated,
     #[error("Invalid edge reference")]
     InvalidEdgeReference,
     #[error("Invalid parent reference")]
     InvalidParentReference,
+    #[error("Cyclic parent reference")]
+    CyclicParentReference,
     #[error("Postcondition violated: {0}")]
     PostconditionViolated(String),
 }
@@ -37,6 +39,7 @@ impl Selection {
 pub struct ClipboardData {
     pub nodes: Vec<(NodeId, Node)>,
     pub edges: Vec<(EdgeId, Edge)>,
+    pub paste_serial: u32,
 }
 
 impl ClipboardData {
@@ -45,21 +48,18 @@ impl ClipboardData {
         Self {
             nodes: vec![],
             edges: vec![],
+            paste_serial: 0,
         }
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct PasteResult {
-    pub new_nodes: Vec<NodeId>,
-    pub new_edges: Vec<EdgeId>,
+    pub new_nodes: Vec<(NodeId, Node)>,
+    pub new_edges: Vec<(EdgeId, Edge)>,
+    pub new_selection: HashSet<String>,
 }
 
-/// Copies the selected nodes and their connecting edges to the clipboard.
-///
-/// # Errors
-/// Returns `Error::EmptySelection` if the selection is empty.
-/// Returns `Error::PostconditionViolated` if a selected node does not exist in the document.
 pub fn copy(selection: &Selection, doc: &DiagramDocument) -> Result<ClipboardData, Error> {
     if selection.nodes.is_empty() {
         return Err(Error::EmptySelection);
@@ -93,13 +93,13 @@ pub fn copy(selection: &Selection, doc: &DiagramDocument) -> Result<ClipboardDat
         .map(|(id, edge)| (id.clone(), edge.clone()))
         .collect();
 
-    Ok(ClipboardData { nodes, edges })
+    Ok(ClipboardData {
+        nodes,
+        edges,
+        paste_serial: 0,
+    })
 }
 
-/// Cuts the selected nodes from the document and places them in the clipboard.
-///
-/// # Errors
-/// Returns `Error::EmptySelection` if the selection is empty.
 pub fn cut(selection: &Selection, doc: &mut DiagramDocument) -> Result<ClipboardData, Error> {
     let clipboard = copy(selection, doc)?;
 
@@ -111,25 +111,29 @@ pub fn cut(selection: &Selection, doc: &mut DiagramDocument) -> Result<Clipboard
     Ok(clipboard)
 }
 
-/// Pastes the clipboard contents into the document, applying an offset and regenerating IDs.
-///
-/// # Errors
-/// Returns `Error::EmptyClipboard` if the clipboard is empty.
-/// Returns `Error::DuplicateIdCreated` if a newly generated ID collides with an existing one.
-/// Returns `Error::InvalidParentReference` if a pasted node points to a non-existent parent.
-/// Returns `Error::InvalidEdgeReference` if a pasted edge points to a non-existent node.
-pub fn paste(
+pub fn calculate_paste(
     clipboard: &ClipboardData,
-    doc: &mut DiagramDocument,
-    paste_serial: u32,
+    doc: &DiagramDocument,
 ) -> Result<PasteResult, Error> {
     if clipboard.nodes.is_empty() {
         return Err(Error::EmptyClipboard);
     }
 
-    let offset_val = 20.0 * f64::from(paste_serial);
+    let mut clipboard_node_ids = HashSet::new();
+    for (id, _) in &clipboard.nodes {
+        if !clipboard_node_ids.insert(id.clone()) {
+            return Err(Error::CorruptClipboard);
+        }
+    }
+    let mut clipboard_edge_ids = HashSet::new();
+    for (id, _) in &clipboard.edges {
+        if !clipboard_edge_ids.insert(id.clone()) {
+            return Err(Error::CorruptClipboard);
+        }
+    }
 
-    // Generate new nodes mapped with their old IDs
+    let offset_val = 20.0 * f64::from(clipboard.paste_serial + 1);
+
     let new_nodes_mapped = clipboard
         .nodes
         .iter()
@@ -155,7 +159,28 @@ pub fn paste(
         .map(|(old_id, new_id, _)| (old_id.clone(), new_id.clone()))
         .collect();
 
-    // Remap parents
+    let clipboard_nodes_map: HashMap<NodeId, &Node> = clipboard
+        .nodes
+        .iter()
+        .map(|(id, n)| (id.clone(), n))
+        .collect();
+
+    let mut path = HashSet::new();
+    for (start_id, _) in &clipboard.nodes {
+        let mut current = start_id.clone();
+        path.clear();
+        while let Some(parent_id) = clipboard_nodes_map
+            .get(&current)
+            .and_then(|n| n.parent.as_ref())
+        {
+            if path.contains(parent_id) || parent_id == start_id {
+                return Err(Error::CyclicParentReference);
+            }
+            path.insert(parent_id.clone());
+            current = parent_id.clone();
+        }
+    }
+
     let mapped_nodes = new_nodes_mapped
         .into_iter()
         .map(|(_, new_id, node)| {
@@ -181,7 +206,6 @@ pub fn paste(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Prepare edges
     let new_edges_mapped = clipboard
         .edges
         .iter()
@@ -224,32 +248,14 @@ pub fn paste(
         })
         .collect::<Result<Vec<_>, _>>()?;
 
-    // Perform the mutation at the boundary
-    let pasted_node_ids = mapped_nodes
-        .into_iter()
-        .map(|(new_id, new_node)| {
-            doc.document.nodes.insert(new_id.clone(), new_node);
-            new_id
-        })
-        .collect::<Vec<_>>();
-
-    let pasted_edge_ids = new_edges_mapped
-        .into_iter()
-        .map(|(new_id, new_edge)| {
-            doc.document.edges.insert(new_id.clone(), new_edge);
-            new_id
-        })
-        .collect::<Vec<_>>();
-
-    doc.editor_state.selected_items.clear();
-    pasted_node_ids.iter().for_each(|id| {
-        doc.editor_state
-            .selected_items
-            .insert(id.as_str().to_string());
-    });
+    let new_selection: HashSet<String> = mapped_nodes
+        .iter()
+        .map(|(id, _)| id.as_str().to_string())
+        .collect();
 
     Ok(PasteResult {
-        new_nodes: pasted_node_ids,
-        new_edges: pasted_edge_ids,
+        new_nodes: mapped_nodes,
+        new_edges: new_edges_mapped,
+        new_selection,
     })
 }

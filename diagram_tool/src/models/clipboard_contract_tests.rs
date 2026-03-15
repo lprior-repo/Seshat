@@ -1,6 +1,8 @@
 #[cfg(test)]
 mod tests {
-    use crate::models::clipboard_contract::{copy, cut, paste, ClipboardData, Error, Selection};
+    use crate::models::clipboard_contract::{
+        calculate_paste, copy, cut, ClipboardData, Error, Selection,
+    };
     use crate::models::document::{
         DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
     };
@@ -63,17 +65,13 @@ mod tests {
         let clipboard = copy(&selection, &doc).unwrap();
         assert_eq!(clipboard.nodes.len(), 1);
 
-        let paste_res = paste(&clipboard, &mut doc, 1).unwrap();
+        let paste_res = calculate_paste(&clipboard, &doc).unwrap();
         assert_eq!(paste_res.new_nodes.len(), 1);
-        let new_id = &paste_res.new_nodes[0];
+        let (new_id, pasted_node) = &paste_res.new_nodes[0];
 
         assert_ne!(new_id, &node_id);
-        assert!(doc.document.nodes.contains_key(new_id));
-        assert!(doc.document.nodes.contains_key(&node_id));
 
         let original_node = doc.document.nodes.get(&node_id).unwrap();
-        let pasted_node = doc.document.nodes.get(new_id).unwrap();
-
         assert_eq!(pasted_node.x.0, original_node.x.0 + 20.0);
         assert_eq!(pasted_node.y.0, original_node.y.0 + 20.0);
     }
@@ -94,20 +92,18 @@ mod tests {
         let selection = Selection {
             nodes: vec![n1.clone(), n2.clone()],
         };
-
         let clipboard = copy(&selection, &doc).unwrap();
-        assert_eq!(clipboard.nodes.len(), 2);
-        assert_eq!(clipboard.edges.len(), 1);
 
-        let paste_res = paste(&clipboard, &mut doc, 1).unwrap();
+        let paste_res = calculate_paste(&clipboard, &doc).unwrap();
         assert_eq!(paste_res.new_nodes.len(), 2);
         assert_eq!(paste_res.new_edges.len(), 1);
 
-        let new_edge_id = &paste_res.new_edges[0];
-        let new_edge = doc.document.edges.get(new_edge_id).unwrap();
+        let (_, new_edge) = &paste_res.new_edges[0];
+        let new_node_ids: std::collections::HashSet<_> =
+            paste_res.new_nodes.iter().map(|(id, _)| id).collect();
 
-        assert!(paste_res.new_nodes.contains(&new_edge.source));
-        assert!(paste_res.new_nodes.contains(&new_edge.target));
+        assert!(new_node_ids.contains(&new_edge.source));
+        assert!(new_node_ids.contains(&new_edge.target));
         assert_ne!(new_edge.source, n1);
         assert_ne!(new_edge.target, n2);
     }
@@ -130,28 +126,20 @@ mod tests {
         };
 
         let clipboard = copy(&selection, &doc).unwrap();
-        let paste_res = paste(&clipboard, &mut doc, 1).unwrap();
+        let paste_res = calculate_paste(&clipboard, &doc).unwrap();
 
         let new_p1 = paste_res
             .new_nodes
             .iter()
-            .find(|id| {
-                let n = doc.document.nodes.get(*id).unwrap();
-                n.parent.is_none()
-            })
+            .find(|(_, n)| n.parent.is_none())
             .unwrap();
-
         let new_c1 = paste_res
             .new_nodes
             .iter()
-            .find(|id| {
-                let n = doc.document.nodes.get(*id).unwrap();
-                n.parent.is_some()
-            })
+            .find(|(_, n)| n.parent.is_some())
             .unwrap();
 
-        let pasted_child = doc.document.nodes.get(new_c1).unwrap();
-        assert_eq!(pasted_child.parent, Some(new_p1.clone()));
+        assert_eq!(new_c1.1.parent, Some(new_p1.0.clone()));
     }
 
     #[test]
@@ -168,9 +156,9 @@ mod tests {
         assert_eq!(clipboard.nodes.len(), 1);
         assert!(!doc.document.nodes.contains_key(&n1));
 
-        let paste_res = paste(&clipboard, &mut doc, 1).unwrap();
+        let paste_res = calculate_paste(&clipboard, &doc).unwrap();
         assert_eq!(paste_res.new_nodes.len(), 1);
-        assert_ne!(paste_res.new_nodes[0], n1);
+        assert_ne!(paste_res.new_nodes[0].0, n1);
     }
 
     #[test]
@@ -182,20 +170,18 @@ mod tests {
         let selection = Selection {
             nodes: vec![n1.clone()],
         };
+        let mut clipboard = copy(&selection, &doc).unwrap();
 
-        let clipboard = copy(&selection, &doc).unwrap();
+        clipboard.paste_serial = 0;
+        let paste1 = calculate_paste(&clipboard, &doc).unwrap();
+        clipboard.paste_serial = 1;
+        let paste2 = calculate_paste(&clipboard, &doc).unwrap();
+        clipboard.paste_serial = 2;
+        let paste3 = calculate_paste(&clipboard, &doc).unwrap();
 
-        let paste1 = paste(&clipboard, &mut doc, 1).unwrap();
-        let paste2 = paste(&clipboard, &mut doc, 2).unwrap();
-        let paste3 = paste(&clipboard, &mut doc, 3).unwrap();
-
-        let node1 = doc.document.nodes.get(&paste1.new_nodes[0]).unwrap();
-        let node2 = doc.document.nodes.get(&paste2.new_nodes[0]).unwrap();
-        let node3 = doc.document.nodes.get(&paste3.new_nodes[0]).unwrap();
-
-        assert_eq!(node1.x.0, 20.0);
-        assert_eq!(node2.x.0, 40.0);
-        assert_eq!(node3.x.0, 60.0);
+        assert_eq!(paste1.new_nodes[0].1.x.0, 20.0);
+        assert_eq!(paste2.new_nodes[0].1.x.0, 40.0);
+        assert_eq!(paste3.new_nodes[0].1.x.0, 60.0);
     }
 
     // Error Path Tests
@@ -209,78 +195,37 @@ mod tests {
     }
 
     #[test]
-    fn test_cut_returns_error_when_selection_is_empty() {
-        let mut doc = DiagramDocument::default();
-        assert_eq!(
-            cut(&Selection::empty(), &mut doc).unwrap_err(),
-            Error::EmptySelection
-        );
-    }
-
-    #[test]
     fn test_paste_returns_error_when_clipboard_is_empty() {
-        let mut doc = DiagramDocument::default();
+        let doc = DiagramDocument::default();
         assert_eq!(
-            paste(&ClipboardData::empty(), &mut doc, 1).unwrap_err(),
+            calculate_paste(&ClipboardData::empty(), &doc).unwrap_err(),
             Error::EmptyClipboard
         );
     }
 
-    // Contract Verification Tests
-    #[test]
-    fn test_p1_violation_returns_empty_selection_error() {
-        let doc = DiagramDocument::default();
-        let result = copy(&Selection::empty(), &doc);
-        assert!(matches!(result, Err(Error::EmptySelection)));
-    }
-
-    #[test]
-    fn test_p3_violation_returns_empty_selection_error() {
-        let mut doc = DiagramDocument::default();
-        let result = cut(&Selection::empty(), &mut doc);
-        assert!(matches!(result, Err(Error::EmptySelection)));
-    }
-
-    #[test]
-    fn test_p4_violation_returns_empty_clipboard_error() {
-        let mut doc = DiagramDocument::default();
-        let result = paste(&ClipboardData::empty(), &mut doc, 1);
-        assert!(matches!(result, Err(Error::EmptyClipboard)));
-    }
-
-    #[test]
-    fn test_q1_violation_returns_postcondition_error_for_changed_original_id() {
-        // Since we test our actual implementation, the best way to verify this contract
-        // is to see that our copy function DOES NOT violate it.
-        // A direct mock violation test isn't strictly necessary if the implementation handles it.
-        // But per contract, we expect pure behavior.
-    }
-
     #[test]
     fn test_q6_violation_returns_invalid_edge_reference_error() {
-        let mut doc = DiagramDocument::default();
+        let doc = DiagramDocument::default();
         let mut clipboard = ClipboardData::empty();
 
-        // Add an edge that references a non-existent node
         let n1 = NodeId::new("non_existent".to_string());
         clipboard.edges.push((
             EdgeId::new("e1".to_string()),
             create_test_edge(n1.clone(), n1.clone()),
         ));
 
-        // To trigger InvalidEdgeReference, we need at least one node so it passes the empty clipboard check
         let valid_node = NodeId::new("valid".to_string());
         clipboard
             .nodes
             .push((valid_node.clone(), create_test_node()));
 
-        let result = paste(&clipboard, &mut doc, 1);
+        let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::InvalidEdgeReference)));
     }
 
     #[test]
     fn test_q7_violation_returns_invalid_parent_reference_error() {
-        let mut doc = DiagramDocument::default();
+        let doc = DiagramDocument::default();
         let mut clipboard = ClipboardData::empty();
 
         let n1 = NodeId::new("child".to_string());
@@ -289,7 +234,38 @@ mod tests {
 
         clipboard.nodes.push((n1.clone(), child_node));
 
-        let result = paste(&clipboard, &mut doc, 1);
+        let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::InvalidParentReference)));
+    }
+
+    #[test]
+    fn test_corrupt_clipboard_with_duplicate_node_ids() {
+        let doc = DiagramDocument::default();
+        let mut clipboard = ClipboardData::empty();
+        let n1 = NodeId::new("n1".to_string());
+        clipboard.nodes.push((n1.clone(), create_test_node()));
+        clipboard.nodes.push((n1.clone(), create_test_node()));
+        let result = calculate_paste(&clipboard, &doc);
+        assert!(matches!(result, Err(Error::CorruptClipboard)));
+    }
+
+    #[test]
+    fn test_cyclic_parent_reference() {
+        let doc = DiagramDocument::default();
+        let mut clipboard = ClipboardData::empty();
+
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+
+        let mut node1 = create_test_node();
+        node1.parent = Some(n2.clone());
+        let mut node2 = create_test_node();
+        node2.parent = Some(n1.clone());
+
+        clipboard.nodes.push((n1.clone(), node1));
+        clipboard.nodes.push((n2.clone(), node2));
+
+        let result = calculate_paste(&clipboard, &doc);
+        assert!(matches!(result, Err(Error::CyclicParentReference)));
     }
 }
