@@ -1,47 +1,31 @@
 # Seshat Project Guidelines
 
-This project strictly follows specific engineering practices and toolchains. As an AI assistant, you must adhere to the following rules:
+This project strictly follows specific engineering practices. You **must** adhere to these constraints:
 
-## Core Stack & Tools
-- **Codanna**: Always use codanna for code intelligence and semantic search (`codanna --config .codanna/settings.toml serve --watch`).
-- **Moon**: The primary build system. Use `moon run <task>` instead of raw `cargo` commands when possible.
-- **Beads (`bd`)**: Use `bd` for ALL issue tracking. Do NOT use markdown TODOs. 
+## 1. Core Mandates
+- **Skills**: ALWAYS invoke the `functional-rust` skill ALWAYS before starting work.
+- **TDD Guard**: You MUST use strict Test-Driven Development. No implementation code without a failing test. Tests must be piped through `tdd-guard-rust` (e.g., `cargo nextest run 2>&1 | tdd-guard-rust --project-root . --passthrough`).
+- **NO Subagents**: You must NEVER use subagents or autonomous execution (`go-skill`, `Task` tool). All dev work happens in this interactive session.
+- **Codanna**: Always use `codanna` for semantic search.
+- **Moon & BD**: Use `moon` for all build tasks. Use `bd` (beads) for ALL issue tracking (no markdown TODOs).
 - **Jujutsu (`jj`)**: Use `jj` for version control alongside `git`.
 
-## Functional Rust
-- Enforce the **Data → Calculations → Actions** pattern.
-- **Zero panics, zero unwrap, zero mut** by default in source code.
-- Always use `Result<T, E>` for errors.
-- Ensure strict compliance with `clippy-source` for flawless code.
+## 2. Code Review & Auditing (CRITICAL)
+- Before finalizing any feature or significant refactor, you MUST perform a code review stage.
+- **Black Hat Review**: Invoke the `black-hat-reviewer` skill to mercilessly verify constraints (Contract Parity, Functional Rust Big 6, Strict DDD).
+- **Truth Serum**: Invoke the `truth-serum` skill to audit the code for AI hallucinations, laziness, or skipped verification steps.
 
-## Landing the Plane (Full Moon Landing)
-When ending a session or completing a feature, you **MUST execute a "Full Moon Landing"**.
-
+## 3. Landing the Plane (Full Moon Landing)
 A session is NOT complete until all these steps are done:
-1. **Run Quality Gates**: You must run `moon run :ci-source` and ensure it passes completely.
-2. **File Issues**: Use `bd` to track any remaining or discovered work.
-3. **Push to Remote**: 
-   ```bash
-   git pull --rebase
-   bd sync
-   git push
-   git status # MUST show "up to date with origin"
-   ```
-4. **Never stop before pushing**: Do not leave work stranded locally.
+1. Pass the Code Review Stage (`black-hat-reviewer` & `truth-serum`).
+2. Run `moon run :ci-source` and ensure it passes completely.
+3. File remaining/discovered work with `bd`.
+4. Push to remote (`git pull --rebase`, `bd sync`, `git push`, verify status is up to date). NEVER leave work stranded locally.
 
-## Dioxus WASM Build Constraints (CRITICAL)
-When running `dx build --platform web` or building for `wasm32-unknown-unknown`, the build will fatally panic if backend networking or database logic leaks into the WASM client.
-- **NEVER** include `sqlx`, `tokio`, `mio`, `rusqlite`, or `reqwest` (with default TLS) in the `wasm32-unknown-unknown` target.
-- **ALWAYS** wrap server/database dependencies in `Cargo.toml` with `[target.'cfg(not(target_arch = "wasm32"))'.dependencies]`.
-- **NEVER** set `default = ["desktop", "server"]` or enable `fullstack` by default in `Cargo.toml`. You must use `default = ["web"]` to ensure `dx build` does not accidentally pull in `dioxus-server` and `tokio`.
-- **ALWAYS** wrap domain functions that take `SqlitePool` with `#[cfg(not(target_arch = "wasm32"))]`.
-
-## Documentation Map
-Before starting tasks, ensure you understand the project's architecture by consulting:
-- `docs/00_CODEBASE_MAP.md` - Where files live.
-- `docs/04_DATA_CALC_ACTIONS.md` - Functional Rust implementation.
-- `docs/06_DIOXUS_PATTERNS.md` - Frontend UI state management.
-- `docs/07_TESTING_STRATEGY.md` - Testing rigor (Proptest, E2E).
-- `docs/10_AI_CLI_CONTRACT.md` - Interaction schemas for JSON API.
-- `docs/11_FEATURE_SET.md` - Frontend UI vs. Backend CLI capabilities.
-- `docs/12_SINGLE_LOG_ARCHITECTURE.md` - Single-log WAL, durable execution patterns, and conflict diffs.
+## 4. Documentation Map
+Consult the following before writing code:
+- **`docs/00_CODEBASE_MAP.md`** - Where files live.
+- **`docs/04_DATA_CALC_ACTIONS.md`** - Functional Rust rules (Zero panics/unwrap/mut, `Result<T,E>`).
+- **`docs/06_DIOXUS_PATTERNS.md`** - Frontend UI state management.
+- **`docs/07_TESTING_STRATEGY.md`** - Testing rigor.
+- **`docs/13_LESSONS_LEARNED.md`** - **CRITICAL**: Contains strict Dioxus WASM constraints and TDD rules. Read before touching Cargo configs or UI code.
