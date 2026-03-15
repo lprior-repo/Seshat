@@ -14,7 +14,7 @@ pub async fn create_async_pool(db_path: &Path) -> Result<SqlitePool, AsyncStoreE
     let connection_string = format!("sqlite:{}?mode=rwc", db_path.display());
 
     let pool = SqlitePoolOptions::new()
-        .max_connections(10)
+        .max_connections(1) // Use single connection to avoid pragma issues
         .connect(&connection_string)
         .await?;
 
