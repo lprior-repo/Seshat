@@ -1318,7 +1318,40 @@ pub fn Canvas() -> Element {
 
                     if tool == ToolMode::Select {
                         let doc = doc_signal.read().clone();
-                        if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
+                        if let Some(node_id) = find_node_at(&doc, pos.0, pos.1) {
+                            let additive = shift || ctrl || meta;
+                            doc_signal.with_mut(|d| {
+                                d.editor_state.selected_items = if additive {
+                                    toggle_selection(
+                                        &d.editor_state.selected_items,
+                                        &node_id.to_string(),
+                                    )
+                                } else {
+                                    if d.editor_state.selected_items.contains(&node_id.to_string()) {
+                                        d.editor_state.selected_items.clone()
+                                    } else {
+                                        select_single(node_id.to_string())
+                                    }
+                                };
+                            });
+                            
+                            let current_doc = doc_signal.read().clone();
+                            let mut original_positions = HashMap::new();
+                            for id_str in &current_doc.editor_state.selected_items {
+                                let id = NodeId::new(id_str.clone());
+                                if let Some(node) = current_doc.document.nodes.get(&id) {
+                                    original_positions.insert(id, (node.x.0, node.y.0));
+                                }
+                            }
+                            
+                            interaction_mode.set(InteractionMode::DraggingSelection {
+                                anchor_canvas: pos,
+                                anchor_client: (local_x, local_y),
+                                original_positions,
+                                did_move: false,
+                            });
+                            continue;
+                        } else if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
                             let additive = shift || ctrl || meta;
                             doc_signal.with_mut(|d| {
                                 d.editor_state.selected_items = if additive {
@@ -1332,6 +1365,13 @@ pub fn Canvas() -> Element {
                             });
                             interaction_mode.set(InteractionMode::Select);
                             continue;
+                        } else {
+                            let additive = shift || ctrl || meta;
+                            if !additive {
+                                doc_signal.with_mut(|d| {
+                                    d.editor_state.selected_items.clear();
+                                });
+                            }
                         }
                     }
 
@@ -1889,7 +1929,37 @@ pub fn Canvas() -> Element {
 
                 if tool == ToolMode::Select {
                     let doc = doc_signal.read().clone();
-                    if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
+                    if let Some(node_id) = find_node_at(&doc, pos.0, pos.1) {
+                        let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
+                        doc_signal.with_mut(|d| {
+                            d.editor_state.selected_items = if additive {
+                                toggle_selection(&d.editor_state.selected_items, &node_id.to_string())
+                            } else {
+                                if d.editor_state.selected_items.contains(&node_id.to_string()) {
+                                    d.editor_state.selected_items.clone()
+                                } else {
+                                    select_single(node_id.to_string())
+                                }
+                            };
+                        });
+                        
+                        let current_doc = doc_signal.read().clone();
+                        let mut original_positions = HashMap::new();
+                        for id_str in &current_doc.editor_state.selected_items {
+                            let id = NodeId::new(id_str.clone());
+                            if let Some(node) = current_doc.document.nodes.get(&id) {
+                                original_positions.insert(id, (node.x.0, node.y.0));
+                            }
+                        }
+                        
+                        interaction_mode.set(InteractionMode::DraggingSelection {
+                            anchor_canvas: pos,
+                            anchor_client: (local_x, local_y),
+                            original_positions,
+                            did_move: false,
+                        });
+                        return;
+                    } else if let Some(edge_id) = find_edge_at(&doc, pos.0, pos.1) {
                         let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                         doc_signal.with_mut(|d| {
                             d.editor_state.selected_items = if additive {
@@ -1959,6 +2029,12 @@ pub fn Canvas() -> Element {
                         });
                     }
                     ToolMode::Select => {
+                        let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
+                        if !additive {
+                            doc_signal.with_mut(|d| {
+                                d.editor_state.selected_items.clear();
+                            });
+                        }
                         interaction_mode.set(InteractionMode::RubberBand { start: pos, current: pos });
                     }
                     ToolMode::Edge => {
