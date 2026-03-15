@@ -746,6 +746,12 @@ impl DiagramDocument {
 mod tests {
     use super::{ArrowType, Edge, EdgeId, EditorState, NodeId, OrderedFloat, Revision};
 
+    #[test]
+    fn given_empty_string_when_creating_node_id_then_it_is_rejected() {
+        let result = NodeId::new(String::new());
+        assert!(result.is_err(), "Empty string should be rejected");
+    }
+
     #[cfg(kani)]
     #[kani::proof]
     #[test]
