@@ -1,0 +1,12 @@
+{
+  "session_id": "b282151c-a986-4885-9993-f10455e3bf9e",
+  "transcript_path": "/home/lewis/.claude/projects/-home-lewis-src-seshat/b282151c-a986-4885-9993-f10455e3bf9e.jsonl",
+  "hook_event_name": "PreToolUse",
+  "tool_name": "Edit",
+  "tool_input": {
+    "file_path": "/home/lewis/src/seshat/diagram_tool/src/models/sync.rs",
+    "old_string": "            operation: DomainOp::NodeAdd {\n                id: NodeId::new(format!(\"node-{revision}\").unwrap()),",
+    "new_string": "            operation: DomainOp::NodeAdd {\n                id: NodeId::new(format!(\"node-{revision}\")),",
+    "replace_all": false
+  }
+}
