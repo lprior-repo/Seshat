@@ -1,9 +1,11 @@
 pub mod alignment;
 pub mod grid;
+pub mod grid_snap;
 pub mod mod_types;
 
 pub use alignment::*;
 pub use grid::*;
+pub use grid_snap::*;
 pub use mod_types::*;
 
 use crate::geometry::primitives::Point;
