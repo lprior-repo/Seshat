@@ -49,3 +49,4 @@ third_party/
 .dolt/
 *.db
 .cargo/
+.cache/
