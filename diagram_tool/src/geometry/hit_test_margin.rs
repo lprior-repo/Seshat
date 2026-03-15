@@ -92,14 +92,16 @@ fn validate_point(point: Point) -> Result<Point, HitTestError> {
 ///
 /// # Examples
 /// ```
+/// use diagram_tool::geometry::screen_to_world_margin;
+///
 /// // At zoom 0.1: world margin = 50.0
-/// screen_to_world_margin(5.0, 0.1).unwrap() == 50.0
+/// assert_eq!(screen_to_world_margin(5.0, 0.1).unwrap(), 50.0);
 ///
 /// // At zoom 1.0: world margin = 5.0
-/// screen_to_world_margin(5.0, 1.0).unwrap() == 5.0
+/// assert_eq!(screen_to_world_margin(5.0, 1.0).unwrap(), 5.0);
 ///
 /// // At zoom 4.0: world margin = 1.25
-/// screen_to_world_margin(5.0, 4.0).unwrap() == 1.25
+/// assert_eq!(screen_to_world_margin(5.0, 4.0).unwrap(), 1.25);
 /// ```
 #[must_use]
 pub fn screen_to_world_margin(screen_margin: f64, zoom: f64) -> Result<f64, HitTestError> {
@@ -124,14 +126,16 @@ pub fn screen_to_world_margin(screen_margin: f64, zoom: f64) -> Result<f64, HitT
 ///
 /// # Examples
 /// ```
+/// use diagram_tool::geometry::{Point, Rectangle, hit_test_with_margin};
+///
 /// let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
 /// let point = Point::new(105.0, 50.0); // 5 units from edge
 ///
 /// // At zoom 1.0: margin = 5.0, point is on boundary (hit)
-/// hit_test_with_margin(point, &rect, 1.0, 5.0).unwrap() == true
+/// assert_eq!(hit_test_with_margin(point, &rect, 1.0, 5.0).unwrap(), true);
 ///
 /// // At zoom 4.0: margin = 1.25, point is outside (no hit)
-/// hit_test_with_margin(point, &rect, 4.0, 5.0).unwrap() == false
+/// assert_eq!(hit_test_with_margin(point, &rect, 4.0, 5.0).unwrap(), false);
 /// ```
 #[must_use]
 pub fn hit_test_with_margin(

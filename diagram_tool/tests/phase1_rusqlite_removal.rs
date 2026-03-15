@@ -5,6 +5,8 @@
 //! - sqlx/tokio available with correct features
 //! - Async store module properly integrated
 
+#![cfg(not(target_arch = "wasm32"))]
+
 use diagram_tool::store_async::envelope_to_valid_event;
 use thiserror::Error;
 

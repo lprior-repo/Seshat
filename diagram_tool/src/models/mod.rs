@@ -64,6 +64,7 @@ pub mod transform;
 pub mod transform_tests;
 
 pub mod subgraph_events;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod sync;
 pub mod validation;
 

@@ -336,8 +336,8 @@ fn apply_position(
 mod tests {
     use super::*;
     use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, NodeKind, NodeStyle,
-        Revision,
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, NodeKind,
+        NodeStyle, Revision,
     };
     use im::HashMap;
 

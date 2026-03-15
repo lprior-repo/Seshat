@@ -7,6 +7,8 @@
 //!
 //! All tests follow the BDD pattern: given_X_when_Y_then_Z
 
+#![cfg(not(target_arch = "wasm32"))]
+
 use diagram_tool::store_async::{
     bootstrap_async_store, create_async_pool, read_store_pragmas_async, AsyncStoreError,
     AsyncStorePragmas,

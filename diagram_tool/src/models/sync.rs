@@ -4,6 +4,10 @@
 //! made by external CLI tools. It watches the SQLite database file
 //! and its WAL file for modifications and fetches new events.
 //!
+//! This module is not available on WASM targets.
+
+#![cfg(not(target_arch = "wasm32"))]
+//!
 //! # Architecture
 //!
 //! The sync module uses the `notify` crate for file watching. When the

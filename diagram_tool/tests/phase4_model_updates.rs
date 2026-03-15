@@ -1,5 +1,7 @@
 //! Phase 4 Tests: Model updates for rusqlite → sqlx migration
 
+#![cfg(not(target_arch = "wasm32"))]
+
 use diagram_tool::models::document::NodeId;
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::models::projection::{replay_events_from, DiagramProjection, EventRecord};
