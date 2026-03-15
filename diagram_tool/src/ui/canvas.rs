@@ -27,7 +27,7 @@ use dioxus::{
     html::{geometry::WheelDelta, input_data::MouseButton},
     prelude::*,
 };
-use im::HashMap;
+use im::{HashMap, HashSet};
 use interaction_reducer::{
     commit_inline_edit, finalize_motion_release, InteractionMode, ResizeHandle,
 };
@@ -687,6 +687,8 @@ pub fn Canvas() -> Element {
     let mut pending_pointer_sample = use_signal(|| Option::<(f64, f64)>::None);
     let mut pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
     let mut multi_touch_active = use_signal(|| false);
+    let mut captured_pointer = use_signal(|| Option::<u32>::None);
+    let mut active_pointers = use_signal(|| HashSet::<u32>::new());
     let mut canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let ordered_node_cache = use_memo(move || {
         let doc = doc_signal.read();
@@ -1173,12 +1175,12 @@ pub fn Canvas() -> Element {
 
                 const onPointerMove = (event) => {
                     const origin = getCanvasOrigin();
-                    dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y });
+                    dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, pointerId: event.pointerId });
                 };
 
                 const onPointerUp = (event) => {
                     const origin = getCanvasOrigin();
-                    dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y });
+                    dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, pointerId: event.pointerId });
                 };
 
                 const onPointerDown = (event) => {
@@ -1197,6 +1199,7 @@ pub fn Canvas() -> Element {
                         originX: origin.x,
                         originY: origin.y,
                         button: event.button.toString(),
+                        pointerId: event.pointerId,
                         // Include current tool and modifier state
                         tool: window.__seshat_current_tool || 'select',
                         shiftKey: event.shiftKey,
@@ -1266,6 +1269,26 @@ pub fn Canvas() -> Element {
                 if event_type == "pointerdown" {
                     // Update canvas_origin with the fresh origin from this message
                     canvas_origin.set((origin_x, origin_y));
+
+                    // Extract pointerId for multi-pointer tracking (MUL-009)
+                    let pointer_id = json["pointerId"].as_u64().map_or(0_u32, |v| v as u32);
+                    
+                    // Multi-pointer state isolation: only capture if no captured pointer exists
+                    // This ensures dragging doesn't corrupt state when another pointer is down
+                    if captured_pointer.read().is_some() {
+                        // Another pointer is already captured - ignore this one (MUL-009)
+                        // Still track it in active_pointers for proper cleanup
+                        active_pointers.with_mut(|set| {
+                            set.insert(pointer_id);
+                        });
+                        continue;
+                    }
+                    
+                    // No captured pointer - this is the primary pointer, capture it
+                    captured_pointer.set(Some(pointer_id));
+                    active_pointers.with_mut(|set| {
+                        set.insert(pointer_id);
+                    });
 
                     // Handle editing commit
                     if editing_node.read().is_some() || editing_edge.read().is_some() {
@@ -1436,7 +1459,17 @@ pub fn Canvas() -> Element {
                     continue;
                 }
 
+                // Extract pointerId for multi-pointer filtering (MUL-009)
+                let move_pointer_id = json["pointerId"].as_u64().map_or(0_u32, |v| v as u32);
+                let captured_id = *captured_pointer.read();
+                
+                // Only process pointermove if it matches the captured pointer
+                // This ensures dragging doesn't corrupt state when another pointer is moving
                 if event_type == "pointermove" {
+                    // Skip if this is not the captured pointer (MUL-009)
+                    if captured_id != Some(move_pointer_id) {
+                        continue;
+                    }
                     interaction_mode.with_mut(|mode| match mode {
                         InteractionMode::DrawingEdge { current_pos, .. } => {
                             let doc = doc_signal.read();
@@ -1475,6 +1508,26 @@ pub fn Canvas() -> Element {
                 }
 
                 if event_type == "pointerup" {
+                    // Extract pointerId for multi-pointer tracking (MUL-009)
+                    let up_pointer_id = json["pointerId"].as_u64().map_or(0_u32, |v| v as u32);
+                    
+                    // Multi-pointer state isolation: handle captured pointer release
+                    let was_captured = captured_pointer.read().map_or(false, |id| id == up_pointer_id);
+                    if was_captured {
+                        // This was the captured pointer - clear it and reset mode
+                        captured_pointer.set(None);
+                    }
+                    
+                    // Always remove from active_pointers
+                    active_pointers.with_mut(|set| {
+                        set.remove(&up_pointer_id);
+                    });
+                    
+                    // If this was the captured pointer, reset interaction mode
+                    if was_captured {
+                        interaction_mode.set(InteractionMode::Select);
+                    }
+
                     flush_pending_pointer_update(
                         doc_signal,
                         history_signal,
@@ -3183,7 +3236,7 @@ pub fn Canvas() -> Element {
 
 #[cfg(test)]
 mod tests {
-    use im::HashMap;
+use im::{HashMap, HashSet};
 
     use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};
     use crate::{
