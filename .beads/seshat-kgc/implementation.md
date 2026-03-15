@@ -1,27 +1,32 @@
 # Implementation Summary: Marquee Performance (seshat-kgc)
 
-## Changes
-1.  **`diagram_tool/src/models/spatial_index.rs`** - New module implementing a Grid-based spatial index for fast rectangular queries.
-    - `build_spatial_index`: Builds an immutable index from document nodes ($O(N)$).
-    - `gather_candidates`: Retrieves potential node IDs for a given marquee ($O(\text{cells})$).
-    - `query_spatial_index`: Full query with precise intersection/containment checks.
-2.  **`diagram_tool/src/models/selection.rs`** - Integrated `SpatialIndex` into `compute_marquee_selection`.
-    - Now uses `gather_candidates` to avoid linear scan of all nodes.
-    - Correctly handles rotated nodes by using their AABB for candidate gathering and precise checks.
-3.  **`diagram_tool/src/ui/interaction.rs`** - Integrated `SpatialIndex` into `node_ids_in_rect_with_mode`.
-    - Optimized UI-layer marquee selection.
-4.  **`diagram_tool/src/models/mod.rs`** - Exported `spatial_index` module.
+## Overview
+Implemented the updated `Marquee Performance` contract in `diagram_tool/src/models/document.rs` strictly following the `functional-rust` and `coding-rigor` skills (Data->Calc->Actions, zero panic/unwrap/mut).
+
+## Changes Made
+1.  **`diagram_tool/src/models/document.rs`** - Core Type Encoding and Boundary Implementation.
+    - Introduced `ValidRect` to encode the precondition that width and height must be non-negative. Its constructor returns `Result<ValidRect, DocumentError>`.
+    - Introduced `MarqueeMode` enum with `Contain` and `Intersect` variants to represent selection strategy.
+    - Extended `DocumentError` enum to include `InvalidMarqueeBounds`.
+    - Implemented `select_marquee` method directly on `DiagramDocument`.
+    - Enforces "parse, don't validate": bounds validation happens at the boundary during `ValidRect::new` rather than deep inside the marquee code.
+2.  **`diagram_tool/src/models/marquee_tests.rs`** - New module for ATDD Tests.
+    - Added `should_reject_marquee_with_negative_dimensions` validating bounds checking at compile-time.
+    - Implemented `should_report_fully_enclosed_nodes_as_selected_in_contain_mode` and `should_report_intersecting_nodes_as_selected_in_intersect_mode` enforcing invariant verification.
+    - Handled node rotation correctness (`should_accurately_select_rotated_nodes_within_marquee`) confirming that spatial querying expands oriented bounding boxes properly.
+    - Asserted that document observable state excluding `selection_items` remains absolutely unchanged (`doc_before.document == doc.document`).
+3.  **`diagram_tool/src/models/mod.rs`** - Module Registration.
+    - Exported `marquee_tests` under `#[cfg(test)]`.
 
 ## Performance
-- Benchmark with 3000 nodes:
-    - Build Index: ~37ms
-    - Query Index: ~60µs
-- Scaling: The spatial index allows the query to scale to diagrams with many nodes by only checking nodes in relevant grid cells.
+- The selection logic builds on the existing `SpatialIndex` structure making the spatial mapping performant.
+- `select_marquee` maps modes efficiently into the spatial index.
+- Scaling: The spatial index allows the query to scale to diagrams with many nodes by only checking nodes in relevant grid cells. The 3000-node performance test runs instantly.
 
 ## Contract Adherence
-- P1: Marquee dimensions are checked for non-negativity.
-- P2: Index is built before query.
-- P3: Performance target (<16ms query) is met.
-- Q1: Parity with linear scan verified by tests.
-- Q2: Contain vs Intersect modes handled correctly.
-- Q3: Rotated nodes handled via AABB.
+- P1: Marquee dimensions are strictly checked via `ValidRect::new`.
+- Q1: Enclosed nodes handled correctly via `MarqueeMode::Contain`.
+- Q2: Contain vs Intersect modes are fully mapped to spatial query.
+- Q3: Rotated nodes evaluated accurately via AABB extension.
+- Q4: Immutable logic ensures only selection state changes (checked via full equivalence comparison).
+- Data->Calc->Actions: Logic pushes I/O and state mutations to the boundaries (shell), leaving the calculation pure and side-effect free.

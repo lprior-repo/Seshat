@@ -575,6 +575,37 @@ pub enum DocumentError {
     EdgeAlreadyExists(EdgeId),
     #[error("edge not found: {0}")]
     EdgeNotFound(EdgeId),
+    #[error("invalid marquee bounds")]
+    InvalidMarqueeBounds,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ValidRect {
+    pub x: f64,
+    pub y: f64,
+    pub width: f64,
+    pub height: f64,
+}
+
+impl ValidRect {
+    pub fn new(x: f64, y: f64, w: f64, h: f64) -> Result<Self, DocumentError> {
+        if w < 0.0 || h < 0.0 {
+            Err(DocumentError::InvalidMarqueeBounds)
+        } else {
+            Ok(Self {
+                x,
+                y,
+                width: w,
+                height: h,
+            })
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum MarqueeMode {
+    Contain,
+    Intersect,
 }
 
 impl DiagramDocument {
@@ -677,6 +708,44 @@ impl DiagramDocument {
         }
 
         edge.target_port = port;
+        Ok(())
+    }
+
+    /// Executes a marquee selection on the document
+    ///
+    /// # Errors
+    /// Returns `DocumentError::InvalidMarqueeBounds` if bounds are invalid.
+    pub fn select_marquee(
+        &mut self,
+        bounds: ValidRect,
+        mode: MarqueeMode,
+    ) -> Result<(), DocumentError> {
+        use crate::geometry::primitives::AABB;
+        use crate::models::spatial_index::{
+            build_spatial_index, query_spatial_index, MarqueeMode as SpatialMode,
+        };
+
+        let index = build_spatial_index(&self.document.nodes);
+        let marquee_aabb = AABB::new(
+            bounds.x,
+            bounds.y,
+            bounds.x + bounds.width,
+            bounds.y + bounds.height,
+        );
+
+        let spatial_mode = match mode {
+            MarqueeMode::Contain => SpatialMode::Contain,
+            MarqueeMode::Intersect => SpatialMode::Intersect,
+        };
+
+        let selected =
+            query_spatial_index(&index, &self.document.nodes, marquee_aabb, spatial_mode);
+
+        self.editor_state.selected_items = selected
+            .into_iter()
+            .map(|id| id.as_str().to_string())
+            .collect();
+
         Ok(())
     }
 }

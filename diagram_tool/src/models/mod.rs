@@ -84,3 +84,6 @@ pub mod subgraph_persistence_tests;
 
 #[cfg(test)]
 pub mod subgraph_relative_tests;
+
+#[cfg(test)]
+pub mod marquee_tests;
