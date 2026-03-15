@@ -8,9 +8,7 @@
 #![allow(clippy::cast_precision_loss)]
 
 use crate::layout::grid::calculate_grid_layout;
-use crate::models::document::{
-    DiagramDocument, DocumentData, LockState, Node, NodeId, OrderedFloat,
-};
+use crate::models::document::{DiagramDocument, DocumentData, Node, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 use petgraph::algo::toposort;
@@ -905,7 +903,7 @@ mod tests {
 mod proptests {
     use super::*;
     use crate::models::document::{
-        ArrowType, Edge, EdgeId, EditorState, NodeKind, NodeStyle, Revision,
+        ArrowType, Edge, EdgeId, EditorState, LockState, NodeKind, NodeStyle, Revision,
     };
     use proptest::prelude::*;
 
