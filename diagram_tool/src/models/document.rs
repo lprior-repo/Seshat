@@ -18,17 +18,12 @@ use std::ops::{Add, Div, Mul, Sub};
 pub struct NodeId(String);
 
 impl NodeId {
-    #[must_use]
-    pub const fn new(id: String) -> Self {
-        Self(id)
-    }
-
     /// Create a new `NodeId`, returning error for empty strings
     ///
     /// # Errors
     ///
     /// Returns an error if `id` is an empty string.
-    pub fn try_new(id: String) -> Result<Self, &'static str> {
+    pub fn new(id: String) -> Result<Self, &'static str> {
         if id.is_empty() {
             Err("NodeId cannot be empty")
         } else {
@@ -150,6 +145,20 @@ impl Timestamp {
 impl fmt::Display for Timestamp {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.0)
+    }
+}
+
+#[derive(Clone, Copy, Debug, Default, Serialize, Deserialize, PartialEq, Eq)]
+pub enum LockState {
+    #[default]
+    Unlocked,
+    Locked,
+}
+
+impl LockState {
+    #[must_use]
+    pub fn is_locked(&self) -> bool {
+        matches!(self, LockState::Locked)
     }
 }
 
@@ -566,37 +575,6 @@ pub enum DocumentError {
     EdgeAlreadyExists(EdgeId),
     #[error("edge not found: {0}")]
     EdgeNotFound(EdgeId),
-    #[error("invalid marquee bounds")]
-    InvalidMarqueeBounds,
-}
-
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct ValidRect {
-    pub x: f64,
-    pub y: f64,
-    pub width: f64,
-    pub height: f64,
-}
-
-impl ValidRect {
-    pub fn new(x: f64, y: f64, w: f64, h: f64) -> Result<Self, DocumentError> {
-        if w < 0.0 || h < 0.0 {
-            Err(DocumentError::InvalidMarqueeBounds)
-        } else {
-            Ok(Self {
-                x,
-                y,
-                width: w,
-                height: h,
-            })
-        }
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum MarqueeMode {
-    Contain,
-    Intersect,
 }
 
 impl DiagramDocument {
@@ -701,44 +679,6 @@ impl DiagramDocument {
         edge.target_port = port;
         Ok(())
     }
-
-    /// Executes a marquee selection on the document
-    ///
-    /// # Errors
-    /// Returns `DocumentError::InvalidMarqueeBounds` if bounds are invalid.
-    pub fn select_marquee(
-        &mut self,
-        bounds: ValidRect,
-        mode: MarqueeMode,
-    ) -> Result<(), DocumentError> {
-        use crate::geometry::primitives::AABB;
-        use crate::models::spatial_index::{
-            build_spatial_index, query_spatial_index, MarqueeMode as SpatialMode,
-        };
-
-        let index = build_spatial_index(&self.document.nodes);
-        let marquee_aabb = AABB::new(
-            bounds.x,
-            bounds.y,
-            bounds.x + bounds.width,
-            bounds.y + bounds.height,
-        );
-
-        let spatial_mode = match mode {
-            MarqueeMode::Contain => SpatialMode::Contain,
-            MarqueeMode::Intersect => SpatialMode::Intersect,
-        };
-
-        let selected =
-            query_spatial_index(&index, &self.document.nodes, marquee_aabb, spatial_mode);
-
-        self.editor_state.selected_items = selected
-            .into_iter()
-            .map(|id| id.as_str().to_string())
-            .collect();
-
-        Ok(())
-    }
 }
 
 #[cfg(test)]
@@ -747,9 +687,9 @@ mod tests {
     use super::{ArrowType, Edge, EdgeId, EditorState, NodeId, OrderedFloat, Revision};
 
     #[test]
-    fn given_empty_string_when_creating_node_id_then_it_is_rejected() {
-        let result = NodeId::new(String::new());
-        assert!(result.is_err(), "Empty string should be rejected");
+    fn given_empty_string_when_parsing_node_id_then_it_is_rejected() {
+        let result = NodeId::parse(String::new());
+        assert!(result.is_err());
     }
 
     #[cfg(kani)]
@@ -782,7 +722,7 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_node_and_edge_ids_when_stringified_then_values_are_preserved() {
-        let node = NodeId::new(String::from("node-1"));
+        let node = NodeId::new(String::from("node-1").unwrap());
         let edge = EdgeId::new(String::from("edge-1"));
 
         assert_eq!(node.as_str(), "node-1");
@@ -937,8 +877,8 @@ mod tests {
 
     fn create_test_edge(source: &str, target: &str) -> Edge {
         Edge {
-            source: NodeId::new(source.to_string()),
-            target: NodeId::new(target.to_string()),
+            source: NodeId::new(source.to_string().unwrap()),
+            target: NodeId::new(target.to_string().unwrap()),
             label: String::new(),
             style: Default::default(),
             arrow_type: Default::default(),
@@ -962,10 +902,10 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
 
         let edge = create_test_edge("N1", "N2");
         let result = doc.add_edge(EdgeId::new("E1".into()), edge);
@@ -981,14 +921,14 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
 
         let edge = create_test_edge("N1", "N2");
         let result = doc.add_edge(EdgeId::new("E1".into()), edge);
 
         assert_eq!(
             result,
-            Err(DocumentError::NodeNotFound(NodeId::new("N1".into())))
+            Err(DocumentError::NodeNotFound(NodeId::new("N1".into().unwrap())))
         );
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
     }
@@ -1000,14 +940,14 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
 
         let edge = create_test_edge("N1", "N2");
         let result = doc.add_edge(EdgeId::new("E1".into()), edge);
 
         assert_eq!(
             result,
-            Err(DocumentError::NodeNotFound(NodeId::new("N2".into())))
+            Err(DocumentError::NodeNotFound(NodeId::new("N2".into().unwrap())))
         );
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
     }
@@ -1019,10 +959,10 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
 
         let edge = create_test_edge("N1", "N2");
         doc.add_edge(EdgeId::new("E1".into()), edge).unwrap();
@@ -1030,8 +970,8 @@ mod tests {
         let result = doc.remove_edge(&EdgeId::new("E1".into()));
         assert!(result.is_ok());
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
-        assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into())));
-        assert!(doc.document.nodes.contains_key(&NodeId::new("N2".into())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into().unwrap())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N2".into().unwrap())));
     }
 
     #[cfg(kani)]
@@ -1041,26 +981,26 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
         doc.document
             .nodes
-            .insert(NodeId::new("N3".into()), create_test_node("N3"));
+            .insert(NodeId::new("N3".into().unwrap()), create_test_node("N3"));
 
         doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
             .unwrap();
         doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N2", "N3"))
             .unwrap();
 
-        let result = doc.remove_node(&NodeId::new("N2".into()));
+        let result = doc.remove_node(&NodeId::new("N2".into().unwrap()));
         assert!(result.is_ok());
-        assert!(!doc.document.nodes.contains_key(&NodeId::new("N2".into())));
+        assert!(!doc.document.nodes.contains_key(&NodeId::new("N2".into().unwrap())));
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
         assert!(!doc.document.edges.contains_key(&EdgeId::new("E2".into())));
-        assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into())));
-        assert!(doc.document.nodes.contains_key(&NodeId::new("N3".into())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into().unwrap())));
+        assert!(doc.document.nodes.contains_key(&NodeId::new("N3".into().unwrap())));
     }
 
     #[cfg(kani)]
@@ -1070,7 +1010,7 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         let result = doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N1"));
         assert!(result.is_ok());
     }
@@ -1082,10 +1022,10 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
 
         doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
             .unwrap();
@@ -1100,10 +1040,10 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
 
         doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
             .unwrap();
@@ -1133,10 +1073,10 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
 
         doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
             .unwrap();
@@ -1145,7 +1085,7 @@ mod tests {
         doc.add_edge(EdgeId::new("E3".into()), create_test_edge("N2", "N1"))
             .unwrap();
 
-        doc.remove_node(&NodeId::new("N1".into())).unwrap();
+        doc.remove_node(&NodeId::new("N1".into().unwrap())).unwrap();
 
         assert!(doc.document.edges.is_empty());
     }
@@ -1157,11 +1097,11 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N1"))
             .unwrap();
 
-        doc.remove_node(&NodeId::new("N1".into())).unwrap();
+        doc.remove_node(&NodeId::new("N1".into().unwrap())).unwrap();
         assert!(doc.document.edges.is_empty());
     }
 
@@ -1207,15 +1147,15 @@ mod tests {
         let mut doc = DiagramDocument::default();
         doc.document
             .nodes
-            .insert(NodeId::new("N1".into()), create_test_node("N1"));
+            .insert(NodeId::new("N1".into().unwrap()), create_test_node("N1"));
         doc.document
             .nodes
-            .insert(NodeId::new("N2".into()), create_test_node("N2"));
+            .insert(NodeId::new("N2".into().unwrap()), create_test_node("N2"));
         doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
             .unwrap();
 
         // Remove node cascades, keeping invariant intact
-        doc.remove_node(&NodeId::new("N1".into())).unwrap();
+        doc.remove_node(&NodeId::new("N1".into().unwrap())).unwrap();
         for edge in doc.document.edges.values() {
             assert!(doc.document.nodes.contains_key(&edge.source));
             assert!(doc.document.nodes.contains_key(&edge.target));
@@ -1378,7 +1318,7 @@ mod proptests {
         #[kani::proof]
         #[test]
         fn edge_self_loop_same_source_target(id in "n[0-9]+") {
-            let node_id = NodeId::new(id.clone());
+            let node_id = NodeId::new(id.clone().unwrap());
             let edge = Edge {
                 source: node_id.clone(),
                 target: node_id,
@@ -1451,7 +1391,7 @@ mod proptests {
         #[kani::proof]
         #[test]
         fn node_id_special_characters(id in "[\\x00-\\x7F]{1,20}") {
-            let node_id = NodeId::new(id.clone());
+            let node_id = NodeId::new(id.clone().unwrap());
             let json = serde_json::to_string(&node_id).unwrap();
             let parsed: NodeId = serde_json::from_str(&json).unwrap();
             assert_eq!(node_id, parsed);
@@ -1473,7 +1413,7 @@ mod proptests {
         fn document_with_many_nodes(node_count in 0usize..100) {
             let mut doc = DiagramDocument::default();
             for i in 0..node_count {
-                let id = NodeId::new(format!("n{}", i));
+                let id = NodeId::new(format!("n{}", i).unwrap());
                 let node = Node {
                     kind: NodeKind::Node,
                     icon: String::new(),
@@ -1514,8 +1454,8 @@ mod proptests {
         #[test]
         fn edge_with_empty_source_target(_ in Just(())) {
             let edge = Edge {
-                source: NodeId::new(String::new()),
-                target: NodeId::new(String::new()),
+                source: NodeId::new(String::new().unwrap()),
+                target: NodeId::new(String::new().unwrap()),
                 label: String::new(),
                 style: Default::default(),
                 arrow_type: Default::default(),
