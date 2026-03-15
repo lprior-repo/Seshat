@@ -445,7 +445,7 @@ pub(super) fn finalize_motion_release(
 mod tests {
     use super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -460,7 +460,7 @@ mod tests {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked: true,
+            lock_state: LockState::Locked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -555,7 +555,7 @@ mod tests {
                 height: OrderedFloat(h),
                 font_size: None,
                 font_weight: None,
-                locked: false, // Unlocked so selected_node_ids includes them
+                lock_state: LockState::Unlocked, // Unlocked so selected_node_ids includes them
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -782,7 +782,7 @@ mod tests {
                 height: OrderedFloat(h),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -846,7 +846,7 @@ mod tests {
                 height: OrderedFloat(h),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -908,7 +908,7 @@ mod tests {
                 height: OrderedFloat(h),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -989,7 +989,7 @@ mod tests {
                 height: OrderedFloat(h),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -1174,7 +1174,7 @@ mod proptests {
         ResizeHandle,
     };
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
     use proptest::prelude::*;
@@ -1190,7 +1190,7 @@ mod proptests {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -1861,7 +1861,7 @@ mod proptests {
 mod subgraph_tests {
     use super::{resize_target_ids, within, InteractionMode};
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -1886,7 +1886,11 @@ mod subgraph_tests {
             height: OrderedFloat(height),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -1918,7 +1922,11 @@ mod subgraph_tests {
             height: OrderedFloat(height),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -2362,9 +2370,12 @@ mod subgraph_tests {
             .expect("container exists");
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
 
-        assert!(container_node.locked, "Container should be locked");
         assert!(
-            !child_node.locked,
+            container_node.lock_state.is_locked(),
+            "Container should be locked"
+        );
+        assert!(
+            !child_node.lock_state.is_locked(),
             "Child should be unlocked despite parent being locked"
         );
     }
@@ -2454,10 +2465,13 @@ mod subgraph_tests {
         let inner_node = doc.document.nodes.get(&inner_id).expect("inner exists");
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
 
-        assert!(!outer_node.locked, "Outer should be unlocked");
-        assert!(inner_node.locked, "Inner should be locked");
         assert!(
-            !child_node.locked,
+            !outer_node.lock_state.is_locked(),
+            "Outer should be unlocked"
+        );
+        assert!(inner_node.lock_state.is_locked(), "Inner should be locked");
+        assert!(
+            !child_node.lock_state.is_locked(),
             "Child should be unlocked (not inheriting inner's lock)"
         );
     }
@@ -2925,7 +2939,7 @@ mod subgraph_tests {
 #[allow(clippy::panic)]
 mod inp_mobile_touch_tests {
     use super::{InteractionMode, ResizeHandle};
-    use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
+    use crate::models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
     use im::HashMap;
 
     #[allow(dead_code)]
@@ -2942,7 +2956,7 @@ mod inp_mobile_touch_tests {
                 height: OrderedFloat(50.0),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),

@@ -101,7 +101,7 @@ fn compute_bounding_box(
 fn check_locked_items(doc: &DiagramDocument, selection: &[NodeId]) -> Result<(), Error> {
     for id in selection {
         let node = doc.document.nodes.get(id).ok_or(Error::NodeNotFound)?;
-        if node.locked {
+        if node.lock_state.is_locked() {
             return Err(Error::ItemLocked);
         }
     }

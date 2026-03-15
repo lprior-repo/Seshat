@@ -25,6 +25,8 @@ pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
 pub mod document;
+// Re-export LockState for convenient access in tests
+pub use document::LockState;
 pub mod envelope;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod export;

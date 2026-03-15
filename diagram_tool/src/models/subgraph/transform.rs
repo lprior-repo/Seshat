@@ -70,7 +70,7 @@ fn transform_single_node(
         .get(id)
         .ok_or_else(|| GroupTransformError::NodeNotFound(id.clone()))?;
 
-    if node.locked {
+    if node.lock_state.is_locked() {
         return Err(GroupTransformError::NodeLocked(id.clone()));
     }
 

@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
 use crate::models::envelope::EventEnvelope;
 
 /// Select all nodes and edges in the document
@@ -101,7 +101,7 @@ pub fn apply_nudge_selection(
     doc_signal.with_mut(|doc| {
         for node_id in selected_nodes {
             if let Some(node) = doc.document.nodes.get_mut(&node_id) {
-                if node.locked && node.kind != NodeKind::Subgraph {
+                if !node.lock_state.is_movable(&node.kind) {
                     continue;
                 }
                 node.x = OrderedFloat(node.x.0 + dx);

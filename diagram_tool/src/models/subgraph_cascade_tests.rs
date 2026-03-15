@@ -6,7 +6,7 @@
 #![cfg(test)]
 
 mod tests {
-    use crate::models::document::{Node, NodeId, NodeKind, OrderedFloat};
+    use crate::models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
     use crate::models::projection::ops::group_ops::apply_ungroup;
     use crate::models::projection::types::DiagramProjection;
     use crate::models::subgraph_events::calculate_subgraph_bounds;
@@ -52,7 +52,7 @@ mod tests {
             height: OrderedFloat::new_unchecked(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: parent.map(|s| NodeId::new(s.to_string())),
             dag_rank: None,
             tags: im::Vector::new(),

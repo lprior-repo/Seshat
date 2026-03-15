@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, LockState, NodeId, NodeKind, OrderedFloat};
 
 /// Axis for alignment operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -47,7 +47,7 @@ pub fn apply_align_selection(
         .filter(|id| {
             current.document.nodes.get(id).is_some_and(|node| {
                 let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
-                let movable = !node.locked || node.kind == NodeKind::Subgraph;
+                let movable = node.lock_state.is_movable(&node.kind);
                 coords_finite && movable
             })
         })
@@ -127,7 +127,7 @@ pub fn apply_align_selection(
         for node_id in &selected_nodes {
             if let Some(node) = doc.document.nodes.get_mut(node_id) {
                 // Double-check movability (should be redundant but defensive)
-                if node.locked && node.kind != NodeKind::Subgraph {
+                if !node.lock_state.is_movable(&node.kind) {
                     continue;
                 }
 

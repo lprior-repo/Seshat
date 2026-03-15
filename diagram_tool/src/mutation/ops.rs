@@ -21,7 +21,7 @@ pub fn apply_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
 mod tests {
     use super::apply_layout;
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
     use proptest::prelude::*;
@@ -37,7 +37,11 @@ mod tests {
             height: OrderedFloat(60.0),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::vector![],

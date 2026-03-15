@@ -50,7 +50,7 @@ mod subgraph_tests {
     use im::HashMap;
 
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use crate::ui::canvas::interaction_reducer::InteractionMode;
 
@@ -75,7 +75,11 @@ mod subgraph_tests {
             height: OrderedFloat(height),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -107,7 +111,11 @@ mod subgraph_tests {
             height: OrderedFloat(height),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -567,9 +575,12 @@ mod subgraph_tests {
             .expect("container exists");
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
 
-        assert!(container_node.locked, "Container should be locked");
         assert!(
-            !child_node.locked,
+            container_node.lock_state.is_locked(),
+            "Container should be locked"
+        );
+        assert!(
+            !child_node.lock_state.is_locked(),
             "Child should be unlocked despite parent being locked"
         );
     }
@@ -663,10 +674,13 @@ mod subgraph_tests {
         let inner_node = doc.document.nodes.get(&inner_id).expect("inner exists");
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
 
-        assert!(!outer_node.locked, "Outer should be unlocked");
-        assert!(inner_node.locked, "Inner should be locked");
         assert!(
-            !child_node.locked,
+            !outer_node.lock_state.is_locked(),
+            "Outer should be unlocked"
+        );
+        assert!(inner_node.lock_state.is_locked(), "Inner should be locked");
+        assert!(
+            !child_node.lock_state.is_locked(),
             "Child should be unlocked (not inheriting inner's lock)"
         );
     }

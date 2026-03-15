@@ -275,7 +275,7 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     use im::HashMap as ImHashMap;
 
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat,
+        DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat,
     };
 
     let mut nodes = ImHashMap::new();
@@ -308,7 +308,7 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
             height: OrderedFloat(50.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::vector![],

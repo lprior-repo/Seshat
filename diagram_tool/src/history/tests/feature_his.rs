@@ -19,7 +19,7 @@ fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> No
         height: OrderedFloat(height),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),

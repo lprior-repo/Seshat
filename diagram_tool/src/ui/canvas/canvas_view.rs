@@ -523,8 +523,8 @@ mod tests {
 
     use super::find_edge_at;
     use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
-        NodeStyle, OrderedFloat,
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId,
+        NodeKind, NodeStyle, OrderedFloat,
     };
 
     fn node_at(x: f64, y: f64) -> Node {
@@ -538,7 +538,7 @@ mod tests {
             height: OrderedFloat(10.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -947,8 +947,8 @@ mod proptests {
 mod sel_002_edge_selection_tests {
     use super::find_edge_at;
     use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
-        NodeStyle, OrderedFloat,
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId,
+        NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -969,7 +969,7 @@ mod sel_002_edge_selection_tests {
             height: OrderedFloat(10.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

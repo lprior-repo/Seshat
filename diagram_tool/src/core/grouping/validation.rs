@@ -74,7 +74,7 @@ fn find_locked_nodes(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) 
         .filter_map(|id| {
             nodes
                 .get(id)
-                .and_then(|node| node.locked.then_some(id.clone()))
+                .and_then(|node| node.lock_state.is_locked().then_some(id.clone()))
         })
         .collect()
 }

@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, LockState, NodeId, NodeKind, OrderedFloat};
 
 /// Axis for distribution operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -46,7 +46,7 @@ pub fn apply_distribute_selection(
         .filter(|id| {
             current.document.nodes.get(id).is_some_and(|node| {
                 let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
-                let movable = !node.locked || node.kind == NodeKind::Subgraph;
+                let movable = node.lock_state.is_movable(&node.kind);
                 coords_finite && movable
             })
         })
@@ -80,7 +80,9 @@ pub fn apply_distribute_selection(
 
     // Calculate the space to distribute
     // Safety: len() >= 3 checked at line 77, so first/last are guaranteed to be Some
-    let first = node_data.first().expect("node_data has at least 3 elements");
+    let first = node_data
+        .first()
+        .expect("node_data has at least 3 elements");
     let last = node_data.last().expect("node_data has at least 3 elements");
     let total_extent = (last.1 + last.2) - first.1;
 
@@ -102,7 +104,7 @@ pub fn apply_distribute_selection(
             }
 
             if let Some(node) = doc.document.nodes.get_mut(node_id) {
-                if node.locked && node.kind != NodeKind::Subgraph {
+                if !node.lock_state.is_movable(&node.kind) {
                     continue;
                 }
 

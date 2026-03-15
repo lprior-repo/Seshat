@@ -1,9 +1,10 @@
 #[cfg(test)]
 mod marquee_tests {
     use crate::models::document::{
-        DiagramDocument, DocumentData, DocumentError, EditorState, MarqueeMode, Node, NodeId,
+        DiagramDocument, DocumentData, DocumentError, EditorState, LockState, Node, NodeId,
         NodeKind, OrderedFloat, ValidRect,
     };
+    use crate::models::spatial_index::MarqueeMode;
     use im::HashMap;
     use serde_json::json;
 
@@ -43,7 +44,7 @@ mod marquee_tests {
             height: OrderedFloat::new_unchecked(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

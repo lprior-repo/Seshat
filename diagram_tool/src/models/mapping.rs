@@ -75,7 +75,7 @@ mod tests {
             height: crate::models::document::OrderedFloat(40.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::vector![],

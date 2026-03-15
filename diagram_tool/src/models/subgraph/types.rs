@@ -2,7 +2,7 @@
 //!
 //! Contains core domain types: BoundingBox, Padding, PositiveScale, and Error types.
 
-use crate::models::document::{DocumentData, NodeId, OrderedFloat, Point};
+use crate::models::document::{DocumentData, LockState, NodeId, OrderedFloat, Point};
 use thiserror::Error;
 
 /// Alias for document data structure used in subgraph operations
@@ -200,7 +200,7 @@ pub fn create_empty_subgraph(
         height,
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::vector![],

@@ -49,11 +49,26 @@ pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
     let half_w = node.width / 2.0;
     let half_h = node.height / 2.0;
     match port {
-        PortAnchor::Top => Point { x: node.x + half_w, y: node.y },
-        PortAnchor::Bottom => Point { x: node.x + half_w, y: node.y + node.height },
-        PortAnchor::Left => Point { x: node.x, y: node.y + half_h },
-        PortAnchor::Right => Point { x: node.x + node.width, y: node.y + half_h },
-        PortAnchor::Center => Point { x: node.x + half_w, y: node.y + half_h },
+        PortAnchor::Top => Point {
+            x: node.x + half_w,
+            y: node.y,
+        },
+        PortAnchor::Bottom => Point {
+            x: node.x + half_w,
+            y: node.y + node.height,
+        },
+        PortAnchor::Left => Point {
+            x: node.x,
+            y: node.y + half_h,
+        },
+        PortAnchor::Right => Point {
+            x: node.x + node.width,
+            y: node.y + half_h,
+        },
+        PortAnchor::Center => Point {
+            x: node.x + half_w,
+            y: node.y + half_h,
+        },
         PortAnchor::Custom(offset) => Point {
             x: node.x + (node.width * offset.x.0),
             y: node.y + (node.height * offset.y.0),
@@ -64,7 +79,9 @@ pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind};
+    use crate::models::document::{
+        DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
+    };
 
     fn create_test_node(x: f64, y: f64, w: f64, h: f64) -> Node {
         Node {
@@ -77,7 +94,7 @@ mod tests {
             height: OrderedFloat::new_unchecked(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::vector![],

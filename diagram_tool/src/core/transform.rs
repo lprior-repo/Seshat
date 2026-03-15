@@ -99,7 +99,7 @@ pub fn align_selection(
     for id_str in &selected {
         let id = NodeId::new(id_str.clone());
         if let Some(node) = doc.document.nodes.get(&id) {
-            if node.locked && node.kind != NodeKind::Subgraph {
+            if !node.lock_state.is_movable(&node.kind) {
                 return Err(TransformError::LockedNode(id));
             }
 
@@ -169,7 +169,7 @@ pub fn distribute_selection(
     for id_str in &selected {
         let id = NodeId::new(id_str.clone());
         if let Some(node) = doc.document.nodes.get(&id) {
-            if node.locked && node.kind != NodeKind::Subgraph {
+            if !node.lock_state.is_movable(&node.kind) {
                 return Err(TransformError::LockedNode(id));
             }
             match axis {
@@ -249,7 +249,7 @@ pub fn translate_selection(
         doc.document
             .nodes
             .get(*id)
-            .map_or(false, |node| node.locked)
+            .map_or(false, |node| node.lock_state.is_locked())
     });
 
     if let Some(id) = locked_node {

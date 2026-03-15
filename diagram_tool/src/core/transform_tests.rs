@@ -7,7 +7,9 @@ mod tests {
         align_selection, distribute_selection, translate_selection, AlignmentAxis, AlignmentMode,
         TransformError,
     };
-    use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
+    use crate::models::document::{
+        DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat,
+    };
 
     fn test_node(x: f64, width: f64) -> Node {
         Node {
@@ -20,7 +22,7 @@ mod tests {
             height: OrderedFloat(100.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -71,7 +73,7 @@ mod tests {
         let n2 = NodeId::new("2".to_string());
 
         let mut node1 = test_node(100.0, 50.0);
-        node1.locked = true;
+        node1.lock_state = LockState::Locked;
 
         let node2 = test_node(200.0, 50.0);
 
@@ -200,7 +202,7 @@ mod tests {
         let n2 = NodeId::new("2".to_string());
 
         let mut node1 = test_node(100.0, 50.0);
-        node1.locked = true;
+        node1.lock_state = LockState::Locked;
         doc.document.nodes.insert(n1.clone(), node1);
         doc.document
             .nodes
@@ -274,7 +276,7 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         let mut node = test_node(100.0, 50.0);
-        node.locked = true;
+        node.lock_state = LockState::Locked;
         doc.document.nodes.insert(n1.clone(), node);
         doc.editor_state
             .selected_items
@@ -411,7 +413,7 @@ mod tests {
         let n2 = NodeId::new("2".to_string());
 
         let mut node1 = test_node(100.0, 50.0);
-        node1.locked = true;
+        node1.lock_state = LockState::Locked;
 
         doc.document.nodes.insert(n1.clone(), node1);
         doc.document

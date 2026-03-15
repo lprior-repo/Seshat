@@ -98,7 +98,7 @@ pub fn apply_z_order_operation(doc: &mut DiagramDocument, op: ZOrderOp) -> bool 
             doc.document
                 .nodes
                 .get(id)
-                .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+                .is_some_and(|node| node.lock_state.is_movable(&node.kind))
         })
         .collect::<BTreeSet<_>>();
 

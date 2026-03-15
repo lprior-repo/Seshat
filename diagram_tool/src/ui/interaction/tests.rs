@@ -1,7 +1,7 @@
 use super::*;
 use crate::models::document::{
-    DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId, NodeKind, NodeStyle,
-    OrderedFloat, Revision,
+    DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, Node, NodeId, NodeKind,
+    NodeStyle, OrderedFloat, Revision,
 };
 use crate::ui::grid::GridSize;
 use im::{HashMap, HashSet};
@@ -17,7 +17,7 @@ fn node(x: f64, y: f64, w: f64, h: f64) -> Node {
         height: OrderedFloat(h),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),
@@ -222,7 +222,7 @@ fn given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_
             height: OrderedFloat(24.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -263,7 +263,7 @@ fn given_leftward_drag_inside_node_when_node_ids_in_rect_then_returns_node_in_in
             height: OrderedFloat(24.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

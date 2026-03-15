@@ -1,5 +1,5 @@
 use crate::models::document::{
-    DiagramDocument, DocumentData, EditorState, Node, NodeId, NodeKind, OrderedFloat,
+    DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
 use crate::models::multi_select::{
     copy_selection, delete_selection, move_selection, paste_selection, resize_selection, Error,
@@ -18,7 +18,11 @@ fn create_node(id: &str, x: f64, y: f64, width: f64, height: f64, locked: bool) 
         height: OrderedFloat::new_unchecked(height),
         font_size: None,
         font_weight: None,
-        locked,
+        lock_state: if locked {
+            LockState::Locked
+        } else {
+            LockState::Unlocked
+        },
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),
@@ -205,7 +209,7 @@ fn test_p2_violation_returns_item_locked_error() {
         .nodes
         .get_mut(&NodeId::new("A".to_string()))
         .unwrap()
-        .locked = true;
+        .lock_state = LockState::Locked;
 
     let selection = NonEmptyVec::try_from(vec![
         NodeId::new("A".to_string()),

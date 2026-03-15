@@ -37,7 +37,7 @@ pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
 mod tests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind,
+        DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
         OrderedFloat,
     };
     use im::HashMap;
@@ -59,7 +59,7 @@ mod tests {
                 height: OrderedFloat(60.0),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),

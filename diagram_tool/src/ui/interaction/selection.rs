@@ -67,7 +67,7 @@ pub fn node_ids_in_rect_with_mode(
     candidates
         .iter()
         .filter_map(|id| doc.document.nodes.get(id).map(|n| (id, n)))
-        .filter(|(_, n)| !n.locked)
+        .filter(|(_, n)| !n.lock_state.is_locked())
         .filter(|(_, n)| match mode {
             SelectionMode::Contain => {
                 n.x.0 >= min_x

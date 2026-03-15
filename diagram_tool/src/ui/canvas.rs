@@ -48,7 +48,7 @@ use crate::{
     models::{
         dag::validate_dag,
         document::{
-            ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
+            ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
             OrderedFloat,
         },
     },
@@ -246,7 +246,7 @@ fn scale_selected_nodes(doc: &mut DiagramDocument, factor: f64) -> bool {
 
     for node_id in selected {
         if let Some(node) = doc.document.nodes.get_mut(&node_id) {
-            if node.locked && node.kind != NodeKind::Subgraph {
+            if !node.lock_state.is_movable(&node.kind) {
                 continue;
             }
             let rel_x = node.x.0 - center_x;
@@ -416,7 +416,7 @@ fn flush_pending_pointer_update(
                 doc.document
                     .nodes
                     .get(id)
-                    .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+                    .is_some_and(|node| node.lock_state.is_movable(&node.kind))
             });
 
             if !*did_move
@@ -438,7 +438,7 @@ fn flush_pending_pointer_update(
                 );
                 let has_changes = positions.iter().any(|(id, (nx, ny))| {
                     doc.document.nodes.get(id).is_some_and(|node| {
-                        !node.locked
+                        node.lock_state.is_movable(&node.kind)
                             && ((node.x.0 - *nx).abs() > f64::EPSILON
                                 || (node.y.0 - *ny).abs() > f64::EPSILON)
                     })
@@ -449,7 +449,7 @@ fn flush_pending_pointer_update(
                         for (id, (nx, ny)) in positions.iter() {
                             let should_update =
                                 doc_mut.document.nodes.get(id).is_some_and(|node| {
-                                    !node.locked
+                                    node.lock_state.is_movable(&node.kind)
                                         && ((node.x.0 - *nx).abs() > f64::EPSILON
                                             || (node.y.0 - *ny).abs() > f64::EPSILON)
                                 });
@@ -526,7 +526,7 @@ fn flush_pending_pointer_update(
                     .document
                     .nodes
                     .get(id)
-                    .is_some_and(|node| !node.locked || node.kind == NodeKind::Subgraph)
+                    .is_some_and(|node| node.lock_state.is_movable(&node.kind))
             });
 
             if !*did_resize && has_resizable_nodes && (dx != 0.0 || dy != 0.0) {
@@ -624,7 +624,7 @@ fn flush_pending_pointer_update(
                 doc_signal.with_mut(|doc_mut| {
                     for (id, (ox, oy, ow, oh)) in originals.iter() {
                         if let Some(node) = doc_mut.document.nodes.get_mut(id) {
-                            if node.locked && node.kind != NodeKind::Subgraph {
+                            if !node.lock_state.is_movable(&node.kind) {
                                 continue;
                             }
                             let nxx = (ox - obx).mul_add(scale_x, nx);
@@ -1399,7 +1399,7 @@ pub fn Canvas() -> Element {
                                     height: OrderedFloat(24.0),
                                     font_size: None,
                                     font_weight: None,
-                                    locked: false,
+                                    lock_state: LockState::Unlocked,
                                     parent: None,
                                     dag_rank: None,
                                     tags: im::Vector::new(),
@@ -1604,23 +1604,23 @@ pub fn Canvas() -> Element {
                                                 kind: NodeKind::Subgraph,
                                                 icon: String::new(),
                                                 label: String::new(),
-                                                x: OrderedFloat(x),
-                                                y: OrderedFloat(y),
-                                                width: OrderedFloat(w),
-                                                height: OrderedFloat(h),
-                                                font_size: None,
-                                                font_weight: None,
-                                                locked: true,
-                                                parent: None,
-                                                dag_rank: None,
-                                                tags: im::Vector::new(),
-                                                metadata: HashMap::new(),
-                                                z_index: -1,
-                                                style: Some(NodeStyle::Box),
-                                                collapsed: Some(false),
-                                            },
-                                        );
-                                    doc.editor_state.selected_items.clear();
+                                    x: OrderedFloat(x),
+                                    y: OrderedFloat(y),
+                                    width: OrderedFloat(100.0),
+                                    height: OrderedFloat(24.0),
+                                    font_size: None,
+                                    font_weight: None,
+                                    lock_state: LockState::Unlocked,
+                                    parent: None,
+                                    dag_rank: None,
+                                    tags: im::Vector::new(),
+                                    metadata: HashMap::new(),
+                                    z_index: 0,
+                                    style: Some(NodeStyle::default()),
+                                    collapsed: None,
+                                },
+                            );
+                            doc.editor_state.selected_items.clear();
                                     let _ = doc.editor_state.selected_items.insert(id.to_string());
                                     doc.revision = doc.revision.increment();
                                 });
@@ -1699,7 +1699,7 @@ pub fn Canvas() -> Element {
                             height: OrderedFloat(64.0),
                             font_size: None,
                             font_weight: None,
-                            locked: false,
+                            lock_state: LockState::Unlocked,
                             parent: None,
                             dag_rank: None,
                             tags: tags.into(),
@@ -1847,7 +1847,7 @@ pub fn Canvas() -> Element {
                                 height: OrderedFloat(64.0),
                                 font_size: None,
                                 font_weight: None,
-                                locked: false,
+                                lock_state: LockState::Unlocked,
                                 parent: None,
                                 dag_rank: None,
                                 tags: im::Vector::new(),
@@ -2012,7 +2012,7 @@ pub fn Canvas() -> Element {
                                     height: OrderedFloat(24.0),
                                     font_size: None,
                                     font_weight: None,
-                                    locked: false,
+                                    lock_state: LockState::Unlocked,
                                     parent: None,
                                     dag_rank: None,
                                     tags: im::Vector::new(),
@@ -2229,7 +2229,7 @@ pub fn Canvas() -> Element {
                                             height: OrderedFloat(h),
                                             font_size: None,
                                             font_weight: None,
-                                            locked: true,
+                                            lock_state: LockState::Locked,
                                             parent: None,
                                             dag_rank: None,
                                             tags: im::Vector::new(),
@@ -3187,7 +3187,7 @@ mod tests {
 
     use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};
     use crate::{
-        models::document::{DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat},
+        models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat},
         ui::grid::GridSize,
     };
 
@@ -3202,7 +3202,7 @@ mod tests {
             height: OrderedFloat(50.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

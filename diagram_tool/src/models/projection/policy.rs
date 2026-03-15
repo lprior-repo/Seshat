@@ -234,7 +234,7 @@ fn hash_node_fields(node: &crate::models::document::Node, hasher: &mut impl std:
     node.height.0.to_bits().hash(hasher);
     node.font_size.hash(hasher);
     node.font_weight.hash(hasher);
-    node.locked.hash(hasher);
+    node.lock_state.hash(hasher);
     node.parent.hash(hasher);
     node.dag_rank.hash(hasher);
     node.z_index.hash(hasher);

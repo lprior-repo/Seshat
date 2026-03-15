@@ -9,7 +9,9 @@
 #![warn(clippy::pedantic)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
+use crate::models::document::{
+    DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+};
 use im::HashMap;
 
 /// Helper to create a simple node
@@ -38,7 +40,11 @@ fn make_node(
         height: OrderedFloat(height),
         font_size: None,
         font_weight: None,
-        locked: is_subgraph,
+        lock_state: if is_subgraph {
+            LockState::Locked
+        } else {
+            LockState::Unlocked
+        },
         parent,
         dag_rank: None,
         tags: im::Vector::new(),

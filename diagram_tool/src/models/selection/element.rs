@@ -22,7 +22,7 @@ pub fn select_element(
                 .get(node_id)
                 .ok_or(SelectionError::ElementNotFound)?;
 
-            if node.locked {
+            if node.lock_state.is_locked() {
                 return Err(SelectionError::ElementLocked);
             }
 

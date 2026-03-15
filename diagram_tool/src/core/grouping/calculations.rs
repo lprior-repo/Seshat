@@ -1,5 +1,5 @@
 use super::validation::{validate_coordinates, GroupingError};
-use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat};
 use im::{HashMap, HashSet};
 use std::collections::BTreeSet;
 
@@ -116,7 +116,7 @@ pub fn create_subgraph_node(
         height: h,
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent,
         dag_rank: None,
         tags: im::Vector::new(),

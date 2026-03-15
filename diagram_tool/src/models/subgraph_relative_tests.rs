@@ -1,4 +1,4 @@
-use super::document::{Node, NodeId, NodeKind, OrderedFloat};
+use super::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
 use super::subgraph::reparenting::{set_node_parent_ext, unparent_node_ext};
 use im::HashMap;
 
@@ -17,7 +17,7 @@ fn create_test_node(id: &str, x: f64, y: f64, parent: Option<NodeId>) -> Node {
         height: OrderedFloat::new_unchecked(60.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent,
         dag_rank: None,
         tags: im::Vector::new(),

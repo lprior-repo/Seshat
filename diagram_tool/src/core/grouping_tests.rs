@@ -2,7 +2,9 @@
 #[cfg(test)]
 mod tests {
     use crate::core::grouping::{group_selection, ungroup_selection, GroupingError};
-    use crate::models::document::{DiagramDocument, Edge, Node, NodeId, NodeKind, OrderedFloat};
+    use crate::models::document::{
+        DiagramDocument, Edge, LockState, Node, NodeId, NodeKind, OrderedFloat,
+    };
 
     fn test_node(x: f64, y: f64, w: f64, h: f64) -> Node {
         Node {
@@ -15,7 +17,7 @@ mod tests {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -37,7 +39,7 @@ mod tests {
             height: OrderedFloat(100.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -911,12 +913,12 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let n1_id = NodeId::new("n1".to_string());
         let mut n1 = test_node(0.0, 0.0, 10.0, 10.0);
-        n1.locked = true;
+        n1.lock_state = LockState::Locked;
         doc.document.nodes.insert(n1_id.clone(), n1);
 
         let n2_id = NodeId::new("n2".to_string());
         let mut n2 = test_node(20.0, 20.0, 10.0, 10.0);
-        n2.locked = true;
+        n2.lock_state = LockState::Locked;
         doc.document.nodes.insert(n2_id.clone(), n2);
 
         doc.editor_state

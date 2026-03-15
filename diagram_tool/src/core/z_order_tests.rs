@@ -1,7 +1,7 @@
 #![cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 use super::z_order::*;
-use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
 use std::collections::BTreeSet;
 
 fn make_node(label: &str) -> Node {
@@ -15,7 +15,7 @@ fn make_node(label: &str) -> Node {
         height: OrderedFloat(50.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),

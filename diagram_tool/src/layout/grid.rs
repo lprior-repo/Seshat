@@ -6,7 +6,7 @@
 #![allow(clippy::cast_possible_truncation)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
+use crate::models::document::{DiagramDocument, LockState, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 
@@ -67,7 +67,7 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
         .document
         .nodes
         .values()
-        .filter(|node| node.locked && node.parent.is_none())
+        .filter(|node| node.lock_state.is_locked() && node.parent.is_none())
         .map(|node| {
             (
                 (node.x.0 / cell_size).round() as i32,
@@ -80,7 +80,7 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
         .document
         .nodes
         .iter()
-        .filter(|(_, n)| !n.locked && n.parent.is_none())
+        .filter(|(_, n)| !n.lock_state.is_locked() && n.parent.is_none())
         .map(|(id, _)| id.clone())
         .sorted()
         .collect::<Vec<NodeId>>();
@@ -173,7 +173,7 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
 mod tests {
     use super::{accumulated_parent_delta, calculate_grid_layout};
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -188,7 +188,11 @@ mod tests {
             height: OrderedFloat(60.0),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -459,7 +463,7 @@ mod tests {
 #[cfg(test)]
 mod proptests {
     use super::*;
-    use crate::models::document::{Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
+    use crate::models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
     use im::HashMap;
     use proptest::prelude::*;
 
@@ -474,7 +478,11 @@ mod proptests {
             height: OrderedFloat(60.0),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent,
             dag_rank: None,
             tags: im::Vector::new(),

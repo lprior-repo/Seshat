@@ -99,7 +99,7 @@ fn contains_aabb(a: &AABB, b: &AABB) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::document::OrderedFloat;
+    use crate::models::document::{LockState, OrderedFloat};
 
     fn create_node(x: f64, y: f64, w: f64, h: f64) -> Node {
         Node {
@@ -112,7 +112,7 @@ mod tests {
             height: OrderedFloat::new_unchecked(h),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

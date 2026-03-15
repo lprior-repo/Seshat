@@ -156,7 +156,7 @@ fn find_fallback_edge(edges: &HashMap<EdgeId, Edge>) -> EdgeId {
 mod tests {
     use super::{validate_dag, CycleError};
     use crate::models::document::{
-        ArrowType, Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        ArrowType, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -171,7 +171,7 @@ mod tests {
             height: OrderedFloat(60.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::vector![],

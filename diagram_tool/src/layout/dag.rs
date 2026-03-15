@@ -8,7 +8,9 @@
 #![allow(clippy::cast_precision_loss)]
 
 use crate::layout::grid::calculate_grid_layout;
-use crate::models::document::{DiagramDocument, DocumentData, Node, NodeId, OrderedFloat};
+use crate::models::document::{
+    DiagramDocument, DocumentData, LockState, Node, NodeId, OrderedFloat,
+};
 use im::HashMap;
 use itertools::Itertools;
 use petgraph::algo::toposort;
@@ -46,7 +48,7 @@ fn build_graph(
         .document
         .nodes
         .iter()
-        .filter(|(_, n)| !n.locked && n.parent.is_none())
+        .filter(|(_, n)| !n.lock_state.is_locked() && n.parent.is_none())
         .map(|(id, _)| id.clone())
         .sorted()
         .collect();
@@ -350,7 +352,7 @@ mod tests {
             height: OrderedFloat(68.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -363,7 +365,7 @@ mod tests {
 
     fn make_locked_node(x: f64, y: f64) -> Node {
         Node {
-            locked: true,
+            lock_state: LockState::Locked,
             ..make_node(x, y)
         }
     }
@@ -918,7 +920,7 @@ mod proptests {
             height: OrderedFloat(68.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -1066,7 +1068,7 @@ mod proptests {
                 .document
                 .nodes
                 .iter()
-                .filter(|(_, n)| !n.locked && n.parent.is_none())
+                .filter(|(_, n)| !n.lock_state.is_locked() && n.parent.is_none())
                 .map(|(id, n)| (id, n.x.0, n.y.0))
                 .collect();
 
@@ -1143,7 +1145,7 @@ mod proptests {
             let result = dag_layout(&doc, &settings);
 
             for node in result.document.nodes.values() {
-                if !node.locked {
+                if !node.lock_state.is_locked() {
                     prop_assert!(node.x.0.is_finite(), "result x must be finite");
                     prop_assert!(node.y.0.is_finite(), "result y must be finite");
                 }

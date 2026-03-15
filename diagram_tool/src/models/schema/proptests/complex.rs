@@ -23,7 +23,7 @@ fn make_node(kind: NodeKind, parent: Option<NodeId>, x: f64, y: f64) -> Node {
         height: OrderedFloat::new_unchecked(60.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent,
         dag_rank: None,
         tags: im::vector![],

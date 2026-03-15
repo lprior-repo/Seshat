@@ -1,7 +1,9 @@
 #[cfg(test)]
 mod tests {
     use crate::core::clipboard::{copy_selection, ClipboardError};
-    use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
+    use crate::models::document::{
+        DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat,
+    };
 
     fn test_node() -> Node {
         Node {
@@ -14,7 +16,7 @@ mod tests {
             height: OrderedFloat(100.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

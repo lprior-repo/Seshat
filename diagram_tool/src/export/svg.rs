@@ -132,7 +132,8 @@ fn calculate_bounds(doc: &DiagramDocument) -> (f64, f64, f64, f64) {
 mod tests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat, Revision,
+        DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
+        OrderedFloat, Revision,
     };
     use anyhow::Result;
     use im::HashMap;
@@ -157,7 +158,7 @@ mod tests {
                 height: OrderedFloat(height),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -823,7 +824,8 @@ mod tests {
 mod proptests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, Node, NodeId, NodeKind, OrderedFloat, Revision,
+        DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
+        OrderedFloat, Revision,
     };
     use im::HashMap;
     use proptest::prelude::*;
@@ -848,7 +850,7 @@ mod proptests {
                 height: OrderedFloat(height),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -1126,7 +1128,7 @@ mod proptests {
 mod io_tests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, DocumentData, Node, NodeId, NodeKind, OrderedFloat, Revision,
+        DiagramDocument, DocumentData, LockState, Node, NodeId, NodeKind, OrderedFloat, Revision,
     };
     use anyhow::Result;
     use im::HashMap;
@@ -1156,7 +1158,7 @@ mod io_tests {
                 height: OrderedFloat(height),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),

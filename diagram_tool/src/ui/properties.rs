@@ -6,7 +6,9 @@
 #![forbid(unsafe_code)]
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, EdgeId, EdgeStyle, NodeId, OrderedFloat};
+use crate::models::document::{
+    DiagramDocument, EdgeId, EdgeStyle, LockState, NodeId, OrderedFloat,
+};
 use crate::models::envelope::EventEnvelope;
 use crate::ui::dispatch::{dispatch_update_edge_style, dispatch_update_node_style};
 use crate::ui::properties_helpers::{
@@ -447,12 +449,16 @@ pub fn PropertiesPanel() -> Element {
                                         *history.write() = next_h;
                                         doc_signal.with_mut(|doc| {
                                             if let Some(n) = doc.document.nodes.get_mut(&nid) {
-                                                n.locked = !n.locked;
+                                                n.lock_state = if n.lock_state.is_locked() {
+                                                    LockState::Unlocked
+                                                } else {
+                                                    LockState::Locked
+                                                };
                                                 doc.revision = doc.revision.increment();
                                             }
                                         });
                                     },
-                                    if node.locked { "Locked" } else { "Unlocked" }
+                                    if node.lock_state.is_locked() { "Locked" } else { "Unlocked" }
                                 }
                             }
 

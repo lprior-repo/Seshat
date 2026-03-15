@@ -79,7 +79,7 @@ pub fn nudge_selection(doc: &mut DiagramDocument, dx: f64, dy: f64) -> bool {
     let mut any_moved = false;
     for node_id in &selected_nodes {
         if let Some(node) = doc.document.nodes.get_mut(node_id) {
-            if node.locked && node.kind != NodeKind::Subgraph {
+            if !node.lock_state.is_movable(&node.kind) {
                 continue;
             }
             node.x = OrderedFloat(node.x.0 + dx);

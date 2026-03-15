@@ -1,5 +1,7 @@
 use super::*;
-use crate::models::document::{DiagramDocument, EdgeId, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{
+    DiagramDocument, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat,
+};
 
 fn test_node() -> Node {
     Node {
@@ -12,7 +14,7 @@ fn test_node() -> Node {
         height: OrderedFloat(100.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),

@@ -95,7 +95,7 @@ pub fn projection_hash(state: &DiagramProjection) -> Result<String, ReplayError>
         node.height.0.to_bits().hash(&mut hasher);
         node.font_size.hash(&mut hasher);
         node.font_weight.hash(&mut hasher);
-        node.locked.hash(&mut hasher);
+        node.lock_state.hash(&mut hasher);
         node.parent.hash(&mut hasher);
         node.dag_rank.hash(&mut hasher);
         node.z_index.hash(&mut hasher);
@@ -217,7 +217,7 @@ mod tests {
             height: OrderedFloat(40.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::vector![],

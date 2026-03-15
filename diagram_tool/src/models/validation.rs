@@ -163,8 +163,8 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
 mod tests {
     use super::*;
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
-        OrderedFloat,
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
+        NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -181,7 +181,7 @@ mod tests {
                 height: OrderedFloat(64.0),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -364,7 +364,7 @@ mod tests {
 mod proptests {
     use super::*;
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
     use proptest::prelude::*;
@@ -401,7 +401,7 @@ mod proptests {
                     height: OrderedFloat::new_unchecked(height),
                     font_size: None,
                     font_weight: None,
-                    locked: false,
+                    lock_state: LockState::Unlocked,
                     parent: None,
                     dag_rank: None,
                     tags: im::Vector::new(),
@@ -440,7 +440,7 @@ mod proptests {
                 height: OrderedFloat::new_unchecked(height),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -470,7 +470,7 @@ mod proptests {
                 height: OrderedFloat::new_unchecked(dim),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -501,7 +501,7 @@ mod proptests {
                 height: OrderedFloat::new_unchecked(64.0),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),

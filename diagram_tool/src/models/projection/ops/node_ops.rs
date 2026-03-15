@@ -8,7 +8,9 @@
 
 use im::HashMap;
 
-use crate::models::document::{Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
+use crate::models::document::{
+    Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+};
 use crate::models::envelope::DomainOp;
 
 use crate::models::projection::types::{DiagramProjection, ReplayError};
@@ -68,7 +70,7 @@ pub fn create_default_node(x: f64, y: f64, width: f64, height: f64, label: &str)
         height: OrderedFloat(height),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),

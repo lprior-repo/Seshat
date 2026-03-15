@@ -17,7 +17,7 @@ pub(super) fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
             doc.document
                 .nodes
                 .get(&nid)
-                .filter(|n| !n.locked)
+                .filter(|n| !n.lock_state.is_locked())
                 .map(|_| nid)
         })
         .collect()
@@ -51,7 +51,7 @@ pub(super) fn selection_bounds(doc: &DiagramDocument) -> Option<(f64, f64, f64, 
 mod tests {
     use super::{selected_node_ids, selection_bounds};
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
 
     fn make_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
@@ -69,7 +69,11 @@ mod tests {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -499,7 +503,7 @@ mod tests {
 mod kani_proofs {
     use super::{selected_node_ids, selection_bounds};
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
 
     fn make_any_node(locked: bool) -> Node {
@@ -530,7 +534,11 @@ mod kani_proofs {
             height: OrderedFloat(h),
             font_size: None,
             font_weight: None,
-            locked,
+            lock_state: if locked {
+                LockState::Locked
+            } else {
+                LockState::Unlocked
+            },
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

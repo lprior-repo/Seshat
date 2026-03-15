@@ -1,5 +1,5 @@
 use crate::models::document::{
-    DiagramDocument, DocumentData, Node, NodeId, NodeKind, OrderedFloat,
+    DiagramDocument, DocumentData, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
 use crate::models::transform::{commit_transform, Error, NonEmptySelection, ValidTransform};
 use im::HashMap;
@@ -20,7 +20,7 @@ fn setup_doc() -> DiagramDocument {
             height: OrderedFloat::new_unchecked(10.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),
@@ -43,7 +43,7 @@ fn setup_doc() -> DiagramDocument {
             height: OrderedFloat::new_unchecked(10.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent: None,
             dag_rank: None,
             tags: im::Vector::new(),

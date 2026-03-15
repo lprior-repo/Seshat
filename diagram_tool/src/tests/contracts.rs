@@ -20,7 +20,7 @@ fn create_test_node(x: f64, y: f64) -> Node {
         height: OrderedFloat::new_unchecked(24.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),

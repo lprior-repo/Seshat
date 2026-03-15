@@ -182,7 +182,8 @@ fn is_valid_hex_color(color: &str) -> bool {
 mod tests {
     use super::validate_schema;
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        ArrowType, DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle,
+        OrderedFloat,
     };
     use im::HashMap;
 
@@ -197,7 +198,7 @@ mod tests {
             height: OrderedFloat::new_unchecked(60.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent,
             dag_rank: None,
             tags: im::vector![],
@@ -387,8 +388,8 @@ mod tests {
 mod proptests {
     use super::*;
     use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, Node, NodeId,
-        NodeKind, NodeStyle, OrderedFloat, Revision,
+        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, Node,
+        NodeId, NodeKind, NodeStyle, OrderedFloat, Revision,
     };
     use crate::ui::grid::GridSize;
     use im::HashMap;
@@ -433,7 +434,7 @@ mod proptests {
             height: OrderedFloat::new_unchecked(60.0),
             font_size: None,
             font_weight: None,
-            locked: false,
+            lock_state: LockState::Unlocked,
             parent,
             dag_rank: None,
             tags: im::vector![],

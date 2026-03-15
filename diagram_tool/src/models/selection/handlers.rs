@@ -29,7 +29,7 @@ pub fn handle_double_click(
         .get(&target)
         .ok_or(SelectionError::NodeNotFound)?;
 
-    if node.locked {
+    if node.lock_state.is_locked() {
         return Err(SelectionError::NodeNotEditable);
     }
 

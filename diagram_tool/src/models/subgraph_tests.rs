@@ -1,7 +1,7 @@
 #![allow(clippy::unwrap_used)]
 
 use super::*;
-use crate::models::document::{DocumentData, Node, NodeKind, NodeStyle, OrderedFloat};
+use crate::models::document::{DocumentData, LockState, Node, NodeKind, NodeStyle, OrderedFloat};
 use im::HashMap;
 
 fn mock_canvas() -> CanvasState {
@@ -22,7 +22,7 @@ fn create_mock_node(id: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
         height: OrderedFloat::new_unchecked(height),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::vector![],
@@ -823,7 +823,7 @@ fn test_p4_node_locked_violation_returns_error() {
     let n1_id = NodeId::new("n1".to_string());
 
     let mut locked_node = create_mock_node("n1", 10.0, 10.0, 10.0, 10.0);
-    locked_node.locked = true;
+    locked_node.lock_state = LockState::Locked;
 
     canvas.nodes = canvas.nodes.update(n1_id.clone(), locked_node);
 

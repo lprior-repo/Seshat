@@ -300,7 +300,7 @@ mod tests {
     use super::{apply_import_contents, prepare_import_transition, ImportTransitionError};
     use crate::history::History;
     use crate::models::document::{
-        DiagramDocument, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::{HashMap, HashSet};
 
@@ -318,7 +318,7 @@ mod tests {
                 height: OrderedFloat(24.0),
                 font_size: None,
                 font_weight: None,
-                locked: true,
+                lock_state: LockState::Locked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -505,7 +505,7 @@ mod tests {
                 height: OrderedFloat(precise_height),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),
@@ -585,7 +585,7 @@ mod tests {
                     height: OrderedFloat(h),
                     font_size: None,
                     font_weight: None,
-                    locked: false,
+                    lock_state: LockState::Unlocked,
                     parent: None,
                     dag_rank: None,
                     tags: im::Vector::new(),

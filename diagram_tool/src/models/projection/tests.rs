@@ -5,6 +5,7 @@
 
 #[cfg(test)]
 mod tests {
+    use crate::models::document::LockState;
     use crate::models::envelope::Author;
     use crate::models::projection::replay::{apply_event, replay_events};
     use crate::models::projection::types::DiagramProjection;
@@ -272,7 +273,7 @@ mod tests {
                 style: Some(crate::models::document::NodeStyle::Box),
                 font_size: None,
                 font_weight: None,
-                locked: false,
+                lock_state: LockState::Unlocked,
                 parent: None,
                 dag_rank: None,
                 tags: im::Vector::new(),

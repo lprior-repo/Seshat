@@ -1,6 +1,6 @@
 use super::*;
 use crate::models::document::{
-    DiagramDocument, DocumentData, EditorState, Node, NodeId, NodeKind, OrderedFloat,
+    DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
 use im::HashMap;
 use serde_json::json;
@@ -20,7 +20,7 @@ fn setup_doc() -> DiagramDocument {
         height: OrderedFloat(100.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),
@@ -40,7 +40,7 @@ fn setup_doc() -> DiagramDocument {
         height: OrderedFloat(50.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),
@@ -144,7 +144,7 @@ fn test_sel_025_marquee_selects_nodes_inside_subgraphs() {
         height: OrderedFloat(10.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: Some(NodeId::new("n1".to_string())),
         dag_rank: None,
         tags: im::Vector::new(),
@@ -200,7 +200,7 @@ fn test_double_click_fails_on_uneditable_nodes() {
         .nodes
         .get_mut(&NodeId::new("n1".to_string()))
         .unwrap()
-        .locked = true;
+        .lock_state = LockState::Locked;
 
     let res = handle_double_click(&mut doc, NodeId::new("n1".to_string()));
     assert_eq!(res.unwrap_err(), SelectionError::NodeNotEditable);
@@ -234,7 +234,7 @@ fn test_p3_violation_returns_node_not_editable() {
         .nodes
         .get_mut(&NodeId::new("n1".to_string()))
         .unwrap()
-        .locked = true;
+        .lock_state = LockState::Locked;
     let res = handle_double_click(&mut doc, NodeId::new("n1".to_string()));
     assert_eq!(res, Err(SelectionError::NodeNotEditable));
 }
@@ -292,7 +292,7 @@ fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_chil
         height: OrderedFloat(100.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),
@@ -316,7 +316,7 @@ fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_chil
         height: OrderedFloat(20.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: Some(NodeId::new("group_a".to_string())),
         dag_rank: None,
         tags: im::Vector::new(),
@@ -340,7 +340,7 @@ fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_chil
         height: OrderedFloat(20.0),
         font_size: None,
         font_weight: None,
-        locked: false,
+        lock_state: LockState::Unlocked,
         parent: None,
         dag_rank: None,
         tags: im::Vector::new(),
