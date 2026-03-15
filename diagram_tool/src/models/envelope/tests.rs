@@ -1105,3 +1105,122 @@ fn given_invalid_edge_style_when_parsing_then_returns_error() {
         _ => panic!("Expected InvalidPayload error"),
     }
 }
+
+// ---------------------------------------------------------
+// Executable Rust Tests for UpdateNodeStyle (Not Kani)
+// ---------------------------------------------------------
+
+#[cfg(test)]
+use crate::models::document::{NodeId, NodeStyle};
+#[cfg(test)]
+use crate::models::envelope::{
+    domain_op_kind, encode_event_envelope, parse_event_envelope, Author, DomainOp, EventEnvelope,
+    OpKind,
+};
+
+#[test]
+fn test_update_node_style_variant_constructable_with_valid_fields() {
+    let style = NodeStyle::Cloud;
+    let id = NodeId::new("node-test".to_string());
+
+    let op = DomainOp::UpdateNodeStyle {
+        id: id.clone(),
+        style,
+    };
+
+    match op {
+        DomainOp::UpdateNodeStyle {
+            id: matched_id,
+            style: matched_style,
+        } => {
+            assert_eq!(matched_id, id);
+            assert_eq!(matched_style, NodeStyle::Cloud);
+        }
+        _ => panic!("Expected UpdateNodeStyle"),
+    }
+}
+
+#[test]
+fn test_update_node_style_kind_returns_node() {
+    let op = DomainOp::UpdateNodeStyle {
+        id: NodeId::new("node-test".to_string()),
+        style: NodeStyle::Box,
+    };
+
+    assert_eq!(domain_op_kind(&op), OpKind::Node);
+    assert_eq!(op.kind(), OpKind::Node);
+}
+
+#[test]
+fn test_update_node_style_serializes_to_correct_json() {
+    let op = DomainOp::UpdateNodeStyle {
+        id: NodeId::new("node-1".to_string()),
+        style: NodeStyle::Cylinder,
+    };
+
+    let json = serde_json::to_string(&op).expect("Failed to serialize");
+    assert!(json.contains(r#""op_type":"update_node_style""#));
+    assert!(json.contains(r#""id":"node-1""#));
+    assert!(json.contains(r#""style":"cylinder""#));
+}
+
+#[test]
+fn test_update_node_style_deserializes_from_valid_json() {
+    let json = r#"{"op_type":"update_node_style","id":"node-1","style":"dashed"}"#;
+
+    let op: DomainOp = serde_json::from_str(json).expect("Failed to deserialize");
+
+    match op {
+        DomainOp::UpdateNodeStyle { id, style } => {
+            assert_eq!(id.as_str(), "node-1");
+            assert_eq!(style, NodeStyle::Dashed);
+        }
+        _ => panic!("Expected UpdateNodeStyle"),
+    }
+}
+
+#[test]
+fn test_update_node_style_all_four_style_variants() {
+    let styles = [
+        NodeStyle::Box,
+        NodeStyle::Cloud,
+        NodeStyle::Cylinder,
+        NodeStyle::Dashed,
+    ];
+    let style_names = ["box", "cloud", "cylinder", "dashed"];
+
+    for (style, name) in styles.iter().zip(style_names.iter()) {
+        let op = DomainOp::UpdateNodeStyle {
+            id: NodeId::new("test-node".to_string()),
+            style: style.clone(),
+        };
+
+        let json = serde_json::to_string(&op).unwrap();
+        assert!(json.contains(&format!(r#""style":"{}""#, name)));
+
+        let deserialized: DomainOp = serde_json::from_str(&json).unwrap();
+        assert_eq!(op, deserialized);
+    }
+}
+
+#[test]
+fn test_update_node_style_roundtrip_event_envelope() {
+    let op = EventEnvelope {
+        op_id: "evt-style-update".to_string(),
+        operation: DomainOp::UpdateNodeStyle {
+            id: NodeId::new("node-1".to_string()),
+            style: NodeStyle::Cloud,
+        },
+        author: Author {
+            id: "user-1".to_string(),
+            name: "Alice".to_string(),
+            email: None,
+        },
+        timestamp: 1700000000,
+    };
+
+    let encoded = encode_event_envelope(&op).expect("Encoding failed");
+    let decoded = parse_event_envelope(&encoded).expect("Decoding failed");
+
+    assert_eq!(decoded, op);
+}

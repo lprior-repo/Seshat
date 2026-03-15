@@ -253,4 +253,53 @@ mod tests {
         let projection = result.unwrap();
         assert_eq!(projection.author_priority.get("op-1"), Some(&false));
     }
+
+    #[test]
+    fn given_update_node_style_event_then_returns_updated_state() {
+        let mut initial = DiagramProjection::empty();
+        // Setup a node to update
+        let node_id = crate::models::document::NodeId::new("node-1".to_string());
+        initial.nodes.insert(
+            node_id.clone(),
+            crate::models::document::Node {
+                kind: crate::models::document::NodeKind::Node,
+                icon: String::new(),
+                label: "Test".to_string(),
+                x: crate::models::document::OrderedFloat(0.0),
+                y: crate::models::document::OrderedFloat(0.0),
+                width: crate::models::document::OrderedFloat(100.0),
+                height: crate::models::document::OrderedFloat(100.0),
+                style: Some(crate::models::document::NodeStyle::Box),
+                font_size: None,
+                font_weight: None,
+                locked: false,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                collapsed: Some(false),
+            },
+        );
+
+        let event = make_event(
+            "op-1",
+            0,
+            crate::models::envelope::DomainOp::UpdateNodeStyle {
+                id: node_id.clone(),
+                style: crate::models::document::NodeStyle::Cloud,
+            },
+            true,
+        );
+
+        let result = apply_event(initial, &event);
+
+        assert!(result.is_ok(), "Error: {:?}", result.err());
+        let projection = result.unwrap();
+        let updated_node = projection.nodes.get(&node_id).expect("Node should exist");
+        assert_eq!(
+            updated_node.style,
+            Some(crate::models::document::NodeStyle::Cloud)
+        );
+    }
 }
