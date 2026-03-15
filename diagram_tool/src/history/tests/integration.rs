@@ -2,9 +2,12 @@
 //!
 //! End-to-end tests for the complete history workflow.
 
+#[cfg(test)]
 use crate::history::History;
+#[cfg(test)]
 use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
 
+#[cfg(test)]
 fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
     Node {
         kind: NodeKind::Node,

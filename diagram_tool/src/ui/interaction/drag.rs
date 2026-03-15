@@ -1,6 +1,5 @@
 use crate::models::document::{DiagramDocument, NodeId};
 use crate::ui::grid::{snap_point as grid_snap_point, GridSize};
-use crate::ui::interaction::selection::has_drag_threshold;
 use im::{HashMap, HashSet};
 
 #[must_use]

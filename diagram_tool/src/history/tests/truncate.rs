@@ -2,9 +2,12 @@
 //!
 //! Tests for the history size limiting behavior via the public API.
 
+#[cfg(kani)]
 use crate::history::History;
+#[cfg(kani)]
 use crate::models::document::{DiagramDocument, Revision};
 
+#[cfg(kani)]
 fn doc_with_revision(steps: u64) -> DiagramDocument {
     let mut revision = Revision::INITIAL;
     for _ in 0..steps {

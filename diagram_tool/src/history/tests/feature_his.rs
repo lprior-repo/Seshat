@@ -2,9 +2,12 @@
 //!
 //! High-level integration tests matching the HIS test specification.
 
+#[cfg(kani)]
 use crate::history::History;
+#[cfg(kani)]
 use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat, Revision};
 
+#[cfg(kani)]
 fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
     Node {
         kind: NodeKind::Node,

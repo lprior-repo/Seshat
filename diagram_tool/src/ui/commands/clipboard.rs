@@ -216,7 +216,7 @@ pub fn apply_copy_selection(
 pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<ClipboardData>>,
-    mut history_signal: Signal<History>,
+    history_signal: Signal<History>,
 ) -> bool {
     let current = doc_signal.read().clone();
     let clipboard = clipboard_signal.read().clone();
@@ -243,7 +243,7 @@ pub fn apply_paste_selection(
 pub fn apply_duplicate_selection(
     mut doc_signal: Signal<DiagramDocument>,
     mut clipboard_signal: Signal<Option<ClipboardData>>,
-    mut history_signal: Signal<History>,
+    history_signal: Signal<History>,
 ) -> bool {
     let doc = doc_signal.read().clone();
     let Some(clipboard) = copy_selection_for_duplicate(&doc) else {

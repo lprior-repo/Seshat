@@ -52,6 +52,8 @@ use std::time::Duration;
 #[cfg(not(target_arch = "wasm32"))]
 use notify::{Config, Event, EventKind, RecommendedWatcher, RecursiveMode, Watcher};
 use thiserror::Error;
+#[cfg(any(kani, test))]
+#[allow(unused_imports)]
 use tokio::time::sleep;
 
 use crate::models::envelope::parse_event_envelope;
