@@ -37,6 +37,13 @@ impl AABB {
         }
     }
 
+    /// Create an AABB from x, y, width, height (axis-aligned rectangle)
+    /// Works with negative width/height (handles inverted rectangles)
+    #[must_use]
+    pub fn from_xywh(x: f64, y: f64, width: f64, height: f64) -> Self {
+        Self::new(x, y, x + width, y + height)
+    }
+
     #[must_use]
     pub fn width(&self) -> f64 {
         self.max_x - self.min_x

@@ -59,7 +59,7 @@ mod tests {
     #[test]
     fn test_copy_single_node_populates_clipboard() {
         let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("n1".to_string());
+        let n1 = NodeId::new("n1".to_string()).unwrap();
         doc.document.nodes.insert(n1.clone(), test_node());
         doc.editor_state
             .selected_items
@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn test_cut_single_node_returns_clipboard_and_removes_from_doc() {
         let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("n1".to_string());
+        let n1 = NodeId::new("n1".to_string()).unwrap();
         doc.document.nodes.insert(n1.clone(), test_node());
         doc.editor_state
             .selected_items
@@ -111,9 +111,9 @@ mod tests {
     #[test]
     fn test_cut_multiple_nodes_with_edges_removes_subgraph() {
         let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("n1".to_string());
-        let n2 = NodeId::new("n2".to_string());
-        let n3 = NodeId::new("n3".to_string());
+        let n1 = NodeId::new("n1".to_string()).unwrap();
+        let n2 = NodeId::new("n2".to_string()).unwrap();
+        let n3 = NodeId::new("n3".to_string()).unwrap();
 
         doc.document.nodes.insert(n1.clone(), test_node());
         doc.document.nodes.insert(n2.clone(), test_node());
@@ -158,7 +158,7 @@ mod tests {
     #[test]
     fn test_duplicate_single_node_creates_new_node_with_offset() {
         let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("n1".to_string());
+        let n1 = NodeId::new("n1".to_string()).unwrap();
         let mut node = test_node();
         node.x = OrderedFloat(10.0);
         node.y = OrderedFloat(10.0);
@@ -173,7 +173,7 @@ mod tests {
         assert_eq!(doc.editor_state.selected_items.len(), 1);
 
         let new_id_str = doc.editor_state.selected_items.iter().next().unwrap();
-        let new_id = NodeId::new(new_id_str.clone());
+        let new_id = NodeId::new(new_id_str.clone().unwrap());
         assert_ne!(new_id, n1);
 
         let new_node = doc.document.nodes.get(&new_id).unwrap();
@@ -186,8 +186,8 @@ mod tests {
     #[test]
     fn test_duplicate_multiple_nodes_with_edges_preserves_topology() {
         let mut doc = DiagramDocument::default();
-        let n1 = NodeId::new("n1".to_string());
-        let n2 = NodeId::new("n2".to_string());
+        let n1 = NodeId::new("n1".to_string()).unwrap();
+        let n2 = NodeId::new("n2".to_string()).unwrap();
         doc.document.nodes.insert(n1.clone(), test_node());
         doc.document.nodes.insert(n2.clone(), test_node());
 

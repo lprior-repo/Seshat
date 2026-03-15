@@ -737,7 +737,7 @@ mod tests {
                 email: None,
             },
             operation: DomainOp::NodeAdd {
-                id: NodeId::new(format!("node-{revision}")),
+                id: NodeId::new(format!("node-{revision}").unwrap()),
                 x: 100.0 * revision as f64,
                 y: 200.0 * revision as f64,
                 width: 80.0,
