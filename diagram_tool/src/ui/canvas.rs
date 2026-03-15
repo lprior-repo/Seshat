@@ -39,6 +39,7 @@ use selection_geometry::{selected_node_ids, selection_bounds};
 use serde_json::Value;
 use uuid::Uuid;
 
+use crate::ui::dispatch::send::edge::handle_edge_drawing_complete;
 use crate::ui::dispatch::send::node::dispatch_node_delete_batch;
 use crate::{
     app::DraggedIconPayload,
@@ -1497,7 +1498,7 @@ pub fn Canvas() -> Element {
                                 if &target_id != from_node {
                                     let candidate_edge = Edge {
                                         source: from_node.clone(),
-                                        target: target_id,
+                                        target: target_id.clone(),
                                         label: String::new(),
                                         style: *edge_style_default.read(),
                                         arrow_type: *arrow_type_default.read(),
@@ -1510,7 +1511,7 @@ pub fn Canvas() -> Element {
                                         metadata: HashMap::new(),
                                         font_size: None,
                                         source_port: None,
-                                        target_port: None,
+            target_port: None,
                                     };
 
                                     if !edge_preserves_dag(&doc, &candidate_edge) {
@@ -1533,6 +1534,20 @@ pub fn Canvas() -> Element {
                                         }
                                         return;
                                     }
+
+                                    // Dispatch EdgeConnect to backend (Q1: EventEnvelope sent to db_tx)
+                                    // If db_tx is unavailable, continue with local mutation for UX
+                                    let doc_for_dispatch = doc_signal.read();
+                                    let dispatch_result = handle_edge_drawing_complete(
+                                        db_tx.clone(),
+                                        &doc_for_dispatch,
+                                        from_node.to_string(),
+                                        target_id.to_string(),
+                                    );
+                                    if let Err(e) = dispatch_result {
+                                        eprintln!("EdgeConnect dispatch failed: {:?}, continuing with local mutation", e);
+                                    }
+                                    drop(doc_for_dispatch);
 
                                     let current = doc_signal.read().clone();
                                     let history = history_signal.read().clone();
