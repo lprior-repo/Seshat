@@ -120,6 +120,33 @@ pub fn apply_node_move(
     })
 }
 
+/// Get children of a node (nodes that have this node as parent)
+fn get_children(node_map: &NodeMap, parent_id: &NodeId) -> Vec<NodeId> {
+    node_map
+        .iter()
+        .filter(|(_, node)| node.parent.as_ref() == Some(parent_id))
+        .map(|(id, _)| id.clone())
+        .collect()
+}
+
+/// Unparent all children of a node (set parent to None)
+fn unparent_children(node_map: &NodeMap, parent_id: &NodeId) -> NodeMap {
+    let children = get_children(node_map, parent_id);
+    children
+        .iter()
+        .fold(node_map.clone(), |acc: NodeMap, child_id| {
+            acc.alter(
+                |child_opt| {
+                    child_opt.map(|mut child| {
+                        child.parent = None;
+                        child
+                    })
+                },
+                child_id.clone(),
+            )
+        })
+}
+
 /// Apply `NodeDelete` operation
 pub fn apply_node_delete(
     state: DiagramProjection,
@@ -150,7 +177,11 @@ pub fn apply_node_delete(
         .into_iter()
         .fold(state.edges.clone(), |acc: EdgeMap, eid| acc.without(&eid));
 
-    let mut new_nodes = state.nodes.without(&node_id);
+    // Cascade unparent: set parent=None for all children BEFORE deleting the node
+    let mut new_nodes = unparent_children(&state.nodes, &node_id);
+
+    // Now remove the node
+    new_nodes = new_nodes.without(&node_id);
 
     // GEO-026: Propagate bounds changes to ancestor containers after deletion
     // We need to propagate for each ancestor separately since the node is already deleted
