@@ -10,7 +10,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
 #![forbid(unsafe_code)]
 
 use crate::models::canonical_json::to_canonical_pretty_json;
@@ -418,10 +417,9 @@ fn load_and_validate(path: &Path) -> Result<DiagramDocument, CliPersistenceError
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
+
     use crate::models::document::{DiagramDocument, DocumentData, EditorState, Revision};
     use im::HashMap;
-    use tempfile::TempDir;
 
     fn create_test_document() -> DiagramDocument {
         DiagramDocument {

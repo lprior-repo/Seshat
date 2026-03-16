@@ -30,7 +30,6 @@ pub fn load_config() -> Result<AppConfig, ConfigError> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]

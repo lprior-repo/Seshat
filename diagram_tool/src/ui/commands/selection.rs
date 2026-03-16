@@ -6,7 +6,7 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, Node, NodeId, OrderedFloat};
 use crate::models::envelope::EventEnvelope;
 
 /// Select all nodes and edges in the document

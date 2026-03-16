@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::history::History;
@@ -566,7 +564,7 @@ pub fn PropertiesPanel() -> Element {
                                             *history.write() = next_h;
                                             // Dispatch to db_tx - show error toast if dispatch fails
                                             if let Err(e) = dispatch_update_edge_style(&db_tx, eid.as_str(), new_style) {
-                                                let _ = toast.error("Failed to save", Some(format!("{:?}", e)));
+                                                let _ = toast.error("Failed to save", Some(format!("{e:?}")));
                                             }
                                         }
                                         doc_signal.with_mut(|doc| {

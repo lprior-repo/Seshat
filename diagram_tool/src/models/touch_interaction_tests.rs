@@ -166,7 +166,7 @@ mod sel_007_resize_handles_tests {
         assert!(!is_hit, "Hit outside handle should not be detected");
     }
 
-    /// Compute the 8 handle positions for a SelectionBounds
+    /// Compute the 8 handle positions for a `SelectionBounds`
     fn compute_handle_positions(bounds: &SelectionBounds) -> Vec<(f64, f64)> {
         let min_x = bounds.start.x.min(bounds.end.x);
         let max_x = bounds.start.x.max(bounds.end.x);
@@ -281,7 +281,7 @@ mod sel_008_touch_hit_tests {
         // Touch: 30 < 44 → true, Mouse: 30 > 20 → false
         let dx: f64 = touch_x - center_x;
         let dy: f64 = touch_y - center_y;
-        let touch_distance = (dx * dx + dy * dy).sqrt();
+        let touch_distance = dx.hypot(dy);
         let touch_hit = touch_distance <= touch_result;
         let mouse_hit = touch_distance <= mouse_result;
 
@@ -302,8 +302,7 @@ mod sel_008_touch_hit_tests {
             // Then: Returns value >= 44.0 (WCAG minimum)
             assert!(
                 result >= WCAG_TOUCH_MIN,
-                "Touch hit radius should be >= WCAG minimum (44.0), got {}",
-                result
+                "Touch hit radius should be >= WCAG minimum (44.0), got {result}"
             );
         }
     }
@@ -439,18 +438,12 @@ mod sel_009_drag_threshold_tests {
             .collect();
 
         // Then: Same distance gives same result
-        assert_eq!(results[0], true, "3px right should be over threshold");
-        assert_eq!(results[1], true, "3px left should be over threshold");
-        assert_eq!(results[2], true, "3px down should be over threshold");
-        assert_eq!(results[3], true, "3px up should be over threshold");
-        assert_eq!(
-            results[4], false,
-            "~2.83px diagonal should be under threshold"
-        );
-        assert_eq!(
-            results[5], true,
-            "~4.12px diagonal should be over threshold"
-        );
+        assert!(results[0], "3px right should be over threshold");
+        assert!(results[1], "3px left should be over threshold");
+        assert!(results[2], "3px down should be over threshold");
+        assert!(results[3], "3px up should be over threshold");
+        assert!(!results[4], "~2.83px diagonal should be under threshold");
+        assert!(results[5], "~4.12px diagonal should be over threshold");
     }
 
     /// SEL-009: Zero origin handled correctly

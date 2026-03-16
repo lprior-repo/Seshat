@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::history::History;
@@ -18,11 +16,10 @@ use dioxus::prelude::*;
 ///
 /// Must be called inside a component that has `Signal<DiagramDocument>` and
 /// `Signal<History>` in context (i.e. after the context providers in `App`).
-pub fn use_global_keyboard() {
+pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
     let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
-    let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -65,6 +62,7 @@ pub fn use_global_keyboard() {
         );
 
         spawn(async move {
+            let db_tx = db_tx;
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 let key = json["key"].as_str().map_or("", |s| s);
                 let modifier = json["modifier"].as_bool().is_some_and(|b| b);

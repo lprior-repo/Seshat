@@ -30,7 +30,7 @@ pub struct Selection {
 
 impl Selection {
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self { nodes: vec![] }
     }
 }
@@ -44,7 +44,7 @@ pub struct ClipboardData {
 
 impl ClipboardData {
     #[must_use]
-    pub fn empty() -> Self {
+    pub const fn empty() -> Self {
         Self {
             nodes: vec![],
             edges: vec![],
@@ -54,6 +54,7 @@ impl ClipboardData {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
+#[allow(clippy::struct_field_names)]
 pub struct PasteResult {
     pub new_nodes: Vec<(NodeId, Node)>,
     pub new_edges: Vec<(EdgeId, Edge)>,

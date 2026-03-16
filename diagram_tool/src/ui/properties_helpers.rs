@@ -41,6 +41,7 @@ pub fn remove_selected(doc: &mut DiagramDocument) {
 
 /// Error type for style parsing operations.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum StyleError {
     #[error("Invalid node style: {0}")]
     InvalidNodeStyle(String),
@@ -52,8 +53,9 @@ pub enum StyleError {
 
 // === Edge Style Parsing ===
 
-/// Parses a string into an EdgeStyle.
+/// Parses a string into an `EdgeStyle`.
 #[allow(dead_code)]
+#[must_use]
 pub fn parse_edge_style(v: &str) -> EdgeStyle {
     match v {
         "dashed" => EdgeStyle::Dashed,
@@ -62,8 +64,9 @@ pub fn parse_edge_style(v: &str) -> EdgeStyle {
     }
 }
 
-/// Converts an EdgeStyle to its string representation.
+/// Converts an `EdgeStyle` to its string representation.
 #[allow(dead_code)]
+#[must_use]
 pub const fn edge_style_str(v: EdgeStyle) -> &'static str {
     match v {
         EdgeStyle::Solid => "solid",
@@ -74,8 +77,9 @@ pub const fn edge_style_str(v: EdgeStyle) -> &'static str {
 
 // === Arrow Type Parsing ===
 
-/// Parses a string into an ArrowType.
+/// Parses a string into an `ArrowType`.
 #[allow(dead_code)]
+#[must_use]
 pub fn parse_arrow_type(v: &str) -> crate::models::document::ArrowType {
     use crate::models::document::ArrowType;
     match v {
@@ -87,8 +91,9 @@ pub fn parse_arrow_type(v: &str) -> crate::models::document::ArrowType {
     }
 }
 
-/// Converts an ArrowType to its string representation.
+/// Converts an `ArrowType` to its string representation.
 #[allow(dead_code)]
+#[must_use]
 pub const fn arrow_type_str(v: crate::models::document::ArrowType) -> &'static str {
     use crate::models::document::ArrowType;
     match v {
@@ -102,7 +107,7 @@ pub const fn arrow_type_str(v: crate::models::document::ArrowType) -> &'static s
 
 // === Node Style Parsing ===
 
-/// Parses a string into a NodeStyle, returning an error for invalid values.
+/// Parses a string into a `NodeStyle`, returning an error for invalid values.
 #[allow(dead_code)]
 pub fn parse_node_style(v: &str) -> Result<NodeStyle, StyleError> {
     match v {
@@ -116,7 +121,8 @@ pub fn parse_node_style(v: &str) -> Result<NodeStyle, StyleError> {
 
 /// Converts an Option<NodeStyle> to its string representation.
 #[allow(dead_code)]
-pub fn node_style_str(style: &Option<NodeStyle>) -> &'static str {
+#[must_use]
+pub const fn node_style_str(style: &Option<NodeStyle>) -> &'static str {
     match style.as_ref() {
         Some(NodeStyle::Box) => "box",
         Some(NodeStyle::Cloud) => "cloud",
@@ -126,8 +132,9 @@ pub fn node_style_str(style: &Option<NodeStyle>) -> &'static str {
     }
 }
 
-/// Converts a NodeKind to its string representation.
+/// Converts a `NodeKind` to its string representation.
 #[allow(dead_code)]
+#[must_use]
 pub const fn node_kind_str(kind: &NodeKind) -> &'static str {
     match kind {
         NodeKind::Node => "node",
@@ -164,6 +171,7 @@ pub fn dispatch_edge_style_change(
 
 /// Gets the display label for a node, falling back to the node ID if the label is empty.
 #[allow(dead_code)]
+#[must_use]
 pub fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
     doc.document.nodes.get(id).map_or_else(
         || id.to_string(),

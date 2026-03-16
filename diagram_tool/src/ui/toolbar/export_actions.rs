@@ -48,7 +48,7 @@ fn wasm_export_png_from_svg(svg: String, filename: &str, mut toasts: Signal<Toas
     });
 }
 
-pub fn export_png(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQueue>) {
+pub fn export_png(doc_signal: Signal<DiagramDocument>, toasts: Signal<ToastQueue>) {
     #[cfg(target_arch = "wasm32")]
     {
         let doc = doc_signal.read().clone();
@@ -57,28 +57,31 @@ pub fn export_png(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQ
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
+        let mut toasts = toasts;
         let doc = doc_signal.read();
         if let Err(e) = export_png_file(&doc, "diagram.png") {
             toasts.with_mut(|queue| {
                 let _ = queue.add(
                     ToastIntent::Error,
                     "PNG export failed",
-                    Some(format!("Failed to export PNG: {}", e)),
+                    Some(format!("Failed to export PNG: {e}")),
                 );
             });
         }
     }
 }
 
-pub fn export_svg(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQueue>) {
+pub fn export_svg(doc_signal: Signal<DiagramDocument>, toasts: Signal<ToastQueue>) {
     #[cfg(target_arch = "wasm32")]
     {
+        let _ = &toasts;
         let doc = doc_signal.read().clone();
         let svg = generate_svg_string(&doc);
         wasm_download_bytes("diagram.svg", "image/svg+xml", svg.as_bytes());
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
+        let mut toasts = toasts;
         let doc = doc_signal.read();
         let svg = generate_svg_string(&doc);
         match File::create("diagram.svg") {
@@ -88,7 +91,7 @@ pub fn export_svg(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQ
                         let _ = queue.add(
                             ToastIntent::Error,
                             "SVG export failed",
-                            Some(format!("Failed to write SVG: {}", e)),
+                            Some(format!("Failed to write SVG: {e}")),
                         );
                     });
                 }
@@ -98,7 +101,7 @@ pub fn export_svg(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<ToastQ
                     let _ = queue.add(
                         ToastIntent::Error,
                         "SVG export failed",
-                        Some(format!("Failed to create SVG file: {}", e)),
+                        Some(format!("Failed to create SVG file: {e}")),
                     );
                 });
             }
@@ -123,7 +126,7 @@ pub fn export_json(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<Toast
                             let _ = queue.add(
                                 ToastIntent::Error,
                                 "JSON export failed",
-                                Some(format!("Failed to write JSON: {}", e)),
+                                Some(format!("Failed to write JSON: {e}")),
                             );
                         });
                     }
@@ -133,7 +136,7 @@ pub fn export_json(doc_signal: Signal<DiagramDocument>, mut toasts: Signal<Toast
                         let _ = queue.add(
                             ToastIntent::Error,
                             "JSON export failed",
-                            Some(format!("Failed to create JSON file: {}", e)),
+                            Some(format!("Failed to create JSON file: {e}")),
                         );
                     });
                 }

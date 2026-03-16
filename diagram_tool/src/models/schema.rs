@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::dag::validate_dag;
@@ -180,10 +178,9 @@ fn is_valid_hex_color(color: &str) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use super::validate_schema;
+
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle,
-        OrderedFloat,
+        ArrowType, Edge, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
@@ -386,12 +383,11 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
+
     use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, Node,
-        NodeId, NodeKind, NodeStyle, OrderedFloat, Revision,
+        ArrowType, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
-    use crate::ui::grid::GridSize;
+
     use im::HashMap;
     use proptest::prelude::*;
 

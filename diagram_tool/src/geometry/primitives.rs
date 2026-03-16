@@ -28,7 +28,7 @@ pub struct AABB {
 
 impl AABB {
     #[must_use]
-    pub fn new(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
+    pub const fn new(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Self {
         Self {
             min_x: min_x.min(max_x),
             min_y: min_y.min(max_y),
@@ -83,7 +83,7 @@ impl AABB {
 
     /// Compute the union of two AABBs
     #[must_use]
-    pub fn union(&self, other: &Self) -> Self {
+    pub const fn union(&self, other: &Self) -> Self {
         Self::new(
             self.min_x.min(other.min_x),
             self.min_y.min(other.min_y),

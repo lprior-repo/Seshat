@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use super::selection_geometry::{selected_node_ids, selection_bounds};
@@ -17,7 +15,7 @@ use dioxus::prelude::*;
 use im::HashMap;
 use std::collections::HashSet;
 
-/// Error type for commit_inline_edit operations
+/// Error type for `commit_inline_edit` operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum CommitError {
     /// Dispatch failed (e.g., channel closed)
@@ -1063,23 +1061,19 @@ mod tests {
             // Verify calculations are valid (not NaN or infinite)
             assert!(
                 expected_x.is_finite(),
-                "Scaled x should be finite for {:?}",
-                id
+                "Scaled x should be finite for {id:?}"
             );
             assert!(
                 expected_y.is_finite(),
-                "Scaled y should be finite for {:?}",
-                id
+                "Scaled y should be finite for {id:?}"
             );
             assert!(
                 expected_w.is_finite(),
-                "Scaled width should be finite for {:?}",
-                id
+                "Scaled width should be finite for {id:?}"
             );
             assert!(
                 expected_h.is_finite(),
-                "Scaled height should be finite for {:?}",
-                id
+                "Scaled height should be finite for {id:?}"
             );
         }
     }
@@ -1102,7 +1096,7 @@ mod tests {
         // If we drag the SE handle past the NW corner, we get inversion
         let originals: HashMap<NodeId, (f64, f64, f64, f64)> = {
             let mut map = HashMap::new();
-            map.insert(node_id.clone(), (50.0, 50.0, 100.0, 100.0));
+            map.insert(node_id, (50.0, 50.0, 100.0, 100.0));
             map
         };
 
@@ -1142,7 +1136,7 @@ mod tests {
 
         let originals: HashMap<NodeId, (f64, f64, f64, f64)> = {
             let mut map = HashMap::new();
-            map.insert(node_id.clone(), (0.0, 0.0, 50.0, 50.0));
+            map.insert(node_id, (0.0, 0.0, 50.0, 50.0));
             map
         };
 
@@ -1443,7 +1437,7 @@ mod proptests {
             let mut doc = DiagramDocument::default();
             for i in 0..depth {
                 let id = NodeId::new(format!("sub_{i}"));
-                let size = 100.0 + (depth - i) as f64 * 50.0;
+                let size = ((depth - i) as f64).mul_add(50.0, 100.0);
                 doc.document.nodes = doc.document.nodes.update(
                     id.clone(),
                     node(NodeKind::Subgraph, i as f64 * 10.0, i as f64 * 10.0, size, size),
@@ -1534,7 +1528,7 @@ mod proptests {
             let mut mode = InteractionMode::DraggingSelection {
                 anchor_canvas: (0.0, 0.0),
                 anchor_client: (0.0, 0.0),
-                original_positions: positions.clone(),
+                original_positions: positions,
                 did_move: true,
             };
             let mut doc = DiagramDocument::default();
@@ -1810,7 +1804,7 @@ mod proptests {
 
             for i in 0..count {
                 let id = NodeId::new(format!("sub_{i}"));
-                let size = 200.0 - i as f64 * 10.0;
+                let size = (i as f64).mul_add(-10.0, 200.0);
                 doc.document.nodes = doc.document.nodes.update(
                     id.clone(),
                     node(NodeKind::Subgraph, i as f64 * 5.0, i as f64 * 5.0, size, size),
@@ -1851,7 +1845,7 @@ mod proptests {
 /// Subgraph/container interaction tests (bd-sa6)
 ///
 /// These tests validate SUB (subgraph) interaction behaviors including:
-/// - Click-through selection with z_index priority
+/// - Click-through selection with `z_index` priority
 /// - Box-select across container boundaries
 /// - Collapse/expand container behavior
 /// - Locked container with unlocked children
@@ -1941,7 +1935,7 @@ mod subgraph_tests {
     // ============== SUB-001: Click inside container selects child vs container ==============
 
     /// Given a container with a child at overlapping position,
-    /// when hit testing by position, the child should be prioritized due to higher z_index.
+    /// when hit testing by position, the child should be prioritized due to higher `z_index`.
     #[test]
     fn given_container_with_child_when_hit_testing_then_child_has_higher_z_index() {
         let mut doc = DiagramDocument::default();
@@ -1997,8 +1991,8 @@ mod subgraph_tests {
         );
     }
 
-    /// Given a container with multiple children at different z_index values,
-    /// when selecting by position, the highest z_index node should be preferred.
+    /// Given a container with multiple children at different `z_index` values,
+    /// when selecting by position, the highest `z_index` node should be preferred.
     #[test]
     fn given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins() {
         let mut doc = DiagramDocument::default();
@@ -2034,24 +2028,9 @@ mod subgraph_tests {
         doc.document.nodes.insert(child_id.clone(), child);
 
         // Verify z_index hierarchy
-        let outer_z = doc
-            .document
-            .nodes
-            .get(&outer_id)
-            .map(|n| n.z_index)
-            .unwrap_or(0);
-        let inner_z = doc
-            .document
-            .nodes
-            .get(&inner_id)
-            .map(|n| n.z_index)
-            .unwrap_or(0);
-        let child_z = doc
-            .document
-            .nodes
-            .get(&child_id)
-            .map(|n| n.z_index)
-            .unwrap_or(0);
+        let outer_z = doc.document.nodes.get(&outer_id).map_or(0, |n| n.z_index);
+        let inner_z = doc.document.nodes.get(&inner_id).map_or(0, |n| n.z_index);
+        let child_z = doc.document.nodes.get(&child_id).map_or(0, |n| n.z_index);
 
         assert_eq!(outer_z, -1, "Outer container should have z_index -1");
         assert_eq!(inner_z, -1, "Inner container should have z_index -1");
@@ -2081,7 +2060,7 @@ mod subgraph_tests {
             50.0,
             30.0,
             false,
-            Some(container_id.clone()),
+            Some(container_id),
         );
         doc.document
             .nodes
@@ -2150,11 +2129,9 @@ mod subgraph_tests {
             50.0,
             30.0,
             false,
-            Some(container_id.clone()),
+            Some(container_id),
         );
-        doc.document
-            .nodes
-            .insert(right_child_id.clone(), right_child);
+        doc.document.nodes.insert(right_child_id, right_child);
 
         // Simulate selection of only the left child
         let _ = doc
@@ -2253,9 +2230,7 @@ mod subgraph_tests {
 
         // Collapse the container
         container.collapsed = Some(true);
-        doc.document
-            .nodes
-            .insert(container_id.clone(), container.clone());
+        doc.document.nodes.insert(container_id.clone(), container);
 
         // Verify children still exist in document
         assert!(
@@ -2393,15 +2368,8 @@ mod subgraph_tests {
         doc.document.nodes.insert(container_id.clone(), container);
 
         // Create unlocked child
-        let (child_id, child) = make_child_node(
-            "child",
-            120.0,
-            120.0,
-            50.0,
-            30.0,
-            false,
-            Some(container_id.clone()),
-        );
+        let (child_id, child) =
+            make_child_node("child", 120.0, 120.0, 50.0, 30.0, false, Some(container_id));
         doc.document.nodes.insert(child_id.clone(), child);
 
         // Select the child (simulating user clicking on child despite locked parent)
@@ -2584,7 +2552,7 @@ mod subgraph_tests {
         let child_node = doc.document.nodes.get(&child_id).expect("child exists");
         assert_eq!(
             child_node.parent,
-            Some(container_id.clone()),
+            Some(container_id),
             "Child's parent reference should be preserved after resize operation"
         );
     }
@@ -2947,7 +2915,7 @@ mod subgraph_tests {
         // Container at (300, 100) with size 200x200
         let (container_id, container) =
             make_subgraph_node("container", 300.0, 100.0, 200.0, 200.0, false, None, None);
-        doc.document.nodes.insert(container_id.clone(), container);
+        doc.document.nodes.insert(container_id, container);
 
         // Two nodes outside container at initial positions
         let (node1_id, node1) = make_child_node("node1", 50.0, 150.0, 60.0, 30.0, false, None);
@@ -3057,7 +3025,7 @@ mod subgraph_tests {
         let initial_node1 = doc.document.nodes.get(&node1_id).unwrap();
         assert_eq!(
             initial_node1.parent,
-            Some(container_id.clone()),
+            Some(container_id),
             "Node1 should start as child of container"
         );
 
@@ -3077,7 +3045,7 @@ mod subgraph_tests {
 
         // Check: After drag, nodes are outside container bounds
         let node1 = doc.document.nodes.get(&node1_id).unwrap();
-        let node2 = doc.document.nodes.get(&node2_id).unwrap();
+        let _node2 = doc.document.nodes.get(&node2_id).unwrap();
         assert!(
             node1.x.0 > 300.0,
             "Node1 should be outside container X bounds after drag"

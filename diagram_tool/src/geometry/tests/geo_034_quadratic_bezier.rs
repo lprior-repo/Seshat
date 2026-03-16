@@ -1,4 +1,3 @@
-use super::super::*;
 use super::*;
 #[allow(unused_imports)]
 use proptest::prelude::*;
@@ -43,8 +42,14 @@ impl QuadraticBezier {
         let mt = 1.0 - t;
         let mt2 = mt * mt;
         Point::new(
-            mt2 * self.start.x + 2.0 * mt * t * self.control.x + t2 * self.end.x,
-            mt2 * self.start.y + 2.0 * mt * t * self.control.y + t2 * self.end.y,
+            t2.mul_add(
+                self.end.x,
+                mt2 * self.start.x + 2.0 * mt * t * self.control.x,
+            ),
+            t2.mul_add(
+                self.end.y,
+                mt2 * self.start.y + 2.0 * mt * t * self.control.y,
+            ),
         )
     }
 
@@ -89,7 +94,7 @@ impl QuadraticBezier {
         let mut max_y = self.start.y.max(self.end.y);
 
         // Check x extrema
-        let denom_x = self.start.x - 2.0 * self.control.x + self.end.x;
+        let denom_x = 2.0f64.mul_add(-self.control.x, self.start.x) + self.end.x;
         if denom_x.abs() > TOLERANCE {
             let t = (self.start.x - self.control.x) / denom_x;
             if (0.0..=1.0).contains(&t) {
@@ -100,7 +105,7 @@ impl QuadraticBezier {
         }
 
         // Check y extrema
-        let denom_y = self.start.y - 2.0 * self.control.y + self.end.y;
+        let denom_y = 2.0f64.mul_add(-self.control.y, self.start.y) + self.end.y;
         if denom_y.abs() > TOLERANCE {
             let t = (self.start.y - self.control.y) / denom_y;
             if (0.0..=1.0).contains(&t) {

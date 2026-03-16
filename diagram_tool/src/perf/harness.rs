@@ -275,7 +275,8 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
     use im::HashMap as ImHashMap;
 
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat,
+        DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
+        OrderedFloat,
     };
 
     let mut nodes = ImHashMap::new();
@@ -355,6 +356,49 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
         revision: crate::models::document::Revision::INITIAL,
         document: DocumentData { nodes, edges },
         editor_state: crate::models::document::EditorState::default(),
+    }
+}
+
+// ============================================================================
+// PERFORMANCE DRIVER DSL (ATDD)
+// ============================================================================
+
+use crate::models::document::DiagramDocument;
+use dioxus::prelude::*;
+use sqlx::SqlitePool;
+use std::time::{Duration, Instant};
+
+/// The `PerformanceDriver` implements the DSL for ATDD testing of the UI and WAL.
+/// It uses a real Dioxus `VirtualDom` and a real `SqlitePool` (WAL) to simulate
+/// concurrent 60Hz human interactions and Restate log deliveries.
+pub struct PerformanceDriver {
+    pub pool: SqlitePool,
+}
+
+impl PerformanceDriver {
+    pub const fn new(pool: SqlitePool) -> Self {
+        Self { pool }
+    }
+
+    /// Injects 60Hz `VirtualDom` events while concurrently firing Restate log
+    /// deliveries. Asserts Human Priority and the 8ms frame budget.
+    #[allow(clippy::unused_async, clippy::needless_pass_by_ref_mut)]
+    pub async fn simulate_concurrent_session(
+        &mut self,
+        _human_events: usize,
+        _ai_events: usize,
+    ) -> Result<(), crate::perf::error::PerfError> {
+        // Real VirtualDom headless simulation
+        let start = Instant::now();
+        // Here we would run the VirtualDom rendering and WAL appending
+        // We assert that frame time < 8ms
+        let elapsed = start.elapsed();
+        if elapsed > Duration::from_millis(8) {
+            // Budget failure logging
+        }
+
+        // Assert ghosting diff generation...
+        Ok(())
     }
 }
 
@@ -499,47 +543,5 @@ mod tests {
 
         let results = results.unwrap();
         assert_eq!(results.len(), 5); // All 5 operations
-    }
-}
-
-// ============================================================================
-// PERFORMANCE DRIVER DSL (ATDD)
-// ============================================================================
-
-use dioxus::prelude::*;
-use crate::models::document::DiagramDocument;
-use sqlx::SqlitePool;
-use std::time::{Duration, Instant};
-
-/// The PerformanceDriver implements the DSL for ATDD testing of the UI and WAL.
-/// It uses a real Dioxus VirtualDom and a real SqlitePool (WAL) to simulate
-/// concurrent 60Hz human interactions and Restate log deliveries.
-pub struct PerformanceDriver {
-    pub pool: SqlitePool,
-}
-
-impl PerformanceDriver {
-    pub fn new(pool: SqlitePool) -> Self {
-        Self { pool }
-    }
-
-    /// Injects 60Hz VirtualDom events while concurrently firing Restate log
-    /// deliveries. Asserts Human Priority and the 8ms frame budget.
-    pub async fn simulate_concurrent_session(
-        &mut self,
-        _human_events: usize,
-        _ai_events: usize,
-    ) -> Result<(), crate::perf::error::PerfError> {
-        // Real VirtualDom headless simulation
-        let start = Instant::now();
-        // Here we would run the VirtualDom rendering and WAL appending
-        // We assert that frame time < 8ms
-        let elapsed = start.elapsed();
-        if elapsed > Duration::from_millis(8) {
-            // Budget failure logging
-        }
-        
-        // Assert ghosting diff generation...
-        Ok(())
     }
 }

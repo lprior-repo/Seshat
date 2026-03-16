@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, LockState, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
 
 /// Axis for distribution operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -80,10 +80,12 @@ pub fn apply_distribute_selection(
 
     // Calculate the space to distribute
     // Safety: len() >= 3 checked at line 77, so first/last are guaranteed to be Some
-    let first = node_data
-        .first()
-        .expect("node_data has at least 3 elements");
-    let last = node_data.last().expect("node_data has at least 3 elements");
+    let Some(first) = node_data.first() else {
+        return false;
+    };
+    let Some(last) = node_data.last() else {
+        return false;
+    };
     let total_extent = (last.1 + last.2) - first.1;
 
     let total_sizes: f64 = node_data.iter().map(|(_, _, size)| size).sum();
@@ -109,8 +111,8 @@ pub fn apply_distribute_selection(
                 }
 
                 // Calculate new position based on accumulated spacing
-                let new_pos =
-                    first.1 + (i as f64) * spacing + (0..i).map(|j| node_data[j].2).sum::<f64>();
+                let new_pos = (i as f64).mul_add(spacing, first.1)
+                    + (0..i).map(|j| node_data[j].2).sum::<f64>();
 
                 match axis {
                     DistributionAxis::Horizontal => {

@@ -53,9 +53,9 @@ fn apply_import_contents(
 
 pub fn save_workspace(
     doc_signal: Signal<DiagramDocument>,
-    tool_signal: Signal<ToolMode>,
-    edge_style_signal: Signal<EdgeStyle>,
-    arrow_type_signal: Signal<ArrowType>,
+    _tool_signal: Signal<ToolMode>,
+    _edge_style_signal: Signal<EdgeStyle>,
+    _arrow_type_signal: Signal<ArrowType>,
     toasts: Signal<ToastQueue>,
 ) {
     let toast_api = ToastApi::from_signal(toasts);
@@ -74,7 +74,6 @@ pub fn save_workspace(
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = (&tool_signal, &edge_style_signal, &arrow_type_signal);
         let doc_snapshot = doc_signal.read().clone();
         spawn(async move {
             let path = FileDialog::new()
@@ -297,12 +296,11 @@ fn update_load_save_error(toast_handle: ToastHandle, title: &str, detail: String
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::{apply_import_contents, prepare_import_transition, ImportTransitionError};
-    use crate::history::History;
+
     use crate::models::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
-    use im::{HashMap, HashSet};
+    use im::HashMap;
 
     fn sample_doc_with_node(id: &str, x: f64) -> DiagramDocument {
         let mut doc = DiagramDocument::default();

@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::document::{Edge, EdgeId, Node, NodeId};
@@ -154,9 +152,9 @@ fn find_fallback_edge(edges: &HashMap<EdgeId, Edge>) -> EdgeId {
 
 #[cfg(test)]
 mod tests {
-    use super::{validate_dag, CycleError};
+
     use crate::models::document::{
-        ArrowType, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+        ArrowType, Edge, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 

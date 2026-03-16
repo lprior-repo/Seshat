@@ -30,7 +30,7 @@ pub struct ValidRect {
 }
 
 impl ValidRect {
-    /// Creates a new ValidRect, returning an error if dimensions are negative.
+    /// Creates a new `ValidRect`, returning an error if dimensions are negative.
     ///
     /// # Errors
     /// Returns `DocumentError::InvalidMarqueeBounds` if width or height is negative.
@@ -211,15 +211,6 @@ impl DiagramDocument {
         let candidates = crate::models::spatial_index::gather_candidates(&index, &marquee_aabb);
 
         let mut selected = im::HashSet::new();
-        let mut parents = im::HashSet::new();
-
-        // Find parent nodes
-        for node in self.document.nodes.values() {
-            if let Some(parent_id) = &node.parent {
-                parents.insert(parent_id.clone());
-            }
-        }
-
         for id in candidates {
             let node = self
                 .document
@@ -235,7 +226,7 @@ impl DiagramDocument {
             let rotation = node
                 .metadata
                 .get("rotation")
-                .and_then(|v| v.as_f64())
+                .and_then(serde_json::Value::as_f64)
                 .unwrap_or(0.0);
 
             let (min_x, min_y, max_x, max_y) = if rotation == 0.0 {
@@ -272,8 +263,6 @@ impl DiagramDocument {
                 }
                 (node_min_x, node_min_y, node_max_x, node_max_y)
             };
-
-            let is_parent = parents.contains(&id) || node.kind == NodeKind::Subgraph;
 
             let is_selected = match mode {
                 crate::models::spatial_index::MarqueeMode::Contain => {

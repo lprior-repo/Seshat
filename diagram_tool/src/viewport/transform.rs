@@ -5,8 +5,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::geometry::{Point, AABB};
@@ -128,7 +126,6 @@ pub fn center_camera_for_content(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     const TOLERANCE: f64 = 1e-9;
 

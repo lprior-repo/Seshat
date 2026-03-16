@@ -172,11 +172,9 @@ pub fn classify_duplicate_async(
     existing: &super::types::EventRecord,
     incoming: &EventEnvelope,
 ) -> Result<DuplicateKind, AsyncStoreError> {
-    let incoming_payload =
-        crate::models::envelope::encode_event_envelope(incoming)
-            .map_err(|e: crate::models::envelope::ContractError| {
-                AsyncStoreError::Serialization(e.to_string())
-            })?;
+    let incoming_payload = crate::models::envelope::encode_event_envelope(incoming).map_err(
+        |e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()),
+    )?;
 
     if existing.payload == incoming_payload {
         Ok(DuplicateKind::Exact)
@@ -200,11 +198,9 @@ pub async fn append_idempotent_async(
         .await
         .map_err(AsyncStoreError::Sqlx)?;
 
-    let payload =
-        crate::models::envelope::encode_event_envelope(&envelope)
-            .map_err(|e: crate::models::envelope::ContractError| {
-                AsyncStoreError::Serialization(e.to_string())
-            })?;
+    let payload = crate::models::envelope::encode_event_envelope(&envelope).map_err(
+        |e: crate::models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()),
+    )?;
 
     let new_revision = current_revision + 1;
     let insert_result = sqlx::query(

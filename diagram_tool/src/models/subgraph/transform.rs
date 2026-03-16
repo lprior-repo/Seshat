@@ -51,7 +51,7 @@ fn calculate_scaled_nodes(
     anchor: Point,
 ) -> Result<Vec<(NodeId, Node)>, GroupTransformError> {
     let scale = scale_factor.value();
-    let anchor_clone = anchor.clone();
+    let anchor_clone = anchor;
 
     selection
         .iter()
@@ -85,8 +85,8 @@ fn compute_scaled_dimensions(
     scale: f64,
     anchor: Point,
 ) -> Result<(f64, f64, f64, f64), GroupTransformError> {
-    let new_x = anchor.x.0 + (node.x.0 - anchor.x.0) * scale;
-    let new_y = anchor.y.0 + (node.y.0 - anchor.y.0) * scale;
+    let new_x = (node.x.0 - anchor.x.0).mul_add(scale, anchor.x.0);
+    let new_y = (node.y.0 - anchor.y.0).mul_add(scale, anchor.y.0);
     let new_w = (node.width.0 * scale).max(MIN_DIMENSION);
     let new_h = (node.height.0 * scale).max(MIN_DIMENSION);
 

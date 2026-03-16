@@ -1,14 +1,14 @@
-pub mod types;
-pub mod selection;
 pub mod drag;
-pub mod snapping;
 pub mod edges;
+pub mod selection;
+pub mod snapping;
+pub mod types;
 
-pub use types::*;
-pub use selection::*;
 pub use drag::*;
-pub use snapping::*;
 pub use edges::*;
+pub use selection::*;
+pub use snapping::*;
+pub use types::*;
 
 #[cfg(test)]
 mod tests;

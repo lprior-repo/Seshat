@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 mod actions;
@@ -205,14 +203,14 @@ pub fn Toolbar() -> Element {
             button {
                 "data-testid": "toolbar-send-to-back",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::send_to_back(doc_signal, history_signal, db_tx.clone()),
+                onclick: move |_| actions::send_to_back(doc_signal, history_signal, db_tx),
                 disabled: stats.selected_count == 0,
                 "To Back"
             }
             button {
                 "data-testid": "toolbar-bring-to-front",
                 style: "padding: 6px 10px; cursor: pointer; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-                onclick: move |_| actions::bring_to_front(doc_signal, history_signal, db_tx.clone()),
+                onclick: move |_| actions::bring_to_front(doc_signal, history_signal, db_tx),
                 disabled: stats.selected_count == 0,
                 "To Front"
             }
@@ -286,7 +284,7 @@ pub fn Toolbar() -> Element {
                 style: "padding: 5px 10px; cursor: pointer; background: {ACCENT}; border: none; border-radius: 4px; color: {BG_BASE};",
                 onclick: move |_| {
                     validate_trigger.with_mut(|t| *t = t.saturating_add(1));
-                    let mut panels = panel_visibility.read().clone();
+                    let mut panels = *panel_visibility.read();
                     panels.validation = true;
                     panel_visibility.set(panels);
                 },

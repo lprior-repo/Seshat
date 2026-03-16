@@ -15,7 +15,6 @@
 
 // Include the test_harness module for testing
 mod test_harness_tests {
-    use crate::test_harness::*;
 
     // ============================================================================
     // P1: Test Category ID Validity (Compile-Time)

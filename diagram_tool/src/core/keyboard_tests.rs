@@ -1,6 +1,5 @@
 #[cfg(test)]
 mod tests {
-    use crate::core::keyboard::{map_key_to_action, KeyAction};
 
     #[cfg(kani)]
     #[kani::proof]

@@ -37,8 +37,8 @@ fn test_sub023_child_coords_relative_to_parent() {
     let sg1 = create_test_node("sg1", 100.0, 100.0, None);
     let n1 = create_test_node("n1", 50.0, 50.0, Some(sg1_id.clone()));
 
-    nodes.insert(sg1_id.clone(), sg1);
-    nodes.insert(n1_id.clone(), n1.clone());
+    nodes.insert(sg1_id, sg1);
+    nodes.insert(n1_id, n1.clone());
 
     // Stored coordinates are relative
     assert_eq!(n1.x.0, 50.0);
@@ -60,11 +60,11 @@ fn test_sub024_moving_parent_updates_child_world_coords() {
     let n1 = create_test_node("n1", 50.0, 50.0, Some(sg1_id.clone()));
 
     nodes.insert(sg1_id.clone(), sg1.clone());
-    nodes.insert(n1_id.clone(), n1.clone());
+    nodes.insert(n1_id.clone(), n1);
 
     // Move parent
     sg1.x = OrderedFloat::new_unchecked(200.0);
-    nodes.insert(sg1_id.clone(), sg1);
+    nodes.insert(sg1_id, sg1);
 
     // Child stored coords same
     let n1_stored = nodes.get(&n1_id).unwrap();
@@ -89,7 +89,7 @@ fn test_sub025_nesting_multiple_levels() {
 
     nodes.insert(sg1_id, sg1);
     nodes.insert(sg2_id, sg2);
-    nodes.insert(n1_id.clone(), n1.clone());
+    nodes.insert(n1_id, n1.clone());
 
     let (wx, wy) = n1.get_world_coords_im(&nodes).unwrap();
     assert_eq!(wx, 160.0); // 100 + 50 + 10
@@ -148,7 +148,7 @@ fn test_unparenting_preserves_world_position() {
     let sg1 = create_test_node("sg1", 100.0, 100.0, None);
     let n1 = create_test_node("n1", 50.0, 50.0, Some(sg1_id.clone()));
 
-    canvas.nodes.insert(sg1_id.clone(), sg1);
+    canvas.nodes.insert(sg1_id, sg1);
     canvas.nodes.insert(n1_id.clone(), n1);
 
     // Unparent n1, keeping world pos

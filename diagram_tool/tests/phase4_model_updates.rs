@@ -4,16 +4,10 @@
 
 use diagram_tool::models::document::NodeId;
 use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
-use diagram_tool::models::projection::{replay_events_from, DiagramProjection, EventRecord};
-use diagram_tool::store::Revision;
-use diagram_tool::store_async::{
-    append_event_async, bootstrap_async_store, envelope_to_valid_event, fetch_all_events,
-    fetch_events_since, AsyncAppendResult, AsyncStoreError,
-};
+use diagram_tool::store_async::{bootstrap_async_store, AsyncStoreError};
 use sqlx::SqlitePool;
 use std::path::Path;
 use std::sync::Arc;
-use tempfile::TempDir;
 
 struct PoolGuard {
     pool: Option<Arc<SqlitePool>>,
@@ -67,7 +61,6 @@ async fn setup_async_store(db_path: &Path) -> Result<PoolGuard, AsyncStoreError>
 }
 
 mod test_events_module {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]
@@ -132,7 +125,6 @@ mod test_events_module {
 }
 
 mod test_snapshot_module {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]
@@ -208,7 +200,6 @@ mod test_snapshot_module {
 }
 
 mod test_sync_module {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]
@@ -271,7 +262,6 @@ mod test_sync_module {
 }
 
 mod test_no_rusqlite_in_models {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]
@@ -314,7 +304,6 @@ mod test_no_rusqlite_in_models {
 }
 
 mod test_append_event_async_full_roundtrip {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]
@@ -526,7 +515,6 @@ mod test_append_event_async_full_roundtrip {
 }
 
 mod test_edge_cases {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]

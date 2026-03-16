@@ -1,7 +1,6 @@
 #![cfg(test)]
 
-use crate::core::nudge::nudge_selection;
-use crate::models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{LockState, Node, NodeKind, OrderedFloat};
 
 fn create_test_node(x: f64, y: f64, locked: bool, kind: NodeKind) -> Node {
     Node {

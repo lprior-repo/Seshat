@@ -1,8 +1,8 @@
 //! Edge-related domain types for diagram documents.
 //!
-//! Contains Edge, EdgeStyle, ArrowType, Point, and related types.
+//! Contains Edge, `EdgeStyle`, `ArrowType`, Point, and related types.
 
-use super::types::{EdgeId, NodeId, OrderedFloat};
+use super::types::{NodeId, OrderedFloat};
 use im::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -93,8 +93,8 @@ pub struct Edge {
 
 #[cfg(test)]
 mod tests {
-    use super::super::types::{EdgeId, NodeId, OrderedFloat};
-    use super::{ArrowType, Edge, EdgeStyle, Point};
+    use super::super::types::{NodeId, OrderedFloat};
+    use super::{ArrowType, Edge, Point};
 
     fn create_test_edge(source: &str, target: &str) -> Edge {
         Edge {

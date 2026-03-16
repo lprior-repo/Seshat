@@ -1,5 +1,3 @@
-use super::*;
-use crate::ui::grid::GridSize;
 use proptest::prelude::*;
 
 prop_compose! {

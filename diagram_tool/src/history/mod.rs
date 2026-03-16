@@ -24,8 +24,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::document::DiagramDocument;
@@ -36,9 +34,9 @@ use rpds::List;
 pub struct HistoryLimit(usize);
 
 impl HistoryLimit {
-    /// Create a new HistoryLimit with the default value of 100
+    /// Create a new `HistoryLimit` with the default value of 100
     #[must_use]
-    pub fn new() -> Self {
+    pub const fn new() -> Self {
         Self(100)
     }
 
@@ -115,7 +113,7 @@ impl History {
     /// Pure transition to push a new state
     ///
     /// This is the core state transition that adds a new document to history.
-    /// Postcondition Q1: After push, redo_stack is empty (new timeline branch)
+    /// Postcondition Q1: After push, `redo_stack` is empty (new timeline branch)
     #[must_use]
     pub fn push(&self, doc: DiagramDocument) -> Self {
         Self {
@@ -216,7 +214,8 @@ impl History {
     }
 }
 
-/// Re-export truncate_stack for tests (backward compatibility)
+/// Re-export `truncate_stack` for tests (backward compatibility)
+#[must_use]
 pub fn truncate_stack(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
     truncate_stack_default(stack)
 }

@@ -11,7 +11,7 @@ use super::super::create::{
 };
 use super::super::errors::{DispatchError, DispatchResult};
 
-/// Dispatch UpdateLabel operation to db_tx
+/// Dispatch `UpdateLabel` operation to `db_tx`
 pub fn dispatch_update_label(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     target_id: &str,
@@ -42,7 +42,7 @@ pub fn dispatch_update_label(
     }
 }
 
-/// Dispatch UpdateNodeStyle operation to db_tx
+/// Dispatch `UpdateNodeStyle` operation to `db_tx`
 pub fn dispatch_update_node_style(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     id: &str,
@@ -61,7 +61,7 @@ pub fn dispatch_update_node_style(
     }
 }
 
-/// Dispatch UpdateEdgeStyle operation to db_tx
+/// Dispatch `UpdateEdgeStyle` operation to `db_tx`
 pub fn dispatch_update_edge_style(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     id: &str,

@@ -10,10 +10,10 @@ use super::super::create::{
 };
 use super::super::errors::{DispatchError, DispatchResult};
 
-/// Dispatch BringForward operation to db_tx
+/// Dispatch `BringForward` operation to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available.
-/// Returns Ok with 0 nodes_affected when selection is empty (no-op).
+/// Returns `Ok(DispatchResult)` if `db_tx` is available.
+/// Returns Ok with 0 `nodes_affected` when selection is empty (no-op).
 pub fn dispatch_bring_forward(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     node_ids: &[String],
@@ -38,7 +38,7 @@ pub fn dispatch_bring_forward(
     }
 }
 
-/// Dispatch SendBackward operation to db_tx
+/// Dispatch `SendBackward` operation to `db_tx`
 pub fn dispatch_send_backward(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     node_ids: &[String],
@@ -63,7 +63,7 @@ pub fn dispatch_send_backward(
     }
 }
 
-/// Dispatch BringToFront operation to db_tx
+/// Dispatch `BringToFront` operation to `db_tx`
 pub fn dispatch_bring_to_front(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     node_ids: &[String],
@@ -88,7 +88,7 @@ pub fn dispatch_bring_to_front(
     }
 }
 
-/// Dispatch SendToBack operation to db_tx
+/// Dispatch `SendToBack` operation to `db_tx`
 pub fn dispatch_send_to_back(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     node_ids: &[String],

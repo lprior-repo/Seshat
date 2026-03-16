@@ -6,12 +6,9 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{
-    DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
-};
+use crate::models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
 use im::HashMap;
 
 /// Helper to create a simple node

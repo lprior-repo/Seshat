@@ -11,7 +11,7 @@ pub use validation::validate_selection;
 pub use validation::GroupingError;
 use validation::ValidatedSelection;
 
-/// Action: Group selected items in a DiagramDocument
+/// Action: Group selected items in a `DiagramDocument`
 pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(), GroupingError> {
     // Parse/Validate at boundary
     let selected_ids: im::HashSet<NodeId> = doc
@@ -61,7 +61,7 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(
     Ok(())
 }
 
-/// Action: Ungroup selected subgraphs in a DiagramDocument
+/// Action: Ungroup selected subgraphs in a `DiagramDocument`
 pub fn ungroup_selection(doc: &mut DiagramDocument) -> Result<(), GroupingError> {
     let selected_items = doc.editor_state.selected_items.clone();
     let target_subgraphs: BTreeSet<NodeId> = selected_items

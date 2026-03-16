@@ -23,6 +23,7 @@ fn get_parent_chain(nodes: &HashMap<NodeId, Node>, id: &NodeId) -> Vec<Option<No
 }
 
 /// Find Lowest Common Ancestor of selected nodes
+#[must_use]
 pub fn find_lca(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> Option<NodeId> {
     let chains: Vec<Vec<Option<NodeId>>> = selected
         .iter()
@@ -36,7 +37,7 @@ pub fn find_lca(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> Op
     let mut lca = None;
     let mut i = 0;
     loop {
-        let current_val = chains.get(0).and_then(|c| c.get(i));
+        let current_val = chains.first().and_then(|c| c.get(i));
         if current_val.is_none() {
             break;
         }
@@ -66,6 +67,7 @@ pub fn find_lca(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> Op
 }
 
 /// Calculate bounding box from selected node IDs
+#[must_use]
 pub fn calculate_bounding_box(
     nodes: &HashMap<NodeId, Node>,
     selected: &HashSet<NodeId>,
@@ -93,6 +95,7 @@ pub fn calculate_bounding_box(
 }
 
 /// Create a Subgraph node with validated bounds
+#[must_use]
 pub fn create_subgraph_node(
     min_x: f64,
     min_y: f64,
@@ -150,6 +153,7 @@ pub fn compute_padded_bounds(
 }
 
 /// Pure calculation: Remove subgraphs and reparent their children
+#[must_use]
 pub fn calculate_ungroup(
     nodes: &HashMap<NodeId, Node>,
     target_subgraphs: &BTreeSet<NodeId>,
@@ -198,6 +202,7 @@ pub fn calculate_ungroup(
 }
 
 /// Pure calculation: Remove edges connected to deleted subgraphs
+#[must_use]
 pub fn calculate_edge_cleanup(
     edges: &HashMap<EdgeId, Edge>,
     deleted_subgraphs: &BTreeSet<NodeId>,

@@ -1,8 +1,3 @@
-use crate::ui::canvas::domain::{
-    apply_drag_delta, transition, CanvasError, CanvasEvent, CanvasPoint, CanvasVector,
-    InteractionState, RawEvent, SelectionBounds,
-};
-
 #[cfg(kani)]
 #[kani::proof]
 #[test]

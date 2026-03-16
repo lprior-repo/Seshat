@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use dioxus::prelude::*;
@@ -32,7 +30,7 @@ pub fn use_ai_conflict_state() -> Signal<Option<String>> {
 ///
 /// # Errors
 /// Returns `ConflictError::InvalidMessage` if the message is empty.
-pub fn set_conflict_message(msg: &str) -> Result<(), ConflictError> {
+pub const fn set_conflict_message(msg: &str) -> Result<(), ConflictError> {
     if msg.is_empty() {
         return Err(ConflictError::InvalidMessage);
     }
@@ -40,7 +38,7 @@ pub fn set_conflict_message(msg: &str) -> Result<(), ConflictError> {
 }
 
 /// Clears the conflict state (resolves the conflict).
-/// Takes mutable reference to Signal since set() requires interior mutability.
+/// Takes mutable reference to Signal since `set()` requires interior mutability.
 pub fn clear_conflict(signal: &mut Signal<Option<String>>) {
     signal.set(None);
 }
@@ -48,10 +46,9 @@ pub fn clear_conflict(signal: &mut Signal<Option<String>>) {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use dioxus::prelude::*;
 
-    /// Creates a minimal VirtualDom and runs the test closure inside the Dioxus runtime
-    /// with a scope context (required for Signal::new).
+    /// Creates a minimal `VirtualDom` and runs the test closure inside the Dioxus runtime
+    /// with a scope context (required for `Signal::new`).
     fn dioxus_test_harness<F, R>(test: F) -> R
     where
         F: FnOnce() -> R,

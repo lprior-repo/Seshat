@@ -224,7 +224,7 @@ mod tests {
     /// INV1: Parent chain validity - every node's parent must be a valid subgraph
     fn check_parent_chain_validity(doc: &DiagramDocument) -> bool {
         doc.document.nodes.values().all(|node| {
-            node.parent.as_ref().map_or(true, |parent_id| {
+            node.parent.as_ref().is_none_or(|parent_id| {
                 doc.document
                     .nodes
                     .get(parent_id)
@@ -289,7 +289,7 @@ mod tests {
         let mut node_ids = Vec::new();
 
         for (i, (x, y, w, h)) in coords.into_iter().enumerate() {
-            let id = NodeId::new(format!("n{}", i));
+            let id = NodeId::new(format!("n{i}"));
             doc.document.nodes.insert(id.clone(), test_node(x, y, w, h));
             doc.editor_state
                 .selected_items
@@ -307,8 +307,7 @@ mod tests {
             assert_eq!(
                 node.parent.as_ref(),
                 Some(&group_id),
-                "Node {} should have group as parent",
-                id
+                "Node {id} should have group as parent"
             );
         }
 
@@ -355,7 +354,7 @@ mod tests {
         let mut sgs = Vec::new();
 
         for i in 0..num_subgraphs {
-            let sg_id = NodeId::new(format!("sg{}", i));
+            let sg_id = NodeId::new(format!("sg{i}"));
             let mut sg = test_subgraph();
             sg.x = OrderedFloat((i as f64) * 100.0);
             doc.document.nodes.insert(sg_id.clone(), sg);
@@ -365,9 +364,9 @@ mod tests {
         // Add children
         for (sg_idx, sg_id) in sgs.iter().enumerate() {
             for j in 0..children_per_sg {
-                let child_id = NodeId::new(format!("c{}-{}", sg_idx, j));
+                let child_id = NodeId::new(format!("c{sg_idx}-{j}"));
                 let mut child = test_node(
-                    (sg_idx as f64) * 100.0 + (j as f64) * 20.0,
+                    (sg_idx as f64).mul_add(100.0, (j as f64) * 20.0),
                     50.0,
                     15.0,
                     15.0,
@@ -438,7 +437,7 @@ mod tests {
         let mut parents: Vec<NodeId> = Vec::new();
 
         for i in 0..depth {
-            let id = NodeId::new(format!("sg{}", i));
+            let id = NodeId::new(format!("sg{i}"));
             let mut sg = test_subgraph();
             sg.x = OrderedFloat((i as f64) * 50.0);
             if i > 0 {
@@ -515,8 +514,8 @@ mod tests {
             doc.document.nodes.insert(sg_id.clone(), test_subgraph());
 
             for i in 0..num_children {
-                let child_id = NodeId::new(format!("child{}", i));
-                let mut child = test_node((i as f64) * 30.0, 50.0, 20.0, 20.0);
+                let child_id = NodeId::new(format!("child{i}"));
+                let mut child = test_node(f64::from(i) * 30.0, 50.0, 20.0, 20.0);
                 child.parent = Some(sg_id.clone());
                 doc.document.nodes.insert(child_id.clone(), child);
             }
@@ -535,19 +534,16 @@ mod tests {
                 assert!(result.is_ok());
                 assert!(
                     check_parent_chain_validity(&doc),
-                    "INV1 for {} children",
-                    num_children
+                    "INV1 for {num_children} children"
                 );
                 assert!(
                     check_no_orphan_edges(&doc),
-                    "INV2 for {} children",
-                    num_children
+                    "INV2 for {num_children} children"
                 );
                 assert_eq!(
                     doc.document.nodes.len(),
                     original_count - 1,
-                    "INV3 for {} children",
-                    num_children
+                    "INV3 for {num_children} children"
                 );
             }
         }
@@ -562,7 +558,7 @@ mod tests {
                 let mut sgs = Vec::new();
 
                 for i in 0..num_sgs {
-                    let sg_id = NodeId::new(format!("sg{}", i));
+                    let sg_id = NodeId::new(format!("sg{i}"));
                     let mut sg = test_subgraph();
                     sg.x = OrderedFloat((i as f64) * 100.0);
                     doc.document.nodes.insert(sg_id.clone(), sg);
@@ -571,9 +567,9 @@ mod tests {
 
                 for (sg_idx, sg_id) in sgs.iter().enumerate() {
                     for j in 0..children_per_sg {
-                        let child_id = NodeId::new(format!("child-{}-{}", sg_idx, j));
+                        let child_id = NodeId::new(format!("child-{sg_idx}-{j}"));
                         let mut child = test_node(
-                            (sg_idx as f64) * 100.0 + (j as f64) * 20.0,
+                            (sg_idx as f64).mul_add(100.0, f64::from(j) * 20.0),
                             50.0,
                             15.0,
                             15.0,
@@ -734,14 +730,14 @@ mod tests {
     #[test]
     fn fuzz_random_graph_ungroup_invariants() {
         for seed in 0..100u32 {
-            let mut rng = StdRng::seed_from_u64(seed as u64);
+            let mut rng = StdRng::seed_from_u64(u64::from(seed));
             let mut doc = DiagramDocument::default();
 
             let num_nodes = 5 + (rng.gen_range(0..16)) as usize;
             let mut node_ids: Vec<NodeId> = Vec::new();
 
             for i in 0..num_nodes {
-                let id = NodeId::new(format!("n{}", i));
+                let id = NodeId::new(format!("n{i}"));
                 let x = rng.gen_range(0.0..500.0);
                 let y = rng.gen_range(0.0..500.0);
                 let w = rng.gen_range(10.0..110.0);
@@ -754,7 +750,7 @@ mod tests {
             let mut sgs: Vec<NodeId> = Vec::new();
 
             for i in 0..num_sgs {
-                let id = NodeId::new(format!("sg{}", i));
+                let id = NodeId::new(format!("sg{i}"));
                 let mut sg = test_subgraph();
                 sg.x = OrderedFloat(rng.gen_range(0.0..400.0));
                 sg.y = OrderedFloat(rng.gen_range(0.0..400.0));
@@ -786,7 +782,7 @@ mod tests {
                     let src = rng.gen_range(0..node_ids.len());
                     let dst = rng.gen_range(0..node_ids.len());
                     if src != dst {
-                        let eid = crate::models::document::EdgeId::new(format!("e{}", i));
+                        let eid = crate::models::document::EdgeId::new(format!("e{i}"));
                         let edge = Edge {
                             source: node_ids[src].clone(),
                             target: node_ids[dst].clone(),
@@ -823,14 +819,12 @@ mod tests {
 
                 assert!(
                     check_parent_chain_validity(&doc),
-                    "INV1 violated seed {}",
-                    seed
+                    "INV1 violated seed {seed}"
                 );
-                assert!(check_no_orphan_edges(&doc), "INV2 violated seed {}", seed);
+                assert!(check_no_orphan_edges(&doc), "INV2 violated seed {seed}");
                 assert!(
                     check_node_count_consistency(original_count, 1, &doc),
-                    "INV3 violated seed {}",
-                    seed
+                    "INV3 violated seed {seed}"
                 );
 
                 // Verify subgraph was deleted
@@ -965,7 +959,7 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let mut last_id = None;
         for i in 0..5 {
-            let id = NodeId::new(format!("s{}", i));
+            let id = NodeId::new(format!("s{i}"));
             let mut s = test_subgraph();
             s.parent = last_id;
             doc.document.nodes.insert(id.clone(), s);
@@ -990,14 +984,14 @@ mod tests {
     #[test]
     fn fuzz_sequential_group_ungroup_invariants() {
         for seed in 0..50u32 {
-            let mut rng = StdRng::seed_from_u64(seed as u64);
+            let mut rng = StdRng::seed_from_u64(u64::from(seed));
             let mut doc = DiagramDocument::default();
 
             let num_nodes = 5 + (rng.gen_range(0..10)) as usize;
             let mut node_ids: Vec<NodeId> = Vec::new();
 
             for i in 0..num_nodes {
-                let id = NodeId::new(format!("n{}", i));
+                let id = NodeId::new(format!("n{i}"));
                 let x = rng.gen_range(0.0..500.0);
                 let y = rng.gen_range(0.0..500.0);
                 doc.document
@@ -1026,7 +1020,7 @@ mod tests {
                 }
 
                 if op % 2 == 0 {
-                    let group_id = NodeId::new(format!("group-{}", op));
+                    let group_id = NodeId::new(format!("group-{op}"));
                     let _ = group_selection(&mut doc, &group_id);
                 } else {
                     let _ = ungroup_selection(&mut doc);
@@ -1034,16 +1028,9 @@ mod tests {
 
                 assert!(
                     check_parent_chain_validity(&doc),
-                    "INV1 at op {} seed {}",
-                    op,
-                    seed
+                    "INV1 at op {op} seed {seed}"
                 );
-                assert!(
-                    check_no_orphan_edges(&doc),
-                    "INV2 at op {} seed {}",
-                    op,
-                    seed
-                );
+                assert!(check_no_orphan_edges(&doc), "INV2 at op {op} seed {seed}");
             }
         }
     }

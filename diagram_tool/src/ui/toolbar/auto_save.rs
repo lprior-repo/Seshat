@@ -9,8 +9,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 #[allow(dead_code)]
@@ -113,7 +111,7 @@ pub const fn default_revision() -> Revision {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::models::document::DiagramDocument;
 
     fn sample_document() -> DiagramDocument {

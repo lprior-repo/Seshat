@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -161,10 +159,10 @@ pub fn validate_document_data(document: &DocumentData) -> Vec<ValidationIssue> {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
-        NodeStyle, OrderedFloat,
+        ArrowType, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
+        OrderedFloat,
     };
     use im::HashMap;
 
@@ -390,7 +388,7 @@ mod proptests {
             height in arb_positive_f64(),
         ) -> (NodeId, Node) {
             (
-                id.clone(),
+                id,
                 Node {
                     kind: NodeKind::Node,
                     icon: String::new(),

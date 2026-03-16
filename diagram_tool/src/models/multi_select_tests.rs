@@ -1,16 +1,12 @@
 use crate::models::document::{
     DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
-use crate::models::multi_select::{
-    copy_selection, delete_selection, move_selection, paste_selection, resize_selection, Error,
-    NonEmptyVec, Rect, Vector2D,
-};
 use im::HashMap;
 
 fn create_node(id: &str, x: f64, y: f64, width: f64, height: f64, locked: bool) -> Node {
     Node {
         kind: NodeKind::Node,
-        icon: "".to_string(),
+        icon: String::new(),
         label: id.to_string(),
         x: OrderedFloat::new_unchecked(x),
         y: OrderedFloat::new_unchecked(y),

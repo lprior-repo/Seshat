@@ -32,17 +32,17 @@ pub mod envelope;
 pub mod export;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod harness;
-pub mod port;
 pub mod physical_io;
+pub mod port;
 
 #[cfg(test)]
 pub mod physical_io_tests;
 
+pub mod multi_select;
 pub mod projection;
 pub mod schema;
 pub mod schema_defs; // Single source of truth for SQLite schemas
 pub mod selection;
-pub mod multi_select;
 
 #[cfg(test)]
 pub mod multi_select_tests;

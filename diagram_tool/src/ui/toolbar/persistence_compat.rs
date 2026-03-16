@@ -74,8 +74,6 @@ pub fn parse_diagram_document_with_compat(contents: &str) -> Result<DiagramDocum
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use crate::models::canonical_json::to_canonical_pretty_json;
-    use crate::models::document::DiagramDocument;
 
     #[cfg(kani)]
     #[kani::proof]

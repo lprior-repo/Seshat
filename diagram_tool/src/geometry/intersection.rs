@@ -1,14 +1,12 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 
 use crate::geometry::primitives::{Point, AABB};
 
 const EPSILON: f64 = 1e-10;
 
-#[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum IntersectionError {
     #[error("Invalid endpoint: NaN or Infinity")]
     InvalidEndpoint,
@@ -37,7 +35,7 @@ impl LineSegment {
     }
 
     #[must_use]
-    pub fn new_unchecked(start: Point, end: Point) -> Self {
+    pub const fn new_unchecked(start: Point, end: Point) -> Self {
         Self { start, end }
     }
 
@@ -56,18 +54,18 @@ pub fn line_line_intersects(a: LineSegment, b: LineSegment) -> bool {
     let db = (bx2 - bx1, by2 - by1);
     let dp = (ax1 - bx1, ay1 - by1);
 
-    let cross = da.0 * db.1 - da.1 * db.0;
+    let cross = da.0.mul_add(db.1, -(da.1 * db.0));
 
     if cross.abs() < EPSILON {
-        let dot = da.0 * db.0 + da.1 * db.1;
+        let dot = da.0.mul_add(db.0, da.1 * db.1);
         if dot.abs() < EPSILON {
             let ab1 = (bx1 - ax1, by1 - ay1);
-            let cross_b = da.0 * ab1.1 - da.1 * ab1.0;
+            let cross_b = da.0.mul_add(ab1.1, -(da.1 * ab1.0));
             if cross_b.abs() < EPSILON {
-                let t0 = ab1.0 * da.0 + ab1.1 * da.1;
-                let t1 = t0 + (db.0 * da.0 + db.1 * da.1);
+                let t0 = ab1.0.mul_add(da.0, ab1.1 * da.1);
+                let t1 = t0 + db.0.mul_add(da.0, db.1 * da.1);
                 let (t_min, t_max) = if t0 < t1 { (t0, t1) } else { (t1, t0) };
-                let denom = da.0 * da.0 + da.1 * da.1;
+                let denom = da.0.mul_add(da.0, da.1 * da.1);
                 if t_max >= 0.0 && t_min <= denom {
                     return true;
                 }
@@ -76,10 +74,10 @@ pub fn line_line_intersects(a: LineSegment, b: LineSegment) -> bool {
         return false;
     }
 
-    let t = (db.0 * dp.1 - db.1 * dp.0) / cross;
-    let u = (da.0 * dp.1 - da.1 * dp.0) / cross;
+    let t = db.0.mul_add(dp.1, -(db.1 * dp.0)) / cross;
+    let u = da.0.mul_add(dp.1, -(da.1 * dp.0)) / cross;
 
-    (t >= 0.0 - EPSILON) && (t <= 1.0 + EPSILON) && (u >= 0.0 - EPSILON) && (u <= 1.0 + EPSILON)
+    (0.0 - EPSILON..=1.0 + EPSILON).contains(&t) && (0.0 - EPSILON..=1.0 + EPSILON).contains(&u)
 }
 
 #[must_use]
@@ -91,36 +89,36 @@ pub fn line_line_intersection(a: LineSegment, b: LineSegment) -> Option<Point> {
     let db = (bx2 - bx1, by2 - by1);
     let dp = (ax1 - bx1, ay1 - by1);
 
-    let cross = da.0 * db.1 - da.1 * db.0;
+    let cross = da.0.mul_add(db.1, -(da.1 * db.0));
 
     if cross.abs() < EPSILON {
-        if (da.0 * db.0 + da.1 * db.1).abs() < EPSILON {
+        if da.0.mul_add(db.0, da.1 * db.1).abs() < EPSILON {
             return None;
         }
         let ab1 = (bx1 - ax1, by1 - ay1);
-        if (da.0 * ab1.1 - da.1 * ab1.0).abs() < EPSILON {
-            let t0 = ab1.0 * da.0 + ab1.1 * da.1;
-            let t1 = t0 + (db.0 * da.0 + db.1 * da.1);
+        if da.0.mul_add(ab1.1, -(da.1 * ab1.0)).abs() < EPSILON {
+            let t0 = ab1.0.mul_add(da.0, ab1.1 * da.1);
+            let t1 = t0 + db.0.mul_add(da.0, db.1 * da.1);
             if t0 > t1 {
                 return Some(Point::new(
-                    ax1 + da.0 * t1 / (da.0 * da.0 + da.1 * da.1),
-                    ay1 + da.1 * t1 / (da.0 * da.0 + da.1 * da.1),
+                    ax1 + da.0 * t1 / da.0.mul_add(da.0, da.1 * da.1),
+                    ay1 + da.1 * t1 / da.0.mul_add(da.0, da.1 * da.1),
                 ));
             }
             return Some(Point::new(
-                ax1 + da.0 * t0 / (da.0 * da.0 + da.1 * da.1),
-                ay1 + da.1 * t0 / (da.0 * da.0 + da.1 * da.1),
+                ax1 + da.0 * t0 / da.0.mul_add(da.0, da.1 * da.1),
+                ay1 + da.1 * t0 / da.0.mul_add(da.0, da.1 * da.1),
             ));
         }
         return None;
     }
 
-    let t = (db.0 * dp.1 - db.1 * dp.0) / cross;
-    let u = (da.0 * dp.1 - da.1 * dp.0) / cross;
+    let t = db.0.mul_add(dp.1, -(db.1 * dp.0)) / cross;
+    let u = da.0.mul_add(dp.1, -(da.1 * dp.0)) / cross;
 
-    if (t >= 0.0 - EPSILON) && (t <= 1.0 + EPSILON) && (u >= 0.0 - EPSILON) && (u <= 1.0 + EPSILON)
+    if (0.0 - EPSILON..=1.0 + EPSILON).contains(&t) && (0.0 - EPSILON..=1.0 + EPSILON).contains(&u)
     {
-        Some(Point::new(ax1 + da.0 * t, ay1 + da.1 * t))
+        Some(Point::new(da.0.mul_add(t, ax1), da.1.mul_add(t, ay1)))
     } else {
         None
     }

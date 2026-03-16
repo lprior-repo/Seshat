@@ -217,6 +217,8 @@ impl Statistics {
     }
 }
 
+extern crate alloc;
+
 #[cfg(test)]
 mod tests {
     use alloc::vec;
@@ -337,5 +339,3 @@ mod tests {
         assert!(cv > 0.0 && cv < 1.0);
     }
 }
-
-extern crate alloc;

@@ -8,7 +8,14 @@ pub struct CanvasTestDsl {
     pub last_result: Option<Result<InteractionState, CanvasError>>,
 }
 
+impl Default for CanvasTestDsl {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl CanvasTestDsl {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             state: Some(InteractionState::Idle),
@@ -17,25 +24,24 @@ impl CanvasTestDsl {
         }
     }
 
+    #[must_use]
     pub fn given_state(mut self, state: InteractionState) -> Self {
         self.state = Some(state);
         self
     }
 
+    #[must_use]
     pub fn when_raw_event(mut self, raw: RawEvent) -> Self {
         let parsed = parse_event(raw);
         match parsed {
             Ok(event) => {
                 let state = self.state.take().unwrap_or(InteractionState::Idle);
                 let result = transition(state, event);
-                match &result {
-                    Ok(new_state) => {
-                        self.state = Some(new_state.clone());
-                    }
-                    Err(_) => {
-                        // In case of error, we can't continue transitioning, so state is lost or kept as is?
-                        // For the DSL, we just store the error.
-                    }
+                if let Ok(new_state) = &result {
+                    self.state = Some(new_state.clone());
+                } else {
+                    // In case of error, we can't continue transitioning, so state is lost or kept as is?
+                    // For the DSL, we just store the error.
                 }
                 self.last_result = Some(result);
             }
@@ -46,25 +52,25 @@ impl CanvasTestDsl {
         self
     }
 
+    #[must_use]
     pub fn when_parsed_event(mut self, event: CanvasEvent) -> Self {
         let state = self.state.take().unwrap_or(InteractionState::Idle);
         let result = transition(state, event);
-        match &result {
-            Ok(new_state) => {
-                self.state = Some(new_state.clone());
-            }
-            Err(_) => {}
+        if let Ok(new_state) = &result {
+            self.state = Some(new_state.clone());
         }
         self.last_result = Some(result);
         self
     }
 
+    #[must_use]
     pub fn then_expect_state(self, expected: InteractionState) -> Self {
         let actual = self.last_result.as_ref().unwrap().as_ref().unwrap();
         assert_eq!(actual, &expected);
         self
     }
 
+    #[must_use]
     pub fn then_expect_error(self, expected_err: CanvasError) -> Self {
         let actual_err = self.last_result.as_ref().unwrap().as_ref().unwrap_err();
         assert_eq!(actual_err, &expected_err);

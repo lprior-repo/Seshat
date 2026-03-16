@@ -1,9 +1,7 @@
 use crate::models::document::{
     DiagramDocument, DocumentData, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
-use crate::models::transform::{commit_transform, Error, NonEmptySelection, ValidTransform};
 use im::HashMap;
-use std::f64::NAN;
 
 fn setup_doc() -> DiagramDocument {
     let mut nodes = HashMap::new();
@@ -12,7 +10,7 @@ fn setup_doc() -> DiagramDocument {
         NodeId::new("A".to_string()),
         Node {
             kind: NodeKind::Node,
-            icon: "".to_string(),
+            icon: String::new(),
             label: "A".to_string(),
             x: OrderedFloat::new_unchecked(0.0),
             y: OrderedFloat::new_unchecked(0.0),
@@ -35,7 +33,7 @@ fn setup_doc() -> DiagramDocument {
         NodeId::new("B".to_string()),
         Node {
             kind: NodeKind::Node,
-            icon: "".to_string(),
+            icon: String::new(),
             label: "B".to_string(),
             x: OrderedFloat::new_unchecked(10.0),
             y: OrderedFloat::new_unchecked(10.0),

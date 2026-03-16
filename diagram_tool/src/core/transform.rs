@@ -249,7 +249,7 @@ pub fn translate_selection(
         doc.document
             .nodes
             .get(*id)
-            .map_or(false, |node| node.lock_state.is_locked())
+            .is_some_and(|node| node.lock_state.is_locked())
     });
 
     if let Some(id) = locked_node {

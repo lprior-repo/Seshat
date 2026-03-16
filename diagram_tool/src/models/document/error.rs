@@ -25,21 +25,21 @@ mod tests {
     #[test]
     fn document_error_node_not_found_display() {
         let node_id = NodeId::new("test-node".into());
-        let err = DocumentError::NodeNotFound(node_id.clone());
+        let err = DocumentError::NodeNotFound(node_id);
         assert_eq!(err.to_string(), "node not found: test-node");
     }
 
     #[test]
     fn document_error_edge_already_exists_display() {
         let edge_id = EdgeId::new("test-edge".into());
-        let err = DocumentError::EdgeAlreadyExists(edge_id.clone());
+        let err = DocumentError::EdgeAlreadyExists(edge_id);
         assert_eq!(err.to_string(), "edge already exists: test-edge");
     }
 
     #[test]
     fn document_error_edge_not_found_display() {
         let edge_id = EdgeId::new("test-edge".into());
-        let err = DocumentError::EdgeNotFound(edge_id.clone());
+        let err = DocumentError::EdgeNotFound(edge_id);
         assert_eq!(err.to_string(), "edge not found: test-edge");
     }
 }

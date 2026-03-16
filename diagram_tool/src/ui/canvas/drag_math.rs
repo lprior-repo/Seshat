@@ -40,7 +40,7 @@ pub fn calculate_resize_target_ids(
 /// Subgraph/container interaction tests (bd-sa6)
 ///
 /// These tests validate SUB (subgraph) interaction behaviors including:
-/// - Click-through selection with z_index priority
+/// - Click-through selection with `z_index` priority
 /// - Box-select across container boundaries
 /// - Collapse/expand container behavior
 /// - Locked container with unlocked children
@@ -52,7 +52,6 @@ mod subgraph_tests {
     use crate::models::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
-    use crate::ui::canvas::interaction_reducer::InteractionMode;
 
     fn make_subgraph_node(
         id: &str,
@@ -1223,7 +1222,7 @@ mod subgraph_tests {
         // Container at (300, 100) with size 200x200
         let (container_id, container) =
             make_subgraph_node("container", 300.0, 100.0, 200.0, 200.0, false, None, None);
-        doc.document.nodes.insert(container_id.clone(), container);
+        doc.document.nodes.insert(container_id, container);
 
         // Two nodes outside container at initial positions
         let (node1_id, node1) = make_child_node("node1", 50.0, 150.0, 60.0, 30.0, false, None);
@@ -1303,15 +1302,8 @@ mod subgraph_tests {
             false,
             Some(container_id.clone()),
         );
-        let (node2_id, node2) = make_child_node(
-            "node2",
-            200.0,
-            150.0,
-            60.0,
-            30.0,
-            false,
-            Some(container_id.clone()),
-        );
+        let (node2_id, node2) =
+            make_child_node("node2", 200.0, 150.0, 60.0, 30.0, false, Some(container_id));
         doc.document.nodes.insert(node1_id.clone(), node1);
         doc.document.nodes.insert(node2_id.clone(), node2);
 
@@ -1341,7 +1333,7 @@ mod subgraph_tests {
 
         // Check: After drag, nodes are outside container bounds
         let node1 = doc.document.nodes.get(&node1_id).unwrap();
-        let node2 = doc.document.nodes.get(&node2_id).unwrap();
+        let _node2 = doc.document.nodes.get(&node2_id).unwrap();
         assert!(
             node1.x.0 > 300.0 || node1.y.0 > 300.0 || node1.y.0 < 100.0,
             "Node1 should be outside container bounds"

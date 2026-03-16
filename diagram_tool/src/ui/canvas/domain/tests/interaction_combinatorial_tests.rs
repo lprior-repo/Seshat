@@ -1,7 +1,4 @@
-use crate::ui::canvas::domain::test_utils::interaction_dsl::CanvasTestDsl;
-use crate::ui::canvas::domain::{
-    CanvasEvent, CanvasPoint, CanvasVector, InteractionState, SelectionMode,
-};
+use crate::ui::canvas::domain::{CanvasEvent, CanvasPoint, CanvasVector, SelectionMode};
 
 fn pt() -> CanvasPoint {
     CanvasPoint::new(0.0, 0.0).unwrap()

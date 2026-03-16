@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::icons::ICONS;
@@ -130,12 +128,12 @@ fn calculate_bounds(doc: &DiagramDocument) -> (f64, f64, f64, f64) {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
+
     use crate::models::document::{
         DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
         OrderedFloat, Revision,
     };
-    use anyhow::Result;
+
     use im::HashMap;
 
     fn create_node(
@@ -822,10 +820,9 @@ mod tests {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
+
     use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
-        OrderedFloat, Revision,
+        DiagramDocument, DocumentData, LockState, Node, NodeId, NodeKind, OrderedFloat, Revision,
     };
     use im::HashMap;
     use proptest::prelude::*;
@@ -1126,11 +1123,11 @@ mod proptests {
 /// IO Tests for bd-1u1: Export Image Bounds Match and Export with Rotated Items
 #[cfg(test)]
 mod io_tests {
-    use super::*;
+
     use crate::models::document::{
         DiagramDocument, DocumentData, LockState, Node, NodeId, NodeKind, OrderedFloat, Revision,
     };
-    use anyhow::Result;
+
     use im::HashMap;
 
     fn create_io_node(

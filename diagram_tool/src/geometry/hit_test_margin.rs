@@ -12,14 +12,15 @@
 
 use crate::geometry::{Point, Rectangle};
 
-/// Minimum allowed zoom level (matches viewport::MIN_ZOOM)
+/// Minimum allowed zoom level (matches `viewport::MIN_ZOOM`)
 pub const MIN_ZOOM: f64 = 0.1;
 
-/// Maximum allowed zoom level (matches viewport::MAX_ZOOM)
+/// Maximum allowed zoom level (matches `viewport::MAX_ZOOM`)
 pub const MAX_ZOOM: f64 = 4.0;
 
 /// Errors that can occur during hit test operations
 #[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]
+#[allow(clippy::enum_variant_names)]
 pub enum HitTestError {
     #[error("Invalid zoom: {0} is outside valid range [{1}, {2}]")]
     InvalidZoom(f64, f64, f64),
@@ -34,11 +35,11 @@ pub enum HitTestError {
 /// Validates that a zoom value is within the valid range.
 ///
 /// # Preconditions
-/// - zoom must be in range [MIN_ZOOM, MAX_ZOOM]
+/// - zoom must be in range [`MIN_ZOOM`, `MAX_ZOOM`]
 ///
 /// # Postconditions
 /// - Returns Ok(zoom) if valid
-/// - Returns Err(HitTestError::InvalidZoom) if invalid
+/// - Returns `Err(HitTestError::InvalidZoom)` if invalid
 fn validate_zoom(zoom: f64) -> Result<f64, HitTestError> {
     let in_range = zoom.is_finite() && (MIN_ZOOM..=MAX_ZOOM).contains(&zoom);
     in_range
@@ -49,11 +50,11 @@ fn validate_zoom(zoom: f64) -> Result<f64, HitTestError> {
 /// Validates that a screen margin is positive.
 ///
 /// # Preconditions
-/// - screen_margin must be > 0
+/// - `screen_margin` must be > 0
 ///
 /// # Postconditions
-/// - Returns Ok(screen_margin) if valid
-/// - Returns Err(HitTestError::InvalidMargin) if invalid
+/// - Returns `Ok(screen_margin)` if valid
+/// - Returns `Err(HitTestError::InvalidMargin)` if invalid
 fn validate_margin(screen_margin: f64) -> Result<f64, HitTestError> {
     let is_positive = screen_margin.is_finite() && screen_margin > 0.0;
     is_positive
@@ -68,7 +69,7 @@ fn validate_margin(screen_margin: f64) -> Result<f64, HitTestError> {
 ///
 /// # Postconditions
 /// - Returns Ok(point) if valid
-/// - Returns Err(HitTestError::InvalidPoint) if invalid
+/// - Returns `Err(HitTestError::InvalidPoint)` if invalid
 fn validate_point(point: Point) -> Result<Point, HitTestError> {
     let is_valid = point.x.is_finite() && point.y.is_finite();
     is_valid
@@ -82,13 +83,13 @@ fn validate_point(point: Point) -> Result<Point, HitTestError> {
 /// At higher zoom, world-space margin gets smaller.
 ///
 /// # Preconditions
-/// - screen_margin must be > 0 (validated)
-/// - zoom must be in range [MIN_ZOOM, MAX_ZOOM] (validated)
+/// - `screen_margin` must be > 0 (validated)
+/// - zoom must be in range [`MIN_ZOOM`, `MAX_ZOOM`] (validated)
 ///
 /// # Postconditions
-/// - Returns screen_margin / zoom
-/// - At MIN_ZOOM returns largest world margin
-/// - At MAX_ZOOM returns smallest world margin
+/// - Returns `screen_margin` / zoom
+/// - At `MIN_ZOOM` returns largest world margin
+/// - At `MAX_ZOOM` returns smallest world margin
 ///
 /// # Examples
 /// ```
@@ -117,12 +118,12 @@ pub fn screen_to_world_margin(screen_margin: f64, zoom: f64) -> Result<f64, HitT
 /// # Preconditions
 /// - point.x and point.y must be finite (validated)
 /// - rect must be valid (width > 0, height > 0)
-/// - zoom must be in range [MIN_ZOOM, MAX_ZOOM] (validated)
-/// - screen_margin must be > 0 (validated)
+/// - zoom must be in range [`MIN_ZOOM`, `MAX_ZOOM`] (validated)
+/// - `screen_margin` must be > 0 (validated)
 ///
 /// # Postconditions
-/// - Returns true if point is within rect expanded by hit_margin_world
-/// - hit_margin_world = screen_margin / zoom
+/// - Returns true if point is within rect expanded by `hit_margin_world`
+/// - `hit_margin_world` = `screen_margin` / zoom
 ///
 /// # Examples
 /// ```

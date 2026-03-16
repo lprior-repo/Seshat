@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::ui::theme::{
@@ -35,9 +33,7 @@ impl AiConflictState {
 
     #[must_use]
     pub fn has_valid_reason(&self) -> bool {
-        self.reason
-            .as_ref()
-            .is_some_and(|r| !r.trim().is_empty())
+        self.reason.as_ref().is_some_and(|r| !r.trim().is_empty())
     }
 }
 
@@ -78,10 +74,7 @@ impl std::error::Error for Error {}
 
 /// Validates that conflict state has meaningful content
 fn validate_conflict_state(state: &AiConflictState) -> Result<(), Error> {
-    let has_reason = state
-        .reason
-        .as_ref()
-        .is_some_and(|r| !r.trim().is_empty());
+    let has_reason = state.reason.as_ref().is_some_and(|r| !r.trim().is_empty());
     let has_entities = !state.conflicting_entities.is_empty();
     if !has_reason && !has_entities {
         Err(Error::NoConflictState)
@@ -111,7 +104,7 @@ fn build_conflict_detail(reason_text: &str, entities: &[String]) -> Option<Strin
 }
 
 /// Validates that the created toast has a valid ID
-fn validate_toast_id(handle: &ToastHandle) -> Result<(), Error> {
+const fn validate_toast_id(handle: &ToastHandle) -> Result<(), Error> {
     if handle.id().0 == 0 {
         Err(Error::QueueFull)
     } else {
@@ -126,13 +119,13 @@ fn create_conflict_toast_options(state: &AiConflictState) -> ToastOptions {
     ToastOptions::new(ToastIntent::Warning, "Edit Conflict").with_optional_detail(detail)
 }
 
-/// Clears the ai_conflict_state signal by setting it to None
+/// Clears the `ai_conflict_state` signal by setting it to None
 pub fn clear_ai_conflict_state(state: &mut Signal<Option<AiConflictState>>) {
     state.set(None);
 }
 
 /// Display toast for AI conflict state
-/// Returns: Result<ToastHandle, Error>
+/// Returns: Result<`ToastHandle`, Error>
 pub fn show_conflict_toast(
     conflict_state: &AiConflictState,
     toast_api: ToastApi,
@@ -152,9 +145,7 @@ pub fn show_conflict_toast(
 
 /// Check if toast should be displayed for conflict
 /// Returns: Result<bool, Error>
-pub fn should_show_conflict_toast(
-    conflict_state: Option<&AiConflictState>,
-) -> Result<bool, Error> {
+pub fn should_show_conflict_toast(conflict_state: Option<&AiConflictState>) -> Result<bool, Error> {
     match conflict_state {
         Some(state) => {
             // P1: Must have valid conflict state
@@ -508,7 +499,7 @@ pub fn Toaster() -> Element {
             let _ = pending_dismiss.write().insert(id);
             let mut toasts_signal = toasts;
             let mut pending_signal = pending_dismiss;
-            let mut conflict_state_clone = ai_conflict_state.clone();
+            let mut conflict_state_clone = ai_conflict_state;
             let mut eval = document::eval(&format!(
                 "setTimeout(() => dioxus.send({{ kind: 'dismiss-conflict', id: {} }}), {});",
                 id.0, CONFLICT_TOAST_DISMISS_MS

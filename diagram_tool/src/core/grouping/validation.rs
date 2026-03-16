@@ -53,7 +53,8 @@ impl ValidatedSelection {
         Ok(Self(selected_ids.clone()))
     }
 
-    pub fn inner(&self) -> &HashSet<NodeId> {
+    #[must_use]
+    pub const fn inner(&self) -> &HashSet<NodeId> {
         &self.0
     }
 }
@@ -80,6 +81,7 @@ fn find_locked_nodes(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) 
 }
 
 /// Count the nesting depth of a node's parent chain
+#[must_use]
 pub fn count_nesting_depth(nodes: &HashMap<NodeId, Node>, parent: Option<&NodeId>) -> usize {
     parent.and_then(|pid| nodes.get(pid)).map_or(0, |node| {
         1 + count_nesting_depth(nodes, node.parent.as_ref())
@@ -96,6 +98,7 @@ fn check_nesting_depth(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>
 }
 
 /// Validate coordinates are valid (not NaN or Infinity)
+#[must_use]
 pub fn validate_coordinates(min_x: f64, min_y: f64, width: f64, height: f64) -> bool {
     min_x.is_finite()
         && min_y.is_finite()

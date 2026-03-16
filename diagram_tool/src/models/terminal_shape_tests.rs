@@ -1,36 +1,35 @@
-//! Tests for TerminalShape serialization and bijective mapping.
+//! Tests for `TerminalShape` serialization and bijective mapping.
 //! Contract: EDG-032 to EDG-035 - Arrowhead styles
 //!
 //! Tests terminal shape mapping between user-facing strings (none/arrow/diamond)
-//! and canonical ArrowType enum values.
+//! and canonical `ArrowType` enum values.
 
 // ============================================================================
 // DSL Layer - Domain-Specific Test Helpers
 // ============================================================================
 
-/// Parses a terminal shape string into ArrowType (the DSL's normalize function).
+/// Parses a terminal shape string into `ArrowType` (the DSL's normalize function).
 fn normalize(input: &str) -> crate::models::document::ArrowType {
     use crate::ui::properties_helpers::parse_arrow_type;
     parse_arrow_type(input)
 }
 
-/// Serializes an ArrowType to its string representation (the DSL's to_legacy function).
+/// Serializes an `ArrowType` to its string representation (the DSL's `to_legacy` function).
 fn to_legacy(arrow_type: crate::models::document::ArrowType) -> &'static str {
     use crate::ui::properties_helpers::arrow_type_str;
     arrow_type_str(arrow_type)
 }
 
-/// Asserts that a terminal shape string normalizes to the expected ArrowType.
+/// Asserts that a terminal shape string normalizes to the expected `ArrowType`.
 fn assert_terminal_shape_parses_to(input: &str, expected: crate::models::document::ArrowType) {
     let result = normalize(input);
     assert_eq!(
         result, expected,
-        "normalize(\"{}\") should equal {:?}",
-        input, expected
+        "normalize(\"{input}\") should equal {expected:?}"
     );
 }
 
-/// Asserts that an ArrowType serializes to the expected string.
+/// Asserts that an `ArrowType` serializes to the expected string.
 fn assert_terminal_shape_serializes_to(
     arrow_type: crate::models::document::ArrowType,
     expected: &str,
@@ -38,8 +37,7 @@ fn assert_terminal_shape_serializes_to(
     let result = to_legacy(arrow_type);
     assert_eq!(
         result, expected,
-        "to_legacy({:?}) should equal \"{}\"",
-        arrow_type, expected
+        "to_legacy({arrow_type:?}) should equal \"{expected}\""
     );
 }
 
@@ -50,8 +48,7 @@ fn assert_terminal_shape_round_trip(input: &str) {
     let reparsed = normalize(serialized);
     assert_eq!(
         original, reparsed,
-        "Round-trip failed: {} -> {:?} -> \"{}\" -> {:?}",
-        input, original, serialized, reparsed
+        "Round-trip failed: {input} -> {original:?} -> \"{serialized}\" -> {reparsed:?}"
     );
 }
 

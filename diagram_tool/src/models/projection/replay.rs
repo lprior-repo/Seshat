@@ -216,7 +216,7 @@ fn dispatch_operation(
         }
         DomainOp::EdgeDisconnect { id } => apply_edge_disconnect(state, id.as_str()),
         DomainOp::UpdateEdgeStyle { id, style } => {
-            apply_update_edge_style(state, id.as_str(), style.clone())
+            apply_update_edge_style(state, id.as_str(), *style)
         }
         DomainOp::BringForward { ids } => apply_bring_forward(state, ids),
         DomainOp::SendBackward { ids } => apply_send_backward(state, ids),

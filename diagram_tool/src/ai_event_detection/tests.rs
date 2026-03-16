@@ -74,7 +74,7 @@ fn test_generate_conflict_message_multiple() {
     let msg = generate_conflict_message(&["ai-op-1".to_string(), "ai-op-2".to_string()]);
 
     assert!(msg.contains("AI operation rejected"));
-    assert!(msg.contains("2"));
+    assert!(msg.contains('2'));
 }
 
 #[test]
@@ -171,7 +171,7 @@ fn test_drop_detection_result_with_drops() {
 
 // Happy Path Tests from martin-fowler-tests.md
 
-/// test_detects_dropped_ai_event_when_not_in_wal
+/// `test_detects_dropped_ai_event_when_not_in_wal`
 #[test]
 fn test_detects_dropped_ai_event_when_not_in_wal() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
@@ -192,7 +192,7 @@ fn test_detects_dropped_ai_event_when_not_in_wal() {
         .contains("AI operation rejected"));
 }
 
-/// test_no_conflict_when_ai_event_appears_in_wal
+/// `test_no_conflict_when_ai_event_appears_in_wal`
 #[test]
 fn test_no_conflict_when_ai_event_appears_in_wal() {
     let pending: HashSet<String> = ["ai-op-1".to_string()].into_iter().collect();
@@ -205,7 +205,7 @@ fn test_no_conflict_when_ai_event_appears_in_wal() {
     assert!(!result.has_conflict);
 }
 
-/// test_handles_empty_pending_set_gracefully
+/// `test_handles_empty_pending_set_gracefully`
 #[test]
 fn test_handles_empty_pending_set_gracefully() {
     let pending: HashSet<String> = HashSet::new();
@@ -220,7 +220,7 @@ fn test_handles_empty_pending_set_gracefully() {
 
 // Edge Case Tests from martin-fowler-tests.md
 
-/// test_multiple_dropped_ai_events_detected_together
+/// `test_multiple_dropped_ai_events_detected_together`
 #[test]
 fn test_multiple_dropped_ai_events_detected_together() {
     let pending: HashSet<String> = [
@@ -239,7 +239,7 @@ fn test_multiple_dropped_ai_events_detected_together() {
     assert!(result.has_conflict);
 }
 
-/// test_mixed_dropped_and_confirmed_events
+/// `test_mixed_dropped_and_confirmed_events`
 #[test]
 fn test_mixed_dropped_and_confirmed_events() {
     let pending: HashSet<String> = ["ai-op-1".to_string(), "ai-op-2".to_string()]

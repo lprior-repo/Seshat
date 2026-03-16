@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::document::{DiagramDocument, DocumentData, NodeKind, Revision};
@@ -345,10 +343,7 @@ pub fn Minimap() -> Element {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::models::document::{
-        ArrowType, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
-        OrderedFloat,
-    };
+    use crate::models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
     use im::HashMap;
 
     fn make_node(id: &str, x: f64, y: f64, width: f64, height: f64) -> (NodeId, Node) {

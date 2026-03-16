@@ -1,6 +1,6 @@
 //! Editor state types for diagram documents.
 //!
-//! Contains EditorState, EditorTheme, and related types.
+//! Contains `EditorState`, `EditorTheme`, and related types.
 
 use super::types::OrderedFloat;
 use crate::ui::grid::GridSize;

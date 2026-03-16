@@ -1,5 +1,3 @@
-use super::*;
-
 #[cfg(kani)]
 #[kani::proof]
 #[test]

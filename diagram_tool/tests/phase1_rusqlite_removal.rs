@@ -7,7 +7,6 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use diagram_tool::store_async::envelope_to_valid_event;
 use thiserror::Error;
 
 #[derive(Debug, Error)]

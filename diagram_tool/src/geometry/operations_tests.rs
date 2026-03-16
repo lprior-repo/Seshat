@@ -2,8 +2,6 @@
 //!
 //! This module contains unit tests for the operations functions.
 
-use crate::geometry::operations::compute_subgraph_bounds;
-
 // ============== GEO-025: Container Bounds Recomputation ==============
 
 #[cfg(kani)]

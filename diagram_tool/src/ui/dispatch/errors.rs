@@ -3,13 +3,13 @@
 /// Error types for dispatch operations
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum DispatchError {
-    /// WAL disconnected - db_tx is None
+    /// WAL disconnected - `db_tx` is None
     WalDisconnected,
-    /// Channel missing - db_tx is None (seshat-088)
+    /// Channel missing - `db_tx` is None (seshat-088)
     ChannelMissing,
-    /// No transaction - db_tx is None (seshat-5zs)
+    /// No transaction - `db_tx` is None (seshat-5zs)
     NoTx,
-    /// Failed to send to db_tx channel
+    /// Failed to send to `db_tx` channel
     SendFailed,
     /// Invalid coordinates (NaN or Infinity)
     InvalidCoordinates,
@@ -32,6 +32,6 @@ pub enum DispatchError {
 pub struct DispatchResult {
     /// Number of nodes deleted/dispatched
     pub nodes_affected: usize,
-    /// Number of envelopes sent to db_tx
+    /// Number of envelopes sent to `db_tx`
     pub dispatches_sent: usize,
 }

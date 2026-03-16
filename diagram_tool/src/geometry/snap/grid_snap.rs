@@ -1,12 +1,12 @@
 use super::mod_types::SnapMode;
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GridError {
     OutOfRange,
     NotFinite,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum GridSnapError {
     NotFinite,
 }
@@ -20,7 +20,7 @@ impl GridSize {
         if !raw_step.is_finite() {
             return Err(GridError::NotFinite);
         }
-        if raw_step < 10.0 || raw_step > 100.0 {
+        if !(10.0..=100.0).contains(&raw_step) {
             return Err(GridError::OutOfRange);
         }
         Ok(Self(raw_step))
@@ -295,7 +295,7 @@ mod tests {
         ) {
             // Just verify snapping works and produces consistent results
             if let Ok(grid) = GridSize::try_grid_size(grid_val) {
-                let base = multiplier as f64 * grid_val;
+                let base = f64::from(multiplier) * grid_val;
                 let tie = base + (grid_val / 2.0);
                 let snapped = snap_node_coordinate(tie, SnapMode::Enabled, grid).unwrap();
 

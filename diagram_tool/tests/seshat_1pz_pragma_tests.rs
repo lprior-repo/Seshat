@@ -146,7 +146,7 @@ async fn given_corrupted_file_when_create_pool_then_connection_fails() {
     // Given: temp dir with invalid file
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let invalid_db = temp_dir.path().join("not_a_db.txt");
-    
+
     // Create a non-database file
     std::fs::write(&invalid_db, "This is not a SQLite database")
         .expect("Failed to write test file");
@@ -174,7 +174,7 @@ async fn given_existing_wal_files_when_pool_created_then_succeeds() {
     // Given: first pool creates WAL files
     let temp_dir = TempDir::new().expect("Failed to create temp dir");
     let db_path = temp_dir.path().join("test.db");
-    
+
     let _pool1 = create_async_pool(&db_path)
         .await
         .expect("Failed to create first pool");
@@ -204,15 +204,9 @@ async fn given_pool_lifetime_when_pragmas_queried_multiple_times_then_values_sta
         .expect("Failed to create test pool");
 
     // When: multiple queries executed (simulate some operations)
-    let _ = sqlx::query("SELECT 1")
-        .execute(&pool)
-        .await;
-    let _ = sqlx::query("SELECT 1")
-        .execute(&pool)
-        .await;
-    let _ = sqlx::query("SELECT 1")
-        .execute(&pool)
-        .await;
+    let _ = sqlx::query("SELECT 1").execute(&pool).await;
+    let _ = sqlx::query("SELECT 1").execute(&pool).await;
+    let _ = sqlx::query("SELECT 1").execute(&pool).await;
 
     // Then: pragmas should be unchanged
     let final_pragmas = read_store_pragmas_async(&pool)
@@ -221,7 +215,10 @@ async fn given_pool_lifetime_when_pragmas_queried_multiple_times_then_values_sta
 
     assert_eq!(initial_pragmas.synchronous, final_pragmas.synchronous);
     assert_eq!(initial_pragmas.journal_mode, final_pragmas.journal_mode);
-    assert_eq!(initial_pragmas.wal_autocheckpoint, final_pragmas.wal_autocheckpoint);
+    assert_eq!(
+        initial_pragmas.wal_autocheckpoint,
+        final_pragmas.wal_autocheckpoint
+    );
 }
 
 // ============================================================================
@@ -437,7 +434,7 @@ async fn given_pool_with_data_when_reopened_then_data_recovered() {
             .execute(&pool)
             .await
             .expect("Failed to insert");
-        
+
         // Pool goes out of scope and closes
     }
 

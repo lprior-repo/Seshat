@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::geometry::primitives::{Rectangle, AABB};
@@ -20,6 +18,7 @@ pub struct SpatialIndex {
     cell_size: f64,
 }
 
+#[must_use]
 pub fn build_spatial_index(nodes: &HashMap<NodeId, Node>) -> SpatialIndex {
     let cell_size = 100.0;
     let grid = nodes.iter().fold(HashMap::new(), |acc, (id, node)| {
@@ -54,6 +53,7 @@ fn get_node_aabb(node: &Node) -> AABB {
         .aabb()
 }
 
+#[must_use]
 pub fn query_spatial_index(
     index: &SpatialIndex,
     nodes: &HashMap<NodeId, Node>,
@@ -63,7 +63,7 @@ pub fn query_spatial_index(
     gather_candidates(index, &marquee)
         .into_iter()
         .filter(|id| {
-            nodes.get(id).map_or(false, |node| {
+            nodes.get(id).is_some_and(|node| {
                 let node_aabb = get_node_aabb(node);
                 match mode {
                     MarqueeMode::Contain => contains_aabb(&marquee, &node_aabb),
@@ -74,6 +74,7 @@ pub fn query_spatial_index(
         .collect()
 }
 
+#[must_use]
 pub fn gather_candidates(index: &SpatialIndex, marquee: &AABB) -> HashSet<NodeId> {
     let start_x = (marquee.min_x / index.cell_size).floor() as i32;
     let start_y = (marquee.min_y / index.cell_size).floor() as i32;
@@ -141,8 +142,8 @@ mod tests {
         let mut nodes = HashMap::new();
         for i in 0..3000 {
             let id = NodeId::new(format!("n{i}"));
-            let x = (i as f64 * 137.5) % 10000.0;
-            let y = (i as f64 * 137.5 * 1.618) % 10000.0;
+            let x = (f64::from(i) * 137.5) % 10000.0;
+            let y = (f64::from(i) * 137.5 * 1.618) % 10000.0;
             nodes.insert(id, create_node(x, y, 50.0, 50.0));
         }
 

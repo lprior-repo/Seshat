@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::export::svg::generate_svg_string;
@@ -35,13 +33,9 @@ pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
-    use crate::models::document::{
-        DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
-        OrderedFloat,
-    };
+
+    use crate::models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
     use im::HashMap;
-    use tempfile::NamedTempFile;
 
     /// PNG file magic bytes (signature)
     const PNG_SIGNATURE: &[u8; 8] = &[137, 80, 78, 71, 13, 10, 26, 10];

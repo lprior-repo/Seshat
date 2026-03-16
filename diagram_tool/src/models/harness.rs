@@ -19,10 +19,10 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+use crate::models::document::{EdgeId, NodeId};
 use sqlx::Error as SqlxError;
 use std::path::Path;
 use thiserror::Error;
-use crate::models::document::{EdgeId, NodeId};
 
 use crate::models::envelope::{Author, DomainOp, EventEnvelope};
 use crate::models::projection::{replay_events, DiagramProjection, EventRecord};
@@ -1429,7 +1429,10 @@ fn test_multi_entity_conflict_detection() -> Result<TestReport, VerifyError> {
     let ai_envelope = EventEnvelope {
         op_id: "ai-zorder-1".to_string(),
         operation: DomainOp::BringForward {
-            ids: vec![NodeId::new("node-a".to_string()), NodeId::new("node-c".to_string())],
+            ids: vec![
+                NodeId::new("node-a".to_string()),
+                NodeId::new("node-c".to_string()),
+            ],
         },
         author: Author {
             id: "ai-organizer".to_string(),

@@ -31,7 +31,7 @@ pub fn compute_selection_bounds(doc: &DiagramDocument) -> Result<SelectionBounds
                 let rotation = node
                     .metadata
                     .get("rotation")
-                    .and_then(|v| v.as_f64())
+                    .and_then(serde_json::Value::as_f64)
                     .unwrap_or(0.0);
 
                 if rotation == 0.0 {

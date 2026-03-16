@@ -1,6 +1,3 @@
-use crate::ui::canvas::domain::test_utils::interaction_dsl::CanvasTestDsl;
-use crate::ui::canvas::domain::{CanvasPoint, CanvasVector, InteractionState, RawEvent};
-
 #[cfg(kani)]
 #[kani::proof]
 #[test]

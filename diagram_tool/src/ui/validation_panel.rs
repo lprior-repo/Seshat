@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::validation::{ValidationIssue, ValidationSeverity};
@@ -90,7 +88,6 @@ pub fn ValidationPanel(issues: ReadSignal<Vec<ValidationIssue>>) -> Element {
 // Tests for validation_panel.rs - bd-test-2
 #[cfg(test)]
 mod tests {
-    use crate::models::validation::{ValidationIssue, ValidationSeverity};
 
     #[cfg(kani)]
     #[kani::proof]

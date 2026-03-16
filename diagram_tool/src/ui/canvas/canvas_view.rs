@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 #![allow(clippy::imprecise_flops)]
 #![allow(clippy::suboptimal_flops)]
@@ -521,10 +519,8 @@ pub(super) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<Edge
 mod tests {
     use im::HashMap;
 
-    use super::find_edge_at;
     use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId,
-        NodeKind, NodeStyle, OrderedFloat,
+        ArrowType, Edge, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
 
     fn node_at(x: f64, y: f64) -> Node {
@@ -718,8 +714,6 @@ mod tests {
 #[cfg(test)]
 mod proptests {
     use proptest::prelude::*;
-
-    use super::*;
 
     fn finite_f64() -> impl Strategy<Value = f64> {
         -1000.0_f64..=1000.0_f64
@@ -945,14 +939,14 @@ mod proptests {
 /// Contract: .beads/task-sel-002/contract.md
 #[cfg(test)]
 mod sel_002_edge_selection_tests {
-    use super::find_edge_at;
+
     use crate::models::document::{
         ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId,
         NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;
 
-    /// Simulate selecting a single edge by updating the document's selected_items
+    /// Simulate selecting a single edge by updating the document's `selected_items`
     fn select_single_edge(doc: &mut DiagramDocument, edge_id: EdgeId) {
         doc.editor_state.selected_items = std::iter::once(edge_id.to_string()).collect();
     }
@@ -1551,10 +1545,6 @@ pub fn touch_handle_hit_test(
 
 #[cfg(test)]
 mod inp_mobile_tests {
-    use super::{
-        is_double_tap, touch_handle_hit_test, touch_hit_radius, DOUBLE_TAP_THRESHOLD_MS,
-        RESIZE_HANDLE_SIZE_PX, TOUCH_HIT_RADIUS_PX,
-    };
 
     // =========================================================================
     // INP-1: Double-tap timing threshold tests

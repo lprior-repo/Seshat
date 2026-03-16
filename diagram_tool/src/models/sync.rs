@@ -611,7 +611,11 @@ fn extract_affected_entities_from_events(events: &[EventRecord]) -> Vec<String> 
             | DomainOp::UpdateNodeStyle { id, .. } => {
                 entities.insert(format!("node:{}", id));
             }
-            DomainOp::UpdateLabel { target_id, target_type, .. } => {
+            DomainOp::UpdateLabel {
+                target_id,
+                target_type,
+                ..
+            } => {
                 match target_type {
                     LabelTargetType::Node => {
                         if let LabelTargetId::Node(node_id) = target_id {
@@ -719,7 +723,7 @@ mod tests {
     use crate::models::document::NodeId;
     use crate::models::envelope::{Author, DomainOp, EventEnvelope};
     use crate::store_async as store;
-    use std::sync::mpsc::{channel, RecvTimeoutError};
+
     use tempfile::TempDir;
 
     async fn create_test_db() -> (TempDir, PathBuf, store::AsyncStoreBootstrap) {

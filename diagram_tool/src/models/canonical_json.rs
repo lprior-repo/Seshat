@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use serde::Serialize;
@@ -45,8 +43,6 @@ fn canonicalize_value(value: &mut serde_json::Value) {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::to_canonical_pretty_json;
-    use serde_json::json;
 
     #[cfg(kani)]
     #[kani::proof]

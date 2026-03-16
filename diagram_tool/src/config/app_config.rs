@@ -232,7 +232,6 @@ impl FileConfig {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]

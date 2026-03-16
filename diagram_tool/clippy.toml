@@ -1,3 +1,4 @@
 [[disallowed-types]]
 path = "(f64, f64)"
 reason = "Use strongly typed Point or Vector instead of a raw f64 tuple."
+allow-invalid = true

@@ -84,7 +84,7 @@ pub enum RoutingError {
 
 /// Validates edge endpoints - returns error if invalid.
 ///
-/// Note: Self-loop validation is handled at the policy level (CyclePolicy).
+/// Note: Self-loop validation is handled at the policy level (`CyclePolicy`).
 /// This function only validates node existence.
 fn validate_edge_endpoints(
     doc: &DiagramDocument,

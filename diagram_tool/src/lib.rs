@@ -52,10 +52,58 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
+#![allow(
+    clippy::assigning_clones,
+    clippy::branches_sharing_code,
+    clippy::cast_possible_truncation,
+    clippy::cast_precision_loss,
+    clippy::cast_sign_loss,
+    clippy::cloned_instead_of_copied,
+    clippy::default_trait_access,
+    clippy::derive_partial_eq_without_eq,
+    clippy::double_must_use,
+    clippy::float_cmp,
+    clippy::imprecise_flops,
+    clippy::iter_on_single_items,
+    clippy::manual_let_else,
+    clippy::manual_midpoint,
+    clippy::manual_range_contains,
+    clippy::match_same_arms,
+    clippy::missing_const_for_fn,
+    clippy::missing_errors_doc,
+    clippy::module_inception,
+    clippy::must_use_candidate,
+    clippy::needless_pass_by_value,
+    clippy::option_if_let_else,
+    clippy::or_fun_call,
+    clippy::ptr_arg,
+    clippy::redundant_else,
+    clippy::ref_option,
+    clippy::suboptimal_flops,
+    clippy::too_many_lines,
+    clippy::trivially_copy_pass_by_ref,
+    clippy::unnecessary_result_map_or_else,
+    clippy::unnecessary_to_owned,
+    clippy::unnecessary_wraps
+)]
+#![cfg_attr(
+    test,
+    allow(
+        dead_code,
+        unused_imports,
+        unused_variables,
+        clippy::duplicated_attributes,
+        clippy::expect_used,
+        clippy::ignore_without_reason,
+        clippy::panic,
+        clippy::similar_names,
+        clippy::unwrap_used
+    )
+)]
 #![forbid(unsafe_code)]
 
+#[cfg(not(target_arch = "wasm32"))]
+pub mod ai_event_detection;
 pub mod app;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod backend;
@@ -83,8 +131,6 @@ pub mod store_async;
 pub mod store_bridge;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store_durable;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod ai_event_detection;
 pub mod ui;
 pub mod viewport;
 

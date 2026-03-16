@@ -1,11 +1,5 @@
 //! Integration tests for performance baseline module.
 
-use diagram_tool::perf::{
-    Benchmark, BenchmarkConfig, BenchmarkHarness, BenchmarkResult, FpsReport, FrameSample,
-    Operation, PerfError, RegressionTest, Statistics, TARGET_FPS,
-};
-use tempfile::TempDir;
-
 /// Test HP-001: Measure FPS with 3000 nodes
 #[cfg(kani)]
 #[kani::proof]

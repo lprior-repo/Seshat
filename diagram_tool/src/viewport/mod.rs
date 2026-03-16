@@ -33,8 +33,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::suboptimal_flops)]
 #![allow(clippy::doc_markdown)]

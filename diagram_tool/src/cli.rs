@@ -23,8 +23,8 @@ use crate::{
     },
     export::{png::export_png, svg::generate_svg_string},
     models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, OrderedFloat,
-        Revision,
+        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
+        OrderedFloat, Revision,
     },
     mutation::{ops::apply_layout, pipeline::run_mutation},
 };

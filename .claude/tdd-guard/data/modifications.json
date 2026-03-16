@@ -1,12 +1,12 @@
 {
-  "session_id": "b282151c-a986-4885-9993-f10455e3bf9e",
-  "transcript_path": "/home/lewis/.claude/projects/-home-lewis-src-seshat/b282151c-a986-4885-9993-f10455e3bf9e.jsonl",
+  "session_id": "b9f52f88-d7ab-4804-bb84-e278bc8eb26b",
+  "transcript_path": "/home/lewis/.claude/projects/-home-lewis-src-seshat/b9f52f88-d7ab-4804-bb84-e278bc8eb26b.jsonl",
   "hook_event_name": "PreToolUse",
   "tool_name": "Edit",
   "tool_input": {
-    "file_path": "/home/lewis/src/seshat/diagram_tool/src/models/sync.rs",
-    "old_string": "            operation: DomainOp::NodeAdd {\n                id: NodeId::new(format!(\"node-{revision}\").unwrap()),",
-    "new_string": "            operation: DomainOp::NodeAdd {\n                id: NodeId::new(format!(\"node-{revision}\")),",
+    "file_path": "/home/lewis/src/seshat/diagram_tool/src/layout/dag.rs",
+    "old_string": "    use crate::models::document::{\n        ArrowType, Edge, EdgeId, EditorState, NodeKind, NodeStyle, Revision,\n    };",
+    "new_string": "    use crate::models::document::{\n        ArrowType, Edge, EdgeId, EditorState, LockState, NodeKind, NodeStyle, Revision,\n    };",
     "replace_all": false
   }
 }

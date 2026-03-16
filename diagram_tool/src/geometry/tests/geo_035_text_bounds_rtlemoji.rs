@@ -1,4 +1,3 @@
-use super::super::*;
 use super::*;
 #[allow(unused_imports)]
 use proptest::prelude::*;
@@ -20,7 +19,7 @@ pub struct ExtendedText {
     pub direction: TextDirection,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum TextDirection {
     LeftToRight,
     RightToLeft,
@@ -94,7 +93,8 @@ impl ExtendedText {
         let regular_count = grapheme_count - emoji_count;
 
         // Approximate width: regular chars at 0.6 * font_size, emoji at 1.2 * font_size
-        let width = regular_count * self.font_size * 0.6 + emoji_count * self.font_size * 1.2;
+        let width =
+            (regular_count * self.font_size).mul_add(0.6, emoji_count * self.font_size * 1.2);
         let height = self.font_size;
 
         match self.direction {

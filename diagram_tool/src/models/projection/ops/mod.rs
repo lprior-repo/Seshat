@@ -15,8 +15,8 @@ pub mod z_order;
 // Re-export commonly used types and functions
 pub use edge_ops::{
     apply_edge_connect, apply_edge_connect_checked, apply_edge_disconnect,
-    apply_edge_disconnect_checked, apply_edge_op, apply_update_edge_label, create_default_edge,
-    verify_edge_tolerance, apply_update_edge_style,
+    apply_edge_disconnect_checked, apply_edge_op, apply_update_edge_label, apply_update_edge_style,
+    create_default_edge, verify_edge_tolerance,
 };
 
 pub use group_ops::{apply_group, apply_group_op, apply_ungroup};

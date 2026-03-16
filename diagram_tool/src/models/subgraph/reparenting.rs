@@ -16,9 +16,7 @@ fn check_cycle(canvas: &CanvasState, child_id: &NodeId, parent_id: &NodeId) -> b
         .nodes
         .get(parent_id)
         .and_then(|p| p.parent.as_ref())
-        .map_or(false, |next_parent| {
-            check_cycle(canvas, child_id, next_parent)
-        })
+        .is_some_and(|next_parent| check_cycle(canvas, child_id, next_parent))
 }
 
 fn validate_child_exists(canvas: &CanvasState, child_id: &NodeId) -> Result<(), Error> {
@@ -30,7 +28,7 @@ fn validate_child_exists(canvas: &CanvasState, child_id: &NodeId) -> Result<(), 
 
 fn validate_parent_is_subgraph(canvas: &CanvasState, parent_id: &NodeId) -> Result<(), Error> {
     let parent_node = canvas.nodes.get(parent_id);
-    let is_subgraph = parent_node.map_or(false, |n| n.kind == NodeKind::Subgraph);
+    let is_subgraph = parent_node.is_some_and(|n| n.kind == NodeKind::Subgraph);
     if !is_subgraph {
         return Err(Error::InvalidNodeType);
     }
@@ -68,7 +66,7 @@ fn update_node_parent(
 }
 
 /// Sets the parent of a node to a container node, checking for acyclic properties.
-/// For drag-and-drop into a subgraph, the parent must be a NodeKind::Subgraph.
+/// For drag-and-drop into a subgraph, the parent must be a `NodeKind::Subgraph`.
 ///
 /// # Errors
 /// Returns `Error::NodeNotFound` if child or parent don't exist.
@@ -132,7 +130,7 @@ pub fn set_node_parent_ext(
             .get(&child_id)
             .cloned()
             .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?;
-        node.parent = Some(parent_id.clone());
+        node.parent = Some(parent_id);
         node.x = rel_x;
         node.y = rel_y;
         canvas.nodes = canvas.nodes.update(child_id, node);

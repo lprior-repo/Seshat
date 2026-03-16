@@ -6,7 +6,7 @@ use crate::models::document::{Edge, EdgeId, NodeId, OrderedFloat};
 
 /// Validate that coordinates are finite (not NaN or Infinity)
 #[must_use]
-pub fn validate_coordinates(x: f64, y: f64) -> bool {
+pub const fn validate_coordinates(x: f64, y: f64) -> bool {
     x.is_finite() && y.is_finite()
 }
 

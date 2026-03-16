@@ -39,18 +39,10 @@ impl IntoResponse for EndpointError {
             Self::MissingProtocolHeader | Self::MalformedProtocolBytes(_) => {
                 (StatusCode::BAD_REQUEST, self.to_string())
             }
-            Self::InvalidContentType(_) => {
-                (StatusCode::UNSUPPORTED_MEDIA_TYPE, self.to_string())
-            }
-            Self::PayloadTooLarge(_) => {
-                (StatusCode::PAYLOAD_TOO_LARGE, self.to_string())
-            }
-            Self::UnsupportedHttpMethod(_) => {
-                (StatusCode::METHOD_NOT_ALLOWED, self.to_string())
-            }
-            Self::RouteNotFound(_) => {
-                (StatusCode::NOT_FOUND, self.to_string())
-            }
+            Self::InvalidContentType(_) => (StatusCode::UNSUPPORTED_MEDIA_TYPE, self.to_string()),
+            Self::PayloadTooLarge(_) => (StatusCode::PAYLOAD_TOO_LARGE, self.to_string()),
+            Self::UnsupportedHttpMethod(_) => (StatusCode::METHOD_NOT_ALLOWED, self.to_string()),
+            Self::RouteNotFound(_) => (StatusCode::NOT_FOUND, self.to_string()),
             Self::ServiceNotConfigured | Self::StateAccessFailed(_) => {
                 (StatusCode::INTERNAL_SERVER_ERROR, self.to_string())
             }
@@ -74,7 +66,7 @@ fn check_body_size_exceeds_limit(req: &Request) -> Option<usize> {
             return Some(size);
         }
     }
-    
+
     // Fallback to body size hint (for requests where Content-Length isn't set)
     let size_hint = req.body().size_hint();
     if let Some(upper) = size_hint.upper() {
@@ -84,7 +76,7 @@ fn check_body_size_exceeds_limit(req: &Request) -> Option<usize> {
             return Some(size);
         }
     }
-    
+
     None
 }
 
@@ -98,7 +90,7 @@ pub fn build_router(endpoint: EndpointBuilder) -> Result<Router, EndpointError> 
 
     let app = Router::new()
         .fallback(any({
-            let ep = shared_endpoint.clone();
+            let ep = shared_endpoint;
             move |req: Request| async move {
                 if req.method() != Method::POST {
                     return Err(EndpointError::UnsupportedHttpMethod(req.method().clone()));
@@ -115,8 +107,9 @@ pub fn build_router(endpoint: EndpointBuilder) -> Result<Router, EndpointError> 
                     .and_then(|v| v.to_str().ok())
                     .unwrap_or("");
 
-                if !content_type.starts_with("application/vnd.restate.invocation.v1") 
-                    && !content_type.starts_with("application/vnd.restate.endpointmanifest") {
+                if !content_type.starts_with("application/vnd.restate.invocation.v1")
+                    && !content_type.starts_with("application/vnd.restate.endpointmanifest")
+                {
                     return Err(EndpointError::InvalidContentType(content_type.to_string()));
                 }
 
@@ -135,11 +128,11 @@ pub fn build_router(endpoint: EndpointBuilder) -> Result<Router, EndpointError> 
 mod tests {
     use super::*;
     use axum::body::Body;
-    use axum::http::{Request, StatusCode, Method};
+    use axum::http::{Method, Request, StatusCode};
     use tower::ServiceExt; // for `app.oneshot()`
-    
+
     // Proptest isn't strictly required to be exhaustive here, we just use arrays
-    
+
     struct RestateRequestBuilder {
         method: Method,
         headers: Vec<(&'static str, String)>,
@@ -150,7 +143,10 @@ mod tests {
         fn new() -> Self {
             Self {
                 method: Method::POST,
-                headers: vec![("content-type", "application/vnd.restate.invocation.v1".to_string())],
+                headers: vec![(
+                    "content-type",
+                    "application/vnd.restate.invocation.v1".to_string(),
+                )],
                 body: vec![],
             }
         }
@@ -175,7 +171,7 @@ mod tests {
             let mut req = Request::builder()
                 .method(self.method)
                 .uri("/invoke/SomeService/SomeHandler");
-                
+
             for (k, v) in self.headers {
                 req = req.header(k, v);
             }
@@ -205,8 +201,13 @@ mod tests {
     async fn p2_violation_returns_method_not_allowed() {
         let mut fixture = RestateTestFixture::new();
         let methods = [
-            Method::GET, Method::PUT, Method::DELETE, 
-            Method::PATCH, Method::OPTIONS, Method::HEAD, Method::TRACE
+            Method::GET,
+            Method::PUT,
+            Method::DELETE,
+            Method::PATCH,
+            Method::OPTIONS,
+            Method::HEAD,
+            Method::TRACE,
         ];
 
         for method in methods {
@@ -241,7 +242,7 @@ mod tests {
         let response = fixture.send(req).await;
         assert_eq!(response.status(), StatusCode::UNSUPPORTED_MEDIA_TYPE);
     }
-    
+
     #[tokio::test]
     async fn p6_violation_returns_malformed_protocol_bytes() {
         let mut fixture = RestateTestFixture::new();
@@ -255,16 +256,15 @@ mod tests {
         // - 200 OK: SDK accepts garbage (unlikely)
         let status = response.status();
         assert!(
-            status == StatusCode::BAD_REQUEST 
-            || status == StatusCode::UNSUPPORTED_MEDIA_TYPE
-            || status == StatusCode::INTERNAL_SERVER_ERROR 
-            || status == StatusCode::OK
-            || status == StatusCode::NOT_FOUND,
-            "Unexpected status: {:?}",
-            status
+            status == StatusCode::BAD_REQUEST
+                || status == StatusCode::UNSUPPORTED_MEDIA_TYPE
+                || status == StatusCode::INTERNAL_SERVER_ERROR
+                || status == StatusCode::OK
+                || status == StatusCode::NOT_FOUND,
+            "Unexpected status: {status:?}"
         );
     }
-    
+
     #[tokio::test]
     async fn q2_violation_returns_payload_too_large() {
         let mut fixture = RestateTestFixture::new();

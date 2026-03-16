@@ -1,8 +1,7 @@
 #[cfg(test)]
 mod marquee_tests {
     use crate::models::document::{
-        DiagramDocument, DocumentData, DocumentError, EditorState, LockState, Node, NodeId,
-        NodeKind, OrderedFloat, ValidRect,
+        DiagramDocument, DocumentError, LockState, Node, NodeId, NodeKind, OrderedFloat, ValidRect,
     };
     use crate::models::spatial_index::MarqueeMode;
     use im::HashMap;
@@ -12,13 +11,13 @@ mod marquee_tests {
         let mut doc = DiagramDocument::default();
 
         // N1: (10, 10) 50x50. Enclosed by (0,0)->(100,100)
-        let mut n1 = create_node("n1", 10.0, 10.0, 50.0, 50.0);
+        let n1 = create_node("n1", 10.0, 10.0, 50.0, 50.0);
 
         // N2: (80, 80) 50x50. Intersects with (0,0)->(100,100)
-        let mut n2 = create_node("n2", 80.0, 80.0, 50.0, 50.0);
+        let n2 = create_node("n2", 80.0, 80.0, 50.0, 50.0);
 
         // N3: (150, 150) 50x50. Outside (0,0)->(100,100)
-        let mut n3 = create_node("n3", 150.0, 150.0, 50.0, 50.0);
+        let n3 = create_node("n3", 150.0, 150.0, 50.0, 50.0);
 
         // N4: (10, 10) 50x50, but rotated 45 degrees, so it goes slightly outside (10..60) -> approx (-5..75)
         let mut n4 = create_node("n4", 10.0, 10.0, 50.0, 50.0);
@@ -113,8 +112,8 @@ mod marquee_tests {
         let mut doc = DiagramDocument::default();
         for i in 0..3000 {
             let id = format!("n{i}");
-            let x = (i as f64 * 10.0) % 1000.0;
-            let y = (i as f64 * 10.0) / 1000.0 * 10.0;
+            let x = (f64::from(i) * 10.0) % 1000.0;
+            let y = (f64::from(i) * 10.0) / 1000.0 * 10.0;
             doc.document
                 .nodes
                 .insert(NodeId::new(id.clone()), create_node(&id, x, y, 5.0, 5.0));

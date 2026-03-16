@@ -87,7 +87,7 @@ mod tests {
         doc.document.nodes.insert(n2.clone(), create_test_node());
         doc.document
             .edges
-            .insert(e1.clone(), create_test_edge(n1.clone(), n2.clone()));
+            .insert(e1, create_test_edge(n1.clone(), n2.clone()));
 
         let selection = Selection {
             nodes: vec![n1.clone(), n2.clone()],
@@ -122,7 +122,7 @@ mod tests {
         doc.document.nodes.insert(c1.clone(), child_node);
 
         let selection = Selection {
-            nodes: vec![p1.clone(), c1.clone()],
+            nodes: vec![p1, c1],
         };
 
         let clipboard = copy(&selection, &doc).unwrap();
@@ -167,9 +167,7 @@ mod tests {
         let n1 = NodeId::new("n1".to_string());
         doc.document.nodes.insert(n1.clone(), create_test_node());
 
-        let selection = Selection {
-            nodes: vec![n1.clone()],
-        };
+        let selection = Selection { nodes: vec![n1] };
         let mut clipboard = copy(&selection, &doc).unwrap();
 
         clipboard.paste_serial = 0;
@@ -211,13 +209,11 @@ mod tests {
         let n1 = NodeId::new("non_existent".to_string());
         clipboard.edges.push((
             EdgeId::new("e1".to_string()),
-            create_test_edge(n1.clone(), n1.clone()),
+            create_test_edge(n1.clone(), n1),
         ));
 
         let valid_node = NodeId::new("valid".to_string());
-        clipboard
-            .nodes
-            .push((valid_node.clone(), create_test_node()));
+        clipboard.nodes.push((valid_node, create_test_node()));
 
         let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::InvalidEdgeReference)));
@@ -232,7 +228,7 @@ mod tests {
         let mut child_node = create_test_node();
         child_node.parent = Some(NodeId::new("non_existent_parent".to_string()));
 
-        clipboard.nodes.push((n1.clone(), child_node));
+        clipboard.nodes.push((n1, child_node));
 
         let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::InvalidParentReference)));
@@ -244,7 +240,7 @@ mod tests {
         let mut clipboard = ClipboardData::empty();
         let n1 = NodeId::new("n1".to_string());
         clipboard.nodes.push((n1.clone(), create_test_node()));
-        clipboard.nodes.push((n1.clone(), create_test_node()));
+        clipboard.nodes.push((n1, create_test_node()));
         let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::CorruptClipboard)));
     }
@@ -262,8 +258,8 @@ mod tests {
         let mut node2 = create_test_node();
         node2.parent = Some(n1.clone());
 
-        clipboard.nodes.push((n1.clone(), node1));
-        clipboard.nodes.push((n2.clone(), node2));
+        clipboard.nodes.push((n1, node1));
+        clipboard.nodes.push((n2, node2));
 
         let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::CyclicParentReference)));

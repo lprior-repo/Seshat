@@ -106,6 +106,7 @@ pub struct SnapResult {
 }
 
 impl SnapResult {
+    #[must_use]
     pub const fn to_position(&self) -> Option<Point> {
         if self.active {
             Some(self.snapped_position)
@@ -113,6 +114,7 @@ impl SnapResult {
             None
         }
     }
+    #[must_use]
     pub const fn inactive() -> Self {
         Self {
             active: false,
@@ -121,6 +123,7 @@ impl SnapResult {
             snapped_position: Point::new(0.0, 0.0),
         }
     }
+    #[must_use]
     pub const fn new(snap_type: SnapType, target_node_id: NodeId, snapped_position: Point) -> Self {
         Self {
             active: true,
@@ -141,9 +144,11 @@ impl Default for SnapResult {
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct SnapThreshold(f64);
 impl SnapThreshold {
+    #[must_use]
     pub const fn new(value: f64) -> Self {
         Self(if value < 0.0 { 0.0 } else { value })
     }
+    #[must_use]
     pub const fn value(&self) -> f64 {
         self.0
     }

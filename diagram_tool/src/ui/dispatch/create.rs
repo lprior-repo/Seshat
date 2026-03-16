@@ -33,7 +33,7 @@ fn current_timestamp() -> i64 {
 // Node Envelope Creation
 // =============================================================================
 
-/// Create an EventEnvelope for a NodeAdd operation
+/// Create an `EventEnvelope` for a `NodeAdd` operation
 ///
 /// # Errors
 /// Returns `DispatchError::InvalidCoordinates` if x/y are not finite or width/height are not positive
@@ -64,7 +64,8 @@ pub fn create_node_add_envelope(
     })
 }
 
-/// Create an EventEnvelope for a NodeDelete operation
+/// Create an `EventEnvelope` for a `NodeDelete` operation
+#[must_use]
 pub fn create_node_delete_envelope(id: String) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -76,10 +77,11 @@ pub fn create_node_delete_envelope(id: String) -> EventEnvelope {
     }
 }
 
-/// Create an EventEnvelope for a NodeResize operation with original bounds
+/// Create an `EventEnvelope` for a `NodeResize` operation with original bounds
 ///
 /// # Errors
 /// Returns `DispatchError::InvalidCoordinates` if coordinates or dimensions are invalid.
+#[allow(clippy::too_many_arguments)]
 pub fn create_node_resize_envelope(
     id: crate::models::document::NodeId,
     original_x: f64,
@@ -120,7 +122,8 @@ pub fn create_node_resize_envelope(
 // Edge Envelope Creation
 // =============================================================================
 
-/// Create an EventEnvelope for an EdgeConnect operation
+/// Create an `EventEnvelope` for an `EdgeConnect` operation
+#[must_use]
 pub fn create_edge_connect_envelope(id: String, source: String, target: String) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -134,7 +137,8 @@ pub fn create_edge_connect_envelope(id: String, source: String, target: String) 
     }
 }
 
-/// Create an EventEnvelope for an EdgeDisconnect operation
+/// Create an `EventEnvelope` for an `EdgeDisconnect` operation
+#[must_use]
 pub fn create_edge_disconnect_envelope(id: String) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -150,7 +154,7 @@ pub fn create_edge_disconnect_envelope(id: String) -> EventEnvelope {
 // Group Envelope Creation
 // =============================================================================
 
-/// Create an EventEnvelope for a Group operation
+/// Create an `EventEnvelope` for a Group operation
 pub fn create_group_envelope(group_id: String, ids: Vec<String>) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -163,7 +167,8 @@ pub fn create_group_envelope(group_id: String, ids: Vec<String>) -> EventEnvelop
     }
 }
 
-/// Create an EventEnvelope for an Ungroup operation
+/// Create an `EventEnvelope` for an Ungroup operation
+#[must_use]
 pub fn create_ungroup_envelope(id: String) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -179,7 +184,7 @@ pub fn create_ungroup_envelope(id: String) -> EventEnvelope {
 // Z-Order Envelope Creation
 // =============================================================================
 
-/// Create an EventEnvelope for a BringForward operation
+/// Create an `EventEnvelope` for a `BringForward` operation
 pub fn create_bring_forward_envelope(ids: Vec<String>) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -191,7 +196,7 @@ pub fn create_bring_forward_envelope(ids: Vec<String>) -> EventEnvelope {
     }
 }
 
-/// Create an EventEnvelope for a SendBackward operation
+/// Create an `EventEnvelope` for a `SendBackward` operation
 pub fn create_send_backward_envelope(ids: Vec<String>) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -203,7 +208,7 @@ pub fn create_send_backward_envelope(ids: Vec<String>) -> EventEnvelope {
     }
 }
 
-/// Create an EventEnvelope for a BringToFront operation
+/// Create an `EventEnvelope` for a `BringToFront` operation
 pub fn create_bring_to_front_envelope(ids: Vec<String>) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -215,7 +220,7 @@ pub fn create_bring_to_front_envelope(ids: Vec<String>) -> EventEnvelope {
     }
 }
 
-/// Create an EventEnvelope for a SendToBack operation
+/// Create an `EventEnvelope` for a `SendToBack` operation
 pub fn create_send_to_back_envelope(ids: Vec<String>) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -231,7 +236,8 @@ pub fn create_send_to_back_envelope(ids: Vec<String>) -> EventEnvelope {
 // Style Envelope Creation
 // =============================================================================
 
-/// Create an EventEnvelope for an UpdateLabel operation
+/// Create an `EventEnvelope` for an `UpdateLabel` operation
+#[must_use]
 pub fn create_update_label_envelope(
     target_id: LabelTargetId,
     target_type: LabelTargetType,
@@ -251,7 +257,8 @@ pub fn create_update_label_envelope(
     }
 }
 
-/// Create an EventEnvelope for an UpdateNodeStyle operation
+/// Create an `EventEnvelope` for an `UpdateNodeStyle` operation
+#[must_use]
 pub fn create_update_node_style_envelope(id: String, style: NodeStyle) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),
@@ -264,7 +271,8 @@ pub fn create_update_node_style_envelope(id: String, style: NodeStyle) -> EventE
     }
 }
 
-/// Create an EventEnvelope for an UpdateEdgeStyle operation
+/// Create an `EventEnvelope` for an `UpdateEdgeStyle` operation
+#[must_use]
 pub fn create_update_edge_style_envelope(id: String, style: EdgeStyle) -> EventEnvelope {
     EventEnvelope {
         op_id: uuid::Uuid::new_v4().to_string(),

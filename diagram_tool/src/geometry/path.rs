@@ -1,4 +1,4 @@
-use super::*;
+use super::Point;
 
 // ============== GEO-027: Path Simplification (Ramer-Douglas-Peucker) ==============
 

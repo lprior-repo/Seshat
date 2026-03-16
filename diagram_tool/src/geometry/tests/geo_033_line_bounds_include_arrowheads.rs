@@ -1,4 +1,3 @@
-use super::super::*;
 use super::*;
 #[allow(unused_imports)]
 use proptest::prelude::*;
@@ -91,7 +90,7 @@ impl Line {
         // Direction from opposite to tip
         let dx = tip.x - opposite.x;
         let dy = tip.y - opposite.y;
-        let length = (dx * dx + dy * dy).sqrt();
+        let length = dx.hypot(dy);
         if length < TOLERANCE {
             return AABB::new(tip.x, tip.y, tip.x, tip.y);
         }
@@ -107,18 +106,18 @@ impl Line {
         let base_distance = arrow.size * arrow.angle.cos();
 
         // Back point (base center)
-        let back_x = tip.x - ux * base_distance;
-        let back_y = tip.y - uy * base_distance;
+        let back_x = ux.mul_add(-base_distance, tip.x);
+        let back_y = uy.mul_add(-base_distance, tip.y);
 
         // Perpendicular direction
         let px = -uy;
         let py = ux;
 
         // Wing points
-        let wing1_x = back_x + px * wing_length;
-        let wing1_y = back_y + py * wing_length;
-        let wing2_x = back_x - px * wing_length;
-        let wing2_y = back_y - py * wing_length;
+        let wing1_x = px.mul_add(wing_length, back_x);
+        let wing1_y = py.mul_add(wing_length, back_y);
+        let wing2_x = px.mul_add(-wing_length, back_x);
+        let wing2_y = py.mul_add(-wing_length, back_y);
 
         // AABB containing tip and both wings
         AABB::new(

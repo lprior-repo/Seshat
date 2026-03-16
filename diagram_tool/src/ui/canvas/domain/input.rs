@@ -40,6 +40,7 @@ pub struct InputState {
 }
 
 impl InputState {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             active_pointers: im::HashMap::new(),
@@ -79,6 +80,7 @@ impl NonNegativeF64 {
             Ok(Self(val))
         }
     }
+    #[must_use]
     pub const fn get(&self) -> f64 {
         self.0
     }
@@ -131,7 +133,7 @@ pub struct Handle {
     pub center: CanvasPoint,
 }
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct TwoFingerGesture {
     pub id1: u64,
     pub id2: u64,
@@ -161,9 +163,10 @@ pub fn process_pointer_event(
         } => {
             let too_many =
                 state.active_pointers.len() >= 10 && !state.active_pointers.contains_key(id);
-            too_many
-                .then(|| Err(Error::TooManyPointers))
-                .unwrap_or_else(|| {
+            if too_many {
+                Err(Error::TooManyPointers)
+            } else {
+                {
                     let next_pointers = state.active_pointers.update(
                         *id,
                         PointerData {
@@ -185,8 +188,7 @@ pub fn process_pointer_event(
                             )
                         },
                         |tap| {
-                            let dist =
-                                ((tap.pos.x - pos.x).powi(2) + (tap.pos.y - pos.y).powi(2)).sqrt();
+                            let dist = (tap.pos.x - pos.x).hypot(tap.pos.y - pos.y);
                             let time_diff = time_ms.saturating_sub(tap.time_ms);
 
                             if time_diff <= config.double_tap_timeout_ms.get() && dist < 20.0 {
@@ -210,7 +212,8 @@ pub fn process_pointer_event(
                         },
                         actions,
                     ))
-                })
+                }
+            }
         }
         PointerEvent::Move { id, pos } => state
             .active_pointers
@@ -273,7 +276,7 @@ pub fn hit_test_handle(
     pointer_type: PointerType,
     config: &InputConfig,
 ) -> Result<bool, Error> {
-    let dist = ((handle.center.x - point.x).powi(2) + (handle.center.y - point.y).powi(2)).sqrt();
+    let dist = (handle.center.x - point.x).hypot(handle.center.y - point.y);
     let padding = match pointer_type {
         PointerType::Touch => config.touch_padding.get(),
         PointerType::Mouse | PointerType::Pen => 0.0,

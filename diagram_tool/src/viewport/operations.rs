@@ -5,8 +5,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::geometry::AABB;
@@ -209,7 +207,6 @@ pub fn next_zoom_out(current: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]

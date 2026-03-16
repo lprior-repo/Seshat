@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::layout::grid::calculate_grid_layout;
@@ -19,7 +17,7 @@ pub fn apply_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
 
 #[cfg(test)]
 mod tests {
-    use super::apply_layout;
+
     use crate::models::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };

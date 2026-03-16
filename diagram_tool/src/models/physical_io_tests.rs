@@ -1,12 +1,8 @@
 #![cfg(test)]
 #![allow(clippy::unwrap_used)]
 
-use crate::models::document::{DiagramDocument, DocumentData, EditorState, Revision};
-use crate::models::physical_io::{
-    load_document, migrate_schema, save_document, DiagramBuilder, Error,
-};
-use im::HashMap;
-use serde_json::Value;
+use crate::models::document::{DiagramDocument, Revision};
+use crate::models::physical_io::{load_document, save_document, DiagramBuilder, Error};
 use std::fs::File;
 use std::io::Write;
 use tempfile::TempDir;
@@ -354,7 +350,7 @@ fn test_fuzz_returns_recursion_error_on_deeply_nested_input() {
     for _ in 0..150 {
         json.push_str("{\"a\":");
     }
-    json.push_str("1");
+    json.push('1');
     for _ in 0..150 {
         json.push('}');
     }
@@ -363,7 +359,7 @@ fn test_fuzz_returns_recursion_error_on_deeply_nested_input() {
     // before our check_depth runs. Either error is acceptable.
     assert!(matches!(
         result,
-        Err(Error::RecursionLimitExceeded) | Err(Error::ParseError(_))
+        Err(Error::RecursionLimitExceeded | Error::ParseError(_))
     ));
 }
 
@@ -378,8 +374,7 @@ fn test_fuzz_fails_gracefully_on_massive_payload() {
         if i > 0 {
             file.write_all(b",").unwrap();
         }
-        file.write_all(format!("\"n{}\":null", i).as_bytes())
-            .unwrap();
+        file.write_all(format!("\"n{i}\":null").as_bytes()).unwrap();
     }
     file.write_all(b"},\"edges\":{}}}").unwrap();
 

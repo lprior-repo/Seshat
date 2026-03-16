@@ -9,8 +9,8 @@ mod tests {
     use crate::models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
     use crate::models::projection::ops::group_ops::apply_ungroup;
     use crate::models::projection::types::DiagramProjection;
-    use crate::models::subgraph_events::calculate_subgraph_bounds;
-    use crate::models::subgraph_events::types::{DiagramState, Error};
+
+    use crate::models::subgraph_events::types::DiagramState;
     use im::HashMap;
     use rand::prelude::*;
     use rand::rngs::StdRng;
@@ -19,7 +19,7 @@ mod tests {
     // DSL LAYER - Helper Functions for Declarative Testing
     // ========================================================================
 
-    /// Creates a fresh DiagramState for testing
+    /// Creates a fresh `DiagramState` for testing
     fn create_test_state() -> DiagramState {
         DiagramState {
             version: 1,
@@ -43,7 +43,7 @@ mod tests {
     ) -> (NodeId, Node) {
         let node_id = NodeId::new(id.to_string());
         let node = Node {
-            kind: kind.clone(),
+            kind,
             icon: String::new(),
             label: String::new(),
             x: OrderedFloat::new_unchecked(x),
@@ -65,7 +65,7 @@ mod tests {
     }
 
     /// DSL: Verifies that cascade deletion behaves correctly.
-    /// In delete mode with apply_ungroup, children are kept but parent is cleared (root level).
+    /// In delete mode with `apply_ungroup`, children are kept but parent is cleared (root level).
     ///
     /// # Arguments
     /// * `state` - The diagram state
@@ -82,7 +82,7 @@ mod tests {
 
             // Child should exist
             if !state.nodes.contains_key(&child_node_id) {
-                return Err(format!("Child {} should exist but was deleted", child_id));
+                return Err(format!("Child {child_id} should exist but was deleted"));
             }
 
             // Child should have NO parent (cleared to root level)
@@ -108,7 +108,7 @@ mod tests {
             let child = state
                 .nodes
                 .get(&child_node_id)
-                .ok_or_else(|| format!("Child {} not found", child_id))?;
+                .ok_or_else(|| format!("Child {child_id} not found"))?;
 
             match (child.parent.as_ref(), expected_parent) {
                 (Some(actual), Some(expected)) => {
@@ -124,8 +124,7 @@ mod tests {
                 (None, None) => {} // OK - no parent expected, no parent found
                 (actual, expected) => {
                     return Err(format!(
-                        "Child {} has parent {:?} but expected {:?}",
-                        child_id, actual, expected
+                        "Child {child_id} has parent {actual:?} but expected {expected:?}"
                     ));
                 }
             }
@@ -146,13 +145,12 @@ mod tests {
         let expected_count = match mode {
             "delete" => original_count - nodes_removed - 1, // -1 for the subgraph itself
             "reparent" => original_count - 1,               // -1 for the removed subgraph
-            _ => return Err(format!("Unknown mode: {}", mode)),
+            _ => return Err(format!("Unknown mode: {mode}")),
         };
 
         if current_count != expected_count {
             return Err(format!(
-                "Node count mismatch: expected {} but got {}. Mode: {}",
-                expected_count, current_count, mode
+                "Node count mismatch: expected {expected_count} but got {current_count}. Mode: {mode}"
             ));
         }
         Ok(())
@@ -168,7 +166,7 @@ mod tests {
             .collect()
     }
 
-    /// Convert DiagramState to DiagramProjection for production function tests
+    /// Convert `DiagramState` to `DiagramProjection` for production function tests
     fn state_to_projection(state: &DiagramState) -> DiagramProjection {
         DiagramProjection {
             version: state.version,
@@ -185,8 +183,8 @@ mod tests {
     // These tests call ACTUAL production functions from the codebase
     // ========================================================================
 
-    /// This test uses REAL production code: apply_ungroup from crate::models::projection::ops::group_ops
-    /// It verifies that the production apply_ungroup function correctly removes the subgraph
+    /// This test uses REAL production code: `apply_ungroup` from `crate::models::projection::ops::group_ops`
+    /// It verifies that the production `apply_ungroup` function correctly removes the subgraph
     /// and clears parent on all children (making them root-level).
     ///
     /// This is the CORE cascade behavior test - testing actual production code.
@@ -209,7 +207,7 @@ mod tests {
         let result = apply_ungroup(projection.clone(), &s1_id);
 
         // Then: Should succeed
-        assert!(result.is_ok(), "apply_ungroup should succeed: {:?}", result);
+        assert!(result.is_ok(), "apply_ungroup should succeed: {result:?}");
 
         let new_projection = result.unwrap();
 
@@ -236,7 +234,7 @@ mod tests {
         );
     }
 
-    /// Another production code test - verify apply_ungroup with nested structure
+    /// Another production code test - verify `apply_ungroup` with nested structure
     #[test]
     fn test_production_apply_ungroup_nested() {
         // Given: Root -> S1 -> S2 -> N1 (nested structure)
@@ -258,7 +256,7 @@ mod tests {
         let (n1_id, n1) =
             create_test_node("N1", NodeKind::Node, 25.0, 25.0, 10.0, 10.0, Some("S2"));
 
-        projection.nodes.insert(root_id.clone(), root);
+        projection.nodes.insert(root_id, root);
         projection.nodes.insert(s1_id.clone(), s1);
         projection.nodes.insert(s2_id.clone(), s2);
         projection.nodes.insert(n1_id.clone(), n1);
@@ -277,14 +275,21 @@ mod tests {
         // Then: S2 should have parent = Root (grandparent, since S1's parent is Root)
         let s2 = new_projection.nodes.get(&s2_id).unwrap();
         assert_eq!(
-            s2.parent.as_ref().map(|id| id.as_str()),
+            s2.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
             Some("Root"),
             "S2 should have parent = Root (grandparent)"
         );
 
         // Then: N1 should still have parent = S2 (not affected)
         let n1 = new_projection.nodes.get(&n1_id).unwrap();
-        assert_eq!(n1.parent.as_ref().map(|id| id.as_str()), Some("S2"));
+        assert_eq!(
+            n1.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
+            Some("S2")
+        );
     }
 
     // ========================================================================
@@ -304,8 +309,8 @@ mod tests {
             create_test_node("N2", NodeKind::Node, 20.0, 20.0, 10.0, 10.0, Some("S1"));
 
         projection.nodes.insert(s1_id.clone(), s1);
-        projection.nodes.insert(n1_id.clone(), n1);
-        projection.nodes.insert(n2_id.clone(), n2);
+        projection.nodes.insert(n1_id, n1);
+        projection.nodes.insert(n2_id, n2);
 
         let original_count = projection.nodes.len();
 
@@ -380,7 +385,12 @@ mod tests {
 
         // Then: N1 should still have S2 as parent (not affected)
         let n1 = new_projection.nodes.get(&n1_id).unwrap();
-        assert_eq!(n1.parent.as_ref().map(|id| id.as_str()), Some("S2"));
+        assert_eq!(
+            n1.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
+            Some("S2")
+        );
     }
 
     // ========================================================================
@@ -424,8 +434,18 @@ mod tests {
         // Then: Children should have parent = Root (the grandparent)
         let n1 = new_projection.nodes.get(&n1_id).unwrap();
         let n2 = new_projection.nodes.get(&n2_id).unwrap();
-        assert_eq!(n1.parent.as_ref().map(|id| id.as_str()), Some("Root"));
-        assert_eq!(n2.parent.as_ref().map(|id| id.as_str()), Some("Root"));
+        assert_eq!(
+            n1.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
+            Some("Root")
+        );
+        assert_eq!(
+            n2.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
+            Some("Root")
+        );
 
         // Then: Root should still exist
         assert!(new_projection.nodes.contains_key(&root_id));
@@ -452,7 +472,7 @@ mod tests {
         let (n1_id, n1) =
             create_test_node("N1", NodeKind::Node, 25.0, 25.0, 10.0, 10.0, Some("S2"));
 
-        projection.nodes.insert(root_id.clone(), root);
+        projection.nodes.insert(root_id, root);
         projection.nodes.insert(s1_id.clone(), s1);
         projection.nodes.insert(s2_id.clone(), s2);
         projection.nodes.insert(n1_id.clone(), n1);
@@ -469,7 +489,9 @@ mod tests {
         // Then: S2 should have parent = Root (the grandparent)
         let s2 = new_projection.nodes.get(&s2_id).unwrap();
         assert_eq!(
-            s2.parent.as_ref().map(|id| id.as_str()),
+            s2.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
             Some("Root"),
             "S2 should have parent = Root"
         );
@@ -477,7 +499,12 @@ mod tests {
         // N1 should still exist and have S2 as parent
         assert!(new_projection.nodes.contains_key(&n1_id));
         let n1 = new_projection.nodes.get(&n1_id).unwrap();
-        assert_eq!(n1.parent.as_ref().map(|id| id.as_str()), Some("S2"));
+        assert_eq!(
+            n1.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
+            Some("S2")
+        );
     }
 
     // ========================================================================
@@ -504,7 +531,7 @@ mod tests {
             let mut all_child_ids = Vec::new();
 
             for i in 0..num_subgraphs {
-                let s_id_str = format!("S{}", i);
+                let s_id_str = format!("S{i}");
                 let (s_id, s_node) = create_test_node(
                     &s_id_str,
                     NodeKind::Subgraph,
@@ -520,7 +547,7 @@ mod tests {
                 // Add children to this subgraph
                 let num_children = rng.gen_range(1..=3);
                 for j in 0..num_children {
-                    let c_id = format!("S{}_C{}", i, j);
+                    let c_id = format!("S{i}_C{j}");
                     let (c_id, c_node) = create_test_node(
                         &c_id,
                         NodeKind::Node,
@@ -539,7 +566,7 @@ mod tests {
 
             // Delete each subgraph in delete mode using REAL production code
             for i in 0..num_subgraphs {
-                let s_id = NodeId::new(format!("S{}", i));
+                let s_id = NodeId::new(format!("S{i}"));
                 let result = apply_ungroup(projection.clone(), &s_id);
                 if result.is_ok() {
                     projection = result.unwrap();
@@ -572,7 +599,7 @@ mod tests {
             let mut child_ids = Vec::new();
 
             for i in 0..num_children {
-                let c_id = format!("C{}", i);
+                let c_id = format!("C{i}");
                 let (c_id, c_node) = create_test_node(
                     &c_id,
                     NodeKind::Node,
@@ -626,11 +653,11 @@ mod tests {
 
             let num_subgraphs = rng.gen_range(1..=3);
             for i in 0..num_subgraphs {
-                let s_id = format!("S{}", i);
+                let s_id = format!("S{i}");
                 let (s_id, s_node) = create_test_node(
                     &s_id,
                     NodeKind::Subgraph,
-                    10.0 + i as f64 * 10.0,
+                    f64::from(i).mul_add(10.0, 10.0),
                     10.0,
                     30.0,
                     30.0,
@@ -642,7 +669,7 @@ mod tests {
             // Randomly delete subgraphs in delete mode using REAL production code
             for i in 0..num_subgraphs {
                 if rng.gen_bool(0.5) {
-                    let s_id = NodeId::new(format!("S{}", i));
+                    let s_id = NodeId::new(format!("S{i}"));
                     let result = apply_ungroup(projection.clone(), &s_id);
                     if result.is_ok() {
                         projection = result.unwrap();
@@ -666,7 +693,7 @@ mod tests {
     #[test]
     fn property_cascade_no_orphaned_edges() {
         // Property: After cascade deletion, no nodes that exist should reference deleted parents
-        let mut rng = StdRng::seed_from_u64(789);
+        let _rng = StdRng::seed_from_u64(789);
 
         for _ in 0..10 {
             let mut projection = DiagramProjection::empty();
@@ -778,7 +805,7 @@ mod tests {
         projection.nodes.insert(s1_id.clone(), s1);
         projection.nodes.insert(s2_id.clone(), s2);
         projection.nodes.insert(s3_id.clone(), s3);
-        projection.nodes.insert(n1_id.clone(), n1);
+        projection.nodes.insert(n1_id, n1);
 
         // When: Delete S1 in delete mode using REAL production code
         // apply_ungroup removes S1 and clears parent on S2 (direct child)
@@ -795,7 +822,12 @@ mod tests {
 
         // S3 should still exist with S2 as parent
         let s3 = new_projection.nodes.get(&s3_id).unwrap();
-        assert_eq!(s3.parent.as_ref().map(|id| id.as_str()), Some("S2"));
+        assert_eq!(
+            s3.parent
+                .as_ref()
+                .map(super::super::document::types::NodeId::as_str),
+            Some("S2")
+        );
     }
 
     #[test]
@@ -809,7 +841,7 @@ mod tests {
 
         let mut state = state;
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
 
         // Test assert_children_reparented (before delete)
         assert_children_reparented(&state, &["N1"], Some("S1")).unwrap();
@@ -830,7 +862,7 @@ mod tests {
 
         let mut state = state;
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
 
         // Test assert_children_reparented fails on wrong parent
         let result = assert_children_reparented(&state, &["N1"], Some("Wrong"));

@@ -10,7 +10,12 @@ pub enum BoundsError {
 ///
 /// # Errors
 /// Returns an error if any coordinate is NaN or infinite.
-pub fn safe_bounds(min_x: f64, min_y: f64, max_x: f64, max_y: f64) -> Result<AABB, BoundsError> {
+pub const fn safe_bounds(
+    min_x: f64,
+    min_y: f64,
+    max_x: f64,
+    max_y: f64,
+) -> Result<AABB, BoundsError> {
     if min_x.is_nan()
         || min_y.is_nan()
         || max_x.is_nan()
@@ -312,7 +317,7 @@ pub enum EdgeBoundsError {
 }
 
 /// Validates that a point has finite coordinates
-fn validate_point(point: &Point) -> Result<(), EdgeBoundsError> {
+const fn validate_point(point: &Point) -> Result<(), EdgeBoundsError> {
     if point.x.is_nan() || point.x.is_infinite() || point.y.is_nan() || point.y.is_infinite() {
         return Err(EdgeBoundsError::InvalidNodePosition);
     }
@@ -340,19 +345,22 @@ fn line_bounds(start: Point, end: Point, stroke_width: f64) -> AABB {
 
 /// Calculate the control point for a curved (Bezier) edge
 fn bezier_control_point(source: Point, target: Point) -> Point {
-    let mid_x = (source.x + target.x) / 2.0;
-    let mid_y = (source.y + target.y) / 2.0;
+    let mid_x = f64::midpoint(source.x, target.x);
+    let mid_y = f64::midpoint(source.y, target.y);
     // Offset perpendicular to the line
     let dx = target.x - source.x;
     let dy = target.y - source.y;
-    let dist = (dx * dx + dy * dy).sqrt();
+    let dist = dx.hypot(dy);
     if dist < 1e-10 {
         // Points are coincident, use offset
         return Point::new(mid_x + 30.0, mid_y + 30.0);
     }
     // Perpendicular offset (rotate 90 degrees)
     let offset = 0.3 * dist;
-    Point::new(mid_x - dy / dist * offset, mid_y + dx / dist * offset)
+    Point::new(
+        (dy / dist).mul_add(-offset, mid_x),
+        (dx / dist).mul_add(offset, mid_y),
+    )
 }
 
 /// Calculate tight bounds for a quadratic Bezier curve
@@ -372,28 +380,28 @@ fn quadratic_bezier_tight_bounds(
     let mut max_y = start.y.max(end.y);
 
     // Check x extrema using derivative
-    let denom_x = start.x - 2.0 * control.x + end.x;
+    let denom_x = 2.0f64.mul_add(-control.x, start.x) + end.x;
     if denom_x.abs() > tolerance {
         let t = (start.x - control.x) / denom_x;
         if (0.0..=1.0).contains(&t) {
             let t2 = t * t;
             let mt = 1.0 - t;
             let mt2 = mt * mt;
-            let px = mt2 * start.x + 2.0 * mt * t * control.x + t2 * end.x;
+            let px = t2.mul_add(end.x, mt2 * start.x + 2.0 * mt * t * control.x);
             min_x = min_x.min(px);
             max_x = max_x.max(px);
         }
     }
 
     // Check y extrema using derivative
-    let denom_y = start.y - 2.0 * control.y + end.y;
+    let denom_y = 2.0f64.mul_add(-control.y, start.y) + end.y;
     if denom_y.abs() > tolerance {
         let t = (start.y - control.y) / denom_y;
         if (0.0..=1.0).contains(&t) {
             let t2 = t * t;
             let mt = 1.0 - t;
             let mt2 = mt * mt;
-            let py = mt2 * start.y + 2.0 * mt * t * control.y + t2 * end.y;
+            let py = t2.mul_add(end.y, mt2 * start.y + 2.0 * mt * t * control.y);
             min_y = min_y.min(py);
             max_y = max_y.max(py);
         }
@@ -426,7 +434,7 @@ pub fn edge_bounds(
 
     // Build the path points: source -> bend_points -> target
     let mut all_points = vec![source];
-    all_points.extend(bend_points.iter().cloned());
+    all_points.extend(bend_points.iter().copied());
     all_points.push(target);
 
     // Calculate bounds for each segment

@@ -1,6 +1,4 @@
-use super::super::*;
 use super::*;
-use crate::geometry::tests::geo_034_quadratic_bezier::*;
 #[allow(unused_imports)]
 use proptest::prelude::*;
 #[allow(unused_imports)]
@@ -39,14 +37,20 @@ impl CubicBezier {
         let mt2 = mt * mt;
         let mt3 = mt2 * mt;
         Point::new(
-            mt3 * self.start.x
-                + 3.0 * mt2 * t * self.control1.x
-                + 3.0 * mt * t2 * self.control2.x
-                + t3 * self.end.x,
-            mt3 * self.start.y
-                + 3.0 * mt2 * t * self.control1.y
-                + 3.0 * mt * t2 * self.control2.y
-                + t3 * self.end.y,
+            t3.mul_add(
+                self.end.x,
+                (3.0 * mt * t2).mul_add(
+                    self.control2.x,
+                    mt3 * self.start.x + 3.0 * mt2 * t * self.control1.x,
+                ),
+            ),
+            t3.mul_add(
+                self.end.y,
+                (3.0 * mt * t2).mul_add(
+                    self.control2.y,
+                    mt3 * self.start.y + 3.0 * mt2 * t * self.control1.y,
+                ),
+            ),
         )
     }
 

@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 #[must_use]
@@ -53,7 +51,7 @@ pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
 
 #[cfg(test)]
 mod proptests {
-    use super::*;
+
     use proptest::prelude::*;
 
     proptest! {

@@ -1,8 +1,3 @@
-use super::*;
-use crate::models::document::NodeId;
-use crate::ui::grid::GridSize;
-use im::HashMap;
-
 #[cfg(kani)]
 #[kani::proof]
 #[test]

@@ -1,6 +1,6 @@
 //! Types for subgraph operations
 //!
-//! Contains core domain types: BoundingBox, Padding, PositiveScale, and Error types.
+//! Contains core domain types: `BoundingBox`, Padding, `PositiveScale`, and Error types.
 
 use crate::models::document::{DocumentData, LockState, NodeId, OrderedFloat, Point};
 use thiserror::Error;

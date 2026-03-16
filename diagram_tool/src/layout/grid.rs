@@ -1,12 +1,10 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![allow(clippy::cast_possible_truncation)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, LockState, NodeId, OrderedFloat};
+use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 
@@ -27,7 +25,8 @@ impl CellSize {
             Err(GridError::InvalidCellSize(val))
         }
     }
-    pub fn get(self) -> f64 {
+    #[must_use]
+    pub const fn get(self) -> f64 {
         self.0
     }
 }
@@ -171,10 +170,8 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
 
 #[cfg(test)]
 mod tests {
-    use super::{accumulated_parent_delta, calculate_grid_layout};
-    use crate::models::document::{
-        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
-    };
+
+    use crate::models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
     use im::HashMap;
 
     fn node(x: f64, y: f64, locked: bool, parent: Option<NodeId>) -> Node {

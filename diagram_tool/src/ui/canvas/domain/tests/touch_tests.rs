@@ -1,8 +1,3 @@
-use crate::ui::canvas::domain::{
-    parse_event, reduce, CanvasError, CanvasEvent, CanvasPoint, CanvasVector, DragState,
-    InteractionState, RawEvent, SelectionMode,
-};
-
 // Happy Path Tests
 #[cfg(kani)]
 #[kani::proof]

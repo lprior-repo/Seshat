@@ -1,9 +1,7 @@
-use super::*;
 use crate::models::document::{
     DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
 use im::HashMap;
-use serde_json::json;
 
 fn setup_doc() -> DiagramDocument {
     let mut nodes = HashMap::new();
@@ -12,7 +10,7 @@ fn setup_doc() -> DiagramDocument {
 
     let n1_node = Node {
         kind: NodeKind::Node,
-        icon: "".to_string(),
+        icon: String::new(),
         label: "n1".to_string(),
         x: OrderedFloat(0.0),
         y: OrderedFloat(0.0),
@@ -32,7 +30,7 @@ fn setup_doc() -> DiagramDocument {
 
     let n2_node = Node {
         kind: NodeKind::Node,
-        icon: "".to_string(),
+        icon: String::new(),
         label: "n2".to_string(),
         x: OrderedFloat(200.0),
         y: OrderedFloat(200.0),
@@ -50,8 +48,8 @@ fn setup_doc() -> DiagramDocument {
         collapsed: None,
     };
 
-    nodes.insert(n1.clone(), n1_node);
-    nodes.insert(n2.clone(), n2_node);
+    nodes.insert(n1, n1_node);
+    nodes.insert(n2, n2_node);
 
     let doc_data = DocumentData {
         nodes,

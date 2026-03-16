@@ -147,7 +147,9 @@ fn validate_working_directory(cwd: Option<&PathBuf>) -> Result<(), NuError> {
 /// Validates that timeout is greater than zero.
 fn validate_timeout(timeout_ms: u64) -> Result<(), NuError> {
     if timeout_ms == 0 {
-        Err(NuError::IoError("timeout must be greater than zero".to_string()))
+        Err(NuError::IoError(
+            "timeout must be greater than zero".to_string(),
+        ))
     } else {
         Ok(())
     }
@@ -381,10 +383,7 @@ mod tests {
         let mut runner = NuRunner::new().with_cwd("/nonexistent/path/that/does/not/exist");
 
         let result = runner.execute("echo test").await;
-        assert!(matches!(
-            result,
-            Err(NuError::WorkingDirectoryNotFound(_))
-        ));
+        assert!(matches!(result, Err(NuError::WorkingDirectoryNotFound(_))));
     }
 
     /// TC-003: Q1 - Simple echo command returns output
@@ -518,10 +517,7 @@ mod tests {
     async fn test_violates_p2_nonexistent_cwd_returns_working_directory_not_found() {
         let mut runner = NuRunner::new().with_cwd("/nonexistent/path");
         let result = runner.execute("echo test").await;
-        assert!(matches!(
-            result,
-            Err(NuError::WorkingDirectoryNotFound(_))
-        ));
+        assert!(matches!(result, Err(NuError::WorkingDirectoryNotFound(_))));
     }
 
     /// Contract violation test: Q2 exit code

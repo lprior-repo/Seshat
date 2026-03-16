@@ -6,9 +6,6 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
-use super::*;
-use crate::geometry::AABB;
-
 const TOLERANCE: f64 = 1e-9;
 
 // ============================================================================
@@ -567,7 +564,7 @@ fn cam_012_viewport_state_default_persistence() {
 
 #[cfg(test)]
 mod property_tests {
-    use super::*;
+
     use proptest::prelude::*;
 
     proptest! {

@@ -1,4 +1,3 @@
-use super::super::*;
 use super::*;
 #[allow(unused_imports)]
 use proptest::prelude::*;
@@ -37,16 +36,16 @@ pub fn fit_to_viewport(
         };
     }
 
-    let available_width = viewport_width - 2.0 * padding;
-    let available_height = viewport_height - 2.0 * padding;
+    let available_width = 2.0f64.mul_add(-padding, viewport_width);
+    let available_height = 2.0f64.mul_add(-padding, viewport_height);
 
     let scale_x = available_width / content_width;
     let scale_y = available_height / content_height;
     let scale = scale_x.min(scale_y);
 
     let content_center = content.center();
-    let offset_x = viewport_width / 2.0 - content_center.x * scale;
-    let offset_y = viewport_height / 2.0 - content_center.y * scale;
+    let offset_x = content_center.x.mul_add(-scale, viewport_width / 2.0);
+    let offset_y = content_center.y.mul_add(-scale, viewport_height / 2.0);
 
     FitTransform {
         scale,

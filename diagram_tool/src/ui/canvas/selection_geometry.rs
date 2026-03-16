@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::document::{DiagramDocument, NodeId};
@@ -49,10 +47,8 @@ pub(super) fn selection_bounds(doc: &DiagramDocument) -> Option<(f64, f64, f64, 
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::{selected_node_ids, selection_bounds};
-    use crate::models::document::{
-        DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
-    };
+
+    use crate::models::document::{LockState, Node, NodeKind, NodeStyle, OrderedFloat};
 
     fn make_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
         make_node_with_lock(kind, x, y, w, h, false)

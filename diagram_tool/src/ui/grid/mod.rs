@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use serde::{de::Error as _, Deserialize, Serialize};
@@ -23,7 +21,7 @@ pub enum SnapMode {
 }
 
 impl SnapMode {
-    /// Converts a bool to SnapMode for backward compatibility with existing callers.
+    /// Converts a bool to `SnapMode` for backward compatibility with existing callers.
     #[must_use]
     pub const fn from_bool(enabled: bool) -> Self {
         if enabled {
@@ -41,7 +39,7 @@ impl SnapMode {
 }
 
 /// Errors for contract-compliant grid snapping API.
-#[derive(Debug, Clone, PartialEq, Error)]
+#[derive(Debug, Clone, PartialEq, Eq, Error)]
 pub enum GridSnapError {
     /// Raw x coordinate is non-finite (NaN or Infinity)
     #[error("x coordinate must be finite, got non-finite value")]
@@ -69,7 +67,7 @@ pub enum GridSnapError {
 // Contract Functions: snap_node_coordinate, snap_node_coordinates, try_grid_size
 // =============================================================================
 
-/// Validates and creates a GridSize from raw f64, returning contract error on failure.
+/// Validates and creates a `GridSize` from raw f64, returning contract error on failure.
 ///
 /// # Errors
 /// Returns `GridSnapError::InvalidGridSize` if the grid size is invalid.
@@ -308,7 +306,6 @@ pub fn snap_point(point: (f64, f64), snap_to_grid: bool, grid_size: GridSize) ->
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]
@@ -643,7 +640,7 @@ mod tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod proptests {
-    use super::*;
+
     use proptest::prelude::*;
 
     prop_compose! {
@@ -741,7 +738,6 @@ mod proptests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod snp_snapping_tests {
-    use super::*;
 
     // SNP-1: Snap threshold engages at correct distance
     // Tests that values within the snap threshold of a grid line snap correctly

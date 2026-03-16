@@ -1,4 +1,3 @@
-use super::super::*;
 use super::*;
 #[allow(unused_imports)]
 use proptest::prelude::*;
@@ -16,8 +15,8 @@ pub fn zoom_at_pointer(view_center: Point, pointer: Point, factor: f64) -> Point
     // The pointer stays fixed; the view center moves relative to it
     // new_view_center = pointer + (view_center - pointer) * factor
     Point::new(
-        pointer.x + (view_center.x - pointer.x) * factor,
-        pointer.y + (view_center.y - pointer.y) * factor,
+        (view_center.x - pointer.x).mul_add(factor, pointer.x),
+        (view_center.y - pointer.y).mul_add(factor, pointer.y),
     )
 }
 

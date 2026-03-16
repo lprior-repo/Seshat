@@ -5,6 +5,7 @@ use std::io::{BufReader, BufWriter, Read, Write};
 use std::path::Path;
 
 #[derive(thiserror::Error, Debug)]
+#[allow(clippy::enum_variant_names)]
 pub enum Error {
     #[error("IO Error: {0}")]
     IoError(#[from] std::io::Error),
@@ -49,13 +50,13 @@ pub fn save_document(path: &Path, doc: &DiagramDocument) -> Result<(), Error> {
     serde_json::to_writer(&mut writer, &json_value)
         .map_err(|e| Error::SerializationFailed(e.to_string()))?;
     // Explicitly flush to catch IO errors (e.g., disk full)
-    writer.flush().map_err(|e| Error::IoError(e))?;
+    writer.flush().map_err(Error::IoError)?;
 
     Ok(())
 }
 
 /// Validates that all float fields in the document are finite.
-/// Must be called BEFORE serde_json::to_value because that function converts NaN to null.
+/// Must be called BEFORE `serde_json::to_value` because that function converts NaN to null.
 fn validate_document_floats(doc: &DiagramDocument) -> Result<(), Error> {
     // Check editor state
     if !doc.editor_state.camera_x.0.is_finite() {
@@ -72,26 +73,22 @@ fn validate_document_floats(doc: &DiagramDocument) -> Result<(), Error> {
     for (node_id, node) in &doc.document.nodes {
         if !node.x.0.is_finite() {
             return Err(Error::SerializationFailed(format!(
-                "Non-finite x in node {}",
-                node_id
+                "Non-finite x in node {node_id}"
             )));
         }
         if !node.y.0.is_finite() {
             return Err(Error::SerializationFailed(format!(
-                "Non-finite y in node {}",
-                node_id
+                "Non-finite y in node {node_id}"
             )));
         }
         if !node.width.0.is_finite() {
             return Err(Error::SerializationFailed(format!(
-                "Non-finite width in node {}",
-                node_id
+                "Non-finite width in node {node_id}"
             )));
         }
         if !node.height.0.is_finite() {
             return Err(Error::SerializationFailed(format!(
-                "Non-finite height in node {}",
-                node_id
+                "Non-finite height in node {node_id}"
             )));
         }
     }
@@ -100,21 +97,18 @@ fn validate_document_floats(doc: &DiagramDocument) -> Result<(), Error> {
     for (edge_id, edge) in &doc.document.edges {
         if !edge.label_offset_t.0.is_finite() {
             return Err(Error::SerializationFailed(format!(
-                "Non-finite label_offset_t in edge {}",
-                edge_id
+                "Non-finite label_offset_t in edge {edge_id}"
             )));
         }
         if !edge.thickness.0.is_finite() {
             return Err(Error::SerializationFailed(format!(
-                "Non-finite thickness in edge {}",
-                edge_id
+                "Non-finite thickness in edge {edge_id}"
             )));
         }
         if let Some(ref fs) = &edge.font_size {
             if !fs.0.is_finite() {
                 return Err(Error::SerializationFailed(format!(
-                    "Non-finite font_size in edge {}",
-                    edge_id
+                    "Non-finite font_size in edge {edge_id}"
                 )));
             }
         }
@@ -144,7 +138,7 @@ fn check_depth(value: &Value, depth: usize) -> Result<(), Error> {
             }
         }
         Value::Number(num) => {
-            if num.as_f64().map(|f| !f.is_finite()).unwrap_or(false) {
+            if num.as_f64().is_some_and(|f| !f.is_finite()) {
                 return Err(Error::SerializationFailed("Non-finite float".into()));
             }
         }
@@ -292,7 +286,7 @@ pub fn migrate_schema(raw_json: serde_json::Value) -> Result<serde_json::Value, 
 
     let version = obj
         .get("version")
-        .and_then(|v| v.as_f64())
+        .and_then(serde_json::Value::as_f64)
         .ok_or_else(|| Error::MissingField("version".into()))?;
 
     if version < 0.9 {
@@ -326,12 +320,14 @@ pub struct DiagramBuilder {
 }
 
 impl DiagramBuilder {
+    #[must_use]
     pub fn new() -> Self {
         Self {
             doc: DiagramDocument::default(),
         }
     }
 
+    #[must_use]
     pub fn build(self) -> DiagramDocument {
         self.doc
     }

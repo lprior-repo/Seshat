@@ -27,7 +27,7 @@ mod tests {
     ) -> (NodeId, Node) {
         let node_id = NodeId::new(id.to_string());
         let node = Node {
-            kind: kind.clone(),
+            kind,
             icon: String::new(),
             label: String::new(),
             x: OrderedFloat::new_unchecked(x),
@@ -56,7 +56,7 @@ mod tests {
         let (n2_id, n2) = create_test_node("N2", NodeKind::Node, 20.0, 20.0, 10.0, 10.0, None);
 
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
         state.nodes.insert(n2_id.clone(), n2);
 
         // Before adding N2
@@ -116,7 +116,7 @@ mod tests {
         let (s1_id, s1) = create_test_node("S1", NodeKind::Subgraph, 0.0, 0.0, 10.0, 10.0, None);
         let (n1_id, n1) = create_test_node("N1", NodeKind::Node, 0.0, 0.0, 10.0, 10.0, Some("S1"));
 
-        state.nodes.insert(s1_id.clone(), s1);
+        state.nodes.insert(s1_id, s1);
         state.nodes.insert(n1_id.clone(), n1);
 
         remove_node_from_subgraph(&n1_id, &mut state).unwrap();
@@ -195,7 +195,7 @@ mod tests {
             create_test_node("N2", NodeKind::Node, 100.0, 100.0, 10.0, 10.0, Some("S1"));
 
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
         state.nodes.insert(n2_id.clone(), n2);
 
         // Before: large bounds due to N2
@@ -237,8 +237,8 @@ mod tests {
 
         let mut state = state;
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
-        state.nodes.insert(n2_id.clone(), n2);
+        state.nodes.insert(n1_id, n1);
+        state.nodes.insert(n2_id, n2);
 
         let bounds = calculate_subgraph_bounds(&s1_id, &state).unwrap();
 
@@ -258,7 +258,7 @@ mod tests {
         let (n2_id, n2) = create_test_node("N2", NodeKind::Node, 100.0, 100.0, 10.0, 10.0, None);
 
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
         state.nodes.insert(n2_id.clone(), n2);
 
         add_node_to_subgraph(&n2_id, &s1_id, &mut state).unwrap();
@@ -280,7 +280,7 @@ mod tests {
         let (n2_id, n2) = create_test_node("N2", NodeKind::Node, 100.0, 100.0, 10.0, 10.0, None);
 
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
         state.nodes.insert(n2_id.clone(), n2);
 
         add_node_to_subgraph(&n2_id, &s1_id, &mut state).unwrap();
@@ -299,7 +299,7 @@ mod tests {
             create_test_node("N2", NodeKind::Node, 100.0, 100.0, 10.0, 10.0, Some("S1"));
 
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
         state.nodes.insert(n2_id.clone(), n2);
 
         remove_node_from_subgraph(&n2_id, &mut state).unwrap();
@@ -322,8 +322,8 @@ mod tests {
         let (n2_id, n2) =
             create_test_node("N2", NodeKind::Node, 100.0, 100.0, 10.0, 10.0, Some("S1"));
 
-        state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(s1_id, s1);
+        state.nodes.insert(n1_id, n1);
         state.nodes.insert(n2_id.clone(), n2);
 
         remove_node_from_subgraph(&n2_id, &mut state).unwrap();
@@ -433,7 +433,7 @@ mod tests {
 
         let mut state = state;
         state.nodes.insert(s1_id.clone(), s1);
-        state.nodes.insert(n1_id.clone(), n1);
+        state.nodes.insert(n1_id, n1);
 
         let bounds = calculate_subgraph_bounds(&s1_id, &state).unwrap();
 
@@ -486,12 +486,7 @@ mod tests {
         state.nodes.insert(n2_id.clone(), n2);
         state.nodes.insert(n3_id.clone(), n3);
 
-        batch_add_nodes_to_subgraph(
-            &[n1_id.clone(), n2_id.clone(), n3_id.clone()],
-            &s1_id,
-            &mut state,
-        )
-        .unwrap();
+        batch_add_nodes_to_subgraph(&[n1_id, n2_id, n3_id], &s1_id, &mut state).unwrap();
 
         let s1 = state.nodes.get(&s1_id).unwrap();
         // All three children: N1 at 0-10, N2 at 20-30, N3 at 40-50

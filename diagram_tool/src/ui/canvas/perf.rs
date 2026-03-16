@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::document::OrderedFloat;
@@ -574,7 +572,6 @@ mod proptests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod inp_mobile_touch_tests {
-    use super::*;
 
     // INP-2: Pinch does not create shape
     // A two-finger pinch gesture should zoom the canvas, not create shapes or subgraphs.
@@ -787,8 +784,6 @@ mod inp_mobile_touch_tests {
 #[cfg(test)]
 mod inp_mobile_touch_proptests {
     use proptest::prelude::*;
-
-    use super::*;
 
     proptest! {
         #![proptest_config(ProptestConfig::with_cases(64))]

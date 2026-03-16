@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, LockState, NodeId, NodeKind, OrderedFloat};
+use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
 
 /// Axis for alignment operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]

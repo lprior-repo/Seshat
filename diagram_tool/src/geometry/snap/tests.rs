@@ -428,31 +428,31 @@ mod tests {
     #[cfg(test)]
     #[test]
     fn story_snap_applies_when_distance_within_threshold() {
-        assert_eq!(should_snap(5.0, 10.0), true);
+        assert!(should_snap(5.0, 10.0));
     }
 
     #[cfg(test)]
     #[test]
     fn story_snap_applies_when_exactly_at_threshold() {
-        assert_eq!(should_snap(10.0, 10.0), true);
+        assert!(should_snap(10.0, 10.0));
     }
 
     #[cfg(test)]
     #[test]
     fn story_snap_does_not_apply_when_outside_threshold() {
-        assert_eq!(should_snap(11.0, 10.0), false);
+        assert!(!should_snap(11.0, 10.0));
     }
 
     #[cfg(test)]
     #[test]
     fn story_zero_threshold_only_snaps_exact_matches() {
-        assert_eq!(should_snap(0.0, 0.0), true);
+        assert!(should_snap(0.0, 0.0));
     }
 
     #[cfg(test)]
     #[test]
     fn story_negative_threshold_treated_as_zero() {
-        assert_eq!(should_snap(5.0, -1.0), false);
+        assert!(!should_snap(5.0, -1.0));
     }
 
     #[cfg(test)]
@@ -460,7 +460,7 @@ mod tests {
     fn story_infinity_threshold_always_snaps() {
         // f64::INFINITY.is_finite() returns false, so should_snap returns false
         // This is the correct behavior - infinite threshold is not a valid input
-        assert_eq!(should_snap(1000.0, f64::INFINITY), false);
+        assert!(!should_snap(1000.0, f64::INFINITY));
     }
 
     // ========== SNP-007: Snap During Drag ==========
@@ -655,7 +655,7 @@ mod tests {
     #[test]
     fn story_query_snap_state() {
         let state = SnapState::new(SnapMode::Enabled, 10.0, 5.0);
-        assert_eq!(is_snap_enabled(state), true);
+        assert!(is_snap_enabled(state));
     }
 
     #[cfg(test)]
@@ -675,13 +675,13 @@ mod tests {
         let mut state = SnapState::default();
 
         state = state.toggle();
-        assert_eq!(state.is_enabled(), true);
+        assert!(state.is_enabled());
 
         state = state.toggle();
-        assert_eq!(state.is_enabled(), false);
+        assert!(!state.is_enabled());
 
         state = state.toggle();
-        assert_eq!(state.is_enabled(), true);
+        assert!(state.is_enabled());
     }
 
     // SNP-006: Smart Alignment SnapResult

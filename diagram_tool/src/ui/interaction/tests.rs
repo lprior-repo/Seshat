@@ -1,9 +1,7 @@
-use super::*;
 use crate::models::document::{
-    DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, Node, NodeId, NodeKind,
-    NodeStyle, OrderedFloat, Revision,
+    DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, NodeStyle,
+    OrderedFloat, Revision,
 };
-use crate::ui::grid::GridSize;
 use im::{HashMap, HashSet};
 
 fn node(x: f64, y: f64, w: f64, h: f64) -> Node {

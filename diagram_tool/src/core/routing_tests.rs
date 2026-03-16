@@ -54,12 +54,7 @@ fn test_allows_self_loop_at_routing_layer() {
     doc.document.nodes.insert(s1.clone(), test_node());
 
     // Self-loop should now succeed at routing layer
-    let result = create_edge(
-        &mut doc,
-        s1.clone(),
-        s1.clone(),
-        EdgeId::new("e1".to_string()),
-    );
+    let result = create_edge(&mut doc, s1.clone(), s1, EdgeId::new("e1".to_string()));
     assert!(
         result.is_ok(),
         "Self-loop should be allowed at routing layer"
@@ -88,25 +83,13 @@ fn test_adding_edge_that_creates_cycle_returns_cycle_detected_error() {
         EdgeId::new("e1".to_string()),
     )
     .unwrap();
-    create_edge(
-        &mut doc,
-        n2.clone(),
-        n3.clone(),
-        EdgeId::new("e2".to_string()),
-    )
-    .unwrap();
+    create_edge(&mut doc, n2, n3.clone(), EdgeId::new("e2".to_string())).unwrap();
 
-    let err = create_edge(
-        &mut doc,
-        n3.clone(),
-        n1.clone(),
-        EdgeId::new("e3".to_string()),
-    )
-    .unwrap_err();
+    let err = create_edge(&mut doc, n3, n1, EdgeId::new("e3".to_string())).unwrap_err();
     assert_eq!(err, RoutingError::CycleDetected);
 }
 
-use crate::models::document::{Edge, Point};
+use crate::models::document::Edge;
 use crate::models::port::PortAnchor;
 
 fn create_edge_obj(source: &str, target: &str) -> Edge {

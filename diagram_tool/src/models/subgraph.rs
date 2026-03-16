@@ -5,7 +5,7 @@
 //!
 //! ## Module Structure
 //!
-//! - [`types`](types) - Core types: BoundingBox, Padding, PositiveScale, Error
+//! - [`types`](types) - Core types: `BoundingBox`, Padding, `PositiveScale`, Error
 //! - [`reparenting`](reparenting) - Node parent setting and cycle detection
 //! - [`grouping`](grouping) - Create/ungroup subgraphs
 //! - [`collapse`](collapse) - Toggle collapsed state
@@ -15,8 +15,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 pub mod collapse;

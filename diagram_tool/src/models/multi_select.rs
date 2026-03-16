@@ -30,10 +30,12 @@ impl<T> NonEmptyVec<T> {
         }
     }
 
+    #[must_use]
     pub fn into_inner(self) -> Vec<T> {
         self.0
     }
 
+    #[must_use]
     pub fn as_slice(&self) -> &[T] {
         &self.0
     }
@@ -62,12 +64,12 @@ pub struct Rect {
     pub height: f64,
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ClipboardData {
     pub nodes: Vec<Node>,
 }
 
-/// Helper: Convert f64 to OrderedFloat safely
+/// Helper: Convert f64 to `OrderedFloat` safely
 fn to_ordered(value: f64) -> Result<OrderedFloat, Error> {
     OrderedFloat::new(value).map_err(|_| Error::InvalidScale)
 }
@@ -137,8 +139,8 @@ fn scale_node(node: &mut Node, centroid: Vector2D, scale_factor: f64) -> Result<
     let rel_x = node.x.0 - centroid.x;
     let rel_y = node.y.0 - centroid.y;
 
-    node.x = to_ordered(centroid.x + rel_x * scale_factor)?;
-    node.y = to_ordered(centroid.y + rel_y * scale_factor)?;
+    node.x = to_ordered(rel_x.mul_add(scale_factor, centroid.x))?;
+    node.y = to_ordered(rel_y.mul_add(scale_factor, centroid.y))?;
     node.width = to_ordered(node.width.0 * scale_factor)?;
     node.height = to_ordered(node.height.0 * scale_factor)?;
 
@@ -171,8 +173,8 @@ pub fn move_selection(
 
     for id in selection_slice {
         if let Some(node) = doc.document.nodes.get_mut(id) {
-            node.x = node.x + delta_x.clone();
-            node.y = node.y + delta_y.clone();
+            node.x = node.x + delta_x;
+            node.y = node.y + delta_y;
         } else {
             return Err(Error::NodeNotFound);
         }
@@ -194,8 +196,8 @@ fn apply_resize_scale(
     let rel_x = node.x.0 - min_x;
     let rel_y = node.y.0 - min_y;
 
-    node.x = to_ordered(new_x + rel_x * scale_x)?;
-    node.y = to_ordered(new_y + rel_y * scale_y)?;
+    node.x = to_ordered(rel_x.mul_add(scale_x, new_x))?;
+    node.y = to_ordered(rel_y.mul_add(scale_y, new_y))?;
     node.width = to_ordered(node.width.0 * scale_x)?;
     node.height = to_ordered(node.height.0 * scale_y)?;
 
@@ -324,8 +326,8 @@ pub fn paste_selection(
     let mut new_ids = Vec::new();
     for node in &clipboard.nodes {
         let mut new_node = node.clone();
-        new_node.x = new_node.x + offset_x.clone();
-        new_node.y = new_node.y + offset_y.clone();
+        new_node.x = new_node.x + offset_x;
+        new_node.y = new_node.y + offset_y;
         let new_id = generate_unique_id(&node.label, doc);
         let id = add_node_to_doc(doc, new_node, new_id);
         new_ids.push(id);
@@ -342,8 +344,8 @@ pub fn compute_selection_centroid(
     let (min_x, min_y, max_x, max_y) = compute_bounding_box(doc, selection)?;
 
     Ok(Vector2D {
-        x: (min_x + max_x) / 2.0,
-        y: (min_y + max_y) / 2.0,
+        x: f64::midpoint(min_x, max_x),
+        y: f64::midpoint(min_y, max_y),
     })
 }
 

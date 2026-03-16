@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 // usize→f64 precision loss is unavoidable for coordinate maths; allow it explicitly.
 #![allow(clippy::cast_precision_loss)]

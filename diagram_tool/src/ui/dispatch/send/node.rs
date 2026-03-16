@@ -8,14 +8,14 @@ use crate::models::envelope::EventEnvelope;
 use super::super::create::{create_node_delete_envelope, create_node_resize_envelope};
 use super::super::errors::{DispatchError, DispatchResult};
 
-/// Dispatch NodeAdd operation to db_tx
+/// Dispatch `NodeAdd` operation to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available.
+/// Returns `Ok(DispatchResult)` if `db_tx` is available.
 /// The caller is responsible for local document update after dispatch.
-/// Note: Dioxus Coroutine::send() returns () - we fire and forget.
+/// Note: Dioxus `Coroutine::send()` returns () - we fire and forget.
 ///
 /// # Errors
-/// Returns `Err(DispatchError::WalDisconnected)` if db_tx is None.
+/// Returns `Err(DispatchError::WalDisconnected)` if `db_tx` is None.
 pub fn dispatch_node_add(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     envelope: EventEnvelope,
@@ -32,13 +32,13 @@ pub fn dispatch_node_add(
     }
 }
 
-/// Dispatch multiple NodeDelete operations to db_tx
+/// Dispatch multiple `NodeDelete` operations to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available and selection is non-empty.
+/// Returns `Ok(DispatchResult)` if `db_tx` is available and selection is non-empty.
 ///
 /// # Errors
-/// Returns `Err(DispatchError::NoSelection)` if node_ids is empty.
-/// Returns `Err(DispatchError::WalDisconnected)` if db_tx is None.
+/// Returns `Err(DispatchError::NoSelection)` if `node_ids` is empty.
+/// Returns `Err(DispatchError::WalDisconnected)` if `db_tx` is None.
 pub fn dispatch_node_delete_batch(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     node_ids: &[String],
@@ -62,7 +62,7 @@ pub fn dispatch_node_delete_batch(
     }
 }
 
-/// Dispatch NodeDelete for a single node
+/// Dispatch `NodeDelete` for a single node
 pub fn dispatch_node_delete(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     node_id: &str,
@@ -90,7 +90,8 @@ pub struct ResizeBounds {
 impl ResizeBounds {
     /// Create new resize bounds
     #[must_use]
-    pub fn new(
+    #[allow(clippy::too_many_arguments)]
+    pub const fn new(
         id: NodeId,
         original_x: f64,
         original_y: f64,
@@ -115,12 +116,12 @@ impl ResizeBounds {
     }
 }
 
-/// Dispatch NodeResize operation to db_tx
+/// Dispatch `NodeResize` operation to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available.
+/// Returns `Ok(DispatchResult)` if `db_tx` is available.
 ///
 /// # Errors
-/// Returns `Err(DispatchError::WalDisconnected)` if db_tx is None.
+/// Returns `Err(DispatchError::WalDisconnected)` if `db_tx` is None.
 /// Returns `Err(DispatchError::InvalidCoordinates)` if coordinates or dimensions are invalid.
 pub fn dispatch_node_resize(
     db_tx: &Option<Coroutine<EventEnvelope>>,

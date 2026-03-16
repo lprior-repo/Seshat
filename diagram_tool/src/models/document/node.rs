@@ -1,8 +1,7 @@
 //! Node-related domain types for diagram documents.
 //!
-//! Contains Node, NodeKind, LockState, NodeStyle, FontWeight, and related types.
+//! Contains Node, `NodeKind`, `LockState`, `NodeStyle`, `FontWeight`, and related types.
 
-use crate::ui::grid::GridSize;
 use im::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -52,14 +51,14 @@ pub enum LockState {
 impl LockState {
     /// Returns true if the node is in a locked state
     #[must_use]
-    pub fn is_locked(&self) -> bool {
-        matches!(self, LockState::Locked)
+    pub const fn is_locked(&self) -> bool {
+        matches!(self, Self::Locked)
     }
 
     /// Returns true if the node can be moved/edited
     /// Subgraphs are always movable regardless of lock state
     #[must_use]
-    pub fn is_movable(&self, node_kind: &NodeKind) -> bool {
+    pub const fn is_movable(&self, node_kind: &NodeKind) -> bool {
         match node_kind {
             NodeKind::Subgraph => true,
             _ => !self.is_locked(),
@@ -67,12 +66,12 @@ impl LockState {
     }
 }
 
-/// Custom serializer to serialize LockState as "locked": bool for backwards compatibility
+/// Custom serializer to serialize `LockState` as "locked": bool for backwards compatibility
 mod lock_state_serde {
     use super::LockState;
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-    /// Serializes LockState to JSON as "locked": bool
+    /// Serializes `LockState` to JSON as "locked": bool
     pub fn serialize<S>(lock_state: &LockState, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -140,7 +139,7 @@ impl Node {
     /// Returns `Error::NodeNotFound` if a parent node is missing from the provided map.
     pub fn get_world_coords(
         &self,
-        nodes: &std::collections::HashMap<super::types::NodeId, Node>,
+        nodes: &std::collections::HashMap<super::types::NodeId, Self>,
     ) -> Result<(f64, f64), String> {
         let mut world_x = self.x.0;
         let mut world_y = self.y.0;
@@ -149,7 +148,7 @@ impl Node {
         while let Some(parent_id) = current_parent_id {
             let parent_node = nodes
                 .get(parent_id)
-                .ok_or_else(|| format!("Parent node not found: {}", parent_id))?;
+                .ok_or_else(|| format!("Parent node not found: {parent_id}"))?;
             world_x += parent_node.x.0;
             world_y += parent_node.y.0;
             current_parent_id = parent_node.parent.as_ref();
@@ -164,7 +163,7 @@ impl Node {
     /// Returns `Error` if a parent node is missing from the provided map.
     pub fn get_world_coords_im(
         &self,
-        nodes: &im::HashMap<super::types::NodeId, Node>,
+        nodes: &im::HashMap<super::types::NodeId, Self>,
     ) -> Result<(f64, f64), String> {
         let mut world_x = self.x.0;
         let mut world_y = self.y.0;
@@ -173,7 +172,7 @@ impl Node {
         while let Some(parent_id) = current_parent_id {
             let parent_node = nodes
                 .get(parent_id)
-                .ok_or_else(|| format!("Parent node not found: {}", parent_id))?;
+                .ok_or_else(|| format!("Parent node not found: {parent_id}"))?;
             world_x += parent_node.x.0;
             world_y += parent_node.y.0;
             current_parent_id = parent_node.parent.as_ref();
@@ -186,7 +185,7 @@ impl Node {
 #[cfg(test)]
 mod tests {
     use super::super::types::OrderedFloat;
-    use super::{FontWeight, LockState, Node, NodeKind, NodeStyle};
+    use super::{LockState, Node, NodeKind};
 
     fn create_test_node(id: &str) -> Node {
         Node {

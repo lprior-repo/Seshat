@@ -1,4 +1,4 @@
-//! NewType definitions for diagram document identifiers and values.
+//! `NewType` definitions for diagram document identifiers and values.
 //!
 //! These types eliminate primitive obsession by wrapping raw values in semantic types
 //! with validation.
@@ -126,7 +126,7 @@ impl Timestamp {
     /// # Errors
     ///
     /// Returns an error if `timestamp` is negative.
-    pub fn try_new(timestamp: i64) -> Result<Self, &'static str> {
+    pub const fn try_new(timestamp: i64) -> Result<Self, &'static str> {
         if timestamp < 0 {
             Err("Timestamp cannot be negative")
         } else {

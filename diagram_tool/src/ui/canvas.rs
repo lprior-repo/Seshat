@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![allow(clippy::cast_precision_loss)]
 #![forbid(unsafe_code)]
 
@@ -15,14 +13,16 @@ mod perf;
 mod selection_geometry;
 
 // Re-export functions for testing
-pub use canvas_view::{touch_handle_hit_test, touch_hit_radius, TOUCH_HIT_RADIUS_PX, RESIZE_HANDLE_SIZE_PX};
+pub use canvas_view::{
+    touch_handle_hit_test, touch_hit_radius, RESIZE_HANDLE_SIZE_PX, TOUCH_HIT_RADIUS_PX,
+};
 
+use crate::geometry::hit_test_margin;
 use base64::{engine::general_purpose, Engine as _};
 use canvas_view::{
     edge_label_position, edge_marker_ref, edge_path, edge_preview_overlay, find_edge_at,
     rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay, SCREEN_HIT_MARGIN,
 };
-use crate::geometry::hit_test_margin;
 use dioxus::{
     html::{geometry::WheelDelta, input_data::MouseButton},
     prelude::*,
@@ -48,8 +48,8 @@ use crate::{
     models::{
         dag::validate_dag,
         document::{
-            ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
-            OrderedFloat,
+            ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
+            NodeStyle, OrderedFloat,
         },
     },
     ui::{
@@ -213,7 +213,8 @@ fn ordered_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
 
 fn find_node_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<NodeId> {
     let zoom = doc.editor_state.zoom.0;
-    let hit_margin_world = hit_test_margin::screen_to_world_margin(SCREEN_HIT_MARGIN, zoom).unwrap_or(5.0);
+    let hit_margin_world =
+        hit_test_margin::screen_to_world_margin(SCREEN_HIT_MARGIN, zoom).unwrap_or(5.0);
 
     ordered_node_ids(doc)
         .iter()
@@ -487,7 +488,8 @@ fn flush_pending_pointer_update(
                                                 std::time::SystemTime::now()
                                                     .duration_since(std::time::UNIX_EPOCH)
                                                     .unwrap_or_default()
-                                                    .as_millis() as i64
+                                                    .as_millis()
+                                                    as i64
                                             }
                                         },
                                     });
@@ -688,7 +690,7 @@ pub fn Canvas() -> Element {
     let mut pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
     let mut multi_touch_active = use_signal(|| false);
     let mut captured_pointer = use_signal(|| Option::<u32>::None);
-    let mut active_pointers = use_signal(|| HashSet::<u32>::new());
+    let mut active_pointers = use_signal(HashSet::<u32>::new);
     let mut canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let ordered_node_cache = use_memo(move || {
         let doc = doc_signal.read();
@@ -831,10 +833,14 @@ pub fn Canvas() -> Element {
                                 match mode {
                                     InteractionMode::DraggingSelection { .. }
                                     | InteractionMode::ResizingSelection { .. } => {
-                                        let db_tx = db_tx.clone();
+                                        let db_tx = db_tx;
                                         let mut doc_clone = doc_signal.read().clone();
                                         interaction_mode.with_mut(|mode_mut| {
-                                            let did_change = finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
+                                            let did_change = finalize_motion_release(
+                                                mode_mut,
+                                                &mut doc_clone,
+                                                &db_tx,
+                                            );
                                             if did_change {
                                                 doc_signal.set(doc_clone);
                                             }
@@ -1025,7 +1031,7 @@ pub fn Canvas() -> Element {
             ",
         );
 
-        let db_tx = db_tx.clone();
+        let db_tx = db_tx;
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 if json["type"].as_str() == Some("raf") {
@@ -1035,7 +1041,7 @@ pub fn Canvas() -> Element {
                             history_signal,
                             interaction_mode,
                             pending_pointer_sample,
-                            db_tx.clone(),
+                            db_tx,
                         );
                     }
                     if pending_wheel_sample.read().is_some() {
@@ -1272,7 +1278,7 @@ pub fn Canvas() -> Element {
 
                     // Extract pointerId for multi-pointer tracking (MUL-009)
                     let pointer_id = json["pointerId"].as_u64().map_or(0_u32, |v| v as u32);
-                    
+
                     // Multi-pointer state isolation: only capture if no captured pointer exists
                     // This ensures dragging doesn't corrupt state when another pointer is down
                     if captured_pointer.read().is_some() {
@@ -1283,7 +1289,7 @@ pub fn Canvas() -> Element {
                         });
                         continue;
                     }
-                    
+
                     // No captured pointer - this is the primary pointer, capture it
                     captured_pointer.set(Some(pointer_id));
                     active_pointers.with_mut(|set| {
@@ -1298,7 +1304,7 @@ pub fn Canvas() -> Element {
                             editing_node,
                             editing_edge,
                             edit_value,
-                            db_tx.clone(),
+                            db_tx,
                         )
                         .ok();
                     }
@@ -1350,15 +1356,17 @@ pub fn Canvas() -> Element {
                                         &d.editor_state.selected_items,
                                         &node_id.to_string(),
                                     )
+                                } else if d
+                                    .editor_state
+                                    .selected_items
+                                    .contains(&node_id.to_string())
+                                {
+                                    d.editor_state.selected_items.clone()
                                 } else {
-                                    if d.editor_state.selected_items.contains(&node_id.to_string()) {
-                                        d.editor_state.selected_items.clone()
-                                    } else {
-                                        select_single(node_id.to_string())
-                                    }
+                                    select_single(node_id.to_string())
                                 };
                             });
-                            
+
                             let current_doc = doc_signal.read().clone();
                             let mut original_positions = HashMap::new();
                             for id_str in &current_doc.editor_state.selected_items {
@@ -1367,7 +1375,7 @@ pub fn Canvas() -> Element {
                                     original_positions.insert(id, (node.x.0, node.y.0));
                                 }
                             }
-                            
+
                             interaction_mode.set(InteractionMode::DraggingSelection {
                                 anchor_canvas: pos,
                                 anchor_client: (local_x, local_y),
@@ -1462,7 +1470,7 @@ pub fn Canvas() -> Element {
                 // Extract pointerId for multi-pointer filtering (MUL-009)
                 let move_pointer_id = json["pointerId"].as_u64().map_or(0_u32, |v| v as u32);
                 let captured_id = *captured_pointer.read();
-                
+
                 // Only process pointermove if it matches the captured pointer
                 // This ensures dragging doesn't corrupt state when another pointer is moving
                 if event_type == "pointermove" {
@@ -1510,19 +1518,21 @@ pub fn Canvas() -> Element {
                 if event_type == "pointerup" {
                     // Extract pointerId for multi-pointer tracking (MUL-009)
                     let up_pointer_id = json["pointerId"].as_u64().map_or(0_u32, |v| v as u32);
-                    
+
                     // Multi-pointer state isolation: handle captured pointer release
-                    let was_captured = captured_pointer.read().map_or(false, |id| id == up_pointer_id);
+                    let was_captured = captured_pointer
+                        .read()
+                        .is_some_and(|id| id == up_pointer_id);
                     if was_captured {
                         // This was the captured pointer - clear it and reset mode
                         captured_pointer.set(None);
                     }
-                    
+
                     // Always remove from active_pointers
                     active_pointers.with_mut(|set| {
                         set.remove(&up_pointer_id);
                     });
-                    
+
                     // If this was the captured pointer, reset interaction mode
                     if was_captured {
                         interaction_mode.set(InteractionMode::Select);
@@ -1533,7 +1543,7 @@ pub fn Canvas() -> Element {
                         history_signal,
                         interaction_mode,
                         pending_pointer_sample,
-                        db_tx.clone(),
+                        db_tx,
                     );
 
                     interaction_mode.with_mut(|mode| match mode {
@@ -1592,13 +1602,13 @@ pub fn Canvas() -> Element {
                                     // If db_tx is unavailable, continue with local mutation for UX
                                     let doc_for_dispatch = doc_signal.read();
                                     let dispatch_result = handle_edge_drawing_complete(
-                                        db_tx.clone(),
+                                        db_tx,
                                         &doc_for_dispatch,
                                         from_node.to_string(),
                                         target_id.to_string(),
                                     );
                                     if let Err(e) = dispatch_result {
-                                        eprintln!("EdgeConnect dispatch failed: {:?}, continuing with local mutation", e);
+                                        eprintln!("EdgeConnect dispatch failed: {e:?}, continuing with local mutation");
                                     }
                                     drop(doc_for_dispatch);
 
@@ -1640,7 +1650,7 @@ pub fn Canvas() -> Element {
                             let doc_now = doc_signal.read().clone();
                             let snap = doc_now.editor_state.snap_to_grid;
                             let grid = doc_now.editor_state.grid_size;
-                            if let Some((x, y, w, h)) =
+                            if let Some((x, y, _w, _h)) =
                                 subgraph_release_bounds(*start, *current, snap, grid)
                             {
                                 let id = NodeId::new(Uuid::new_v4().to_string());
@@ -1683,7 +1693,6 @@ pub fn Canvas() -> Element {
                         }
                         InteractionMode::ResizingSelection { .. }
                         | InteractionMode::DraggingSelection { .. } => {
-                            let db_tx = db_tx.clone();
                             let mut doc_clone = doc_signal.read().clone();
                             let did_change = finalize_motion_release(mode, &mut doc_clone, &db_tx);
                             if did_change {
@@ -1956,7 +1965,7 @@ pub fn Canvas() -> Element {
                         editing_node,
                         editing_edge,
                         edit_value,
-                        db_tx.clone(),
+                        db_tx,
                     )
                     .ok();
                 }
@@ -2002,15 +2011,13 @@ pub fn Canvas() -> Element {
                         doc_signal.with_mut(|d| {
                             d.editor_state.selected_items = if additive {
                                 toggle_selection(&d.editor_state.selected_items, &node_id.to_string())
+                            } else if d.editor_state.selected_items.contains(&node_id.to_string()) {
+                                d.editor_state.selected_items.clone()
                             } else {
-                                if d.editor_state.selected_items.contains(&node_id.to_string()) {
-                                    d.editor_state.selected_items.clone()
-                                } else {
-                                    select_single(node_id.to_string())
-                                }
+                                select_single(node_id.to_string())
                             };
                         });
-                        
+
                         let current_doc = doc_signal.read().clone();
                         let mut original_positions = HashMap::new();
                         for id_str in &current_doc.editor_state.selected_items {
@@ -2019,7 +2026,7 @@ pub fn Canvas() -> Element {
                                 original_positions.insert(id, (node.x.0, node.y.0));
                             }
                         }
-                        
+
                         interaction_mode.set(InteractionMode::DraggingSelection {
                             anchor_canvas: pos,
                             anchor_client: (local_x, local_y),
@@ -2167,7 +2174,7 @@ pub fn Canvas() -> Element {
                     history_signal,
                     interaction_mode,
                     pending_pointer_sample,
-                    db_tx.clone(),
+                    db_tx,
                 );
                 interaction_mode.with_mut(|mode| {
                     match mode {
@@ -2302,7 +2309,6 @@ pub fn Canvas() -> Element {
                         }
                         InteractionMode::ResizingSelection { .. }
                         | InteractionMode::DraggingSelection { .. } => {
-                            let db_tx = db_tx.clone();
                             let mut doc_clone = doc_signal.read().clone();
                             let did_change = finalize_motion_release(mode, &mut doc_clone, &db_tx);
                             if did_change {
@@ -2493,7 +2499,7 @@ pub fn Canvas() -> Element {
                                                         editing_node,
                                                         editing_edge,
                                                         edit_value,
-                                                        db_tx.clone(),
+                                                        db_tx,
                                                     )
                                                     .ok();
                                                 },
@@ -2505,7 +2511,7 @@ pub fn Canvas() -> Element {
                                                             editing_node,
                                                             editing_edge,
                                                             edit_value,
-                                                            db_tx.clone(),
+                                                            db_tx,
                                                         )
                                                         .ok();
                                                     } else if evt.key() == Key::Escape {
@@ -2727,7 +2733,7 @@ pub fn Canvas() -> Element {
                                     history_signal,
                                     interaction_mode,
                                     pending_pointer_sample,
-                                    db_tx.clone(),
+                                    db_tx,
                                 );
                                 let mode = interaction_mode.read().clone();
                                 match mode {
@@ -2793,7 +2799,7 @@ pub fn Canvas() -> Element {
                                     }
                                     InteractionMode::DraggingSelection { .. }
                                     | InteractionMode::ResizingSelection { .. } => {
-                                        let db_tx = db_tx.clone();
+                                        let db_tx = db_tx;
                                         let mut doc_clone = doc_signal.read().clone();
                                         interaction_mode.with_mut(|mode_mut| {
                                             let did_change = finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
@@ -2829,7 +2835,7 @@ pub fn Canvas() -> Element {
                                                 editing_node,
                                                 editing_edge,
                                                 edit_value,
-                                                db_tx.clone(),
+                                                db_tx,
                                             )
                                             .ok();
                                         },
@@ -2841,7 +2847,7 @@ pub fn Canvas() -> Element {
                                                     editing_node,
                                                     editing_edge,
                                                     edit_value,
-                                                    db_tx.clone(),
+                                                    db_tx,
                                                 )
                                                 .ok();
                                             } else if evt.key() == Key::Escape {
@@ -2886,7 +2892,7 @@ pub fn Canvas() -> Element {
                                                 editing_node,
                                                 editing_edge,
                                                 edit_value,
-                                                db_tx.clone(),
+                                                db_tx,
                                             )
                                             .ok();
                                         },
@@ -2898,7 +2904,7 @@ pub fn Canvas() -> Element {
                                                     editing_node,
                                                     editing_edge,
                                                     edit_value,
-                                                    db_tx.clone(),
+                                                    db_tx,
                                                 )
                                                 .ok();
                                             } else if evt.key() == Key::Escape {
@@ -3022,7 +3028,7 @@ pub fn Canvas() -> Element {
                                                 editing_node,
                                                 editing_edge,
                                                 edit_value,
-                                                db_tx.clone(),
+                                                db_tx,
                                             )
                                             .ok();
                                         },
@@ -3034,7 +3040,7 @@ pub fn Canvas() -> Element {
                                                     editing_node,
                                                     editing_edge,
                                                     edit_value,
-                                                    db_tx.clone(),
+                                                    db_tx,
                                                 )
                                                 .ok();
                                             } else if evt.key() == Key::Escape {
@@ -3236,13 +3242,9 @@ pub fn Canvas() -> Element {
 
 #[cfg(test)]
 mod tests {
-use im::{HashMap, HashSet};
+    use im::HashMap;
 
-    use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};
-    use crate::{
-        models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat},
-        ui::grid::GridSize,
-    };
+    use crate::models::document::{LockState, Node, NodeKind, NodeStyle, OrderedFloat};
 
     fn node_at(x: f64, y: f64) -> Node {
         Node {

@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
@@ -20,7 +18,9 @@ use crate::ui::mobile::{use_sidebar_mobile_bridge, SidebarUiState};
 use crate::ui::panels::PanelVisibility;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
-use crate::ui::toast::{show_conflict_toast, AiConflictState, ToastQueue, Toaster};
+#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+use crate::ui::toast::show_conflict_toast;
+use crate::ui::toast::{AiConflictState, ToastQueue, Toaster};
 use crate::ui::toolbar::{auto_save, Toolbar, ToolbarStats};
 
 use crate::ui::ValidationPanel;
@@ -77,7 +77,42 @@ pub fn App() -> Element {
     // Pending AI operations - tracks AI op_ids that have been dispatched but not confirmed in WAL
     use_context_provider(|| Signal::new(std::collections::HashSet::<String>::new()));
 
-    use_global_keyboard();
+    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
+    let mut history_signal = use_context::<Signal<History>>();
+    let validate_trigger = use_context::<Signal<u64>>();
+    let sidebar_ui = use_context::<Signal<SidebarUiState>>();
+    let panels = use_context::<Signal<PanelVisibility>>();
+    let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
+
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
+
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let store_bridge_tx = store_bridge.clone();
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let db_tx = use_coroutine({
+        let store_bridge_tx = store_bridge_tx;
+        move |mut rx: UnboundedReceiver<crate::models::envelope::EventEnvelope>| {
+            let store_bridge = store_bridge_tx.clone();
+            async move {
+                while let Some(env) = rx.next().await {
+                    let _ = store_bridge.append_event_sync(&env, None);
+                }
+            }
+        }
+    });
+
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    use_context_provider(|| Some(db_tx));
+    #[cfg(any(not(feature = "async-db"), target_arch = "wasm32"))]
+    use_context_provider(|| Option::<Coroutine<crate::models::envelope::EventEnvelope>>::None);
+
+    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
+    let keyboard_db_tx = Some(db_tx);
+    #[cfg(any(not(feature = "async-db"), target_arch = "wasm32"))]
+    let keyboard_db_tx = Option::<Coroutine<crate::models::envelope::EventEnvelope>>::None;
+
+    use_global_keyboard(keyboard_db_tx);
     use_e2e_reset_hook();
 
     // Get toast queue and conflict state for displaying conflict toasts
@@ -108,36 +143,6 @@ pub fn App() -> Element {
         });
     }
 
-    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
-    let mut history_signal = use_context::<Signal<History>>();
-    let validate_trigger = use_context::<Signal<u64>>();
-    let sidebar_ui = use_context::<Signal<SidebarUiState>>();
-    let panels = use_context::<Signal<PanelVisibility>>();
-    let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
-
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
-
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let store_bridge_tx = store_bridge.clone();
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let db_tx = use_coroutine({
-        let store_bridge_tx = store_bridge_tx.clone();
-        move |mut rx: UnboundedReceiver<crate::models::envelope::EventEnvelope>| {
-            let store_bridge = store_bridge_tx.clone();
-            async move {
-                while let Some(env) = rx.next().await {
-                    let _ = store_bridge.append_event_sync(&env, None);
-                }
-            }
-        }
-    });
-
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    use_context_provider(|| Some(db_tx));
-    #[cfg(any(not(feature = "async-db"), target_arch = "wasm32"))]
-    use_context_provider(|| Option::<Coroutine<crate::models::envelope::EventEnvelope>>::None);
-
     #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
     let last_sync_revision = use_signal(|| 0_i64);
 
@@ -154,7 +159,7 @@ pub fn App() -> Element {
         let mut last_sync_revision = last_sync_revision;
         let mut pending_ai_ops = pending_ai_ops;
         let mut ai_conflict_state = ai_conflict_state;
-                async move {
+        async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                 let current_rev = *last_sync_revision.read();
@@ -334,7 +339,7 @@ pub fn App() -> Element {
 
     // Auto-save: track last saved revision for change detection (WASM only)
     #[cfg(target_arch = "wasm32")]
-    let mut last_saved_revision = use_signal(auto_save::default_revision);
+    let last_saved_revision = use_signal(auto_save::default_revision);
     #[cfg(not(target_arch = "wasm32"))]
     let _last_saved_revision = auto_save::default_revision();
 

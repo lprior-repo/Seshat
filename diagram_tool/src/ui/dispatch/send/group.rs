@@ -7,7 +7,7 @@ use crate::models::envelope::EventEnvelope;
 use super::super::create::{create_group_envelope, create_ungroup_envelope};
 use super::super::errors::{DispatchError, DispatchResult};
 
-/// Dispatch Group operation to db_tx
+/// Dispatch Group operation to `db_tx`
 pub fn dispatch_group(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     group_id: &str,
@@ -34,12 +34,12 @@ pub fn dispatch_group(
     }
 }
 
-/// Dispatch Ungroup operation to db_tx
+/// Dispatch Ungroup operation to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available.
+/// Returns `Ok(DispatchResult)` if `db_tx` is available.
 ///
 /// # Errors
-/// Returns `Err(DispatchError::WalDisconnected)` if db_tx is None.
+/// Returns `Err(DispatchError::WalDisconnected)` if `db_tx` is None.
 pub fn dispatch_ungroup(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     group_id: &str,

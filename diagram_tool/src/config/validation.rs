@@ -59,7 +59,6 @@ const MAX_DATABASE_PATH_LENGTH: usize = 4096;
 
 #[cfg(test)]
 mod tests {
-    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]

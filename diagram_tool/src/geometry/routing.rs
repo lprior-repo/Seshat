@@ -153,8 +153,7 @@ pub fn compute_orthogonal_route_avoiding(
 // Legacy wrapper for protected tests (GEO-017) and EDG-031
 #[must_use]
 pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
-    compute_orthogonal_route(from, to)
-        .map_or_else(|_| OrthogonalRoute { points: vec![] }, |route| route)
+    compute_orthogonal_route(from, to).unwrap_or_else(|_| OrthogonalRoute { points: vec![] })
 }
 
 #[cfg(kani)]

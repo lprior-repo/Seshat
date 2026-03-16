@@ -42,12 +42,12 @@ pub fn validate_edge_connect_preconditions(
     Ok(())
 }
 
-/// Dispatch EdgeConnect operation to db_tx
+/// Dispatch `EdgeConnect` operation to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available and edge passes DAG validation.
+/// Returns `Ok(DispatchResult)` if `db_tx` is available and edge passes DAG validation.
 ///
 /// # Errors
-/// Returns `Err(DispatchError::ChannelMissing)` if db_tx is None (seshat-088).
+/// Returns `Err(DispatchError::ChannelMissing)` if `db_tx` is None (seshat-088).
 /// Returns `Err(DispatchError::SelfLoop)` if source equals target.
 /// Returns `Err(DispatchError::CycleDetected)` if edge would create a DAG cycle.
 /// Returns `Err(DispatchError::EdgeNotFound)` if preconditions P1-P4 fail.
@@ -92,14 +92,14 @@ pub fn dispatch_edge_connect(
     }
 }
 
-/// Dispatch EdgeDisconnect operation to db_tx
+/// Dispatch `EdgeDisconnect` operation to `db_tx`
 ///
-/// Returns `Ok(DispatchResult)` if db_tx is available and preconditions are met.
+/// Returns `Ok(DispatchResult)` if `db_tx` is available and preconditions are met.
 ///
 /// # Errors
-/// Returns `Err(DispatchError::NoTx)` if db_tx is None (seshat-5zs).
-/// Returns `Err(DispatchError::NotSelected)` if edge_id is not in selected_items.
-/// Returns `Err(DispatchError::EdgeNotFound)` if edge_id does not exist in document.edges.
+/// Returns `Err(DispatchError::NoTx)` if `db_tx` is None (seshat-5zs).
+/// Returns `Err(DispatchError::NotSelected)` if `edge_id` is not in `selected_items`.
+/// Returns `Err(DispatchError::EdgeNotFound)` if `edge_id` does not exist in document.edges.
 pub fn dispatch_edge_disconnect(
     db_tx: &Option<Coroutine<EventEnvelope>>,
     doc: &DiagramDocument,
@@ -133,7 +133,7 @@ pub fn dispatch_edge_disconnect(
 /// Handle edge drawing completion from UI
 ///
 /// This is the UI-facing function that gets called when a user completes drawing an edge.
-/// It validates preconditions, generates an edge ID, and dispatches the EdgeConnect operation.
+/// It validates preconditions, generates an edge ID, and dispatches the `EdgeConnect` operation.
 ///
 /// # Arguments
 /// * `db_tx` - The coroutine channel for sending events to the WAL
@@ -146,15 +146,15 @@ pub fn dispatch_edge_disconnect(
 /// * `Err(DispatchError)` - If any precondition fails
 ///
 /// # Preconditions (P1-P4)
-/// * P1: source_id must be non-empty -> EdgeNotFound
-/// * P2: target_id must be non-empty -> EdgeNotFound
-/// * P3: source_id must exist in doc.nodes -> EdgeNotFound
-/// * P4: target_id must exist in doc.nodes -> EdgeNotFound
+/// * P1: `source_id` must be non-empty -> `EdgeNotFound`
+/// * P2: `target_id` must be non-empty -> `EdgeNotFound`
+/// * P3: `source_id` must exist in doc.nodes -> `EdgeNotFound`
+/// * P4: `target_id` must exist in doc.nodes -> `EdgeNotFound`
 ///
 /// # Postconditions (Q1-Q3)
-/// * Q1: Returns Ok(DispatchResult) with EdgeConnect operation
-/// * Q2: Operation dispatched to db_tx channel
-/// * Q3: source/target NodeIds properly mapped
+/// * Q1: Returns Ok(DispatchResult) with `EdgeConnect` operation
+/// * Q2: Operation dispatched to `db_tx` channel
+/// * Q3: source/target `NodeIds` properly mapped
 pub fn handle_edge_drawing_complete(
     db_tx: Option<Coroutine<EventEnvelope>>,
     doc: &DiagramDocument,

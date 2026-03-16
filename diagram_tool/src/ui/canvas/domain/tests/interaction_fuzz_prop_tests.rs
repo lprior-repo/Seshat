@@ -1,7 +1,4 @@
-use crate::ui::canvas::domain::{
-    parse_event, transition, CanvasEvent, CanvasPoint, CanvasVector, InteractionState, RawEvent,
-    SelectionMode,
-};
+use crate::ui::canvas::domain::{CanvasEvent, CanvasPoint, CanvasVector, SelectionMode};
 use proptest::prelude::*;
 
 proptest! {

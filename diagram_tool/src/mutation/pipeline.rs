@@ -1,8 +1,6 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
-#![warn(clippy::pedantic)]
-#![warn(clippy::nursery)]
 #![forbid(unsafe_code)]
 
 use crate::models::document::DiagramDocument;
@@ -100,12 +98,11 @@ where
 
 #[cfg(test)]
 mod tests {
-    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
+
     use crate::models::document::{
-        ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind,
-        NodeStyle, OrderedFloat,
+        ArrowType, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
+        OrderedFloat,
     };
-    use crate::mutation::error::MutationError;
 
     use im::HashMap;
 
@@ -250,13 +247,9 @@ mod tests {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod proptests {
-    use super::{run_mutation, run_mutation_with_policy, RevisionPolicy};
-    use crate::models::document::{
-        ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, EditorState, LockState,
-        Node, NodeId, NodeKind, NodeStyle, OrderedFloat, Point, Revision,
-    };
-    use crate::ui::grid::GridSize;
-    use im::HashMap;
+
+    use crate::models::document::Revision;
+
     use proptest::prelude::*;
 
     fn make_revision(increments: u64) -> Revision {
