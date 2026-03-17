@@ -1,0 +1,77 @@
+{
+  "duplicate_structs": [
+    {
+      "name": "GridSize",
+      "locations": [
+        "/home/lewis/src/seshat/diagram_tool/src/ui/grid/size.rs:9",
+        "/home/lewis/src/seshat/diagram_tool/src/geometry/snap/grid_snap.rs:15",
+        "/home/lewis/src/seshat/diagram_models/src/document/editor.rs:10"
+      ],
+      "description": "Three similar but slightly different implementations with different validation constraints and derive macros",
+      "recommendation": "Consolidate into single definition in diagram_models with generics/validation parameters, or create a shared validated-newtype pattern"
+    }
+  ],
+  "async_sync_duplicates": [
+    {
+      "sync_type": "AppendResult",
+      "async_type": "AsyncAppendResult",
+      "locations": [
+        "/home/lewis/src/seshat/diagram_tool/src/store/sqlx/models.rs:20",
+        "/home/lewis/src/seshat/diagram_tool/src/store_async/types.rs:54"
+      ],
+      "description": "Identical struct fields (revision, op_id, timestamp). Only difference is naming prefix.",
+      "recommendation": "Use single generic type: AppendResult<T> where T=SyncMode or AsyncMode, or use type alias"
+    },
+    {
+      "sync_type": "BatchAppendResult",
+      "async_type": "AsyncBatchAppendResult",
+      "locations": [
+        "/home/lewis/src/seshat/diagram_tool/src/store/sqlx/models.rs:28",
+        "/home/lewis/src/seshat/diagram_tool/src/store_async/types.rs:61"
+      ],
+      "description": "Identical struct fields (start_revision, end_revision, count, op_ids, last_timestamp). Only difference is naming prefix.",
+      "recommendation": "Use single generic type with type parameter or type alias"
+    }
+  ],
+  "similar_newtype_ids": [
+    {
+      "name": "NodeId",
+      "locations": [
+        "/home/lewis/src/seshat/diagram_tool/src/geometry/snap/mod_types.rs:5",
+        "/home/lewis/src/seshat/diagram_models/src/document/types.rs:11"
+      ]
+    },
+    {
+      "name": "DiagramId",
+      "location": "/home/lewis/src/seshat/diagram_tool/src/locking/manager.rs:21"
+    },
+    {
+      "name": "ValidOperationId",
+      "location": "/home/lewis/src/seshat/diagram_tool/src/store/types.rs:63"
+    },
+    {
+      "name": "EdgeId",
+      "location": "/home/lewis/src/seshat/diagram_models/src/document/types.rs:46"
+    },
+    {
+      "name": "AuthorId",
+      "location": "/home/lewis/src/seshat/diagram_models/src/document/types.rs:81"
+    }
+  ],
+  "repeated_derive_patterns": {
+    "most_common": [
+      "#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]",
+      "#[derive(Debug, Clone, Copy, PartialEq, Eq)]",
+      "#[derive(Debug, Clone, PartialEq)]",
+      "#[derive(Clone, Copy, Debug, PartialEq, Eq)]"
+    ],
+    "count": 330,
+    "recommendation": "Consider creating a macro or using prelude pattern to reduce repetition"
+  },
+  "duplicate_codebase": {
+    "path": "/home/lewis/src/seshat/src/seshat-da5",
+    "description": "Entire directory appears to be a backup/duplicate of the main codebase with similar structure",
+    "recommendation": "Remove if not needed or consolidate with main codebase"
+  },
+  "total_duplicates_found": 9
+}

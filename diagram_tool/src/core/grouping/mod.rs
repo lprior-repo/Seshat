@@ -1,15 +1,16 @@
-pub mod calculations;
-pub mod validation;
+//! Centralized grouping module - re-exports from diagram_models
+//!
+//! This module re-exports all grouping operations from diagram_models::grouping
+//! to maintain API compatibility with existing code.
 
-pub use calculations::{
-    calculate_edge_cleanup, calculate_ungroup, compute_padded_bounds, create_subgraph_node,
-    find_lca,
+pub use diagram_models::grouping::{
+    calculate_bounding_box, calculate_edge_cleanup, calculate_ungroup, compute_padded_bounds,
+    create_subgraph_node, find_lca, validate_coordinates, validate_selection, GroupingError,
+    ValidatedSelection,
 };
+
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
 use std::collections::BTreeSet;
-pub use validation::validate_selection;
-pub use validation::GroupingError;
-use validation::ValidatedSelection;
 
 /// Action: Group selected items in a `DiagramDocument`
 pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(), GroupingError> {
@@ -33,7 +34,7 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(
         .min()
         .unwrap_or(0);
 
-    let parent_id = calculations::find_lca(&doc.document.nodes, selected);
+    let parent_id = find_lca(&doc.document.nodes, selected);
 
     let group_node = create_subgraph_node(
         padded_min_x,

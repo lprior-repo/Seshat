@@ -6,6 +6,7 @@
 use crate::document::{NodeId, OrderedFloat};
 use crate::projection::ops::node_bounds::propagate_bounds_to_ancestors;
 use crate::projection::types::{DiagramProjection, ProjectionError};
+use crate::projection::validation::validate_dimensions;
 
 /// Apply node resize operation
 pub fn apply_node_resize(
@@ -32,20 +33,6 @@ pub fn apply_node_resize(
         nodes: new_nodes,
         ..state
     })
-}
-
-fn validate_dimensions(width: f64, height: f64) -> Result<(), ProjectionError> {
-    if !width.is_finite() || width <= 0.0 {
-        return Err(ProjectionError::InvalidDimensions(format!(
-            "invalid width: {width}"
-        )));
-    }
-    if !height.is_finite() || height <= 0.0 {
-        return Err(ProjectionError::InvalidDimensions(format!(
-            "invalid height: {height}"
-        )));
-    }
-    Ok(())
 }
 
 #[cfg(test)]

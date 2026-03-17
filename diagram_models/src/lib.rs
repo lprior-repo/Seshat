@@ -45,6 +45,10 @@ pub mod selection;
 #[cfg(test)]
 pub mod multi_select_tests;
 
+// Test utilities - shared builders for test data
+#[cfg(test)]
+pub mod test_utils;
+
 pub mod subgraph;
 
 pub mod selection_ops;

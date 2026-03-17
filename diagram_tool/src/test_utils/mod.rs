@@ -22,11 +22,13 @@
 #![forbid(unsafe_code)]
 #![allow(unused_imports, clippy::unnecessary_lazy_evaluations)]
 
+pub mod builders;
 pub mod fixtures;
 pub mod generators;
 pub mod harness;
 pub mod types;
 
+pub use builders::*;
 pub use fixtures::*;
 pub use generators::*;
 pub use harness::*;

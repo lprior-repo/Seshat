@@ -14,7 +14,7 @@ pub mod types;
 
 // Re-export for convenience
 pub use edge::{ArrowType, Edge, EdgeStyle, Point};
-pub use editor::{EditorState, EditorTheme};
+pub use editor::{EditorState, EditorTheme, GridError, GridSize, NonFiniteKind};
 pub use error::DocumentError;
 pub use node::{FontWeight, LockState, Node, NodeKind, NodeStyle};
 pub use types::{AuthorId, EdgeId, NodeId, OrderedFloat, OrderedFloatError, Revision, Timestamp};

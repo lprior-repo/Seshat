@@ -1,58 +1,14 @@
 #[cfg(test)]
 mod marquee_tests {
     use crate::document::{
-        DiagramDocument, DocumentError, LockState, Node, NodeId, NodeKind, OrderedFloat, ValidRect,
+        DiagramDocument, DocumentError, LockState, NodeId, NodeKind, OrderedFloat, ValidRect,
     };
     use crate::spatial_index::MarqueeMode;
+    use crate::test_utils::builders::{
+        setup_doc_with_nodes, test_node, test_node_builder, DocBuilder,
+    };
     use im::HashMap;
     use serde_json::json;
-
-    fn setup_doc_with_nodes() -> DiagramDocument {
-        let mut doc = DiagramDocument::default();
-
-        // N1: (10, 10) 50x50. Enclosed by (0,0)->(100,100)
-        let n1 = create_node("n1", 10.0, 10.0, 50.0, 50.0);
-
-        // N2: (80, 80) 50x50. Intersects with (0,0)->(100,100)
-        let n2 = create_node("n2", 80.0, 80.0, 50.0, 50.0);
-
-        // N3: (150, 150) 50x50. Outside (0,0)->(100,100)
-        let n3 = create_node("n3", 150.0, 150.0, 50.0, 50.0);
-
-        // N4: (10, 10) 50x50, but rotated 45 degrees, so it goes slightly outside (10..60) -> approx (-5..75)
-        let mut n4 = create_node("n4", 10.0, 10.0, 50.0, 50.0);
-        n4.metadata
-            .insert("rotation".to_string(), json!(std::f64::consts::FRAC_PI_4));
-
-        doc.document.nodes.insert(NodeId::new("n1".to_string()), n1);
-        doc.document.nodes.insert(NodeId::new("n2".to_string()), n2);
-        doc.document.nodes.insert(NodeId::new("n3".to_string()), n3);
-        doc.document.nodes.insert(NodeId::new("n4".to_string()), n4);
-
-        doc
-    }
-
-    fn create_node(id: &str, x: f64, y: f64, w: f64, h: f64) -> Node {
-        Node {
-            kind: NodeKind::Node,
-            icon: String::new(),
-            label: id.to_string(),
-            x: OrderedFloat::new_unchecked(x),
-            y: OrderedFloat::new_unchecked(y),
-            width: OrderedFloat::new_unchecked(w),
-            height: OrderedFloat::new_unchecked(h),
-            font_size: None,
-            font_weight: None,
-            lock_state: LockState::Unlocked,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        }
-    }
 
     #[test]
     fn should_reject_marquee_with_negative_dimensions() {
@@ -116,7 +72,7 @@ mod marquee_tests {
             let y = (f64::from(i) * 10.0) / 1000.0 * 10.0;
             doc.document
                 .nodes
-                .insert(NodeId::new(id.clone()), create_node(&id, x, y, 5.0, 5.0));
+                .insert(NodeId::new(id.clone()), test_node(x, y, 5.0, 5.0));
         }
 
         let bounds = ValidRect::new(0.0, 0.0, 100.0, 100.0).unwrap();

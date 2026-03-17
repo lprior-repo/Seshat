@@ -10,13 +10,8 @@
 //!
 //! This ensures users can reliably click near node edges whether zoomed in or out.
 
+use super::{MAX_ZOOM, MIN_ZOOM};
 use crate::geometry::{Point, Rectangle};
-
-/// Minimum allowed zoom level (matches `viewport::MIN_ZOOM`)
-pub const MIN_ZOOM: f64 = 0.1;
-
-/// Maximum allowed zoom level (matches `viewport::MAX_ZOOM`)
-pub const MAX_ZOOM: f64 = 4.0;
 
 /// Errors that can occur during hit test operations
 #[derive(Debug, Clone, Copy, PartialEq, thiserror::Error)]

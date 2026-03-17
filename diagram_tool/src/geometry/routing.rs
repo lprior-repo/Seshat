@@ -1,13 +1,28 @@
 use crate::geometry::primitives::{Point, AABB};
 
+/// Unified routing errors covering both geometric pathfinding and graph topology.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
 pub enum RoutingError {
+    // Geometric path errors
     #[error("Invalid endpoint: NaN or Infinity")]
     InvalidEndpoint,
     #[error("Degenerate route: start and end points are identical")]
     DegenerateRoute,
     #[error("Endpoint inside obstacle")]
     EndpointInsideObstacle,
+    // Graph topology errors
+    #[error("Source node {0} not found")]
+    SourceNotFound(String),
+    #[error("Target node {0} not found")]
+    TargetNotFound(String),
+    #[error("Cannot create self-loop on node {0}")]
+    SelfLoop(String),
+    #[error("Adding this edge creates a cycle")]
+    CycleDetected,
+    #[error("Invalid coordinates on node {0}")]
+    InvalidNodeCoordinates(String),
+    #[error("Duplicate edge {0}")]
+    DuplicateEdge(String),
 }
 
 #[derive(Debug, Clone, PartialEq)]

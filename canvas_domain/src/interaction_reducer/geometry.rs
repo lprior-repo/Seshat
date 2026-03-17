@@ -5,18 +5,11 @@
 
 use std::collections::HashSet;
 
+// Re-export from canvas_math
+pub use canvas_math::{safe_zoom, within};
+
 use crate::selection_geometry::selected_node_ids;
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
-
-pub fn safe_zoom(zoom: f64) -> Option<f64> {
-    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
-}
-
-pub fn within(subgraph: (f64, f64, f64, f64), node: (f64, f64, f64, f64)) -> bool {
-    let (sx, sy, sw, sh) = subgraph;
-    let (nx, ny, nw, nh) = node;
-    nx >= sx && ny >= sy && nx + nw <= sx + sw && ny + nh <= sy + sh
-}
 
 pub fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
     let selected = selected_node_ids(doc);

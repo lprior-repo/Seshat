@@ -3,51 +3,8 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-#[must_use]
-pub fn safe_zoom(zoom: f64) -> Option<f64> {
-    (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
-}
-
-#[must_use]
-pub fn within(subgraph: (f64, f64, f64, f64), node: (f64, f64, f64, f64)) -> bool {
-    let (sx, sy, sw, sh) = subgraph;
-    let (nx, ny, nw, nh) = node;
-    nx >= sx && ny >= sy && nx + nw <= sx + sw && ny + nh <= sy + sh
-}
-
-#[must_use]
-pub fn screen_to_canvas(
-    client_x: f64,
-    client_y: f64,
-    camera_x: f64,
-    camera_y: f64,
-    zoom: f64,
-) -> Option<(f64, f64)> {
-    let valid_zoom = safe_zoom(zoom)?;
-    let cx = (client_x / valid_zoom) + camera_x;
-    let cy = (client_y / valid_zoom) + camera_y;
-    Some((cx, cy))
-}
-
-#[must_use]
-pub fn canvas_to_screen(
-    world_x: f64,
-    world_y: f64,
-    camera_x: f64,
-    camera_y: f64,
-    zoom: f64,
-) -> Option<(f64, f64)> {
-    let valid_zoom = safe_zoom(zoom)?;
-    let sx = (world_x - camera_x) * valid_zoom;
-    let sy = (world_y - camera_y) * valid_zoom;
-    Some((sx, sy))
-}
-
-#[must_use]
-pub fn sanitize_zoom(zoom: f64, min: f64, max: f64) -> Option<f64> {
-    let valid = safe_zoom(zoom)?;
-    Some(valid.clamp(min, max))
-}
+// Re-export all functions from canvas_math
+pub use canvas_math::{canvas_to_screen, safe_zoom, sanitize_zoom, screen_to_canvas, within};
 
 #[cfg(test)]
 mod proptests {

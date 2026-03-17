@@ -25,6 +25,7 @@ pub mod policy_hash;
 pub mod replay;
 pub mod tests;
 pub mod types;
+pub mod validation;
 
 // Re-export main types for convenient access
 pub use types::{

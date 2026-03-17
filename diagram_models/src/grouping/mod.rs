@@ -3,13 +3,11 @@ pub mod validation;
 
 use crate::document::{DiagramDocument, NodeId, NodeKind};
 pub use calculations::{
-    calculate_edge_cleanup, calculate_ungroup, compute_padded_bounds, create_subgraph_node,
-    find_lca,
+    calculate_bounding_box, calculate_edge_cleanup, calculate_ungroup, compute_padded_bounds,
+    create_subgraph_node, find_lca,
 };
 use std::collections::BTreeSet;
-pub use validation::validate_selection;
-pub use validation::GroupingError;
-use validation::ValidatedSelection;
+pub use validation::{validate_coordinates, validate_selection, GroupingError, ValidatedSelection};
 
 /// Action: Group selected items in a `DiagramDocument`
 pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(), GroupingError> {

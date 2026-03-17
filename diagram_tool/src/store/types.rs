@@ -97,20 +97,15 @@ impl ValidPayload {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Revision(i64);
+pub struct Revision(u64);
 
 impl Revision {
-    pub fn new(rev: i64) -> Result<Self, StoreError> {
-        if rev < 0 {
-            return Err(StoreError::ValidationFailed(
-                "Revision cannot be negative".to_string(),
-            ));
-        }
+    pub fn new(rev: u64) -> Result<Self, StoreError> {
         Ok(Self(rev))
     }
 
     #[must_use]
-    pub const fn get(&self) -> i64 {
+    pub const fn get(&self) -> u64 {
         self.0
     }
 }

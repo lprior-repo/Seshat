@@ -1,0 +1,209 @@
+{
+  "duplicate_newtypes": [
+    {
+      "type_name": "GridSize",
+      "wrapper_type": "f64",
+      "locations": [
+        "diagram_tool/src/ui/grid/size.rs:9",
+        "diagram_tool/src/geometry/snap/grid_snap.rs:15",
+        "diagram_models/src/document/editor.rs:10"
+      ],
+      "severity": "high",
+      "recommendation": "Consolidate into a single shared GridSize in diagram_models or diagram_tool::geometry"
+    },
+    {
+      "type_name": "TextContent",
+      "wrapper_type": "String",
+      "locations": [
+        "diagram_tool/src/geometry/primitives.rs:199",
+        "diagram_models/src/geometry.rs:199"
+      ],
+      "severity": "high",
+      "recommendation": "Consolidate into diagram_models::geometry or create shared geometry crate"
+    },
+    {
+      "type_name": "NodeId",
+      "wrapper_type": "String",
+      "locations": [
+        "diagram_tool/src/geometry/snap/mod_types.rs:5",
+        "diagram_models/src/document/types.rs:11",
+        "diagram_tool/src/geometry/snap/mod_types.rs:5 (pub variant)"
+      ],
+      "severity": "critical",
+      "recommendation": "diagram_models::document::types::NodeId is the canonical definition; re-export from other modules"
+    },
+    {
+      "type_name": "EdgeId",
+      "wrapper_type": "String",
+      "locations": [
+        "diagram_models/src/document/types.rs:46",
+        "src/seshat-da5/diagram_tool/src/models/document.rs:56"
+      ],
+      "severity": "critical",
+      "recommendation": "Use diagram_models::document::types::EdgeId consistently"
+    },
+    {
+      "type_name": "Revision",
+      "wrapper_types": ["i64", "u64"],
+      "locations": [
+        "diagram_tool/src/store/types.rs:100 (i64)",
+        "diagram_models/src/document/types.rs:151 (u64)"
+      ],
+      "severity": "critical",
+      "recommendation": "Choose single underlying type; i64 is recommended for signed timestamp-like semantics; u64 for counter semantics"
+    },
+    {
+      "type_name": "OrderedFloat",
+      "wrapper_type": "f64",
+      "locations": [
+        "diagram_models/src/document/types.rs:174",
+        "src/seshat-da5/diagram_tool/src/models/document.rs:171"
+      ],
+      "severity": "high",
+      "recommendation": "Use diagram_models::document::types::OrderedFloat consistently"
+    },
+    {
+      "type_name": "ExitCode",
+      "wrapper_types": ["u8", "i32"],
+      "locations": [
+        "nu-test/src/types.rs:7 (u8)",
+        "nu_runner/src/newtypes.rs:133 (i32)",
+        ".beads/seshat-it8/defects.md:71 (i32, in docs)"
+      ],
+      "severity": "medium",
+      "recommendation": "Standardize on i32 for system exit codes (matches std::process::ExitCode)"
+    },
+    {
+      "type_name": "DiagramId",
+      "wrapper_type": "String",
+      "locations": [
+        "diagram_tool/src/locking/manager.rs:21",
+        "src/seshat-da5/diagram_tool/src/locking/manager.rs:21"
+      ],
+      "severity": "high",
+      "recommendation": "Remove duplicate in seshat-da5; use canonical definition"
+    },
+    {
+      "type_name": "SnapThreshold",
+      "wrapper_type": "f64",
+      "locations": [
+        "diagram_tool/src/geometry/snap/mod_types.rs:145",
+        ".beads/seshat-hmh/implementation.md:41 (in docs)"
+      ],
+      "severity": "low",
+      "recommendation": "Remove from bead doc or confirm this is intended"
+    },
+    {
+      "type_name": "HistoryLimit",
+      "wrapper_type": "usize",
+      "locations": [
+        "diagram_models/src/history.rs:34",
+        ".beads/seshat-317/architecture-refactor.md:32 (in docs)"
+      ],
+      "severity": "low",
+      "recommendation": "Remove from bead doc or confirm this is intended"
+    },
+    {
+      "type_name": "DurationMs",
+      "wrapper_type": "u64",
+      "locations": [
+        "diagram_tool/src/perf/benchmark.rs:44",
+        "src/seshat-da5/diagram_tool/src/perf/benchmark.rs:44"
+      ],
+      "severity": "high",
+      "recommendation": "Consolidate into shared location"
+    },
+    {
+      "type_name": "NodeCount",
+      "wrapper_type": "u32",
+      "locations": [
+        "diagram_tool/src/perf/benchmark.rs:14",
+        "src/seshat-da5/diagram_tool/src/perf/benchmark.rs:14"
+      ],
+      "severity": "high",
+      "recommendation": "Consolidate into shared location"
+    }
+  ],
+  "type_alias_duplicates": [
+    {
+      "alias_name": "Subgraph",
+      "definition": "CanvasState",
+      "locations": [
+        "diagram_models/src/subgraph/transform.rs:11"
+      ],
+      "issue": "Chained alias: Subgraph = CanvasState = DocumentData",
+      "recommendation": "Use DocumentData directly or rename Subgraph to be more descriptive"
+    },
+    {
+      "alias_name": "CanvasState",
+      "definition": "DocumentData",
+      "locations": [
+        "diagram_models/src/subgraph/types.rs:9"
+      ],
+      "issue": "Redundant type alias wrapping another alias",
+      "recommendation": "Use DocumentData directly or remove the alias chain"
+    }
+  ],
+  "duplicated_valid_types": [
+    {
+      "type_name": "ValidEvent",
+      "locations": [
+        "diagram_tool/src/store/types.rs:6",
+        "src/seshat-da5/diagram_tool/src/store/types.rs:5"
+      ],
+      "recommendation": "Remove duplicate in seshat-da5"
+    },
+    {
+      "type_name": "ValidTimestamp",
+      "locations": [
+        "diagram_tool/src/store/types.rs:47",
+        "src/seshat-da5/diagram_tool/src/store/types.rs:46"
+      ],
+      "recommendation": "Remove duplicate in seshat-da5"
+    },
+    {
+      "type_name": "ValidOperationId",
+      "locations": [
+        "diagram_tool/src/store/types.rs:63",
+        "src/seshat-da5/diagram_tool/src/store/types.rs:62"
+      ],
+      "recommendation": "Remove duplicate in seshat-da5"
+    },
+    {
+      "type_name": "ValidPayload",
+      "locations": [
+        "diagram_tool/src/store/types.rs:83",
+        "src/seshat-da5/diagram_tool/src/store/types.rs:82"
+      ],
+      "recommendation": "Remove duplicate in seshat-da5"
+    }
+  ],
+  "seshat_da5_duplication": {
+    "description": "The src/seshat-da5 directory appears to be a near-complete duplicate of diagram_tool",
+    "affected_types": [
+      "DiagramId",
+      "DiagramIdError",
+      "NodeId",
+      "EdgeId",
+      "Revision",
+      "OrderedFloat",
+      "ValidEvent",
+      "ValidTimestamp",
+      "ValidOperationId",
+      "ValidPayload",
+      "DurationMs",
+      "NodeCount",
+      "GridSize",
+      "TextContent"
+    ],
+    "recommendation": "Investigate if seshat-da5 is intentional duplication or should be removed/merged"
+  },
+  "summary": {
+    "total_duplicate_newtype_definitions": 12,
+    "total_type_alias_issues": 2,
+    "critical_issues": 4,
+    "high_issues": 6,
+    "medium_issues": 1,
+    "low_issues": 2
+  }
+}

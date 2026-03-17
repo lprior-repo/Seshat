@@ -1,6 +1,9 @@
 use crate::geometry::primitives::{Point, Rectangle, AABB};
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
 
+// Re-export zoom safety functions from canvas_math
+pub use canvas_math::safe_zoom;
+
 /// Constant for subgraph padding
 pub const SUBGRAPH_PADDING: f64 = 24.0;
 
@@ -143,12 +146,16 @@ pub fn hit_test_rotated_rect(point: Point, rect: &Rectangle) -> bool {
 
 #[must_use]
 pub fn world_to_screen(world: Point, camera: Point, zoom: f64) -> Point {
-    Point::new((world.x - camera.x) * zoom, (world.y - camera.y) * zoom)
+    canvas_math::canvas_to_screen(world.x, world.y, camera.x, camera.y, zoom)
+        .map(|(x, y)| Point::new(x, y))
+        .unwrap_or(Point::origin())
 }
 
 #[must_use]
 pub fn screen_to_world(screen: Point, camera: Point, zoom: f64) -> Point {
-    Point::new(screen.x / zoom + camera.x, screen.y / zoom + camera.y)
+    canvas_math::screen_to_canvas(screen.x, screen.y, camera.x, camera.y, zoom)
+        .map(|(x, y)| Point::new(x, y))
+        .unwrap_or(Point::origin())
 }
 
 #[must_use]

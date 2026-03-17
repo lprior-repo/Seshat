@@ -1,49 +1,8 @@
 #[cfg(test)]
 mod tests {
 
+    use crate::test_utils::builders::{test_edge, test_edge_builder, test_node, test_node_default};
     use diagram_models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
-
-    fn test_node() -> Node {
-        Node {
-            kind: NodeKind::Text,
-            icon: String::new(),
-            label: "Test".to_string(),
-            x: OrderedFloat(0.0),
-            y: OrderedFloat(0.0),
-            width: OrderedFloat(100.0),
-            height: OrderedFloat(100.0),
-            font_size: None,
-            font_weight: None,
-            lock_state: LockState::Unlocked,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        }
-    }
-
-    fn test_edge(source: NodeId, target: NodeId) -> diagram_models::document::Edge {
-        diagram_models::document::Edge {
-            source,
-            target,
-            label: String::new(),
-            style: Default::default(),
-            arrow_type: Default::default(),
-            label_offset_t: OrderedFloat(0.5),
-            color: None,
-            thickness: OrderedFloat(1.0),
-            directed: false,
-            bend_points: im::Vector::new(),
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            font_size: None,
-            source_port: None,
-            target_port: None,
-        }
-    }
 
     #[cfg(kani)]
     #[kani::proof]
@@ -60,7 +19,7 @@ mod tests {
     fn test_copy_single_node_populates_clipboard() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("n1".to_string()).unwrap();
-        doc.document.nodes.insert(n1.clone(), test_node());
+        doc.document.nodes.insert(n1.clone(), test_node_default());
         doc.editor_state
             .selected_items
             .insert(n1.as_str().to_string());
@@ -95,7 +54,7 @@ mod tests {
     fn test_cut_single_node_returns_clipboard_and_removes_from_doc() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("n1".to_string()).unwrap();
-        doc.document.nodes.insert(n1.clone(), test_node());
+        doc.document.nodes.insert(n1.clone(), test_node_default());
         doc.editor_state
             .selected_items
             .insert(n1.as_str().to_string());
@@ -115,9 +74,9 @@ mod tests {
         let n2 = NodeId::new("n2".to_string()).unwrap();
         let n3 = NodeId::new("n3".to_string()).unwrap();
 
-        doc.document.nodes.insert(n1.clone(), test_node());
-        doc.document.nodes.insert(n2.clone(), test_node());
-        doc.document.nodes.insert(n3.clone(), test_node());
+        doc.document.nodes.insert(n1.clone(), test_node_default());
+        doc.document.nodes.insert(n2.clone(), test_node_default());
+        doc.document.nodes.insert(n3.clone(), test_node_default());
 
         let e1 = diagram_models::document::EdgeId::new("e1".to_string());
         let e2 = diagram_models::document::EdgeId::new("e2".to_string());
@@ -159,7 +118,7 @@ mod tests {
     fn test_duplicate_single_node_creates_new_node_with_offset() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("n1".to_string()).unwrap();
-        let mut node = test_node();
+        let mut node = test_node_default();
         node.x = OrderedFloat(10.0);
         node.y = OrderedFloat(10.0);
         doc.document.nodes.insert(n1.clone(), node);
@@ -188,8 +147,8 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("n1".to_string()).unwrap();
         let n2 = NodeId::new("n2".to_string()).unwrap();
-        doc.document.nodes.insert(n1.clone(), test_node());
-        doc.document.nodes.insert(n2.clone(), test_node());
+        doc.document.nodes.insert(n1.clone(), test_node_default());
+        doc.document.nodes.insert(n2.clone(), test_node_default());
 
         let e1 = diagram_models::document::EdgeId::new("e1".to_string());
         doc.document

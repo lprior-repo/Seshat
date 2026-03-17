@@ -1,61 +1,8 @@
 use crate::document::{
-    DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, OrderedFloat,
+    DiagramDocument, DocumentData, EditorState, LockState, NodeId, NodeKind, OrderedFloat,
 };
+use crate::test_utils::builders::{setup_doc, test_node, test_node_builder, DocBuilder};
 use im::HashMap;
-
-fn create_node(id: &str, x: f64, y: f64, width: f64, height: f64, locked: bool) -> Node {
-    Node {
-        kind: NodeKind::Node,
-        icon: String::new(),
-        label: id.to_string(),
-        x: OrderedFloat::new_unchecked(x),
-        y: OrderedFloat::new_unchecked(y),
-        width: OrderedFloat::new_unchecked(width),
-        height: OrderedFloat::new_unchecked(height),
-        font_size: None,
-        font_weight: None,
-        lock_state: if locked {
-            LockState::Locked
-        } else {
-            LockState::Unlocked
-        },
-        parent: None,
-        dag_rank: None,
-        tags: im::Vector::new(),
-        metadata: HashMap::new(),
-        z_index: 0,
-        style: None,
-        collapsed: None,
-    }
-}
-
-fn setup_doc() -> DiagramDocument {
-    let mut nodes = HashMap::new();
-    nodes.insert(
-        NodeId::new("A".to_string()),
-        create_node("A", 10.0, 10.0, 50.0, 50.0, false),
-    );
-    nodes.insert(
-        NodeId::new("B".to_string()),
-        create_node("B", 20.0, 20.0, 30.0, 30.0, false),
-    );
-
-    let doc_data = DocumentData {
-        nodes,
-        edges: HashMap::new(),
-    };
-
-    let mut editor_state = EditorState::default();
-    editor_state.selected_items.insert("A".to_string());
-    editor_state.selected_items.insert("B".to_string());
-
-    DiagramDocument {
-        version: 2,
-        revision: crate::document::Revision::INITIAL,
-        document: doc_data,
-        editor_state,
-    }
-}
 
 #[cfg(kani)]
 #[kani::proof]

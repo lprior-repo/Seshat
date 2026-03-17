@@ -15,6 +15,11 @@ pub mod routing;
 pub mod snap;
 pub mod transforms;
 
+// Zoom bounds - canonical values from viewport
+// These must match viewport::MIN_ZOOM and viewport::MAX_ZOOM
+pub const MIN_ZOOM: f64 = 0.1;
+pub const MAX_ZOOM: f64 = 4.0;
+
 #[cfg(kani)]
 pub mod transforms_kani;
 

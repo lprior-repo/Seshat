@@ -1,16 +1,16 @@
 #![allow(dead_code)]
 
+pub use crate::geometry::routing::RoutingError;
 use diagram_models::document::{
     ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat, Point,
 };
 use diagram_models::port::{compute_port_absolute_position, PortAnchor};
-use thiserror::Error;
 
 /// Constant for maximum number of edges between same node pair
 pub const MAX_EDGE_MULTIPLICITY: usize = 1;
 
-/// Padding applied to bounding box when creating subgraphs (20.0 units)
-pub const SUBGRAPH_PADDING: f64 = 20.0;
+/// Padding applied to bounding box when creating subgraphs (24.0 units)
+pub const SUBGRAPH_PADDING: f64 = 24.0;
 
 /// Bounding box for node/group positioning
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -66,21 +66,7 @@ impl Default for BoundingBox {
     }
 }
 
-#[derive(Debug, Error, PartialEq, Eq)]
-pub enum RoutingError {
-    #[error("Source node {0} not found")]
-    SourceNotFound(NodeId),
-    #[error("Target node {0} not found")]
-    TargetNotFound(NodeId),
-    #[error("Cannot create self-loop on node {0}")]
-    SelfLoop(NodeId),
-    #[error("Adding this edge creates a cycle")]
-    CycleDetected,
-    #[error("Invalid coordinates on node {0}")]
-    InvalidNodeCoordinates(NodeId),
-    #[error("Duplicate edge {0}")]
-    DuplicateEdge(EdgeId),
-}
+/// Re-export RoutingError from geometry::routing for convenience.
 
 /// Validates edge endpoints - returns error if invalid.
 ///
@@ -92,10 +78,10 @@ fn validate_edge_endpoints(
     target: &NodeId,
 ) -> Result<(), RoutingError> {
     if !doc.document.nodes.contains_key(source) {
-        return Err(RoutingError::SourceNotFound(source.clone()));
+        return Err(RoutingError::SourceNotFound(source.to_string()));
     }
     if !doc.document.nodes.contains_key(target) {
-        return Err(RoutingError::TargetNotFound(target.clone()));
+        return Err(RoutingError::TargetNotFound(target.to_string()));
     }
     Ok(())
 }
@@ -167,13 +153,13 @@ pub fn compute_straight_line_route(
         .document
         .nodes
         .get(&edge.source)
-        .ok_or_else(|| RoutingError::SourceNotFound(edge.source.clone()))?;
+        .ok_or_else(|| RoutingError::SourceNotFound(edge.source.to_string()))?;
 
     let target_node = doc
         .document
         .nodes
         .get(&edge.target)
-        .ok_or_else(|| RoutingError::TargetNotFound(edge.target.clone()))?;
+        .ok_or_else(|| RoutingError::TargetNotFound(edge.target.to_string()))?;
 
     let source_port = edge.source_port.as_ref().unwrap_or(&PortAnchor::Center);
     let target_port = edge.target_port.as_ref().unwrap_or(&PortAnchor::Center);

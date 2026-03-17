@@ -77,5 +77,8 @@ pub fn parse_bounded_batch<const MIN: usize, const MAX: usize>(
 /// # Errors
 /// Returns an error if the revision is negative.
 pub fn parse_revision(rev: i64) -> Result<Revision, AsyncStoreError> {
+    let rev = u64::try_from(rev).map_err(|_| {
+        AsyncStoreError::ValidationFailed("Revision cannot be negative".to_string())
+    })?;
     Revision::new(rev)
 }

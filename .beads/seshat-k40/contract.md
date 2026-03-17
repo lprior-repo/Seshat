@@ -160,7 +160,7 @@ pub fn parse_revision(rev: i64) -> Result<Revision, AsyncStoreError>
 | ValidEvent required | Compile-time | `ValidEvent` type parameter |
 | Batch non-empty | Compile-time | `BoundedBatch<MIN, MAX>` where MIN >= 1 |
 | Batch size bounded | Compile-time | `BoundedBatch<MIN, MAX>` with MAX constraint |
-| Revision non-negative | Compile-time | `Revision` (wraps i64, validates >= 0) |
+| Revision non-negative | Compile-time | `Revision` (wraps u64, converts i64 at boundary) |
 | Timestamp non-zero | Compile-time | `ValidTimestamp` (wraps NonZeroU64) |
 | op_id valid | Compile-time | `ValidOperationId` (validated at construction) |
 | payload bounded | Compile-time | `ValidPayload` (max 100MB) |

@@ -10,4 +10,4 @@ mod bounds;
 mod tests;
 
 pub use algorithm::calculate_grid_layout;
-pub use bounds::{CellSize, GridError};
+pub use bounds::GridError;

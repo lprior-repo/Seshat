@@ -1,0 +1,220 @@
+{
+  "summary": {
+    "total_test_files": 87,
+    "duplicate_categories_found": 4
+  },
+  "duplicates": [
+    {
+      "category": "test_node helper functions",
+      "description": "Multiple test helper functions that create Node instances with similar signatures",
+      "count": 15,
+      "locations": [
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/tests/contracts.rs",
+          "function": "create_test_node(x: f64, y: f64) -> Node",
+          "line": 12
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/core/clipboard_tests.rs",
+          "function": "test_node() -> Node",
+          "line": 6
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/core/grouping_tests.rs",
+          "function": "test_node(x: f64, y: f64, w: f64, h: f64) -> Node",
+          "line": 9
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/core/transform_tests.rs",
+          "function": "test_node(x: f64, width: f64) -> Node",
+          "line": 14
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/core/routing_tests.rs",
+          "function": "test_node() -> Node",
+          "line": 6
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/core/nudge_tests.rs",
+          "function": "create_test_node(x: f64, y: f64, locked: bool, kind: NodeKind) -> Node",
+          "line": 5
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/export/png.rs",
+          "function": "create_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node)",
+          "line": 43
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/export/svg_builder/edges.rs",
+          "function": "create_test_node(...) -> Node",
+          "line": 37
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/multi_select_tests.rs",
+          "function": "create_node(id: &str, x: f64, y: f64, width: f64, height: f64, locked: bool) -> Node",
+          "line": 6
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/marquee_tests.rs",
+          "function": "create_node(id: &str, x: f64, y: f64, w: f64, h: f64) -> Node",
+          "line": 35
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/subgraph_relative_tests.rs",
+          "function": "create_test_node(id: &str, x: f64, y: f64, parent: Option<NodeId>) -> Node",
+          "line": 5
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/subgraph_events_tests.rs",
+          "function": "create_test_node(...) -> (NodeId, Node)",
+          "line": 19
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/schema/proptests.rs",
+          "function": "make_node(kind: NodeKind, parent: Option<NodeId>, x: f64, y: f64) -> Node",
+          "line": 36
+        },
+        {
+          "file": "/home/lewis/src/seshat/canvas_domain/src/interaction_reducer/tests/inp_mobile_touch_tests.rs",
+          "function": "make_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node)",
+          "line": 6
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/validation.rs",
+          "function": "make_node(id: &str) -> (NodeId, Node)",
+          "line": 169
+        }
+      ],
+      "similarity": "All create Node structs with similar field structures (kind, label, x, y, width, height, lock_state, parent, etc.)",
+      "recommendation": "Extract to a shared test_utils module with parameterized builder pattern"
+    },
+    {
+      "category": "test_edge helper functions",
+      "description": "Multiple test helper functions that create Edge instances",
+      "count": 4,
+      "locations": [
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/tests/contracts.rs",
+          "function": "create_test_edge(source: NodeId, target: NodeId) -> Edge",
+          "line": 34
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/core/clipboard_tests.rs",
+          "function": "test_edge(source: NodeId, target: NodeId) -> Edge",
+          "line": 28
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/spatial_index.rs",
+          "function": "create_node(x: f64, y: f64, w: f64, h: f64) -> Node",
+          "line": 105
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/subgraph_persistence_tests.rs",
+          "function": "make_node(...)",
+          "line": 15
+        }
+      ],
+      "similarity": "All create Edge structs with source and target NodeIds",
+      "recommendation": "Extract to shared test_utils::edge() builder"
+    },
+    {
+      "category": "setup_doc helper functions",
+      "description": "Multiple test setup functions that initialize DiagramDocument with nodes/edges",
+      "count": 4,
+      "locations": [
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/transform_tests.rs",
+          "function": "setup_doc() -> DiagramDocument",
+          "line": 6
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/selection_tests.rs",
+          "function": "setup_doc() -> DiagramDocument",
+          "line": 13
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/multi_select_tests.rs",
+          "function": "setup_doc() -> DiagramDocument",
+          "line": 32
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_models/src/selection/tests.rs",
+          "function": "setup_doc() -> DiagramDocument",
+          "line": 6
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/locking/manager.rs",
+          "function": "create_test_document() -> DiagramDocument",
+          "line": 390
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/cli_persistence/tests.rs",
+          "function": "create_test_document() -> DiagramDocument",
+          "line": 9
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/export/svg_builder/edges.rs",
+          "function": "create_test_document() -> DiagramDocument",
+          "line": 69
+        }
+      ],
+      "similarity": "All create DiagramDocument with nodes HashMap and optional edges",
+      "recommendation": "Extract to shared test_utils::document() builder with node/edge collection params"
+    },
+    {
+      "category": "make_test_* patterns",
+      "description": "Test data generation functions in multiple locations",
+      "count": 5,
+      "locations": [
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/geometry/snap/tests.rs",
+          "function": "make_test_nodes() -> Vec<SnapNode>",
+          "line": 131
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/perf/regression.rs",
+          "function": "make_test_result(operation: &str, fps: f64) -> BenchmarkResult",
+          "line": 345
+        },
+        {
+          "file": "/home/lewis/src/seshat/diagram_tool/src/perf/regression.rs",
+          "function": "make_test_baseline() -> Baseline",
+          "line": 358
+        },
+        {
+          "file": "/home/lewis/src/seshat/src/seshat-da5/diagram_tool/src/geometry/snap/tests.rs",
+          "function": "make_test_nodes() -> Vec<SnapNode>",
+          "line": 119
+        },
+        {
+          "file": "/home/lewis/src/seshat/src/seshat-da5/diagram_tool/src/models/hashing.rs",
+          "function": "make_test_node(id: &str) -> (NodeId, Node)",
+          "line": 208
+        }
+      ],
+      "similarity": "Test data generation with varied return types",
+      "recommendation": "Consolidate into diagram_tool::test_utils::generators module"
+    }
+  ],
+  "existing_shared_test_utils": [
+    {
+      "path": "/home/lewis/src/seshat/diagram_tool/src/test_utils/mod.rs",
+      "description": "Central test infrastructure module",
+      "exports": ["fixtures", "generators", "harness", "types"],
+      "note": "Already has infrastructure but not widely used by individual test files"
+    },
+    {
+      "path": "/home/lewis/src/seshat/diagram_tool/src/ui/canvas/domain/test_utils",
+      "description": "Domain-specific test utilities",
+      "note": "Used by interaction tests in seshat-da5 branch"
+    }
+  ],
+  "recommendations": [
+    "1. Consolidate all test_node variants into diagram_tool::test_utils::node() builder",
+    "2. Consolidate all test_edge variants into diagram_tool::test_utils::edge() builder",
+    "3. Consolidate all setup_doc variants into diagram_tool::test_utils::document() builder",
+    "4. Add parameterized options for each builder to handle variations (locked, parent, kind, etc.)",
+    "5. Ensure diagram_models also exports common test builders for its tests",
+    "6. Consider using TryFrom or Builder pattern for validation in test helpers"
+  ]
+}

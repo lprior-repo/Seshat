@@ -2,53 +2,12 @@
 #[cfg(test)]
 mod tests {
     use crate::core::grouping::{group_selection, ungroup_selection, GroupingError};
-    use diagram_models::document::{
-        DiagramDocument, Edge, LockState, Node, NodeId, NodeKind, OrderedFloat,
+    use crate::test_utils::builders::{
+        test_edge, test_node, test_subgraph, EdgeBuilder, NodeBuilder,
     };
-
-    fn test_node(x: f64, y: f64, w: f64, h: f64) -> Node {
-        Node {
-            kind: NodeKind::Text,
-            icon: String::new(),
-            label: "Test".to_string(),
-            x: OrderedFloat(x),
-            y: OrderedFloat(y),
-            width: OrderedFloat(w),
-            height: OrderedFloat(h),
-            font_size: None,
-            font_weight: None,
-            lock_state: LockState::Unlocked,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        }
-    }
-
-    fn test_subgraph() -> Node {
-        Node {
-            kind: NodeKind::Subgraph,
-            icon: String::new(),
-            label: "Group".to_string(),
-            x: OrderedFloat(0.0),
-            y: OrderedFloat(0.0),
-            width: OrderedFloat(100.0),
-            height: OrderedFloat(100.0),
-            font_size: None,
-            font_weight: None,
-            lock_state: LockState::Unlocked,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        }
-    }
+    use diagram_models::document::{
+        DiagramDocument, Edge, LockState, NodeId, NodeKind, OrderedFloat,
+    };
 
     // =====================================================================
     // Original Kani Tests

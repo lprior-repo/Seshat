@@ -8,6 +8,7 @@ use im::HashMap;
 use crate::document::{Node, NodeId, NodeKind, OrderedFloat};
 
 use crate::projection::types::DiagramProjection;
+use crate::projection::validation::validate_dimensions;
 
 /// Type alias for node map
 type NodeMap = HashMap<NodeId, Node>;
@@ -153,23 +154,4 @@ pub fn apply_node_resize(
         nodes: new_nodes,
         ..state
     })
-}
-
-fn validate_dimensions(
-    width: f64,
-    height: f64,
-) -> Result<(), crate::projection::types::ProjectionError> {
-    use crate::projection::types::ProjectionError;
-
-    if !width.is_finite() || width <= 0.0 {
-        return Err(ProjectionError::InvalidDimensions(format!(
-            "invalid width: {width}"
-        )));
-    }
-    if !height.is_finite() || height <= 0.0 {
-        return Err(ProjectionError::InvalidDimensions(format!(
-            "invalid height: {height}"
-        )));
-    }
-    Ok(())
 }
