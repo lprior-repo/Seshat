@@ -1,5 +1,5 @@
 use crate::geometry::operations::compute_subgraph_bounds;
-use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
+use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -97,7 +97,7 @@ pub fn align_selection(
     let mut max_val = f64::MIN;
 
     for id_str in &selected {
-        let id = NodeId::new(id_str.clone());
+        let id = diagram_models::document::NodeId::new(id_str.clone());
         if let Some(node) = doc.document.nodes.get(&id) {
             if !node.lock_state.is_movable(&node.kind) {
                 return Err(TransformError::LockedNode(id));
@@ -121,7 +121,7 @@ pub fn align_selection(
     // 2. Apply alignment
     let mut transformed_ids: Vec<NodeId> = Vec::new();
     for id_str in &selected {
-        let id = NodeId::new(id_str.clone());
+        let id = diagram_models::document::NodeId::new(id_str.clone());
         transformed_ids.push(id.clone());
         if let Some(node) = doc.document.nodes.get_mut(&id) {
             match axis {
@@ -167,7 +167,7 @@ pub fn distribute_selection(
 
     let mut nodes: Vec<(NodeId, f64, f64)> = Vec::new();
     for id_str in &selected {
-        let id = NodeId::new(id_str.clone());
+        let id = diagram_models::document::NodeId::new(id_str.clone());
         if let Some(node) = doc.document.nodes.get(&id) {
             if !node.lock_state.is_movable(&node.kind) {
                 return Err(TransformError::LockedNode(id));
@@ -259,7 +259,7 @@ pub fn translate_selection(
     doc.document.nodes = transformed_ids
         .iter()
         .fold(doc.document.nodes.clone(), |nodes, id| {
-            nodes.get(id).map_or_else(
+            nodes.get(&id).map_or_else(
                 || nodes.clone(),
                 |node| {
                     nodes.update(

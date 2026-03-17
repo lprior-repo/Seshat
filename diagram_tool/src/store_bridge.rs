@@ -8,13 +8,13 @@ use std::path::Path;
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
-use crate::models::envelope::EventEnvelope;
 use crate::store::types::ValidEvent;
 use crate::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,
     envelope_to_valid_event, fetch_events_since, parse_revision, AsyncAppendResult,
     AsyncBatchAppendResult, AsyncStoreBootstrap, AsyncStoreError, EventRecord,
 };
+use diagram_models::envelope::EventEnvelope;
 
 #[derive(Debug, Error)]
 pub enum BridgeError {
@@ -184,7 +184,7 @@ mod tests {
 
         let envelope = EventEnvelope {
             op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
+            operation: diagram_models::envelope::DomainOp::NodeAdd {
                 id: "node-1".to_string(),
                 x: 10.0,
                 y: 20.0,
@@ -192,7 +192,7 @@ mod tests {
                 height: 50.0,
                 label: "Test Node".to_string(),
             },
-            author: crate::models::envelope::Author {
+            author: diagram_models::envelope::Author {
                 id: "user-1".to_string(),
                 name: "Test User".to_string(),
                 email: None,
@@ -219,7 +219,7 @@ mod tests {
 
         let envelope = EventEnvelope {
             op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
+            operation: diagram_models::envelope::DomainOp::NodeAdd {
                 id: "node-1".to_string(),
                 x: 10.0,
                 y: 20.0,
@@ -227,7 +227,7 @@ mod tests {
                 height: 50.0,
                 label: "Test Node".to_string(),
             },
-            author: crate::models::envelope::Author {
+            author: diagram_models::envelope::Author {
                 id: "user-1".to_string(),
                 name: "Test User".to_string(),
                 email: None,
@@ -260,7 +260,7 @@ mod tests {
 
         let envelope1 = EventEnvelope {
             op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
+            operation: diagram_models::envelope::DomainOp::NodeAdd {
                 id: "node-1".to_string(),
                 x: 10.0,
                 y: 20.0,
@@ -268,7 +268,7 @@ mod tests {
                 height: 50.0,
                 label: "Node 1".to_string(),
             },
-            author: crate::models::envelope::Author {
+            author: diagram_models::envelope::Author {
                 id: "user-1".to_string(),
                 name: "Test User".to_string(),
                 email: None,
@@ -278,7 +278,7 @@ mod tests {
 
         let envelope2 = EventEnvelope {
             op_id: "test-op-2".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
+            operation: diagram_models::envelope::DomainOp::NodeAdd {
                 id: "node-2".to_string(),
                 x: 30.0,
                 y: 40.0,
@@ -286,7 +286,7 @@ mod tests {
                 height: 50.0,
                 label: "Node 2".to_string(),
             },
-            author: crate::models::envelope::Author {
+            author: diagram_models::envelope::Author {
                 id: "user-1".to_string(),
                 name: "Test User".to_string(),
                 email: None,
@@ -316,7 +316,7 @@ mod tests {
 
         let envelope = EventEnvelope {
             op_id: "test-op-1".to_string(),
-            operation: crate::models::envelope::DomainOp::NodeAdd {
+            operation: diagram_models::envelope::DomainOp::NodeAdd {
                 id: "node-1".to_string(),
                 x: 10.0,
                 y: 20.0,
@@ -324,7 +324,7 @@ mod tests {
                 height: 50.0,
                 label: "Test Node".to_string(),
             },
-            author: crate::models::envelope::Author {
+            author: diagram_models::envelope::Author {
                 id: "user-1".to_string(),
                 name: "Test User".to_string(),
                 email: None,

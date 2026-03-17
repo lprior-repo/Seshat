@@ -2,8 +2,8 @@
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use diagram_tool::models::document::NodeId;
-use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
+use diagram_models::document::NodeId;
+use diagram_models::envelope::{Author, DomainOp, EventEnvelope};
 use diagram_tool::store_async::{bootstrap_async_store, AsyncStoreError};
 use sqlx::SqlitePool;
 use std::path::Path;
@@ -171,7 +171,7 @@ mod test_snapshot_module {
             .into_iter()
             .enumerate()
             .map(|(i, r)| {
-                let envelope = diagram_tool::models::envelope::parse_event_envelope(&r.payload)
+                let envelope = diagram_models::envelope::parse_event_envelope(&r.payload)
                     .map_err(|e| AsyncStoreError::Serialization(e.to_string()));
                 match envelope {
                     Ok(env) => Ok(EventRecord {
@@ -353,7 +353,7 @@ mod test_append_event_async_full_roundtrip {
             "Timestamp should match"
         );
 
-        let parsed = diagram_tool::models::envelope::parse_event_envelope(&fetched_record.payload)
+        let parsed = diagram_models::envelope::parse_event_envelope(&fetched_record.payload)
             .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
         assert_eq!(parsed.op_id, "op-roundtrip-1", "Parsed op_id should match");
         assert_eq!(parsed.author.id, "author-1", "Parsed author should match");
@@ -446,7 +446,7 @@ mod test_append_event_async_full_roundtrip {
             .into_iter()
             .enumerate()
             .map(|(i, r)| {
-                let envelope = diagram_tool::models::envelope::parse_event_envelope(&r.payload)
+                let envelope = diagram_models::envelope::parse_event_envelope(&r.payload)
                     .map_err(|e| AsyncStoreError::Serialization(e.to_string()));
                 match envelope {
                     Ok(env) => Ok(EventRecord {

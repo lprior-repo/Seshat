@@ -8,7 +8,7 @@
 #![forbid(unsafe_code)]
 
 use crate::geometry::{Point, AABB};
-use crate::ui::canvas::math::safe_zoom;
+use canvas_domain::math::safe_zoom;
 
 /// Transform a screen point to world coordinates
 ///

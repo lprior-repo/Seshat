@@ -5,7 +5,7 @@
 #[cfg(kani)]
 use crate::history::History;
 #[cfg(kani)]
-use crate::models::document::{DiagramDocument, Revision};
+use diagram_models::document::{DiagramDocument, Revision};
 
 #[cfg(kani)]
 fn doc_with_revision(steps: u64) -> DiagramDocument {
@@ -50,7 +50,7 @@ fn given_more_than_cap_when_pushing_then_undo_stack_is_capped_at_100() {
 
     // Safety: verify stack size is exactly 100 (not more)
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         100,
         "undo_stack should be capped at 100"
     );

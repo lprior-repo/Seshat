@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-set -e
+set -euo pipefail
 
 DIR="diagram_tool/src"
 MAX_LINES=300
@@ -13,14 +13,26 @@ if [ ! -d "$DIR" ]; then
 	exit 0
 fi
 
-# Find files over MAX_LINES lines
-ALL_OVER=$(find "$DIR" -name "*.rs" -type f | xargs wc -l | awk "\$1 > $MAX_LINES && \$2 != \"total\" {print \$2}")
+is_production_rust_file() {
+	local file="$1"
+	case "$file" in
+	*/tests/*) return 1 ;;
+	*_tests.rs) return 1 ;;
+	*/test_*.rs) return 1 ;;
+	*/tests.rs) return 1 ;;
+	*) return 0 ;;
+	esac
+}
+
+RUST_FILES=$(find "$DIR" -name "*.rs" -type f)
 
 VIOLATIONS=""
-for file in $ALL_OVER; do
-	if ! grep -qxF "$file" "$IGNORE_FILE" 2>/dev/null; then
+for file in $RUST_FILES; do
+	if is_production_rust_file "$file"; then
 		LINES=$(wc -l <"$file")
-		VIOLATIONS="$VIOLATIONS\n    $LINES $file"
+		if [ "$LINES" -gt "$MAX_LINES" ] && ! grep -qxF "$file" "$IGNORE_FILE" 2>/dev/null; then
+			VIOLATIONS="$VIOLATIONS\n    $LINES $file"
+		fi
 	fi
 done
 

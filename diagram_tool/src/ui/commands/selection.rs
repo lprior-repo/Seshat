@@ -6,8 +6,8 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, Node, NodeId, OrderedFloat};
-use crate::models::envelope::EventEnvelope;
+use diagram_models::document::{DiagramDocument, Node, NodeId, OrderedFloat};
+use diagram_models::envelope::EventEnvelope;
 
 /// Select all nodes and edges in the document
 pub fn apply_select_all(mut doc_signal: Signal<DiagramDocument>) {
@@ -134,9 +134,9 @@ pub fn apply_group_selection(
         (res, selected)
     });
 
-    if result.is_ok() {
+    if let Ok(_) = result {
         if let Some(tx) = db_tx {
-            let ids: Vec<String> = selected_ids.into_iter().collect();
+            let ids: Vec<String> = selected_ids.iter().map(|id| id.to_string()).collect();
             let envelope =
                 crate::ui::dispatch::create::create_group_envelope(group_id.to_string(), ids);
             tx.send(envelope);
@@ -166,7 +166,7 @@ pub fn apply_ungroup_selection(
         (res, targets)
     });
 
-    if result.is_ok() {
+    if let Ok(_) = result {
         if let Some(tx) = db_tx {
             for id in target_ids {
                 // We only dispatch ungroup for nodes that were actually subgraphs.
@@ -187,7 +187,7 @@ fn selected_node_ids(doc: &DiagramDocument) -> BTreeSet<NodeId> {
     doc.editor_state
         .selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .filter(|id| doc.document.nodes.contains_key(id))
         .collect()
 }
@@ -198,7 +198,7 @@ fn selected_nodes_from_selection(
 ) -> BTreeSet<NodeId> {
     selected
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .filter(|id| nodes.contains_key(id))
         .collect()
 }

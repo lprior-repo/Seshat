@@ -1,8 +1,8 @@
 //! Validation functions for dispatch operations
 
-use crate::models::dag::validate_dag;
-use crate::models::document::ArrowType;
-use crate::models::document::{Edge, EdgeId, NodeId, OrderedFloat};
+use diagram_models::dag::validate_dag;
+use diagram_models::document::ArrowType;
+use diagram_models::document::{Edge, EdgeId, NodeId, OrderedFloat};
 
 /// Validate that coordinates are finite (not NaN or Infinity)
 #[must_use]
@@ -19,7 +19,7 @@ pub fn validate_dimensions(width: f64, height: f64) -> bool {
 /// Check if adding an edge would preserve the DAG (no cycles)
 #[must_use]
 pub fn edge_preserves_dag(
-    nodes: &im::HashMap<NodeId, crate::models::document::Node>,
+    nodes: &im::HashMap<NodeId, diagram_models::document::Node>,
     edges: &im::HashMap<EdgeId, Edge>,
     source: &NodeId,
     target: &NodeId,
@@ -30,11 +30,11 @@ pub fn edge_preserves_dag(
     }
 
     // Create candidate edges with the new edge added
-    let candidate_edge = Edge {
+    let candidate_edge = diagram_models::document::Edge {
         source: source.clone(),
         target: target.clone(),
         label: String::new(),
-        style: crate::models::document::EdgeStyle::Solid,
+        style: diagram_models::document::EdgeStyle::Solid,
         arrow_type: ArrowType::default(),
         label_offset_t: OrderedFloat::new_unchecked(0.5),
         color: None,

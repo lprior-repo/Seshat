@@ -2,8 +2,8 @@
 
 use dioxus::prelude::*;
 
-use crate::models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
-use crate::models::envelope::{EventEnvelope, LabelTargetId, LabelTargetType};
+use diagram_models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
+use diagram_models::envelope::{EventEnvelope, LabelTargetId, LabelTargetType};
 
 use super::super::create::{
     create_update_edge_style_envelope, create_update_label_envelope,

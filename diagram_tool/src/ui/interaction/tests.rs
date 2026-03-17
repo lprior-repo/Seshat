@@ -1,4 +1,4 @@
-use crate::models::document::{
+use diagram_models::document::{
     DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, NodeStyle,
     OrderedFloat, Revision,
 };
@@ -180,8 +180,8 @@ fn given_selected_endpoints_when_auto_selecting_edges_then_connecting_edge_is_se
             source: source.clone(),
             target: target.clone(),
             label: String::new(),
-            style: crate::models::document::EdgeStyle::default(),
-            arrow_type: crate::models::document::ArrowType::default(),
+            style: diagram_models::document::EdgeStyle::default(),
+            arrow_type: diagram_models::document::ArrowType::default(),
             label_offset_t: OrderedFloat(0.5),
             color: None,
             thickness: OrderedFloat(1.5),

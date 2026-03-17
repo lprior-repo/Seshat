@@ -3,8 +3,8 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::models::validation::{ValidationIssue, ValidationSeverity};
 use crate::ui::theme::{BG_SURFACE, BORDER_SUBTLE, ERROR, SUCCESS, TEXT_MAIN, TEXT_MUTED, WARNING};
+use diagram_models::validation::{ValidationIssue, ValidationSeverity};
 use dioxus::prelude::*;
 
 /// Read-only panel that displays validation issues for the current document.

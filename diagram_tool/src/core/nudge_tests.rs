@@ -1,6 +1,6 @@
 #![cfg(test)]
 
-use crate::models::document::{LockState, Node, NodeKind, OrderedFloat};
+use diagram_models::document::{LockState, Node, NodeKind, OrderedFloat};
 
 fn create_test_node(x: f64, y: f64, locked: bool, kind: NodeKind) -> Node {
     Node {

@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use crate::models::envelope::EventEnvelope;
+use diagram_models::envelope::EventEnvelope;
 
 use super::super::create::{
     create_bring_forward_envelope, create_bring_to_front_envelope, create_send_backward_envelope,

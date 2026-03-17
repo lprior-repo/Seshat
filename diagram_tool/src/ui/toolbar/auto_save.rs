@@ -12,7 +12,7 @@
 #![forbid(unsafe_code)]
 
 #[allow(dead_code)]
-use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
+use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle, Revision};
 use serde::{Deserialize, Serialize};
 
 #[cfg(target_arch = "wasm32")]
@@ -112,7 +112,7 @@ pub const fn default_revision() -> Revision {
 #[cfg(test)]
 mod tests {
 
-    use crate::models::document::DiagramDocument;
+    use diagram_models::document::DiagramDocument;
 
     fn sample_document() -> DiagramDocument {
         DiagramDocument::default()

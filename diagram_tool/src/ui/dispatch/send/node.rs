@@ -2,8 +2,8 @@
 
 use dioxus::prelude::*;
 
-use crate::models::document::NodeId;
-use crate::models::envelope::EventEnvelope;
+use diagram_models::document::NodeId;
+use diagram_models::envelope::EventEnvelope;
 
 use super::super::create::{create_node_delete_envelope, create_node_resize_envelope};
 use super::super::errors::{DispatchError, DispatchResult};

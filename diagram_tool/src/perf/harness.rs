@@ -271,10 +271,13 @@ impl BenchmarkHarness {
 
 /// Generates a test scene with the specified number of nodes.
 #[must_use]
-pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::document::DiagramDocument {
+pub fn generate_test_scene(
+    node_count: u32,
+    seed: u64,
+) -> diagram_models::document::DiagramDocument {
     use im::HashMap as ImHashMap;
 
-    use crate::models::document::{
+    use diagram_models::document::{
         DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node, NodeId, NodeKind,
         OrderedFloat,
     };
@@ -333,8 +336,8 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
                 source: NodeId::new(format!("node-{source_idx}")),
                 target: NodeId::new(format!("node-{target_idx}")),
                 label: String::new(),
-                style: crate::models::document::EdgeStyle::default(),
-                arrow_type: crate::models::document::ArrowType::default(),
+                style: diagram_models::document::EdgeStyle::default(),
+                arrow_type: diagram_models::document::ArrowType::default(),
                 label_offset_t: OrderedFloat(0.5),
                 color: None,
                 thickness: OrderedFloat(1.5),
@@ -353,9 +356,9 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
 
     DiagramDocument {
         version: 2,
-        revision: crate::models::document::Revision::INITIAL,
+        revision: diagram_models::document::Revision::INITIAL,
         document: DocumentData { nodes, edges },
-        editor_state: crate::models::document::EditorState::default(),
+        editor_state: diagram_models::document::EditorState::default(),
     }
 }
 
@@ -363,7 +366,7 @@ pub fn generate_test_scene(node_count: u32, seed: u64) -> crate::models::documen
 // PERFORMANCE DRIVER DSL (ATDD)
 // ============================================================================
 
-use crate::models::document::DiagramDocument;
+use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
 use sqlx::SqlitePool;
 use std::time::{Duration, Instant};

@@ -4,12 +4,12 @@
 #![forbid(unsafe_code)]
 
 use crate::history::History;
-use crate::models::document::DiagramDocument;
-use crate::models::envelope::EventEnvelope;
 use crate::ui::commands::{
     apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
     apply_redo, apply_select_all, apply_undo, apply_ungroup_selection, ClipboardData,
 };
+use diagram_models::document::DiagramDocument;
+use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::*;
 
 /// Global keyboard hook that handles document-wide modifier shortcuts.

@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use crate::models::envelope::EventEnvelope;
+use diagram_models::envelope::EventEnvelope;
 
 use super::super::create::{create_group_envelope, create_ungroup_envelope};
 use super::super::errors::{DispatchError, DispatchResult};

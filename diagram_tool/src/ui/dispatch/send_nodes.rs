@@ -2,7 +2,7 @@
 
 use dioxus::prelude::*;
 
-use crate::models::envelope::EventEnvelope;
+use diagram_models::envelope::EventEnvelope;
 
 use super::create::{create_node_delete_envelope, create_node_resize_envelope};
 use super::errors::{DispatchError, DispatchResult};
@@ -73,7 +73,7 @@ pub fn dispatch_node_delete(
 #[derive(Debug, Clone, PartialEq)]
 pub struct ResizeBounds {
     /// Node ID being resized
-    pub id: crate::models::document::NodeId,
+    pub id: diagram_models::document::NodeId,
     /// Original position and dimensions
     pub original_x: f64,
     pub original_y: f64,
@@ -90,7 +90,7 @@ impl ResizeBounds {
     /// Create new resize bounds
     #[must_use]
     pub fn new(
-        id: crate::models::document::NodeId,
+        id: diagram_models::document::NodeId,
         original_x: f64,
         original_y: f64,
         original_width: f64,

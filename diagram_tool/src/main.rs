@@ -77,7 +77,6 @@ mod history;
 mod hooks;
 mod icons;
 mod layout;
-mod models;
 mod mutation;
 #[cfg(not(target_arch = "wasm32"))]
 mod perf;
@@ -87,9 +86,7 @@ pub mod store;
 pub mod store_async;
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
 pub mod store_bridge;
-#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub mod store_durable;
-mod test_harness;
+mod test_utils;
 mod ui;
 
 use crate::app::App;

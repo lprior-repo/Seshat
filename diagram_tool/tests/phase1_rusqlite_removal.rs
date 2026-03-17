@@ -211,7 +211,7 @@ async fn test_async_bootstrap() -> Phase1Result<()> {
 #[kani::proof]
 #[tokio::test]
 async fn test_async_append() -> Phase1Result<()> {
-    use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
+    use diagram_models::envelope::{Author, DomainOp, EventEnvelope};
     use diagram_tool::store_async::{
         append_event_async, bootstrap_async_store, fetch_latest_revision,
     };
@@ -286,7 +286,7 @@ async fn test_async_append() -> Phase1Result<()> {
 #[kani::proof]
 #[tokio::test]
 async fn test_async_append_increments_revision() -> Phase1Result<()> {
-    use diagram_tool::models::envelope::{Author, DomainOp, EventEnvelope};
+    use diagram_models::envelope::{Author, DomainOp, EventEnvelope};
     use diagram_tool::store_async::{append_event_async, fetch_latest_revision};
     use tempfile::TempDir;
 

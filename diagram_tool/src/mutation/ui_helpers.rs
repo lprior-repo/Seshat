@@ -15,9 +15,9 @@
 use dioxus::prelude::{ReadableExt, Signal, WritableExt};
 
 use crate::history::History;
-use crate::models::document::DiagramDocument;
 use crate::mutation::error::MutationError;
 use crate::mutation::pipeline::run_mutation;
+use diagram_models::document::DiagramDocument;
 
 pub type MutationResult<T> = Result<T, MutationError>;
 
@@ -89,9 +89,9 @@ where
     let current = doc_signal.read().clone();
     let next = transform(current.clone())?;
 
-    crate::models::schema::validate_schema(&next.0).map_err(MutationError::from)?;
+    diagram_models::schema::validate_schema(&next.0).map_err(MutationError::from)?;
 
-    let issues = crate::models::validation::validate_document(&next.0);
+    let issues = diagram_models::validation::validate_document(&next.0);
     if let Some(issue) = issues.first() {
         return Err(MutationError::from_issue(issue).into());
     }

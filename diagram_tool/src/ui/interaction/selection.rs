@@ -1,7 +1,7 @@
-use crate::geometry::primitives::AABB;
-use crate::models::document::DiagramDocument;
-use crate::models::spatial_index::{build_spatial_index, gather_candidates};
 use crate::ui::interaction::types::{SelectionMode, DRAG_THRESHOLD_PX};
+use diagram_models::document::DiagramDocument;
+use diagram_models::geometry::AABB;
+use diagram_models::spatial_index::{build_spatial_index, gather_candidates};
 use im::HashSet;
 
 #[must_use]
@@ -66,7 +66,7 @@ pub fn node_ids_in_rect_with_mode(
 
     candidates
         .iter()
-        .filter_map(|id| doc.document.nodes.get(id).map(|n| (id, n)))
+        .filter_map(|id| doc.document.nodes.get(&id).map(|n| (id, n)))
         .filter(|(_, n)| !n.lock_state.is_locked())
         .filter(|(_, n)| match mode {
             SelectionMode::Contain => {

@@ -3,7 +3,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, NodeId};
+use diagram_models::document::{DiagramDocument, NodeId};
 
 pub(super) fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
     doc.editor_state
@@ -48,7 +48,7 @@ pub(super) fn selection_bounds(doc: &DiagramDocument) -> Option<(f64, f64, f64, 
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
 
-    use crate::models::document::{LockState, Node, NodeKind, NodeStyle, OrderedFloat};
+    use diagram_models::document::{LockState, Node, NodeKind, NodeStyle, OrderedFloat};
 
     fn make_node(kind: NodeKind, x: f64, y: f64, w: f64, h: f64) -> Node {
         make_node_with_lock(kind, x, y, w, h, false)
@@ -498,7 +498,7 @@ mod tests {
 #[cfg(kani)]
 mod kani_proofs {
     use super::{selected_node_ids, selection_bounds};
-    use crate::models::document::{
+    use diagram_models::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
 

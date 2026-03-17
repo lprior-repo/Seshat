@@ -1,5 +1,3 @@
-diagram_tool/src/app.rs
-diagram_tool/src/cli.rs
 diagram_tool/src/cli_events_tests.rs
 diagram_tool/src/cli_persistence.rs
 diagram_tool/src/core/grouping.rs
@@ -17,19 +15,13 @@ diagram_tool/src/locking/manager.rs
 diagram_tool/src/models/dag.rs
 diagram_tool/src/models/dispatcher.rs
 diagram_tool/src/models/document.rs
-diagram_tool/src/models/edge_ops.rs
 diagram_tool/src/models/envelope.rs
-diagram_tool/src/models/export.rs
 diagram_tool/src/models/harness.rs
 diagram_tool/src/models/hashing.rs
 diagram_tool/src/models/io_tests.rs
-diagram_tool/src/models/policy.rs
 diagram_tool/src/models/projection/ops/edge_ops.rs
-diagram_tool/src/models/projection/ops/node_ops.rs
-diagram_tool/src/models/projection/policy.rs
 diagram_tool/src/models/schema.rs
 diagram_tool/src/models/subgraph_persistence_tests.rs
-diagram_tool/src/models/sync.rs
 diagram_tool/src/models/validation.rs
 diagram_tool/src/mutation/pipeline.rs
 diagram_tool/src/perf/benchmark.rs
@@ -45,10 +37,7 @@ diagram_tool/src/store_sqlx.rs
 diagram_tool/src/test_harness.rs
 diagram_tool/src/test_infrastructure_tests.rs
 diagram_tool/src/ui/canvas.rs
-diagram_tool/src/ui/canvas/canvas_view.rs
 diagram_tool/src/ui/canvas/drag_math.rs
-diagram_tool/src/ui/canvas/interaction_reducer.rs
-diagram_tool/src/ui/canvas/math.rs
 diagram_tool/src/ui/canvas/perf.rs
 diagram_tool/src/ui/canvas/selection_geometry.rs
 diagram_tool/src/ui/commands.rs

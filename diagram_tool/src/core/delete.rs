@@ -1,4 +1,4 @@
-use crate::models::document::{DiagramDocument, NodeId};
+use diagram_models::document::DiagramDocument;
 
 pub fn delete_selected(doc: &mut DiagramDocument) -> bool {
     let selected = doc.editor_state.selected_items.clone();
@@ -8,7 +8,7 @@ pub fn delete_selected(doc: &mut DiagramDocument) -> bool {
 
     let mut deleted_node_ids = Vec::new();
     for id_str in &selected {
-        let id = NodeId::new(id_str.clone());
+        let id = diagram_models::document::NodeId::new(id_str.clone());
         if doc.document.nodes.remove(&id).is_some() {
             deleted_node_ids.push(id);
         }
@@ -24,7 +24,7 @@ pub fn delete_selected(doc: &mut DiagramDocument) -> bool {
 
     // Also remove any explicitly selected edges
     for id_str in &selected {
-        let id = crate::models::document::EdgeId::new(id_str.clone());
+        let id = diagram_models::document::EdgeId::new(id_str.clone());
         doc.document.edges.remove(&id);
     }
 

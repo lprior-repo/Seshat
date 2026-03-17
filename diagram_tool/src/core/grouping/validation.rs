@@ -1,4 +1,4 @@
-use crate::models::document::{Node, NodeId};
+use diagram_models::document::{Node, NodeId};
 use im::{HashMap, HashSet};
 use thiserror::Error;
 
@@ -74,7 +74,7 @@ fn find_locked_nodes(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) 
         .iter()
         .filter_map(|id| {
             nodes
-                .get(id)
+                .get(&id)
                 .and_then(|node| node.lock_state.is_locked().then_some(id.clone()))
         })
         .collect()
@@ -91,7 +91,7 @@ pub fn count_nesting_depth(nodes: &HashMap<NodeId, Node>, parent: Option<&NodeId
 /// Check nesting depth doesn't exceed limit
 fn check_nesting_depth(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> bool {
     selected.iter().all(|id| {
-        nodes.get(id).is_none_or(|node| {
+        nodes.get(&id).is_none_or(|node| {
             count_nesting_depth(nodes, node.parent.as_ref()) < MAX_SUBGRAPH_NESTING_DEPTH
         })
     })

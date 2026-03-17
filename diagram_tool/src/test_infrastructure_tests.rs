@@ -13,8 +13,8 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-// Include the test_harness module for testing
-mod test_harness_tests {
+// Include the test_utils module for testing
+mod test_utils_tests {
 
     // ============================================================================
     // P1: Test Category ID Validity (Compile-Time)

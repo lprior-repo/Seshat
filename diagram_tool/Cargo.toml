@@ -12,6 +12,9 @@ name = "diagram_tool"
 path = "src/lib.rs"
 
 [dependencies]
+diagram_models  = { path = "../diagram_models" }
+canvas_domain   = { path = "../canvas_domain" }
+canvas_math     = { path = "../canvas_math" }
 dioxus          = { version = "0.7" }
 
 # Serialization + Patching

@@ -6,6 +6,9 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+#[cfg(all(not(target_arch = "wasm32"), feature = "async-db"))]
+pub mod durable;
+
 pub mod types;
 pub use types::*;
 

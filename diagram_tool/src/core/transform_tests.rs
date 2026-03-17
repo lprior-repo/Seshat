@@ -7,7 +7,7 @@ mod tests {
         align_selection, distribute_selection, translate_selection, AlignmentAxis, AlignmentMode,
         TransformError,
     };
-    use crate::models::document::{
+    use diagram_models::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat,
     };
 

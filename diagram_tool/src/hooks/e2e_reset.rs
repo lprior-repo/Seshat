@@ -16,12 +16,12 @@
 
 use crate::app::DraggedIconPayload;
 use crate::history::History;
-use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use crate::ui::editor::ToolMode;
 use crate::ui::mobile::SidebarUiState;
 use crate::ui::panels::PanelVisibility;
 use crate::ui::toast::ToastQueue;
 use crate::ui::toolbar::ToolbarStats;
+use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use dioxus::prelude::*;
 
 /// Must be called inside the `App` component after all `use_context_provider`

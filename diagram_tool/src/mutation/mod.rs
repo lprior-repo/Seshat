@@ -28,4 +28,8 @@
 pub mod error;
 pub mod ops;
 pub mod pipeline;
+pub mod pipeline_stages;
 pub mod ui_helpers;
+
+#[cfg(test)]
+mod pipeline_tests;

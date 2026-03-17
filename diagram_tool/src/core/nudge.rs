@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 use crate::geometry::operations::compute_subgraph_bounds;
-use crate::models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
+use diagram_models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
 
 /// Recomputes bounds for all containers that are ancestors of the given nodes.
 ///
@@ -67,7 +67,7 @@ pub fn nudge_selection(doc: &mut DiagramDocument, dx: f64, dy: f64) -> bool {
         .editor_state
         .selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .collect();
 
     if selected_nodes.is_empty() || (dx == 0.0 && dy == 0.0) {

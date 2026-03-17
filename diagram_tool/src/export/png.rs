@@ -4,8 +4,8 @@
 #![forbid(unsafe_code)]
 
 use crate::export::svg::generate_svg_string;
-use crate::models::document::DiagramDocument;
 use anyhow::{Context, Result};
+use diagram_models::document::DiagramDocument;
 use resvg::usvg;
 use tiny_skia::{Pixmap, Transform};
 
@@ -34,7 +34,7 @@ pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
 
-    use crate::models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
+    use diagram_models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
     use im::HashMap;
 
     /// PNG file magic bytes (signature)
@@ -94,12 +94,12 @@ mod tests {
         nodes.insert(node_id, node);
         let doc = DiagramDocument {
             version: 2,
-            revision: crate::models::document::Revision::INITIAL,
+            revision: diagram_models::document::Revision::INITIAL,
             document: DocumentData {
                 nodes,
                 edges: HashMap::new(),
             },
-            editor_state: crate::models::document::EditorState::default(),
+            editor_state: diagram_models::document::EditorState::default(),
         };
         let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
         let output_path = temp_file.path().to_str().context("Invalid path")?;
@@ -133,12 +133,12 @@ mod tests {
         node_map.insert(node_id3, node3);
         let doc = DiagramDocument {
             version: 2,
-            revision: crate::models::document::Revision::INITIAL,
+            revision: diagram_models::document::Revision::INITIAL,
             document: DocumentData {
                 nodes: node_map,
                 edges: HashMap::new(),
             },
-            editor_state: crate::models::document::EditorState::default(),
+            editor_state: diagram_models::document::EditorState::default(),
         };
         let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
         let output_path = temp_file.path().to_str().context("Invalid path")?;
@@ -168,7 +168,7 @@ mod tests {
             target: tgt_node_id,
             label: String::new(),
             style: EdgeStyle::Solid,
-            arrow_type: crate::models::document::ArrowType::Default,
+            arrow_type: diagram_models::document::ArrowType::Default,
             label_offset_t: OrderedFloat(0.5),
             color: None,
             thickness: OrderedFloat(1.5),
@@ -185,12 +185,12 @@ mod tests {
 
         let doc = DiagramDocument {
             version: 2,
-            revision: crate::models::document::Revision::INITIAL,
+            revision: diagram_models::document::Revision::INITIAL,
             document: DocumentData {
                 nodes: node_map,
                 edges,
             },
-            editor_state: crate::models::document::EditorState::default(),
+            editor_state: diagram_models::document::EditorState::default(),
         };
         let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
         let output_path = temp_file.path().to_str().context("Invalid path")?;
@@ -297,12 +297,12 @@ mod tests {
         nodes.insert(node_id, node);
         let doc = DiagramDocument {
             version: 2,
-            revision: crate::models::document::Revision::INITIAL,
+            revision: diagram_models::document::Revision::INITIAL,
             document: DocumentData {
                 nodes,
                 edges: HashMap::new(),
             },
-            editor_state: crate::models::document::EditorState::default(),
+            editor_state: diagram_models::document::EditorState::default(),
         };
         let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
         let output_path = temp_file.path().to_str().context("Invalid path")?;

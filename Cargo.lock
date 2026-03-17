@@ -758,6 +758,27 @@ dependencies = [
 ]
 
 [[package]]
+name = "canvas_domain"
+version = "0.1.0"
+dependencies = [
+ "canvas_math",
+ "diagram_models",
+ "dioxus",
+ "im",
+ "ordered-float",
+ "proptest",
+ "serde",
+ "serde_json",
+]
+
+[[package]]
+name = "canvas_math"
+version = "0.1.0"
+dependencies = [
+ "proptest",
+]
+
+[[package]]
 name = "cc"
 version = "1.2.56"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1472,13 +1493,52 @@ dependencies = [
 ]
 
 [[package]]
+name = "diagram_models"
+version = "0.1.0"
+dependencies = [
+ "anyhow",
+ "base64",
+ "canvas_math",
+ "clap",
+ "dirs 5.0.1",
+ "futures-channel",
+ "futures-util",
+ "getrandom 0.3.4",
+ "im",
+ "image",
+ "include_dir",
+ "indexmap",
+ "itertools",
+ "js-sys",
+ "num_cpus",
+ "petgraph",
+ "proptest",
+ "rand 0.8.5",
+ "regex-lite",
+ "resvg",
+ "rpds",
+ "serde",
+ "serde_json",
+ "tap",
+ "tempfile",
+ "thiserror 2.0.18",
+ "tiny-skia",
+ "tower",
+ "uuid",
+ "web-sys",
+]
+
+[[package]]
 name = "diagram_tool"
 version = "0.1.0"
 dependencies = [
  "anyhow",
  "axum",
  "base64",
+ "canvas_domain",
+ "canvas_math",
  "clap",
+ "diagram_models",
  "dioxus",
  "dirs 5.0.1",
  "fs2",
@@ -4952,6 +5012,15 @@ name = "option-ext"
 version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "04744f49eae99ab78e0d5c0b603ab218f515ea8cfe5a456d7629ad883a3b6e7d"
+
+[[package]]
+name = "ordered-float"
+version = "4.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7bb71e1b3fa6ca1c61f383464aaf2bb0e2f8e772a1f01d486832464de363b951"
+dependencies = [
+ "num-traits",
+]
 
 [[package]]
 name = "ordered-stream"

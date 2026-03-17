@@ -1,9 +1,9 @@
 #![allow(dead_code)]
 
-use crate::models::document::{
+use diagram_models::document::{
     ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat, Point,
 };
-use crate::models::port::{compute_port_absolute_position, PortAnchor};
+use diagram_models::port::{compute_port_absolute_position, PortAnchor};
 use thiserror::Error;
 
 /// Constant for maximum number of edges between same node pair

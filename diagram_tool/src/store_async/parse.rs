@@ -1,9 +1,9 @@
 //! Parsing functions for the async store.
 
-use crate::models::envelope::{encode_event_envelope, EventEnvelope};
 use crate::store::types::{
     BoundedBatch, Revision, ValidEvent, ValidOperationId, ValidPayload, ValidTimestamp,
 };
+use diagram_models::envelope::{encode_event_envelope, EventEnvelope};
 
 use super::error::AsyncStoreError;
 
@@ -16,7 +16,7 @@ use super::error::AsyncStoreError;
 /// Returns an error if encoding fails or validation fails.
 pub fn envelope_to_valid_event(envelope: &EventEnvelope) -> Result<ValidEvent, AsyncStoreError> {
     let payload =
-        encode_event_envelope(envelope).map_err(|e: crate::models::envelope::ContractError| {
+        encode_event_envelope(envelope).map_err(|e: diagram_models::envelope::ContractError| {
             AsyncStoreError::Serialization(e.to_string())
         })?;
 

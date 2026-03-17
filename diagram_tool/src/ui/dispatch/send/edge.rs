@@ -4,8 +4,8 @@ use dioxus::prelude::*;
 use im::HashSet;
 use uuid::Uuid;
 
-use crate::models::document::{DiagramDocument, EdgeId, NodeId};
-use crate::models::envelope::EventEnvelope;
+use diagram_models::document::{DiagramDocument, EdgeId, NodeId};
+use diagram_models::envelope::EventEnvelope;
 
 use super::super::create::{create_edge_connect_envelope, create_edge_disconnect_envelope};
 use super::super::errors::{DispatchError, DispatchResult};

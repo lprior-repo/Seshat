@@ -5,7 +5,7 @@
 #[cfg(kani)]
 use crate::history::History;
 #[cfg(kani)]
-use crate::models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat, Revision};
+use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat, Revision};
 
 #[cfg(kani)]
 fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
@@ -155,7 +155,7 @@ fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
         panic!("undo should succeed");
     };
     assert!(
-        !after_undo.redo_stack.is_empty(),
+        !after_undo.can_redo() == false,
         "redo stack should have entries after undo"
     );
 
@@ -171,7 +171,7 @@ fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
     let after_push = after_undo.push(new_doc);
 
     assert!(
-        after_push.redo_stack.is_empty(),
+        after_push.can_redo() == false,
         "redo stack should be empty after push"
     );
 }

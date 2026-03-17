@@ -11,7 +11,7 @@ use std::path::PathBuf;
 use std::time::Duration;
 
 use crate::cli_persistence::{load_workspace_with_lkg, save_workspace_atomic};
-use crate::models::document::DiagramDocument;
+use diagram_models::document::DiagramDocument;
 
 use super::error::LockError;
 use super::file_lock::FileLock;
@@ -383,7 +383,7 @@ impl Default for DiagramLockManager {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::models::document::{DocumentData, EditorState, Revision};
+    use diagram_models::document::{DocumentData, EditorState, Revision};
     use im::HashMap;
     use tempfile::TempDir;
 

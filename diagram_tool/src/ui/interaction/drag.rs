@@ -1,5 +1,5 @@
-use crate::models::document::{DiagramDocument, NodeId};
 use crate::ui::grid::{snap_point as grid_snap_point, GridSize};
+use diagram_models::document::{DiagramDocument, NodeId};
 use im::{HashMap, HashSet};
 
 #[must_use]
@@ -37,7 +37,7 @@ pub fn drag_original_positions(
 ) -> HashMap<NodeId, (f64, f64)> {
     let selected_nodes = selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .filter(|id| doc.document.nodes.contains_key(id))
         .collect::<HashSet<_>>();
 
@@ -64,7 +64,7 @@ pub fn drag_original_positions(
     .unwrap_or_else(HashSet::new);
 
     with_children.iter().fold(HashMap::new(), |acc, id| {
-        if let Some(node) = doc.document.nodes.get(id) {
+        if let Some(node) = doc.document.nodes.get(&id) {
             acc.update(id.clone(), (node.x.0, node.y.0))
         } else {
             acc

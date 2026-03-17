@@ -2,8 +2,8 @@
 
 use super::errors::DispatchError;
 use super::validators::{validate_coordinates, validate_dimensions};
-use crate::models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
-use crate::models::envelope::{Author, DomainOp, EventEnvelope, LabelTargetId, LabelTargetType};
+use diagram_models::document::{EdgeId, EdgeStyle, NodeId, NodeStyle};
+use diagram_models::envelope::{Author, DomainOp, EventEnvelope, LabelTargetId, LabelTargetType};
 
 /// Local author for dispatched operations
 fn local_author() -> Author {
@@ -83,7 +83,7 @@ pub fn create_node_delete_envelope(id: String) -> EventEnvelope {
 /// Returns `DispatchError::InvalidCoordinates` if coordinates or dimensions are invalid.
 #[allow(clippy::too_many_arguments)]
 pub fn create_node_resize_envelope(
-    id: crate::models::document::NodeId,
+    id: diagram_models::document::NodeId,
     original_x: f64,
     original_y: f64,
     original_width: f64,

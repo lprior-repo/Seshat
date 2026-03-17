@@ -9,7 +9,7 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, OrderedFloat};
+use diagram_models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, OrderedFloat};
 
 /// Pure clipboard data type - immutable state for clipboard operations.
 ///
@@ -78,8 +78,8 @@ pub fn copy_selection(doc: &DiagramDocument) -> Option<ClipboardData> {
         .filter_map(|id| {
             doc.document
                 .nodes
-                .get(id)
-                .map(|node| (id.clone(), node.clone()))
+                .get(&id)
+                .map(|node: &Node| (id.clone(), node.clone()))
         })
         .collect();
 
@@ -90,7 +90,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Option<ClipboardData> {
         .filter(|(_, edge)| {
             selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
         })
-        .map(|(_, edge)| edge.clone())
+        .map(|(_, edge): (&EdgeId, &Edge)| edge.clone())
         .collect();
 
     Some(ClipboardData {
@@ -116,8 +116,8 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<ClipboardDa
         .filter_map(|id| {
             doc.document
                 .nodes
-                .get(id)
-                .map(|node| (id.clone(), node.clone()))
+                .get(&id)
+                .map(|node: &Node| (id.clone(), node.clone()))
         })
         .collect();
 
@@ -128,7 +128,7 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<ClipboardDa
         .filter(|(_, edge)| {
             selected_nodes.contains(&edge.source) && selected_nodes.contains(&edge.target)
         })
-        .map(|(_, edge)| edge.clone())
+        .map(|(_, edge): (&EdgeId, &Edge)| edge.clone())
         .collect();
 
     Some(ClipboardData {
@@ -167,11 +167,11 @@ pub fn paste_contents(
         let Some(new_id) = id_map.get(old_id).cloned() else {
             continue;
         };
-        let mut next = node.clone();
+        let mut next: diagram_models::document::Node = node.clone();
         next.x = OrderedFloat(next.x.0 + offset);
         next.y = OrderedFloat(next.y.0 + offset);
         next.parent = remap_pasted_parent(next.parent, &id_map);
-        let _ = selected.insert(new_id.to_string());
+        let _ = selected.insert(new_id.as_str().to_string());
         let _ = doc.document.nodes.insert(new_id, next);
     }
 
@@ -269,7 +269,7 @@ fn selected_node_ids(doc: &DiagramDocument) -> BTreeSet<NodeId> {
     doc.editor_state
         .selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .filter(|id| doc.document.nodes.contains_key(id))
         .collect()
 }

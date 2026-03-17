@@ -1,5 +1,5 @@
 use super::*;
-use crate::models::document::{
+use diagram_models::document::{
     DiagramDocument, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };
 
@@ -89,8 +89,8 @@ fn test_adding_edge_that_creates_cycle_returns_cycle_detected_error() {
     assert_eq!(err, RoutingError::CycleDetected);
 }
 
-use crate::models::document::Edge;
-use crate::models::port::PortAnchor;
+use diagram_models::document::Edge;
+use diagram_models::port::PortAnchor;
 
 fn create_edge_obj(source: &str, target: &str) -> Edge {
     Edge {

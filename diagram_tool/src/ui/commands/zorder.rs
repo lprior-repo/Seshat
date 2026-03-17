@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, NodeId};
+use diagram_models::document::DiagramDocument;
 
 /// Z-order operation types
 #[derive(Clone, Copy)]
@@ -27,7 +27,7 @@ fn apply_z_order_operation(
         .editor_state
         .selected_items
         .iter()
-        .filter_map(|id| NodeId::new(id.clone()).into())
+        .filter_map(|id| diagram_models::document::NodeId::new(id.clone()).into())
         .collect::<BTreeSet<_>>();
 
     if selected.is_empty() {

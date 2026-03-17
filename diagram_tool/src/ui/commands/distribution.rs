@@ -5,7 +5,7 @@ use std::collections::BTreeSet;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, NodeId, OrderedFloat};
+use diagram_models::document::{DiagramDocument, NodeId, OrderedFloat};
 
 /// Axis for distribution operations
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -44,7 +44,7 @@ pub fn apply_distribute_selection(
     let selected_nodes: Vec<NodeId> = selected_node_ids(&current)
         .into_iter()
         .filter(|id| {
-            current.document.nodes.get(id).is_some_and(|node| {
+            current.document.nodes.get(&id).is_some_and(|node| {
                 let coords_finite = node.x.0.is_finite() && node.y.0.is_finite();
                 let movable = node.lock_state.is_movable(&node.kind);
                 coords_finite && movable
@@ -61,7 +61,7 @@ pub fn apply_distribute_selection(
     let mut node_data: Vec<(NodeId, f64, f64)> = selected_nodes
         .iter()
         .filter_map(|id| {
-            current.document.nodes.get(id).map(|node| {
+            current.document.nodes.get(&id).map(|node| {
                 let (pos, size) = match axis {
                     DistributionAxis::Horizontal => (node.x.0, node.width.0),
                     DistributionAxis::Vertical => (node.y.0, node.height.0),
@@ -136,7 +136,7 @@ fn selected_node_ids(doc: &DiagramDocument) -> BTreeSet<NodeId> {
     doc.editor_state
         .selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .filter(|id| doc.document.nodes.contains_key(id))
         .collect()
 }

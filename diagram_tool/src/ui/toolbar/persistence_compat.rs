@@ -1,4 +1,4 @@
-use crate::models::document::DiagramDocument;
+use diagram_models::document::DiagramDocument;
 
 fn remap_key(obj: &mut serde_json::Map<String, serde_json::Value>, from: &str, to: &str) {
     if obj.contains_key(to) {
@@ -351,7 +351,7 @@ mod tests {
         assert!(
             doc.document
                 .nodes
-                .contains_key(&crate::models::document::NodeId::new(
+                .contains_key(&diagram_models::document::NodeId::new(
                     "legacy_node".to_string()
                 )),
             "Legacy node should be present"
@@ -425,7 +425,7 @@ mod tests {
         assert!(
             doc.document
                 .nodes
-                .contains_key(&crate::models::document::NodeId::new(
+                .contains_key(&diagram_models::document::NodeId::new(
                     "legacy_fields".to_string()
                 )),
             "Node should be parsed"
@@ -435,7 +435,7 @@ mod tests {
         assert!(
             doc.document
                 .edges
-                .contains_key(&crate::models::document::EdgeId::new(
+                .contains_key(&diagram_models::document::EdgeId::new(
                     "legacy_edge".to_string()
                 )),
             "Edge should be parsed"
@@ -445,7 +445,7 @@ mod tests {
         let node = doc
             .document
             .nodes
-            .get(&crate::models::document::NodeId::new(
+            .get(&diagram_models::document::NodeId::new(
                 "legacy_fields".to_string(),
             ))
             .expect("node should exist");

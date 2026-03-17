@@ -1,12 +1,12 @@
 #[cfg(not(target_arch = "wasm32"))]
 use crate::export::png::export_png as export_png_file;
 use crate::export::svg::generate_svg_string;
-use crate::models::canonical_json::to_canonical_pretty_json;
-use crate::models::document::DiagramDocument;
 use crate::ui::toast::ToastIntent;
 use crate::ui::toast::ToastQueue;
 #[cfg(target_arch = "wasm32")]
 use base64::{engine::general_purpose, Engine as _};
+use diagram_models::canonical_json::to_canonical_pretty_json;
+use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs::File;

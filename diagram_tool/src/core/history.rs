@@ -1,5 +1,5 @@
 use crate::history::History;
-use crate::models::document::DiagramDocument;
+use diagram_models::document::DiagramDocument;
 
 /// Undoes the last document change.
 ///

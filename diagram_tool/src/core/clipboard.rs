@@ -1,8 +1,8 @@
 #![allow(dead_code)]
 
-use crate::models::document::OrderedFloat;
-use crate::models::document::{DiagramDocument, EdgeId, NodeId};
 use crate::ui::commands::ClipboardData;
+use diagram_models::document::OrderedFloat;
+use diagram_models::document::{DiagramDocument, EdgeId, NodeId};
 use im::HashMap;
 use thiserror::Error;
 use uuid::Uuid;
@@ -32,7 +32,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Result<ClipboardData, ClipboardE
 
     let mut nodes = Vec::new();
     for id_str in selected.iter() {
-        let id = NodeId::new(id_str.clone());
+        let id = diagram_models::document::NodeId::new(id_str.clone());
         if let Some(node) = doc.document.nodes.get(&id) {
             nodes.push((id, node.clone()));
         }
@@ -77,7 +77,7 @@ pub fn paste_contents(
     let id_map = clipboard
         .nodes
         .iter()
-        .map(|(old_id, _): &(NodeId, crate::models::document::Node)| {
+        .map(|(old_id, _): &(NodeId, diagram_models::document::Node)| {
             (old_id.clone(), NodeId::new(Uuid::new_v4().to_string()))
         })
         .collect::<HashMap<NodeId, NodeId>>();
@@ -87,11 +87,11 @@ pub fn paste_contents(
         let Some(new_id) = id_map.get(old_id).cloned() else {
             continue;
         };
-        let mut next = node.clone();
+        let mut next: diagram_models::document::Node = node.clone();
         next.x = OrderedFloat(next.x.0 + offset);
         next.y = OrderedFloat(next.y.0 + offset);
         next.parent = remap_pasted_parent(next.parent, &id_map);
-        let _ = selected.insert(new_id.to_string());
+        let _ = selected.insert(new_id.as_str().to_string());
         let _ = doc.document.nodes.insert(new_id, next);
     }
 
@@ -102,7 +102,7 @@ pub fn paste_contents(
             let mut next = edge.clone();
             next.source = new_source.clone();
             next.target = new_target.clone();
-            let new_edge_id = crate::models::document::EdgeId::new(Uuid::new_v4().to_string());
+            let new_edge_id = diagram_models::document::EdgeId::new(Uuid::new_v4().to_string());
             let _ = doc.document.edges.insert(new_edge_id, next);
         }
     }

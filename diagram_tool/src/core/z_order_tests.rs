@@ -1,5 +1,5 @@
 #![cfg(test)]
-use crate::models::document::{LockState, Node, NodeKind, OrderedFloat};
+use diagram_models::document::{LockState, Node, NodeKind, OrderedFloat};
 
 fn make_node(label: &str) -> Node {
     Node {

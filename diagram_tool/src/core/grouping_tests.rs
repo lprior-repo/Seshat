@@ -2,7 +2,7 @@
 #[cfg(test)]
 mod tests {
     use crate::core::grouping::{group_selection, ungroup_selection, GroupingError};
-    use crate::models::document::{
+    use diagram_models::document::{
         DiagramDocument, Edge, LockState, Node, NodeId, NodeKind, OrderedFloat,
     };
 
@@ -191,13 +191,13 @@ mod tests {
         doc.document
             .nodes
             .insert(node_id.clone(), test_node(100.0, 100.0, 20.0, 20.0));
-        let edge_id = crate::models::document::EdgeId::new("e1".to_string());
+        let edge_id = diagram_models::document::EdgeId::new("e1".to_string());
         let edge = Edge {
             source: group_id.clone(),
             target: node_id.clone(),
             label: String::new(),
-            style: crate::models::document::EdgeStyle::default(),
-            arrow_type: crate::models::document::ArrowType::default(),
+            style: diagram_models::document::EdgeStyle::default(),
+            arrow_type: diagram_models::document::ArrowType::default(),
             label_offset_t: OrderedFloat(0.5),
             color: None,
             thickness: OrderedFloat(1.0),
@@ -303,7 +303,7 @@ mod tests {
 
         // INV1: All children should have the group as parent
         for id in &node_ids {
-            let node = doc.document.nodes.get(id).unwrap();
+            let node = doc.document.nodes.get(&id).unwrap();
             assert_eq!(
                 node.parent.as_ref(),
                 Some(&group_id),
@@ -630,13 +630,13 @@ mod tests {
                 .insert(ext.clone(), test_node(200.0, 200.0, 20.0, 20.0));
 
             if has_from {
-                let eid = crate::models::document::EdgeId::new("e_from".to_string());
+                let eid = diagram_models::document::EdgeId::new("e_from".to_string());
                 let edge = Edge {
                     source: sg_id.clone(),
                     target: ext.clone(),
                     label: String::new(),
-                    style: crate::models::document::EdgeStyle::default(),
-                    arrow_type: crate::models::document::ArrowType::default(),
+                    style: diagram_models::document::EdgeStyle::default(),
+                    arrow_type: diagram_models::document::ArrowType::default(),
                     label_offset_t: OrderedFloat(0.5),
                     color: None,
                     thickness: OrderedFloat(1.0),
@@ -652,13 +652,13 @@ mod tests {
             }
 
             if has_to {
-                let eid = crate::models::document::EdgeId::new("e_to".to_string());
+                let eid = diagram_models::document::EdgeId::new("e_to".to_string());
                 let edge = Edge {
                     source: ext.clone(),
                     target: sg_id.clone(),
                     label: String::new(),
-                    style: crate::models::document::EdgeStyle::default(),
-                    arrow_type: crate::models::document::ArrowType::default(),
+                    style: diagram_models::document::EdgeStyle::default(),
+                    arrow_type: diagram_models::document::ArrowType::default(),
                     label_offset_t: OrderedFloat(0.5),
                     color: None,
                     thickness: OrderedFloat(1.0),
@@ -674,13 +674,13 @@ mod tests {
             }
 
             if has_child {
-                let eid = crate::models::document::EdgeId::new("e_child".to_string());
+                let eid = diagram_models::document::EdgeId::new("e_child".to_string());
                 let edge = Edge {
                     source: child1.clone(),
                     target: child2.clone(),
                     label: String::new(),
-                    style: crate::models::document::EdgeStyle::default(),
-                    arrow_type: crate::models::document::ArrowType::default(),
+                    style: diagram_models::document::EdgeStyle::default(),
+                    arrow_type: diagram_models::document::ArrowType::default(),
                     label_offset_t: OrderedFloat(0.5),
                     color: None,
                     thickness: OrderedFloat(1.0),
@@ -782,13 +782,13 @@ mod tests {
                     let src = rng.gen_range(0..node_ids.len());
                     let dst = rng.gen_range(0..node_ids.len());
                     if src != dst {
-                        let eid = crate::models::document::EdgeId::new(format!("e{i}"));
+                        let eid = diagram_models::document::EdgeId::new(format!("e{i}"));
                         let edge = Edge {
                             source: node_ids[src].clone(),
                             target: node_ids[dst].clone(),
                             label: String::new(),
-                            style: crate::models::document::EdgeStyle::default(),
-                            arrow_type: crate::models::document::ArrowType::default(),
+                            style: diagram_models::document::EdgeStyle::default(),
+                            arrow_type: diagram_models::document::ArrowType::default(),
                             label_offset_t: OrderedFloat(0.5),
                             color: None,
                             thickness: OrderedFloat(1.0),

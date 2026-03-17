@@ -3,7 +3,7 @@ use crate::core::history::{apply_redo, apply_undo};
 // Note: We'll implement pure versions of zoom later, for now we skip them or mock them
 // use crate::viewport::operations::{apply_zoom_in as core_zoom_in, apply_zoom_out as core_zoom_out};
 use crate::history::History;
-use crate::models::document::{
+use diagram_models::document::{
     ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, Node, NodeId, NodeKind, NodeStyle,
     OrderedFloat,
 };

@@ -119,7 +119,6 @@ pub mod history;
 pub mod hooks;
 pub mod icons;
 pub mod layout;
-pub mod models;
 pub mod mutation;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod perf;
@@ -129,13 +128,11 @@ pub mod store;
 pub mod store_async;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store_bridge;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod store_durable;
 pub mod ui;
 pub mod viewport;
 
 // Test harness is public for use in tests
-pub mod test_harness;
+pub mod test_utils;
 
 #[cfg(test)]
 mod test_infrastructure_tests;

@@ -1,11 +1,11 @@
 pub mod calculations;
 pub mod validation;
 
-use crate::models::document::{DiagramDocument, NodeId, NodeKind};
 pub use calculations::{
     calculate_edge_cleanup, calculate_ungroup, compute_padded_bounds, create_subgraph_node,
     find_lca,
 };
+use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
 use std::collections::BTreeSet;
 pub use validation::validate_selection;
 pub use validation::GroupingError;
@@ -18,7 +18,7 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(
         .editor_state
         .selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .collect();
 
     let validated = ValidatedSelection::try_new(&doc.document.nodes, &selected_ids)?;
@@ -29,7 +29,7 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(
 
     let min_z = selected
         .iter()
-        .filter_map(|id| doc.document.nodes.get(id).map(|n| n.z_index))
+        .filter_map(|id| doc.document.nodes.get(&id).map(|n| n.z_index))
         .min()
         .unwrap_or(0);
 
@@ -66,11 +66,11 @@ pub fn ungroup_selection(doc: &mut DiagramDocument) -> Result<(), GroupingError>
     let selected_items = doc.editor_state.selected_items.clone();
     let target_subgraphs: BTreeSet<NodeId> = selected_items
         .iter()
-        .map(|id| NodeId::new(id.clone()))
+        .map(|id| diagram_models::document::NodeId::new(id.clone()))
         .filter(|id| {
             doc.document
                 .nodes
-                .get(id)
+                .get(&id)
                 .is_some_and(|node| node.kind == NodeKind::Subgraph)
         })
         .collect();

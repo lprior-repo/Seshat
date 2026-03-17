@@ -1,5 +1,5 @@
 [workspace]
-members = ["diagram_tool", "nu_runner"]
+members = ["canvas_math", "diagram_tool", "nu_runner", "diagram_models", "canvas_domain"]
 resolver = "2"
 
 [profile.release]

@@ -3,7 +3,7 @@
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::models::document::{DiagramDocument, OrderedFloat};
+use diagram_models::document::{DiagramDocument, OrderedFloat};
 
 /// Zoom in by 25%
 #[must_use]

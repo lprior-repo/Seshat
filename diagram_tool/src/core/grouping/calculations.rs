@@ -1,5 +1,5 @@
 use super::validation::{validate_coordinates, GroupingError};
-use crate::models::document::{Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat};
+use diagram_models::document::{Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat};
 use im::{HashMap, HashSet};
 use std::collections::BTreeSet;
 
@@ -57,7 +57,7 @@ pub fn find_lca(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> Op
     // If it is, we take its parent.
     while let Some(id) = &lca {
         if selected.contains(id) {
-            lca = nodes.get(id).and_then(|n| n.parent.clone());
+            lca = nodes.get(&id).and_then(|n| n.parent.clone());
         } else {
             break;
         }
@@ -75,7 +75,7 @@ pub fn calculate_bounding_box(
     selected
         .iter()
         .filter_map(|id| {
-            nodes.get(id).map(|node| {
+            nodes.get(&id).map(|node| {
                 (
                     node.x.0,
                     node.y.0,
@@ -125,7 +125,7 @@ pub fn create_subgraph_node(
         tags: im::Vector::new(),
         metadata: im::HashMap::new(),
         z_index,
-        style: Some(crate::models::document::NodeStyle::Box),
+        style: Some(diagram_models::document::NodeStyle::Box),
         collapsed: Some(false),
     })
 }
@@ -160,7 +160,7 @@ pub fn calculate_ungroup(
 ) -> (HashMap<NodeId, Node>, BTreeSet<NodeId>) {
     let subgraph_parents: HashMap<NodeId, Option<NodeId>> = target_subgraphs
         .iter()
-        .filter_map(|id| nodes.get(id).map(|node| (id.clone(), node.parent.clone())))
+        .filter_map(|id| nodes.get(&id).map(|node| (id.clone(), node.parent.clone())))
         .collect();
 
     let (new_nodes, orphaned): (HashMap<NodeId, Node>, BTreeSet<NodeId>) = nodes
@@ -212,6 +212,6 @@ pub fn calculate_edge_cleanup(
         .filter(|(_, edge)| {
             !deleted_subgraphs.contains(&edge.source) && !deleted_subgraphs.contains(&edge.target)
         })
-        .map(|(id, edge): (&EdgeId, &Edge)| (id.clone(), edge.clone()))
+        .map(|(id, edge)| (id.clone(), edge.clone()))
         .collect()
 }

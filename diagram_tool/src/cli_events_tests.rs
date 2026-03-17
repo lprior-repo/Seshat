@@ -12,7 +12,7 @@
 
 #[cfg(test)]
 mod cli_event_tests {
-    use crate::cli::{error_code, exit_code, CliEvent};
+    use crate::cli::common::{error_code, exit_code, CliEvent};
     use crate::mutation::error::MutationError;
     use anyhow::{anyhow, Error};
 
@@ -288,7 +288,7 @@ mod rejection_path_tests {
     use crate::cli_persistence::{
         load_workspace_with_lkg, save_workspace_atomic, CliPersistenceError,
     };
-    use crate::models::document::{DiagramDocument, DocumentData, EditorState, Revision};
+    use diagram_models::document::{DiagramDocument, DocumentData, EditorState, Revision};
     use im::HashMap;
     use std::fs;
     use std::path::Path;
@@ -433,7 +433,7 @@ mod rejection_path_tests {
 
 #[cfg(test)]
 mod revision_feedback_tests {
-    use crate::models::document::{DiagramDocument, Revision};
+    use diagram_models::document::{DiagramDocument, Revision};
 
     /// Test: Revision should be monotonically increasing
     #[cfg(kani)]

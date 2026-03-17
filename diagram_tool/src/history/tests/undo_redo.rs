@@ -5,7 +5,7 @@
 #[cfg(kani)]
 use crate::history::History;
 #[cfg(kani)]
-use crate::models::document::{DiagramDocument, Revision};
+use diagram_models::document::{DiagramDocument, Revision};
 
 #[cfg(kani)]
 fn doc_with_revision(steps: u64) -> DiagramDocument {
@@ -55,14 +55,14 @@ fn given_history_with_states_when_undo_then_new_history_has_dropped_first() {
     assert!(result.is_some());
     if let Some((_doc, new_history)) = result {
         // After undo, the undo_stack should have 2 elements (dropped first)
-        let undo_count = new_history.undo_stack.len();
+        let undo_count = new_history.undo_stack_len();
         assert_eq!(
             undo_count, 2,
             "undo_stack should have 2 elements after undo"
         );
 
         // And redo_stack should have 1 element
-        let redo_count = new_history.redo_stack.len();
+        let redo_count = new_history.redo_stack_len();
         assert_eq!(redo_count, 1, "redo_stack should have 1 element after undo");
     }
 }
@@ -158,7 +158,7 @@ fn given_undone_state_when_push_then_redo_stack_is_cleared() {
     };
 
     assert_eq!(
-        after_undo.redo_stack.len(),
+        after_undo.redo_stack_len(),
         1,
         "after undo, redo stack should have 1 element"
     );
@@ -166,7 +166,7 @@ fn given_undone_state_when_push_then_redo_stack_is_cleared() {
     let after_push = after_undo.push(doc_with_revision(4));
 
     assert!(
-        after_push.redo_stack.is_empty(),
+        after_push.can_redo() == false,
         "push should clear redo stack"
     );
 }

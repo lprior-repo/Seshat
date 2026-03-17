@@ -1,4 +1,4 @@
-use crate::models::document::DiagramDocument;
+use diagram_models::document::DiagramDocument;
 use im::HashSet;
 
 #[must_use]

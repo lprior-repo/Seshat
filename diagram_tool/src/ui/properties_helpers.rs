@@ -2,8 +2,8 @@
 //! These functions are separated to keep the main component file under 300 lines
 //! and to follow the functional core / imperative shell pattern.
 
-use crate::models::document::{DiagramDocument, EdgeStyle, NodeId, NodeKind, NodeStyle};
-use crate::models::envelope::EventEnvelope;
+use diagram_models::document::{DiagramDocument, EdgeStyle, NodeId, NodeKind, NodeStyle};
+use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::Coroutine;
 
 /// Removes all selected nodes and their connected edges from the document.
@@ -80,8 +80,8 @@ pub const fn edge_style_str(v: EdgeStyle) -> &'static str {
 /// Parses a string into an `ArrowType`.
 #[allow(dead_code)]
 #[must_use]
-pub fn parse_arrow_type(v: &str) -> crate::models::document::ArrowType {
-    use crate::models::document::ArrowType;
+pub fn parse_arrow_type(v: &str) -> diagram_models::document::ArrowType {
+    use diagram_models::document::ArrowType;
     match v {
         "straight" | "open" => ArrowType::Straight,
         "step" | "diamond" => ArrowType::Step,
@@ -94,8 +94,8 @@ pub fn parse_arrow_type(v: &str) -> crate::models::document::ArrowType {
 /// Converts an `ArrowType` to its string representation.
 #[allow(dead_code)]
 #[must_use]
-pub const fn arrow_type_str(v: crate::models::document::ArrowType) -> &'static str {
-    use crate::models::document::ArrowType;
+pub const fn arrow_type_str(v: diagram_models::document::ArrowType) -> &'static str {
+    use diagram_models::document::ArrowType;
     match v {
         ArrowType::Default => "default",
         ArrowType::Straight => "straight",
@@ -173,7 +173,7 @@ pub fn dispatch_edge_style_change(
 #[allow(dead_code)]
 #[must_use]
 pub fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
-    doc.document.nodes.get(id).map_or_else(
+    doc.document.nodes.get(&id).map_or_else(
         || id.to_string(),
         |node| {
             let trimmed = node.label.trim();

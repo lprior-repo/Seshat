@@ -1,6 +1,6 @@
 //! Tests for AuthorId and Timestamp newtypes
 
-use diagram_tool::models::document::{AuthorId, NodeId};
+use diagram_models::document::{AuthorId, NodeId};
 
 #[test]
 fn test_author_id_try_new_valid() {

@@ -274,11 +274,14 @@ pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let min_x = nodes
         .iter()
-        .map(|n| n.x)
+        .map(|n: &SnapNode| n.x)
         .filter(|x| x.is_finite())
         .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
-    nodes.iter().map(|n| Point::new(min_x, n.y)).collect()
+    nodes
+        .iter()
+        .map(|n: &SnapNode| Point::new(min_x, n.y))
+        .collect()
 }
 
 #[must_use]
@@ -288,13 +291,13 @@ pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let avg_center: f64 = nodes
         .iter()
-        .map(SnapNode::center_x)
+        .map(|n: &SnapNode| n.x + n.width / 2.0)
         .filter(|x| x.is_finite())
         .sum::<f64>()
         / nodes.len() as f64;
     nodes
         .iter()
-        .map(|n| Point::new(avg_center - n.width / 2.0, n.y))
+        .map(|n: &SnapNode| Point::new(avg_center - n.width / 2.0, n.y))
         .collect()
 }
 
@@ -305,13 +308,13 @@ pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let max_right = nodes
         .iter()
-        .map(SnapNode::right)
+        .map(|n: &SnapNode| n.x + n.width)
         .filter(|x| x.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
     nodes
         .iter()
-        .map(|n| Point::new(max_right - n.width, n.y))
+        .map(|n: &SnapNode| Point::new(max_right - n.width, n.y))
         .collect()
 }
 
@@ -322,11 +325,14 @@ pub fn align_top(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let min_y = nodes
         .iter()
-        .map(|n| n.y)
+        .map(|n: &SnapNode| n.y)
         .filter(|y| y.is_finite())
         .min_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
-    nodes.iter().map(|n| Point::new(n.x, min_y)).collect()
+    nodes
+        .iter()
+        .map(|n: &SnapNode| Point::new(n.x, min_y))
+        .collect()
 }
 
 #[must_use]
@@ -336,13 +342,13 @@ pub fn align_middle(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let avg_middle: f64 = nodes
         .iter()
-        .map(super::mod_types::SnapNode::center_y)
+        .map(|n: &SnapNode| n.y + n.height / 2.0)
         .filter(|y| y.is_finite())
         .sum::<f64>()
         / nodes.len() as f64;
     nodes
         .iter()
-        .map(|n| Point::new(n.x, avg_middle - n.height / 2.0))
+        .map(|n: &SnapNode| Point::new(n.x, avg_middle - n.height / 2.0))
         .collect()
 }
 
@@ -353,13 +359,13 @@ pub fn align_bottom(nodes: &[SnapNode]) -> Vec<Point> {
     }
     let max_bottom = nodes
         .iter()
-        .map(super::mod_types::SnapNode::bottom)
+        .map(|n: &SnapNode| n.y + n.height)
         .filter(|y| y.is_finite())
         .max_by(|a, b| a.partial_cmp(b).unwrap_or(std::cmp::Ordering::Equal))
         .unwrap_or(0.0);
     nodes
         .iter()
-        .map(|n| Point::new(n.x, max_bottom - n.height))
+        .map(|n: &SnapNode| Point::new(n.x, max_bottom - n.height))
         .collect()
 }
 

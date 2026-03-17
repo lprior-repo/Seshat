@@ -3,8 +3,8 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::models::document::{DiagramDocument, DocumentData, NodeKind, Revision};
 use crate::ui::theme::{ACCENT, APP_FONT, BG_ELEVATED, BG_SURFACE, BORDER, TEXT_MUTED};
+use diagram_models::document::{DiagramDocument, DocumentData, NodeKind, Revision};
 use dioxus::prelude::*;
 
 const PAD: f64 = 60.0;
@@ -343,7 +343,7 @@ pub fn Minimap() -> Element {
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
-    use crate::models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
+    use diagram_models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
     use im::HashMap;
 
     fn make_node(id: &str, x: f64, y: f64, width: f64, height: f64) -> (NodeId, Node) {

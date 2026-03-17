@@ -1,0 +1,16 @@
+[package]
+name = "canvas_domain"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+diagram_models = { path = "../diagram_models" }
+canvas_math = { path = "../canvas_math" }
+im = { version = "15.1.0", features = ["serde"] }
+ordered-float = "4.2.0"
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+dioxus = { version = "0.7" }
+
+[dev-dependencies]
+proptest = "1.10.0"

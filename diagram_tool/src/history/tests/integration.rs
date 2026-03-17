@@ -5,7 +5,7 @@
 #[cfg(test)]
 use crate::history::History;
 #[cfg(test)]
-use crate::models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
+use diagram_models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
 
 #[cfg(test)]
 fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
@@ -44,7 +44,7 @@ fn test_integration_e2e_full_history_workflow() {
     // This counts as 1 entry in undo_stack
     let mut history = History::new().push(doc.clone());
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         1,
         "After initial push: undo_stack.len() = 1"
     );
@@ -57,7 +57,7 @@ fn test_integration_e2e_full_history_workflow() {
     doc.revision = doc.revision.increment();
     history = history.push(doc.clone());
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         2,
         "After step 1: undo_stack.len() = 2 (initial + step1)"
     );
@@ -70,7 +70,7 @@ fn test_integration_e2e_full_history_workflow() {
     doc.revision = doc.revision.increment();
     history = history.push(doc.clone());
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         3,
         "After step 2: undo_stack.len() = 3 (initial + step1 + step2)"
     );
@@ -83,7 +83,7 @@ fn test_integration_e2e_full_history_workflow() {
     history = h;
     assert!(history.can_redo(), "After step 3: can_redo() = true");
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         1,
         "After step 3: undo_stack.len() = 1"
     );
@@ -96,7 +96,7 @@ fn test_integration_e2e_full_history_workflow() {
     history = h;
     assert!(history.can_redo(), "After step 4: can_redo() = true");
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         0,
         "After step 4: undo_stack.len() = 0"
     );
@@ -109,7 +109,7 @@ fn test_integration_e2e_full_history_workflow() {
     history = h;
     assert!(history.can_undo(), "After step 5: can_undo() = true");
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         1,
         "After step 5: undo_stack.len() = 1 (current added to undo_stack)"
     );
@@ -122,7 +122,7 @@ fn test_integration_e2e_full_history_workflow() {
     history = h;
     assert!(history.can_undo(), "After step 6: can_undo() = true");
     assert_eq!(
-        history.undo_stack.len(),
+        history.undo_stack_len(),
         2,
         "After step 6: undo_stack.len() = 2 (current added to undo_stack)"
     );
@@ -136,7 +136,7 @@ fn test_integration_e2e_full_history_workflow() {
 /// Test push after undo clears redo stack (Contract Q1)
 #[test]
 fn test_postcondition_q1_redo_stack_empty_after_push() {
-    use crate::models::document::Revision;
+    use diagram_models::document::Revision;
 
     // History with push(A), push(B), undo (back to A, redo has B)
     let history = History::new()
@@ -158,7 +158,7 @@ fn test_postcondition_q1_redo_stack_empty_after_push() {
     };
 
     assert!(
-        !after_undo.redo_stack.is_empty(),
+        !after_undo.can_redo() == false,
         "redo stack should have entries"
     );
 
@@ -166,7 +166,7 @@ fn test_postcondition_q1_redo_stack_empty_after_push() {
     let after_push = after_undo.push(DiagramDocument::default());
 
     assert!(
-        after_push.redo_stack.is_empty(),
+        after_push.can_redo() == false,
         "redo stack should be empty after push"
     );
 }
@@ -174,7 +174,7 @@ fn test_postcondition_q1_redo_stack_empty_after_push() {
 /// Test invariant I3: After push, redo stack is empty
 #[test]
 fn test_invariant_i3_after_push_redo_stack_is_empty() {
-    use crate::models::document::Revision;
+    use diagram_models::document::Revision;
 
     let history = History::new()
         .push({
@@ -194,13 +194,13 @@ fn test_invariant_i3_after_push_redo_stack_is_empty() {
         panic!("undo should succeed");
     };
 
-    assert!(!after_undo.redo_stack.is_empty(), "redo should have B");
+    assert!(!after_undo.can_redo() == false, "redo should have B");
 
     // push(C) creates new timeline branch
     let after_push = after_undo.push(DiagramDocument::default());
 
     assert!(
-        after_push.redo_stack.is_empty(),
+        after_push.can_redo() == false,
         "redo stack should be empty after push"
     );
 }

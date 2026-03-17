@@ -10,8 +10,6 @@ mod persistence;
 mod persistence_compat;
 
 use crate::history::History;
-use crate::models::document::{ArrowType, DiagramDocument, EdgeStyle};
-use crate::models::envelope::EventEnvelope;
 use crate::mutation::error::MutationError;
 use crate::ui::editor::ToolMode;
 use crate::ui::panels::PanelVisibility;
@@ -20,6 +18,8 @@ use crate::ui::theme::{
     TEXT_MAIN, TEXT_MUTED,
 };
 use crate::ui::toast::{use_toast, ToastQueue};
+use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
+use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]

@@ -98,8 +98,8 @@ proptest! {
         anchor in arb_point(), current in arb_point(),
     ) {
         let originals = im::HashMap::new()
-            .update(crate::models::document::NodeId::new("a".to_string()), (x1, y1))
-            .update(crate::models::document::NodeId::new("b".to_string()), (x2, y2));
+            .update(diagram_models::document::NodeId::new("a".to_string()), (x1, y1))
+            .update(diagram_models::document::NodeId::new("b".to_string()), (x2, y2));
         let result = dragged_positions_with_snap(&originals, anchor, current, false, GridSize::default());
         prop_assert_eq!(result.len(), originals.len());
     }
@@ -112,9 +112,9 @@ proptest! {
         point in arb_point(),
     ) {
         let originals = im::HashMap::new()
-            .update(crate::models::document::NodeId::new("a".to_string()), (x, y));
+            .update(diagram_models::document::NodeId::new("a".to_string()), (x, y));
         let result = dragged_positions_with_snap(&originals, point, point, false, GridSize::default());
-        let pos = result.get(&crate::models::document::NodeId::new("a".to_string()));
+        let pos = result.get(&diagram_models::document::NodeId::new("a".to_string()));
         if let Some((rx, ry)) = pos {
             prop_assert!((rx - x).abs() < f64::EPSILON);
             prop_assert!((ry - y).abs() < f64::EPSILON);
@@ -129,9 +129,9 @@ proptest! {
         current in arb_point(),
     ) {
         let originals = im::HashMap::new()
-            .update(crate::models::document::NodeId::new("a".to_string()), (x, y));
+            .update(diagram_models::document::NodeId::new("a".to_string()), (x, y));
         let result = dragged_positions_with_snap(&originals, (f64::NAN, f64::NAN), current, false, GridSize::default());
-        let pos = result.get(&crate::models::document::NodeId::new("a".to_string()));
+        let pos = result.get(&diagram_models::document::NodeId::new("a".to_string()));
         if let Some((rx, ry)) = pos {
             if x.is_finite() && y.is_finite() {
                 prop_assert!(rx.is_finite() || rx.is_nan());

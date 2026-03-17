@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod tests {
 
-    use crate::models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
+    use diagram_models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
 
     fn test_node() -> Node {
         Node {
@@ -25,8 +25,8 @@ mod tests {
         }
     }
 
-    fn test_edge(source: NodeId, target: NodeId) -> crate::models::document::Edge {
-        crate::models::document::Edge {
+    fn test_edge(source: NodeId, target: NodeId) -> diagram_models::document::Edge {
+        diagram_models::document::Edge {
             source,
             target,
             label: String::new(),
@@ -119,8 +119,8 @@ mod tests {
         doc.document.nodes.insert(n2.clone(), test_node());
         doc.document.nodes.insert(n3.clone(), test_node());
 
-        let e1 = crate::models::document::EdgeId::new("e1".to_string());
-        let e2 = crate::models::document::EdgeId::new("e2".to_string());
+        let e1 = diagram_models::document::EdgeId::new("e1".to_string());
+        let e2 = diagram_models::document::EdgeId::new("e2".to_string());
 
         doc.document
             .edges
@@ -191,7 +191,7 @@ mod tests {
         doc.document.nodes.insert(n1.clone(), test_node());
         doc.document.nodes.insert(n2.clone(), test_node());
 
-        let e1 = crate::models::document::EdgeId::new("e1".to_string());
+        let e1 = diagram_models::document::EdgeId::new("e1".to_string());
         doc.document
             .edges
             .insert(e1.clone(), test_edge(n1.clone(), n2.clone()));

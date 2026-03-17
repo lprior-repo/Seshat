@@ -7,7 +7,7 @@ use crate::core::history::{apply_redo, apply_undo};
 #[cfg(kani)]
 use crate::history::History;
 #[cfg(kani)]
-use crate::models::document::{
+use diagram_models::document::{
     DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     Revision,
 };

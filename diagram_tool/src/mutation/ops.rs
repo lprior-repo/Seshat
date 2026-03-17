@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 use crate::layout::grid::calculate_grid_layout;
-use crate::models::document::DiagramDocument;
+use diagram_models::document::DiagramDocument;
 
 #[must_use]
 pub fn apply_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
@@ -18,7 +18,7 @@ pub fn apply_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDocument {
 #[cfg(test)]
 mod tests {
 
-    use crate::models::document::{
+    use diagram_models::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
     };
     use im::HashMap;

@@ -3,7 +3,7 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::models::validation::ValidationIssue;
+use diagram_models::validation::ValidationIssue;
 use thiserror::Error;
 
 #[derive(Debug, Error)]
@@ -21,22 +21,15 @@ impl MutationError {
     }
 }
 
-impl From<crate::models::dag::CycleError> for MutationError {
-    fn from(err: crate::models::dag::CycleError) -> Self {
+impl From<diagram_models::dag::CycleError> for MutationError {
+    fn from(err: diagram_models::dag::CycleError) -> Self {
         Self::Schema(format!("cycle error: {err}"))
     }
 }
 
-impl From<crate::models::conflict::ConflictError> for MutationError {
-    fn from(err: crate::models::conflict::ConflictError) -> Self {
+impl From<diagram_models::conflict::ConflictError> for MutationError {
+    fn from(err: diagram_models::conflict::ConflictError) -> Self {
         Self::Semantic(format!("conflict: {err}"))
-    }
-}
-
-#[cfg(not(target_arch = "wasm32"))]
-impl From<crate::models::sync::SyncError> for MutationError {
-    fn from(err: crate::models::sync::SyncError) -> Self {
-        Self::Schema(format!("sync error: {err}"))
     }
 }
 

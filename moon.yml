@@ -84,6 +84,7 @@ tasks:
 
   arch-audit:
     script: |
+      ./scripts/enforce_canonical_projection_types.sh
       ./scripts/enforce_file_lengths.sh
       ./scripts/enforce_boundaries.sh
 

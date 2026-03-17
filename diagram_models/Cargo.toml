@@ -1,0 +1,43 @@
+[package]
+name = "diagram_models"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+canvas_math     = { path = "../canvas_math" }
+serde           = { version = "1.0", features = ["derive"] }
+serde_json      = "1.0"
+uuid            = { version = "1.0", features = ["v4", "serde", "js"] }
+include_dir     = { version = "0.7", features = ["glob"] }
+tiny-skia       = "0.11"
+image           = "0.25"
+base64          = "0.22"
+resvg           = "0.44"
+clap            = { version = "4.0", features = ["derive"] }
+anyhow          = "1.0"
+indexmap        = { version = "2.0", features = ["serde"] }
+thiserror       = "2.0.18"
+itertools       = "0.14.0"
+tap             = "1.0.1"
+rpds            = "1.2.0"
+im              = { version = "15.1.0", features = ["serde"] }
+petgraph        = "0.8"
+tempfile        = "3.10"
+num_cpus        = "1.16"
+dirs            = "5.0"
+regex-lite      = "0.1"
+futures-util    = "0.3.32"
+tower           = { version = "0.5.3", features = ["util"] }
+
+[dev-dependencies]
+proptest = "1.10.0"
+rand = "0.8"
+futures-channel = "0.3"
+
+[target.'cfg(target_arch = "wasm32")'.dependencies]
+getrandom = { version = "0.3.4", features = ["wasm_js"] }
+js-sys = "0.3"
+web-sys = { version = "0.3", features = ["Window", "Document", "Element", "DomRect"] }
+
+[lints.rust]
+unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

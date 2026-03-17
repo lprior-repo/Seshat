@@ -1,7 +1,5 @@
 use crate::history::History;
 use crate::layout::dag::{dag_layout, DagLayoutSettings};
-use crate::models::document::DiagramDocument;
-use crate::models::envelope::EventEnvelope;
 use crate::mutation::pipeline::run_mutation;
 use crate::ui::commands::{
     apply_align_selection, apply_bring_forward, apply_bring_to_front, apply_copy_selection,
@@ -12,6 +10,8 @@ use crate::ui::commands::{
 };
 use crate::ui::dispatch::send::zorder::{dispatch_bring_to_front, dispatch_send_to_back};
 use crate::ui::toast::ToastApi;
+use diagram_models::document::DiagramDocument;
+use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::*;
 
 pub fn auto_layout(

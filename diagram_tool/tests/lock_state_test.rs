@@ -4,7 +4,7 @@
 
 #[test]
 fn lock_state_should_exist() {
-    use diagram_tool::models::document::LockState;
+    use diagram_models::document::LockState;
     assert!(!LockState::Unlocked.is_locked());
     assert!(LockState::Locked.is_locked());
 }
