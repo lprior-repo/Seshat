@@ -29,8 +29,8 @@ pub fn use_tabs_logic(
 pub fn switch_tab(
     target_id: String,
     state: &mut TabsState,
-    mut doc_signal: Signal<DiagramDocument>,
-    mut history_signal: Signal<History>,
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
 ) {
     if target_id == *state.active_tab_id.read() {
         return;
@@ -67,8 +67,8 @@ pub fn switch_tab(
 
 pub fn add_tab(
     state: &mut TabsState,
-    doc_signal: Signal<DiagramDocument>,
-    history_signal: Signal<History>,
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
 ) {
     let new_id = uuid::Uuid::new_v4().to_string();
     let new_index = state.tab_names.read().len() + 1;
@@ -88,14 +88,41 @@ pub fn add_tab(
         },
     );
 
-    switch_tab(new_id, state, doc_signal, history_signal);
+    if new_id == *state.active_tab_id.read() {
+        return;
+    }
+
+    let current_id = state.active_tab_id.read().clone();
+    let current_name = state
+        .tab_names
+        .read()
+        .iter()
+        .find(|(id, _)| id == &current_id)
+        .map_or_else(|| "Unknown".to_string(), |(_, name)| name.clone());
+
+    state.background_tabs.write().insert(
+        current_id.clone(),
+        DiagramTab {
+            id: current_id,
+            name: current_name,
+            doc: doc_signal.read().clone(),
+            history: history_signal.read().clone(),
+        },
+    );
+
+    if let Some(target_tab) = state.background_tabs.write().remove(&new_id) {
+        *doc_signal.write() = target_tab.doc;
+        *history_signal.write() = target_tab.history;
+    }
+
+    state.active_tab_id.set(new_id);
 }
 
 pub fn close_tab(
     close_id: String,
     state: &mut TabsState,
-    mut doc_signal: Signal<DiagramDocument>,
-    mut history_signal: Signal<History>,
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
 ) {
     let is_active = close_id == *state.active_tab_id.read();
 

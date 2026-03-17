@@ -50,7 +50,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(std::collections::HashSet::<String>::new()));
 
     let mut doc_signal = use_context::<Signal<DiagramDocument>>();
-    let history_signal = use_context::<Signal<History>>();
+    let mut history_signal = use_context::<Signal<History>>();
     let validate_trigger = use_context::<Signal<u64>>();
     let sidebar_ui = use_context::<Signal<SidebarUiState>>();
     let panels = use_context::<Signal<PanelVisibility>>();
@@ -67,16 +67,16 @@ pub fn App() -> Element {
 
     let tabs_state = tabs::use_tabs_logic(doc_signal, history_signal);
     let mut switch_tab = {
-        let state = tabs_state;
-        move |target_id: String| tabs::switch_tab(target_id, &state, doc_signal, history_signal)
+        let mut state = tabs_state;
+        move |target_id: String| tabs::switch_tab(target_id, &mut state, &mut doc_signal, &mut history_signal)
     };
     let mut add_tab = {
-        let state = tabs_state;
-        move |_| tabs::add_tab(&state, doc_signal, history_signal)
+        let mut state = tabs_state;
+        move |_| tabs::add_tab(&mut state, &mut doc_signal, &mut history_signal)
     };
     let mut close_tab = {
-        let state = tabs_state;
-        move |close_id: String| tabs::close_tab(close_id, &state, doc_signal, history_signal)
+        let mut state = tabs_state;
+        move |close_id: String| tabs::close_tab(close_id, &mut state, &mut doc_signal, &mut history_signal)
     };
 
     use_sidebar_mobile_bridge(sidebar_ui, panels);
