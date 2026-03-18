@@ -1,5 +1,6 @@
 use dioxus::prelude::*;
 
+#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
 use crate::ui::toast::{AiConflictState, ToastQueue};
 use diagram_models::document::DiagramDocument;
 use diagram_models::envelope::EventEnvelope;

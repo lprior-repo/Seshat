@@ -9,6 +9,7 @@ use rfd::FileDialog;
 #[cfg(not(target_arch = "wasm32"))]
 use std::fs;
 
+#[cfg(not(target_arch = "wasm32"))]
 use super::common::{update_load_save_error, update_load_save_success};
 
 pub fn save_workspace(

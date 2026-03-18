@@ -2,6 +2,8 @@ use dioxus::prelude::*;
 
 use crate::ui::toolbar::auto_save;
 use diagram_models::document::DiagramDocument;
+use crate::ui::editor::ToolMode;
+use diagram_models::document::{EdgeStyle, ArrowType};
 
 #[cfg(target_arch = "wasm32")]
 fn use_load_auto_save(
