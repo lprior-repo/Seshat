@@ -162,6 +162,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 space_pressed: state.space_pressed,
                 multi_touch_active: state.multi_touch_active,
                 space_pan_active: state.space_pan_active,
+                pending_pointer_sample: state.pending_pointer_sample,
                 db_tx: state.db_tx
             }
 

@@ -153,6 +153,8 @@ export function trapPageErrors(page: Page) {
     if (msg.type() === "error") {
       errors.push(msg.text());
     }
+    // Also push logs to process.stdout so we can see them in CI / CLI
+    console.log(`[BROWSER CONSOLE] [${msg.type()}] ${msg.text()}`);
   });
   page.on("requestfailed", (request) => {
     const failure = request.failure();
@@ -348,7 +350,7 @@ export async function freshStart(page: Page) {
       try { localStorage.clear(); } catch (_) { /* noop */ }
       try { sessionStorage.clear(); } catch (_) { /* noop */ }
     }),
-    () => page.goto("/", { waitUntil: "load" }),
+    () => page.goto("/", { waitUntil: "domcontentloaded" }),
     () => waitForUiReady(page),
     () => waitForE2eReady(page),
     () => resetDocument(page),

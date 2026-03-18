@@ -38,10 +38,6 @@ pub fn handle_pointer_up(
         set.remove(&up_pointer_id);
     });
 
-    if was_captured {
-        deps.interaction_mode.set(InteractionMode::Select);
-    }
-
     flush_pending_pointer_update(
         deps.doc_signal,
         deps.history_signal,
@@ -198,13 +194,18 @@ pub fn handle_pointer_up(
             let did_change = finalize_motion_release(mode, &mut doc_clone, &deps.db_tx);
             if did_change {
                 deps.doc_signal.set(doc_clone);
-                *mode = InteractionMode::Select;
             }
+            // Always revert to Select after dropping
+            *mode = InteractionMode::Select;
         }
         InteractionMode::Panning { .. } => {
             *mode = InteractionMode::Select;
         }
-        InteractionMode::Select => {}
+        InteractionMode::Select => {
+            if was_captured {
+                *mode = InteractionMode::Select;
+            }
+        }
     });
     deps.space_pan_active.set(false);
 }

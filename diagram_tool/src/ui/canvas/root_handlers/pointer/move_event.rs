@@ -52,9 +52,10 @@ pub fn handle_pointer_move(
                 doc.editor_state.grid_size,
             );
         }
-        InteractionMode::DraggingSelection { .. }
-        | InteractionMode::ResizingSelection { .. }
-        | InteractionMode::Panning { .. } => {
+        InteractionMode::DraggingSelection { .. } => {
+            deps.pending_pointer_sample.set(Some((local_x, local_y)));
+        }
+        InteractionMode::ResizingSelection { .. } | InteractionMode::Panning { .. } => {
             deps.pending_pointer_sample.set(Some((local_x, local_y)));
         }
         InteractionMode::Select => {}

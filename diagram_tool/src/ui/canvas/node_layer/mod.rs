@@ -34,9 +34,9 @@ pub fn NodeLayer(
     space_pressed: Signal<bool>,
     multi_touch_active: Signal<bool>,
     mut space_pan_active: Signal<bool>,
+    pending_pointer_sample: Signal<Option<(f64, f64)>>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) -> Element {
-    let pending_pointer_sample = use_signal(|| Option::<(f64, f64)>::None);
     let doc_for_nodes = doc_signal.read().clone();
     let s = doc_for_nodes.editor_state.clone();
     let selected_items = s.selected_items.iter().cloned().collect::<HashSet<_>>();

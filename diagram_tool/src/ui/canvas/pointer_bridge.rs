@@ -26,10 +26,39 @@ const POINTER_BRIDGE_JS: &str = r"
         const rect = target.getBoundingClientRect();
         return { x: rect.left, y: rect.top };
     };
-    const onPointerMove = (event) => {
-        const origin = getCanvasOrigin();
-        dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, pointerId: event.pointerId });
-    };
+                const onPointerMove = (event) => {
+                    const origin = getCanvasOrigin();
+                    console.log("[POINTER_BRIDGE] pointermove id=" + event.pointerId + " captured=" + window.__seshat_captured_id);
+                    dioxus.send({ type: 'pointermove', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, pointerId: event.pointerId });
+                };
+
+                const onPointerUp = (event) => {
+                    const origin = getCanvasOrigin();
+                    console.log("[POINTER_BRIDGE] pointerup id=" + event.pointerId);
+                    window.__seshat_captured_id = undefined;
+                    dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, pointerId: event.pointerId });
+                };
+
+                const onPointerDown = (event) => {
+                    const origin = getCanvasOrigin();
+                    window.__seshat_current_origin = { x: origin.x, y: origin.y };
+                    window.__seshat_pointerdown_handled = true;
+                    window.__seshat_captured_id = event.pointerId;
+                    console.log("[POINTER_BRIDGE] pointerdown id=" + event.pointerId);
+                    dioxus.send({
+                        type: 'pointerdown',
+                        x: event.clientX,
+                        y: event.clientY,
+                        originX: origin.x,
+                        originY: origin.y,
+                        button: event.button.toString(),
+                        pointerId: event.pointerId,
+                        tool: window.__seshat_current_tool || 'select',
+                        shiftKey: event.shiftKey,
+                        ctrlKey: event.ctrlKey,
+                        metaKey: event.metaKey,
+                    });
+                };
     const onPointerUp = (event) => {
         const origin = getCanvasOrigin();
         dioxus.send({ type: 'pointerup', x: event.clientX, y: event.clientY, originX: origin.x, originY: origin.y, pointerId: event.pointerId });
