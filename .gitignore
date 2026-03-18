@@ -28,6 +28,9 @@ playwright-report/
 
 # Local databases and runtime artifacts
 *.redb
+*.db
+*.db-wal
+*.db-shm
 
 # Generated bead scratch files
 .beads/last-touched
