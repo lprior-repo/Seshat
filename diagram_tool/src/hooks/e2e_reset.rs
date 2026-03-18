@@ -17,8 +17,6 @@
 use crate::app::DraggedIconPayload;
 use crate::history::History;
 use crate::ui::editor::ToolMode;
-use crate::ui::mobile::SidebarUiState;
-use crate::ui::panels::PanelVisibility;
 use crate::ui::toast::ToastQueue;
 use crate::ui::toolbar::ToolbarStats;
 use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
@@ -34,9 +32,7 @@ pub fn use_e2e_reset_hook() {
     let mut edge_style = use_context::<Signal<EdgeStyle>>();
     let mut arrow_type = use_context::<Signal<ArrowType>>();
     let mut toast_queue = use_context::<Signal<ToastQueue>>();
-    let mut panel_vis = use_context::<Signal<PanelVisibility>>();
     let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
-    let mut sidebar_ui = use_context::<Signal<SidebarUiState>>();
     let mut viewport_size = use_context::<Signal<(f64, f64)>>();
     let mut validate_trigger = use_context::<Signal<u64>>();
 
@@ -90,9 +86,7 @@ pub fn use_e2e_reset_hook() {
                     edge_style.set(EdgeStyle::Solid);
                     arrow_type.set(ArrowType::Default);
                     toast_queue.set(ToastQueue::default());
-                    panel_vis.set(PanelVisibility::default());
                     toolbar_stats.set(ToolbarStats::default());
-                    sidebar_ui.set(SidebarUiState::default());
                     viewport_size.set((1200.0, 800.0));
                     validate_trigger.set(0);
 

@@ -10,7 +10,6 @@ pub mod commands;
 pub mod common;
 pub mod db;
 pub mod export;
-pub mod generate_scene;
 pub mod import;
 pub mod layout;
 pub mod op;

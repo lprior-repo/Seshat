@@ -46,8 +46,7 @@
 //! ## Internal Modules
 //!
 //! The following modules are internal and not part of the public API:
-//! - `app`, `backend`, `cli`, `cli_persistence`, `hooks`, `icons`, `layout`,
-//!   `mutation`, `perf`, `store`, `ui`
+//! - `app`, `hooks`, `icons`, `layout`, `mutation`, `store`, `ui`
 
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -102,16 +101,7 @@
 )]
 #![forbid(unsafe_code)]
 
-#[cfg(not(target_arch = "wasm32"))]
-pub mod ai_event_detection;
 pub mod app;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod backend;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod cli;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod cli_persistence;
-pub mod config;
 pub mod core;
 pub mod export;
 pub mod geometry;
@@ -120,8 +110,6 @@ pub mod hooks;
 pub mod icons;
 pub mod layout;
 pub mod mutation;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod perf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store;
 #[cfg(not(target_arch = "wasm32"))]

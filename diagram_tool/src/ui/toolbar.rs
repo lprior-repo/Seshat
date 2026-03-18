@@ -3,23 +3,17 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-mod actions;
 pub mod auto_save;
-pub mod components;
-mod export_actions;
 mod persistence;
 mod persistence_compat;
 
 use crate::history::History;
 use crate::mutation::error::MutationError;
+use crate::ui::commands::{apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset, apply_delete_selected};
 use crate::ui::editor::ToolMode;
-use crate::ui::panels::PanelVisibility;
-use crate::ui::theme::{ACCENT, BG_ELEVATED, BG_SURFACE, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED};
-use crate::ui::toast::{use_toast, ToastQueue};
-use components::{
-    AlignmentGroup, Divider, EditGroup, ExportGroup, HistoryZoomGroup, ToolSelectionGroup,
-    ViewAndThemeGroup,
-};
+use crate::ui::icons::{Icon, IconKind};
+use crate::ui::theme::{ACCENT, ACCENT_SOFT, BG_SURFACE, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED};
+use crate::ui::toast::ToastQueue;
 use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use dioxus::prelude::*;
 
@@ -29,131 +23,215 @@ pub struct ToolbarStats {
     pub selected_count: usize,
     pub node_count: usize,
     pub edge_count: usize,
+    pub revision: u64,
+}
+
+#[component]
+fn Divider() -> Element {
+    rsx! {
+        div {
+            style: "width: 1px; height: 24px; background: {BORDER_SUBTLE}; margin: 0 4px;"
+        }
+    }
+}
+
+#[component]
+fn IconButton(
+    test_id: &'static str,
+    active: Option<bool>,
+    onclick: EventHandler<MouseEvent>,
+    disabled: Option<bool>,
+    icon: IconKind,
+    color: Option<&'static str>,
+) -> Element {
+    let is_active = active.unwrap_or(false);
+    let is_disabled = disabled.unwrap_or(false);
+    let bg = if is_active { ACCENT_SOFT } else { "transparent" };
+    let border = if is_active { ACCENT } else { "transparent" };
+    let fill = if is_active { Some(ACCENT) } else { color };
+    let opacity = if is_disabled { "0.4" } else { "1.0" };
+    let cursor = if is_disabled { "not-allowed" } else { "pointer" };
+
+    rsx! {
+        button {
+            "data-testid": test_id,
+            style: "width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid {border}; background: {bg}; cursor: {cursor}; opacity: {opacity}; padding: 0; outline: none; margin: 0 2px; color: {TEXT_MAIN};",
+            onclick: move |evt| {
+                if !is_disabled {
+                    onclick.call(evt);
+                }
+            },
+            Icon { kind: icon, color: fill, size: 20 }
+        }
+    }
+}
+
+#[component]
+fn TextButton(
+    test_id: &'static str,
+    active: Option<bool>,
+    onclick: EventHandler<MouseEvent>,
+    disabled: Option<bool>,
+    text: &'static str,
+) -> Element {
+    let is_active = active.unwrap_or(false);
+    let is_disabled = disabled.unwrap_or(false);
+    let bg = if is_active { ACCENT_SOFT } else { "transparent" };
+    let border = if is_active { ACCENT } else { "transparent" };
+    let fill = if is_active { ACCENT } else { TEXT_MAIN };
+    let opacity = if is_disabled { "0.4" } else { "1.0" };
+    let cursor = if is_disabled { "not-allowed" } else { "pointer" };
+
+    rsx! {
+        button {
+            "data-testid": test_id,
+            style: "width: 36px; height: 36px; display: flex; align-items: center; justify-content: center; border-radius: 6px; border: 1px solid {border}; background: {bg}; cursor: {cursor}; opacity: {opacity}; padding: 0; outline: none; margin: 0 2px; color: {fill}; font-size: 18px; font-weight: 500; font-family: monospace;",
+            onclick: move |evt| {
+                if !is_disabled {
+                    onclick.call(evt);
+                }
+            },
+            "{text}"
+        }
+    }
 }
 
 #[component]
 pub fn Toolbar() -> Element {
     let doc_signal = use_context::<Signal<DiagramDocument>>();
     let history_signal = use_context::<Signal<History>>();
-    let tool_signal = use_context::<Signal<ToolMode>>();
+    let mut tool_signal = use_context::<Signal<ToolMode>>();
     let edge_style_signal = use_context::<Signal<EdgeStyle>>();
     let arrow_type_signal = use_context::<Signal<ArrowType>>();
     let toasts = use_context::<Signal<ToastQueue>>();
-    let toast = use_toast();
-    let mut panel_visibility = use_context::<Signal<PanelVisibility>>();
-    let mut validate_trigger = use_context::<Signal<u64>>();
-
+    
     let toolbar_stats = use_context::<Signal<ToolbarStats>>();
     let stats = *toolbar_stats.read();
+    let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
 
-    let save_label = if cfg!(target_arch = "wasm32") {
-        "Save to Server"
-    } else {
-        "Save"
-    };
-    let open_label = if cfg!(target_arch = "wasm32") {
-        "Import JSON"
-    } else {
-        "Open"
-    };
+    let undo_disabled = !history_signal.read().can_undo();
+    let redo_disabled = !history_signal.read().can_redo();
+    let zoom_percent = (doc_signal.read().editor_state.zoom.0 * 100.0).round();
 
     rsx! {
         div {
             "data-testid": "toolbar-root",
             class: "toolbar",
-            style: "height: 56px; background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_ELEVATED} 100%); color: {TEXT_MAIN}; display: flex; align-items: center; padding: 0 12px; gap: 8px; border-bottom: 1px solid {BORDER_SUBTLE}; box-shadow: 0 4px 16px color-mix(in oklch, black 22%, transparent); overflow-x: auto;",
+            style: "height: 56px; background: {BG_SURFACE}; display: flex; align-items: center; padding: 0 16px; border-bottom: 1px solid {BORDER_SUBTLE}; overflow-x: auto;",
 
-            ToolSelectionGroup {}
-
-            components::ToolbarButton {
-                test_id: "toolbar-auto-layout",
-                onclick: move |_| actions::auto_layout(doc_signal, history_signal, toast),
-                "Auto-Arrange"
-            }
-
-            Divider {}
-            HistoryZoomGroup {}
-
-            Divider {}
-            EditGroup {}
-
-            Divider {}
-            AlignmentGroup {}
-
-            Divider {}
-            button {
-                "data-testid": "toolbar-validate",
-                style: "padding: 5px 10px; cursor: pointer; background: {ACCENT}; border: none; border-radius: 4px; color: {crate::ui::theme::BG_BASE};",
-                onclick: move |_| {
-                    validate_trigger.with_mut(|t| *t = t.saturating_add(1));
-                    let mut panels = *panel_visibility.read();
-                    panels.validation = true;
-                    panel_visibility.set(panels);
-                },
-                "Validate"
-            }
-
-            Divider {}
-            components::ToolbarButton {
-                test_id: "toolbar-save",
-                onclick: move |_| {
-                    persistence::save_workspace(
-                        doc_signal,
-                        tool_signal,
-                        edge_style_signal,
-                        arrow_type_signal,
-                        toasts,
-                    );
-                },
-                "{save_label}"
-            }
-            components::ToolbarButton {
+            // Import/Export
+            IconButton {
                 test_id: "toolbar-open",
                 onclick: move |_| {
                     persistence::open_workspace(
-                        doc_signal,
-                        history_signal,
-                        tool_signal,
-                        edge_style_signal,
-                        arrow_type_signal,
-                        toasts,
+                        doc_signal, history_signal, tool_signal, edge_style_signal, arrow_type_signal, toasts
                     );
                 },
-                "{open_label}"
+                icon: IconKind::FolderOpen
+            }
+            IconButton {
+                test_id: "toolbar-save",
+                onclick: move |_| {
+                    persistence::save_workspace(
+                        doc_signal, tool_signal, edge_style_signal, arrow_type_signal, toasts
+                    );
+                },
+                icon: IconKind::Save
+            }
+            
+            Divider {}
+            
+            // Stats
+            div {
+                style: "color: {TEXT_MUTED}; font-family: monospace; font-size: 13px; margin: 0 8px; white-space: nowrap;",
+                "{stats.node_count} nodes {stats.edge_count} edges Rev {stats.revision}"
             }
 
             Divider {}
-            ViewAndThemeGroup {}
 
-            div { style: "flex: 1;" }
-            ExportGroup {}
+            // Tools
+            IconButton {
+                test_id: "tool-select",
+                active: *tool_signal.read() == ToolMode::Select,
+                onclick: move |_| tool_signal.set(ToolMode::Select),
+                icon: IconKind::Select
+            }
+            IconButton {
+                test_id: "tool-pan",
+                active: *tool_signal.read() == ToolMode::Pan,
+                onclick: move |_| tool_signal.set(ToolMode::Pan),
+                icon: IconKind::Pan
+            }
+            IconButton {
+                test_id: "tool-edge",
+                active: *tool_signal.read() == ToolMode::Edge,
+                onclick: move |_| tool_signal.set(ToolMode::Edge),
+                icon: IconKind::Edge
+            }
+            IconButton {
+                test_id: "tool-subgraph",
+                active: *tool_signal.read() == ToolMode::Subgraph,
+                onclick: move |_| tool_signal.set(ToolMode::Subgraph),
+                icon: IconKind::Subgraph
+            }
+            TextButton {
+                test_id: "tool-text",
+                active: *tool_signal.read() == ToolMode::Text,
+                onclick: move |_| tool_signal.set(ToolMode::Text),
+                text: "T"
+            }
 
-            span {
-                "data-testid": "node-count",
-                "data-count": "{stats.node_count}",
-                style: "font-size: 11px; color: {TEXT_MUTED}; margin-left: 8px;",
-                span {
-                    "data-testid": "counter-nodes",
-                    "{stats.node_count} nodes"
-                }
+            Divider {}
+
+            // History
+            IconButton {
+                test_id: "toolbar-undo",
+                disabled: undo_disabled,
+                onclick: move |_| { apply_undo(doc_signal, history_signal); },
+                icon: IconKind::Undo,
+                color: None
             }
-            span {
-                "data-testid": "edge-count",
-                "data-count": "{stats.edge_count}",
-                style: "font-size: 11px; color: {TEXT_MUTED};",
-                span {
-                    "data-testid": "counter-edges",
-                    "{stats.edge_count} edges"
-                }
+            IconButton {
+                test_id: "toolbar-redo",
+                disabled: redo_disabled,
+                onclick: move |_| { apply_redo(doc_signal, history_signal); },
+                icon: IconKind::Redo,
+                color: None
             }
-            span {
-                "data-testid": "selected-count",
-                "data-count": "{stats.selected_count}",
-                style: "font-size: 11px; color: {TEXT_MUTED};",
-                span {
-                    "data-testid": "counter-selected",
-                    "{stats.selected_count} selected"
-                }
+
+            Divider {}
+
+            // Zoom
+            IconButton {
+                test_id: "zoom-in",
+                onclick: move |_| { let _ = apply_zoom_in(doc_signal, history_signal, *viewport_size_signal.read()); },
+                icon: IconKind::ZoomIn,
+                color: None
+            }
+            div {
+                "data-testid": "zoom-reset",
+                "data-zoom-percent": "{zoom_percent:.0}",
+                style: "color: {TEXT_MUTED}; font-family: monospace; font-size: 13px; margin: 0 8px; cursor: pointer; user-select: none;",
+                onclick: move |_| { let _ = apply_zoom_reset(doc_signal, history_signal, *viewport_size_signal.read()); },
+                title: "Reset zoom",
+                "{zoom_percent:.0}%"
+            }
+            IconButton {
+                test_id: "zoom-out",
+                onclick: move |_| { let _ = apply_zoom_out(doc_signal, history_signal, *viewport_size_signal.read()); },
+                icon: IconKind::ZoomOut,
+                color: None
+            }
+
+            Divider {}
+
+            // Delete
+            IconButton {
+                test_id: "toolbar-delete",
+                disabled: stats.selected_count == 0,
+                onclick: move |_| { let _ = apply_delete_selected(doc_signal, history_signal); },
+                icon: IconKind::Trash,
+                color: Some("#ef4444")
             }
         }
     }

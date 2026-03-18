@@ -63,41 +63,18 @@ pub(crate) fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
     let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
     let last_sync_revision = use_signal(|| 0_i64);
     let pending_ai_ops = use_context::<Signal<std::collections::HashSet<String>>>();
-    let ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
+    let _ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
 
     use_future(move || {
         let store_bridge = store_bridge.clone();
         let mut doc_signal = doc_signal;
         let mut last_sync_revision = last_sync_revision;
         let mut pending_ai_ops = pending_ai_ops;
-        let mut ai_conflict_state = ai_conflict_state;
         async move {
             loop {
                 tokio::time::sleep(std::time::Duration::from_millis(500)).await;
                 let current_rev = *last_sync_revision.read();
                 if let Ok(events) = store_bridge.fetch_events_since_sync(current_rev) {
-                    let pending_ops = pending_ai_ops.read().clone();
-                    let current_conflict = ai_conflict_state.read().clone();
-                    let detection_result = crate::ai_event_detection::detect_dropped_ai_events(
-                        &pending_ops,
-                        &events,
-                        &current_conflict,
-                    );
-
-                    if detection_result.has_conflict {
-                        if let Some(conflict_state) = detection_result.conflict_state {
-                            ai_conflict_state.set(Some(conflict_state));
-                        }
-                    }
-
-                    if !detection_result.dropped_op_ids.is_empty() {
-                        pending_ai_ops.with_mut(|ops| {
-                            for op_id in &detection_result.dropped_op_ids {
-                                let _ = ops.remove(op_id);
-                            }
-                        });
-                    }
-
                     if !events.is_empty() {
                         let mut next_rev = current_rev;
                         doc_signal.with_mut(|doc| {

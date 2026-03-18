@@ -54,22 +54,8 @@
 #![forbid(unsafe_code)]
 #![allow(unexpected_cfgs)]
 
-#[cfg(not(target_arch = "wasm32"))]
-use clap::Parser;
 use dioxus::prelude::*;
-
-#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub mod ai_event_detection;
 mod app;
-#[cfg(not(target_arch = "wasm32"))]
-mod backend;
-#[cfg(not(target_arch = "wasm32"))]
-mod cli;
-#[cfg(not(target_arch = "wasm32"))]
-mod cli_events_tests;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod cli_persistence;
-pub mod config;
 pub mod core;
 mod export;
 mod geometry;
@@ -78,8 +64,6 @@ mod hooks;
 mod icons;
 mod layout;
 mod mutation;
-#[cfg(not(target_arch = "wasm32"))]
-mod perf;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store;
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
@@ -90,8 +74,6 @@ mod test_utils;
 mod ui;
 
 use crate::app::App;
-#[cfg(not(target_arch = "wasm32"))]
-use crate::cli::Cli;
 
 fn main() {
     #[cfg(target_arch = "wasm32")]
@@ -100,15 +82,6 @@ fn main() {
             let msg = format!("PANIC: {}", info);
             web_sys::console::error_1(&msg.into());
         }));
-    }
-
-    #[cfg(not(target_arch = "wasm32"))]
-    {
-        let cli = Cli::parse();
-        if cli.command.is_some() {
-            cli::run_cli(&cli);
-            return;
-        }
     }
 
     #[cfg(not(all(feature = "async-db", not(target_arch = "wasm32"))))]
