@@ -34,12 +34,11 @@ pub const fn is_double_tap(first_tap_ms: u64, second_tap_ms: u64) -> bool {
 #[allow(dead_code)]
 pub const fn touch_hit_radius(base_radius: f64, is_touch: bool) -> f64 {
     if is_touch {
-        let p_max = if base_radius > TOUCH_HIT_RADIUS_PX {
+        if base_radius > TOUCH_HIT_RADIUS_PX {
             base_radius
         } else {
             TOUCH_HIT_RADIUS_PX
-        };
-        p_max
+        }
     } else {
         base_radius
     }

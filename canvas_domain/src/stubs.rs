@@ -26,6 +26,7 @@ pub fn dispatch_update_label(
 
 pub struct ResizeBounds;
 impl ResizeBounds {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         _id: NodeId,
         _ox: f64,
@@ -93,7 +94,7 @@ pub fn drag_original_positions(
     .unwrap_or_else(HashSet::new);
 
     with_children.iter().fold(HashMap::new(), |acc, id| {
-        if let Some(node) = doc.document.nodes.get(&id) {
+        if let Some(node) = doc.document.nodes.get(id) {
             acc.update(id.clone(), (node.x.0, node.y.0))
         } else {
             acc

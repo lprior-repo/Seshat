@@ -1,11 +1,9 @@
 use crate::math::safe_zoom;
 use crate::{CanvasCoord, ScreenCoord};
+use canvas_math::{MAX_ZOOM, MIN_ZOOM};
 use diagram_models::document::OrderedFloat;
 
 use super::transforms::to_canvas_coords;
-
-pub const ZOOM_MIN: f64 = 0.1;
-pub const ZOOM_MAX: f64 = 4.0;
 
 #[derive(Clone, Copy, Debug)]
 pub struct WheelInput {
@@ -38,11 +36,11 @@ pub fn wheel_transform(input: WheelInput) -> (f64, f64, f64) {
 
     let next_zoom = if input.discrete_wheel {
         let factor = if wheel_delta > 0.0 { 0.95 } else { 1.05 };
-        (current_zoom * factor).clamp(ZOOM_MIN, ZOOM_MAX)
+        (current_zoom * factor).clamp(MIN_ZOOM, MAX_ZOOM)
     } else {
         let intensity = if input.zoom_gesture { 0.005 } else { 0.002 };
         let factor = wheel_delta.mul_add(-intensity, 1.0);
-        (current_zoom * factor).clamp(ZOOM_MIN, ZOOM_MAX)
+        (current_zoom * factor).clamp(MIN_ZOOM, MAX_ZOOM)
     };
 
     if (next_zoom - current_zoom).abs() <= f64::EPSILON {

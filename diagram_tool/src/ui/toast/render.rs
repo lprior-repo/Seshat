@@ -1,4 +1,83 @@
-use crate::ui::theme::{BG_ELEVATED,BG_SURFACE,BORDER,TEXT_MAIN,TEXT_MUTED};use crate::ui::toast::{AiConflictState,ToastId,ToastIntent,ToastQueue};use dioxus::prelude::*;use std::collections::HashSet;
-const DISMISS_REMOVE_DELAY_MS:u64=1_000_000;const CONFLICT_TOAST_DISMISS_MS:u64=3_000;
-#[component]pub fn Toaster()->Element{let mut toasts=use_context::<Signal<ToastQueue>>();let mut ai_conflict_state:Signal<Option<AiConflictState>>=use_context();let items=toasts.read().items().to_vec();let mut pending_remove:Signal<HashSet<ToastId>>=use_signal(HashSet::new);let mut pending_dismiss:Signal<HashSet<ToastId>>=use_signal(HashSet::new);let effect_items_dismiss=items.clone();use_effect(move||{let to_dismiss:Vec<ToastId>=effect_items_dismiss.iter().filter_map(|item|{let is_conflict=matches!(item.intent,ToastIntent::Warning|ToastIntent::Error);let not_yet_dismissed=!item.dismissed;let not_scheduled=!pending_dismiss.read().contains(&item.id);if is_conflict&&not_yet_dismissed&&not_scheduled{Some(item.id)}else{None}}).collect();for id in to_dismiss{let _=pending_dismiss.write().insert(id);let mut toasts_signal=toasts;let mut pending_signal=pending_dismiss;let mut conflict_state_clone=ai_conflict_state;let mut eval=document::eval(&format!("setTimeout(() => dioxus.send({{ kind: 'dismiss-conflict', id: {} }}), {});",id.0,CONFLICT_TOAST_DISMISS_MS));spawn(async move{if eval.recv::<serde_json::Value>().await.is_ok(){toasts_signal.with_mut(|queue|{let _=queue.dismiss(id);});conflict_state_clone.write().take();let _=pending_signal.write().remove(&id);}});}});let effect_items_remove=items.clone();use_effect(move||{let to_schedule:Vec<ToastId>=effect_items_remove.iter().filter_map(|item|{if item.dismissed&&!pending_remove.read().contains(&item.id){Some(item.id)}else{None}}).collect();for id in to_schedule{let _=pending_remove.write().insert(id);let mut toasts_signal=toasts;let mut pending_signal=pending_remove;let mut eval=document::eval(&format!("setTimeout(() => dioxus.send({{ kind: 'remove-toast', id: {} }}), {});",id.0,DISMISS_REMOVE_DELAY_MS));spawn(async move{if eval.recv::<serde_json::Value>().await.is_ok(){toasts_signal.with_mut(|queue|{let _=queue.remove(id);});let _=pending_signal.write().remove(&id);}});}});if items.is_empty(){return rsx!{};}
-rsx!{div{style:"position:fixed;right:14px;top:66px;z-index:60;display:flex;flex-direction:column;gap:8px;width:min(380px,calc(100vw-24px));pointer-events:none;",for toast in items{{let id=toast.id;let stripe=toast.intent.stripe_color();let card_shadow="0 10px 24px color-mix(in oklch, black 32%, transparent)";let card_opacity=if toast.dismissed{"0"}else{"1"};let card_transform=if toast.dismissed{"translateY(-6px)scale(0.98)"}else{"translateY(0px)scale(1)"};let card_pointer_events=if toast.dismissed{"none"}else{"auto"};rsx!{article{key:"{id:?}",style:"pointer-events:{card_pointer_events};position:relative;overflow:hidden;border:1px solid {BORDER};border-radius:10px;background:linear-gradient(180deg,{BG_ELEVATED}0%,{BG_SURFACE}100%);color:{TEXT_MAIN};box-shadow:{card_shadow};transition:opacity 180ms ease,transform 180ms ease;opacity:{card_opacity};transform:{card_transform};",div{style:"position:absolute;left:0;top:0;bottom:0;width:4px;background:{stripe};"}div{style:"padding:8px 10px 8px 12px;display:flex;gap:10px;align-items:flex-start;",div{style:"flex:1;min-width:0;",p{style:"margin:0;font-size:12px;font-weight:700;color:{TEXT_MAIN};","{toast.title}"}if let Some(detail)=toast.detail{p{style:"margin:2px 0 0;font-size:11px;color:{TEXT_MUTED};white-space:pre-wrap;","{detail}"}}}if let Some(action)=toast.action{button{style:"flex-shrink:0;border-radius:6px;border:1px solid {BORDER};background:{BG_SURFACE};color:{TEXT_MAIN};font-size:11px;line-height:1;cursor:pointer;padding:0 8px;height:22px;",onclick:move|_|{toasts.with_mut(|queue|{let target=if action.dismiss_all{None}else{Some(id)};let _=queue.dismiss_target(target);});},"{action.label}"}}button{style:"flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid {BORDER};background:{BG_SURFACE};color:{TEXT_MUTED};font-size:12px;line-height:1;cursor:pointer;",onclick:move|_|{toasts.with_mut(|queue|{let _=queue.dismiss_target(Some(id));});ai_conflict_state.set(None);},"x"}}}}}}}}}
+use crate::ui::theme::{BG_ELEVATED, BG_SURFACE, BORDER, TEXT_MAIN, TEXT_MUTED};
+use crate::ui::toast::{AiConflictState, ToastId, ToastIntent, ToastQueue};
+use dioxus::prelude::*;
+use std::collections::HashSet;
+const DISMISS_REMOVE_DELAY_MS: u64 = 1_000_000;
+const CONFLICT_TOAST_DISMISS_MS: u64 = 3_000;
+#[component]
+pub fn Toaster() -> Element {
+    let mut toasts = use_context::<Signal<ToastQueue>>();
+    let mut ai_conflict_state: Signal<Option<AiConflictState>> = use_context();
+    let items = toasts.read().items().to_vec();
+    let mut pending_remove: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
+    let mut pending_dismiss: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
+    let effect_items_dismiss = items.clone();
+    use_effect(move || {
+        let to_dismiss: Vec<ToastId> = effect_items_dismiss
+            .iter()
+            .filter_map(|item| {
+                let is_conflict = matches!(item.intent, ToastIntent::Warning | ToastIntent::Error);
+                let not_yet_dismissed = !item.dismissed;
+                let not_scheduled = !pending_dismiss.read().contains(&item.id);
+                if is_conflict && not_yet_dismissed && not_scheduled {
+                    Some(item.id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for id in to_dismiss {
+            let _ = pending_dismiss.write().insert(id);
+            let mut toasts_signal = toasts;
+            let mut pending_signal = pending_dismiss;
+            let mut conflict_state_clone = ai_conflict_state;
+            let mut eval = document::eval(&format!(
+                "setTimeout(() => dioxus.send({{ kind: 'dismiss-conflict', id: {} }}), {});",
+                id.0, CONFLICT_TOAST_DISMISS_MS
+            ));
+            spawn(async move {
+                if eval.recv::<serde_json::Value>().await.is_ok() {
+                    toasts_signal.with_mut(|queue| {
+                        let _ = queue.dismiss(id);
+                    });
+                    conflict_state_clone.write().take();
+                    let _ = pending_signal.write().remove(&id);
+                }
+            });
+        }
+    });
+    let effect_items_remove = items.clone();
+    use_effect(move || {
+        let to_schedule: Vec<ToastId> = effect_items_remove
+            .iter()
+            .filter_map(|item| {
+                if item.dismissed && !pending_remove.read().contains(&item.id) {
+                    Some(item.id)
+                } else {
+                    None
+                }
+            })
+            .collect();
+        for id in to_schedule {
+            let _ = pending_remove.write().insert(id);
+            let mut toasts_signal = toasts;
+            let mut pending_signal = pending_remove;
+            let mut eval = document::eval(&format!(
+                "setTimeout(() => dioxus.send({{ kind: 'remove-toast', id: {} }}), {});",
+                id.0, DISMISS_REMOVE_DELAY_MS
+            ));
+            spawn(async move {
+                if eval.recv::<serde_json::Value>().await.is_ok() {
+                    toasts_signal.with_mut(|queue| {
+                        let _ = queue.remove(id);
+                    });
+                    let _ = pending_signal.write().remove(&id);
+                }
+            });
+        }
+    });
+    if items.is_empty() {
+        return rsx! {};
+    }
+    rsx! {div{style:"position:fixed;right:14px;top:66px;z-index:60;display:flex;flex-direction:column;gap:8px;width:min(380px,calc(100vw-24px));pointer-events:none;",for toast in items{{let id=toast.id;let stripe=toast.intent.stripe_color();let card_shadow="0 10px 24px color-mix(in oklch, black 32%, transparent)";let card_opacity=if toast.dismissed{"0"}else{"1"};let card_transform=if toast.dismissed{"translateY(-6px)scale(0.98)"}else{"translateY(0px)scale(1)"};let card_pointer_events=if toast.dismissed{"none"}else{"auto"};rsx!{article{key:"{id:?}",style:"pointer-events:{card_pointer_events};position:relative;overflow:hidden;border:1px solid {BORDER};border-radius:10px;background:linear-gradient(180deg,{BG_ELEVATED}0%,{BG_SURFACE}100%);color:{TEXT_MAIN};box-shadow:{card_shadow};transition:opacity 180ms ease,transform 180ms ease;opacity:{card_opacity};transform:{card_transform};",div{style:"position:absolute;left:0;top:0;bottom:0;width:4px;background:{stripe};"}div{style:"padding:8px 10px 8px 12px;display:flex;gap:10px;align-items:flex-start;",div{style:"flex:1;min-width:0;",p{style:"margin:0;font-size:12px;font-weight:700;color:{TEXT_MAIN};","{toast.title}"}if let Some(detail)=toast.detail{p{style:"margin:2px 0 0;font-size:11px;color:{TEXT_MUTED};white-space:pre-wrap;","{detail}"}}}if let Some(action)=toast.action{button{style:"flex-shrink:0;border-radius:6px;border:1px solid {BORDER};background:{BG_SURFACE};color:{TEXT_MAIN};font-size:11px;line-height:1;cursor:pointer;padding:0 8px;height:22px;",onclick:move|_|{toasts.with_mut(|queue|{let target=if action.dismiss_all{None}else{Some(id)};let _=queue.dismiss_target(target);});},"{action.label}"}}button{style:"flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid {BORDER};background:{BG_SURFACE};color:{TEXT_MUTED};font-size:12px;line-height:1;cursor:pointer;",onclick:move|_|{toasts.with_mut(|queue|{let _=queue.dismiss_target(Some(id));});ai_conflict_state.set(None);},"x"}}}}}}}}
+}

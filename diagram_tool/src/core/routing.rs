@@ -9,9 +9,6 @@ use diagram_models::port::{compute_port_absolute_position, PortAnchor};
 /// Constant for maximum number of edges between same node pair
 pub const MAX_EDGE_MULTIPLICITY: usize = 1;
 
-/// Padding applied to bounding box when creating subgraphs (24.0 units)
-pub const SUBGRAPH_PADDING: f64 = 24.0;
-
 /// Bounding box for node/group positioning
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct BoundingBox {
@@ -66,7 +63,7 @@ impl Default for BoundingBox {
     }
 }
 
-/// Re-export RoutingError from geometry::routing for convenience.
+// Re-export RoutingError from geometry::routing for convenience.
 
 /// Validates edge endpoints - returns error if invalid.
 ///

@@ -24,6 +24,9 @@
 pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
+
+#[cfg(test)]
+pub mod dag_tests;
 pub mod document;
 pub mod geometry;
 pub mod grouping;

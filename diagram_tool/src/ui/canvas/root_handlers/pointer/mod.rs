@@ -8,26 +8,26 @@ use types::PointerDeps;
 
 pub fn use_pointer_handler(deps: PointerDeps) {
     let mut canvas_origin = deps.canvas_origin;
-    let mut doc_signal = deps.doc_signal;
-    let mut history_signal = deps.history_signal;
-    let mut tool_signal = deps.tool_signal;
-    let mut interaction_mode = deps.interaction_mode;
+    let doc_signal = deps.doc_signal;
+    let history_signal = deps.history_signal;
+    let tool_signal = deps.tool_signal;
+    let interaction_mode = deps.interaction_mode;
     let edge_style_default = deps.edge_style_default;
     let arrow_type_default = deps.arrow_type_default;
-    let mut editing_node = deps.editing_node;
-    let mut editing_edge = deps.editing_edge;
-    let mut edit_value = deps.edit_value;
+    let editing_node = deps.editing_node;
+    let editing_edge = deps.editing_edge;
+    let edit_value = deps.edit_value;
     let space_pressed = deps.space_pressed;
     let shift_pressed = deps.shift_pressed;
     let ctrl_pressed = deps.ctrl_pressed;
     let meta_pressed = deps.meta_pressed;
-    let mut space_pan_active = deps.space_pan_active;
+    let space_pan_active = deps.space_pan_active;
     let multi_touch_active = deps.multi_touch_active;
-    let mut pending_pointer_sample = deps.pending_pointer_sample;
-    let mut captured_pointer = deps.captured_pointer;
-    let mut active_pointers = deps.active_pointers;
-    let db_tx = deps.db_tx.clone();
-    let toast = deps.toast.clone();
+    let pending_pointer_sample = deps.pending_pointer_sample;
+    let captured_pointer = deps.captured_pointer;
+    let active_pointers = deps.active_pointers;
+    let db_tx = deps.db_tx;
+    let toast = deps.toast;
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -144,8 +144,8 @@ pub fn use_pointer_handler(deps: PointerDeps) {
                     captured_pointer,
                     active_pointers,
                     canvas_origin,
-                    db_tx: db_tx.clone(),
-                    toast: toast.clone(),
+                    db_tx,
+                    toast,
                 };
 
                 if event_type == "pointerdown" {

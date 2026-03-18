@@ -1,8 +1,8 @@
 use dioxus::prelude::*;
 
+use crate::ui::toast::{AiConflictState, ToastQueue};
 use diagram_models::document::DiagramDocument;
 use diagram_models::envelope::EventEnvelope;
-use crate::ui::toast::{AiConflictState, ToastQueue};
 
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
 use crate::ui::toast::show_conflict_toast;
@@ -61,8 +61,7 @@ pub(crate) fn use_conflict_toast_effect() {}
 pub(crate) fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
     let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
     let last_sync_revision = use_signal(|| 0_i64);
-    let pending_ai_ops =
-        use_context::<Signal<std::collections::HashSet<String>>>();
+    let pending_ai_ops = use_context::<Signal<std::collections::HashSet<String>>>();
     let ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
 
     use_future(move || {
@@ -104,7 +103,7 @@ pub(crate) fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
                             for event in events {
                                 next_rev = next_rev.max(event.revision);
                                 if let Ok(envelope) =
-                            diagram_models::envelope::parse_event_envelope(&event.payload)
+                                    diagram_models::envelope::parse_event_envelope(&event.payload)
                                 {
                                     let op_id = event.op_id.clone();
                                     let is_ai = !diagram_models::projection::types::is_human_author(
@@ -129,7 +128,8 @@ pub(crate) fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
                                         nodes: doc.document.nodes.clone(),
                                         edges: doc.document.edges.clone(),
                                         author_priority: im::HashMap::new(),
-                                        cycle_policy: diagram_models::projection::CyclePolicy::default(),
+                                        cycle_policy:
+                                            diagram_models::projection::CyclePolicy::default(),
                                     };
                                     if let Ok(new_proj) =
                                         diagram_models::projection::apply_event(proj, &proj_event)

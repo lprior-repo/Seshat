@@ -19,10 +19,11 @@ pub async fn append_event_async(
 ) -> Result<AsyncAppendResult, AsyncStoreError> {
     let mut tx = pool.begin().await.map_err(AsyncStoreError::Sqlx)?;
 
-    let current_revision_i64: i64 = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(AsyncStoreError::Sqlx)?;
+    let current_revision_i64: i64 =
+        sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(AsyncStoreError::Sqlx)?;
 
     let current_revision = u64::try_from(current_revision_i64).map_err(|_| {
         AsyncStoreError::ValidationFailed("Invalid revision from database".to_string())
@@ -38,9 +39,8 @@ pub async fn append_event_async(
     }
 
     let new_revision = current_revision + 1;
-    let new_revision_i64 = i64::try_from(new_revision).map_err(|_| {
-        AsyncStoreError::ValidationFailed("Revision overflow".to_string())
-    })?;
+    let new_revision_i64 = i64::try_from(new_revision)
+        .map_err(|_| AsyncStoreError::ValidationFailed("Revision overflow".to_string()))?;
 
     // The payload in ValidEvent is stored as a JSON string that represents the envelope
     let payload = event.payload.as_str();
@@ -78,10 +78,11 @@ pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
 
     let mut tx = pool.begin().await.map_err(AsyncStoreError::Sqlx)?;
 
-    let current_revision_i64: i64 = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(AsyncStoreError::Sqlx)?;
+    let current_revision_i64: i64 =
+        sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(AsyncStoreError::Sqlx)?;
 
     let current_revision = u64::try_from(current_revision_i64).map_err(|_| {
         AsyncStoreError::ValidationFailed("Invalid revision from database".to_string())
@@ -104,12 +105,10 @@ pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
                 "Batch too large for revision calculation".to_string(),
             )
         })?;
-    let start_revision_i64 = i64::try_from(start_revision).map_err(|_| {
-        AsyncStoreError::ValidationFailed("Revision overflow".to_string())
-    })?;
-    let end_revision_i64 = i64::try_from(end_revision).map_err(|_| {
-        AsyncStoreError::ValidationFailed("Revision overflow".to_string())
-    })?;
+    let start_revision_i64 = i64::try_from(start_revision)
+        .map_err(|_| AsyncStoreError::ValidationFailed("Revision overflow".to_string()))?;
+    let end_revision_i64 = i64::try_from(end_revision)
+        .map_err(|_| AsyncStoreError::ValidationFailed("Revision overflow".to_string()))?;
     let mut op_ids = Vec::with_capacity(batch_size);
     let mut last_timestamp: u64 = 0;
 
@@ -119,9 +118,8 @@ pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
             + u64::try_from(idx).map_err(|_| {
                 AsyncStoreError::ValidationFailed("Index overflow in batch".to_string())
             })?;
-        let new_revision_i64 = i64::try_from(new_revision).map_err(|_| {
-            AsyncStoreError::ValidationFailed("Revision overflow".to_string())
-        })?;
+        let new_revision_i64 = i64::try_from(new_revision)
+            .map_err(|_| AsyncStoreError::ValidationFailed("Revision overflow".to_string()))?;
 
         // The payload in ValidEvent is stored as a JSON string
         let payload = event.payload.as_str();
@@ -213,19 +211,19 @@ pub async fn append_idempotent_async(
 ) -> Result<AsyncAppendResult, AsyncStoreError> {
     let mut tx = pool.begin().await.map_err(AsyncStoreError::Sqlx)?;
 
-    let current_revision_i64: i64 = sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
-        .fetch_one(&mut *tx)
-        .await
-        .map_err(AsyncStoreError::Sqlx)?;
+    let current_revision_i64: i64 =
+        sqlx::query_scalar("SELECT COALESCE(MAX(revision), 0) FROM events")
+            .fetch_one(&mut *tx)
+            .await
+            .map_err(AsyncStoreError::Sqlx)?;
 
     let current_revision = u64::try_from(current_revision_i64).map_err(|_| {
         AsyncStoreError::ValidationFailed("Invalid revision from database".to_string())
     })?;
 
     let new_revision = current_revision + 1;
-    let new_revision_i64 = i64::try_from(new_revision).map_err(|_| {
-        AsyncStoreError::ValidationFailed("Revision overflow".to_string())
-    })?;
+    let new_revision_i64 = i64::try_from(new_revision)
+        .map_err(|_| AsyncStoreError::ValidationFailed("Revision overflow".to_string()))?;
 
     let payload = diagram_models::envelope::encode_event_envelope(&envelope).map_err(
         |e: diagram_models::envelope::ContractError| AsyncStoreError::Serialization(e.to_string()),

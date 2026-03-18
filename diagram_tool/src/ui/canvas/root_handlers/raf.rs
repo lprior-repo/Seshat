@@ -7,11 +7,11 @@ use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
 
 pub fn use_raf_handler(
-    mut doc_signal: Signal<DiagramDocument>,
-    mut history_signal: Signal<History>,
-    mut interaction_mode: Signal<InteractionMode>,
-    mut pending_pointer_sample: Signal<Option<(f64, f64)>>,
-    mut pending_wheel_sample: Signal<Option<WheelSample>>,
+    doc_signal: Signal<DiagramDocument>,
+    history_signal: Signal<History>,
+    interaction_mode: Signal<InteractionMode>,
+    pending_pointer_sample: Signal<Option<(f64, f64)>>,
+    pending_wheel_sample: Signal<Option<WheelSample>>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) {
     use_effect(move || {
@@ -36,7 +36,7 @@ pub fn use_raf_handler(
             ",
         );
 
-        let db_tx = db_tx.clone();
+        let db_tx = db_tx;
         spawn(async move {
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 if json["type"].as_str() == Some("raf") {
@@ -46,7 +46,7 @@ pub fn use_raf_handler(
                             history_signal,
                             interaction_mode,
                             pending_pointer_sample,
-                            db_tx.clone(),
+                            db_tx,
                         );
                     }
                     if pending_wheel_sample.read().is_some() {

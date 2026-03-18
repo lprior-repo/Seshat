@@ -30,6 +30,7 @@ use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use crate::ui::ValidationPanel;
 use dioxus::prelude::*;
 
+#[allow(non_snake_case)]
 #[allow(clippy::too_many_lines)]
 pub fn App() -> Element {
     use_context_provider(|| Signal::new(DiagramDocument::default()));
@@ -68,15 +69,19 @@ pub fn App() -> Element {
     let tabs_state = tabs::use_tabs_logic(doc_signal, history_signal);
     let mut switch_tab = {
         let mut state = tabs_state;
-        move |target_id: String| tabs::switch_tab(target_id, &mut state, &mut doc_signal, &mut history_signal)
+        move |target_id: String| {
+            tabs::switch_tab(target_id, &mut state, &mut doc_signal, &mut history_signal)
+        }
     };
-    let mut add_tab = {
+    let add_tab = {
         let mut state = tabs_state;
         move |_| tabs::add_tab(&mut state, &mut doc_signal, &mut history_signal)
     };
     let mut close_tab = {
         let mut state = tabs_state;
-        move |close_id: String| tabs::close_tab(close_id, &mut state, &mut doc_signal, &mut history_signal)
+        move |close_id: String| {
+            tabs::close_tab(close_id, &mut state, &mut doc_signal, &mut history_signal)
+        }
     };
 
     use_sidebar_mobile_bridge(sidebar_ui, panels);

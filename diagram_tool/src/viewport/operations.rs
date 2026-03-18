@@ -1,6 +1,6 @@
 //! Viewport operations
 //!
-//! High-level operations for viewport manipulation including pan, zoom, and fit.
+//! High-level operations for viewport manipulation including zoom utilities and reset.
 
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
@@ -9,112 +9,7 @@
 
 use crate::geometry::AABB;
 
-use super::{
-    FitTransform, ViewportError, ViewportState, MAX_ZOOM, MIN_ZOOM, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR,
-};
-
-/// Apply a pan operation to a viewport
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-/// * `dx` - Pan delta in screen pixels
-/// * `dy` - Pan delta in screen pixels
-///
-/// # Returns
-/// true if the viewport was modified
-#[must_use]
-pub fn apply_pan(viewport: &mut ViewportState, dx: f64, dy: f64) -> bool {
-    viewport.pan(dx, dy)
-}
-
-/// Apply a zoom in operation
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-///
-/// # Returns
-/// true if the viewport was modified
-#[must_use]
-pub fn apply_zoom_in(viewport: &mut ViewportState) -> bool {
-    viewport.zoom_in()
-}
-
-/// Apply a zoom out operation
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-///
-/// # Returns
-/// true if the viewport was modified
-#[must_use]
-pub fn apply_zoom_out(viewport: &mut ViewportState) -> bool {
-    viewport.zoom_out()
-}
-
-/// Apply a zoom to specific level
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-/// * `zoom` - Target zoom level
-///
-/// # Returns
-/// true if the viewport was modified
-#[must_use]
-pub fn apply_zoom_to(viewport: &mut ViewportState, zoom: f64) -> bool {
-    viewport.set_zoom(zoom)
-}
-
-/// Apply a zoom around a specific screen point
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-/// * `zoom` - Target zoom level
-/// * `screen_x` - Screen X coordinate to zoom around
-/// * `screen_y` - Screen Y coordinate to zoom around
-///
-/// # Returns
-/// true if the viewport was modified
-#[must_use]
-pub fn apply_zoom_around_point(
-    viewport: &mut ViewportState,
-    zoom: f64,
-    screen_x: f64,
-    screen_y: f64,
-) -> bool {
-    viewport.zoom_around_point(zoom, screen_x, screen_y)
-}
-
-/// Center the viewport on a world point
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-/// * `world_x` - World X coordinate to center on
-/// * `world_y` - World Y coordinate to center on
-pub fn apply_center_on(viewport: &mut ViewportState, world_x: f64, world_y: f64) {
-    viewport.center_on(world_x, world_y);
-}
-
-/// Fit content to viewport
-///
-/// # Arguments
-/// * `viewport` - The viewport to modify
-/// * `content` - Content bounds to fit
-/// * `padding` - Padding around content
-///
-/// # Returns
-/// The fit transform if successful
-///
-/// # Errors
-/// Returns error if padding is negative, content bounds are invalid, or coordinates overflow
-pub fn apply_fit_to_content(
-    viewport: &mut ViewportState,
-    content: &AABB,
-    padding: f64,
-) -> Result<FitTransform, ViewportError> {
-    let fit = viewport.fit_to_content(content, padding)?;
-    viewport.apply_fit(fit);
-    Ok(fit)
-}
+use super::{ViewportState, MAX_ZOOM, MIN_ZOOM, ZOOM_IN_FACTOR, ZOOM_OUT_FACTOR};
 
 /// Calculate zoom level to fit content
 ///
@@ -207,68 +102,7 @@ pub fn next_zoom_out(current: f64) -> f64 {
 
 #[cfg(test)]
 mod tests {
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_apply_pan_basic() {
-        let mut viewport = ViewportState::new(800.0, 600.0);
-        let result = apply_pan(&mut viewport, 100.0, 50.0);
-
-        assert!(result);
-        assert!((viewport.camera_x() - (-100.0)).abs() < f64::EPSILON);
-        assert!((viewport.camera_y() - (-50.0)).abs() < f64::EPSILON);
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_apply_zoom_in() {
-        let mut viewport = ViewportState::new(800.0, 600.0);
-        let result = apply_zoom_in(&mut viewport);
-
-        assert!(result);
-        assert!((viewport.zoom() - ZOOM_IN_FACTOR).abs() < f64::EPSILON);
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_apply_zoom_out() {
-        let mut viewport = ViewportState::new(800.0, 600.0);
-        let result = apply_zoom_out(&mut viewport);
-
-        assert!(result);
-        assert!((viewport.zoom() - ZOOM_OUT_FACTOR).abs() < f64::EPSILON);
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_apply_zoom_to() {
-        let mut viewport = ViewportState::new(800.0, 600.0);
-        let result = apply_zoom_to(&mut viewport, 2.0);
-
-        assert!(result);
-        assert!((viewport.zoom() - 2.0).abs() < f64::EPSILON);
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[test]
-    fn test_apply_zoom_to_bounds() {
-        let mut viewport = ViewportState::new(800.0, 600.0);
-
-        // Try to set zoom beyond max
-        let result = apply_zoom_to(&mut viewport, 10.0);
-        assert!(result); // Changed because clamped
-        assert!((viewport.zoom() - MAX_ZOOM).abs() < f64::EPSILON);
-
-        // Try to set zoom below min
-        let result = apply_zoom_to(&mut viewport, 0.01);
-        assert!(result); // Changed because clamped
-        assert!((viewport.zoom() - MIN_ZOOM).abs() < f64::EPSILON);
-    }
+    use super::*;
 
     #[cfg(kani)]
     #[kani::proof]

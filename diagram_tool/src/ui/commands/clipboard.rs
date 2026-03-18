@@ -78,7 +78,7 @@ pub fn copy_selection(doc: &DiagramDocument) -> Option<ClipboardData> {
         .filter_map(|id| {
             doc.document
                 .nodes
-                .get(&id)
+                .get(id)
                 .map(|node: &Node| (id.clone(), node.clone()))
         })
         .collect();
@@ -116,7 +116,7 @@ pub fn copy_selection_for_duplicate(doc: &DiagramDocument) -> Option<ClipboardDa
         .filter_map(|id| {
             doc.document
                 .nodes
-                .get(&id)
+                .get(id)
                 .map(|node: &Node| (id.clone(), node.clone()))
         })
         .collect();

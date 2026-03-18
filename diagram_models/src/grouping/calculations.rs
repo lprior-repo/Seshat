@@ -4,7 +4,7 @@ use im::{HashMap, HashSet};
 use std::collections::BTreeSet;
 
 /// Constant for subgraph padding
-pub const SUBGRAPH_PADDING_NEW: f64 = 24.0;
+pub const SUBGRAPH_PADDING: f64 = 24.0;
 
 /// Get the parent chain of a node including itself
 fn get_parent_chain(nodes: &HashMap<NodeId, Node>, id: &NodeId) -> Vec<Option<NodeId>> {
@@ -138,10 +138,10 @@ pub fn compute_padded_bounds(
     let (min_x, min_y, max_x, max_y) =
         calculate_bounding_box(nodes, selected).ok_or(GroupingError::EmptySelection)?;
 
-    let padded_min_x = min_x - SUBGRAPH_PADDING_NEW;
-    let padded_min_y = min_y - SUBGRAPH_PADDING_NEW;
-    let padded_max_x = max_x + SUBGRAPH_PADDING_NEW;
-    let padded_max_y = max_y + SUBGRAPH_PADDING_NEW;
+    let padded_min_x = min_x - SUBGRAPH_PADDING;
+    let padded_min_y = min_y - SUBGRAPH_PADDING;
+    let padded_max_x = max_x + SUBGRAPH_PADDING;
+    let padded_max_y = max_y + SUBGRAPH_PADDING;
     let width = padded_max_x - padded_min_x;
     let height = padded_max_y - padded_min_y;
 

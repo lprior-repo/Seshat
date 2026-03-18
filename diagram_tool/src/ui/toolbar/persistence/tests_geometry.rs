@@ -1,4 +1,4 @@
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use diagram_models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
 use im::HashMap;
 

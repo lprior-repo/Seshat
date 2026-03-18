@@ -130,9 +130,9 @@ mod tests {
 
     fn make_test_nodes() -> Vec<SnapNode> {
         vec![
-            SnapNode::new(NodeId("n1".to_string()), 100.0, 100.0, 100.0, 50.0),
-            SnapNode::new(NodeId("n2".to_string()), 300.0, 100.0, 100.0, 50.0),
-            SnapNode::new(NodeId("n3".to_string()), 200.0, 200.0, 100.0, 50.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 100.0, 100.0, 100.0, 50.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 300.0, 100.0, 100.0, 50.0),
+            SnapNode::new(NodeId::new("n3".to_string()), 200.0, 200.0, 100.0, 50.0),
         ]
     }
 
@@ -142,7 +142,7 @@ mod tests {
         // Position active so center is close to target's left edge
         // Active center X should be ~100 (within threshold)
         // So active.x should be ~60 (100 - 40)
-        let active = SnapNode::new(NodeId("active".to_string()), 62.0, 100.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 62.0, 100.0, 80.0, 40.0);
         let targets = make_test_nodes();
         let result = snap_to_nodes(&active, &targets, 10.0);
 
@@ -156,7 +156,7 @@ mod tests {
     fn story_snaps_to_center_of_target_node() {
         // Position active so center is close to target's center
         // Target center X = 150, so active.x should be ~110 (150 - 40)
-        let active = SnapNode::new(NodeId("active".to_string()), 112.0, 100.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 112.0, 100.0, 80.0, 40.0);
         let targets = make_test_nodes();
         let result = snap_to_nodes(&active, &targets, 10.0);
 
@@ -171,7 +171,7 @@ mod tests {
         // Position active so center is close to target's right edge
         // Target right = 200, so active center should be ~200
         // So active.x should be ~160 (200 - 40)
-        let active = SnapNode::new(NodeId("active".to_string()), 162.0, 100.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 162.0, 100.0, 80.0, 40.0);
         let targets = make_test_nodes();
         let result = snap_to_nodes(&active, &targets, 10.0);
 
@@ -184,7 +184,7 @@ mod tests {
     #[test]
     fn story_snap_fails_when_outside_threshold() {
         // Position active node far from all targets
-        let active = SnapNode::new(NodeId("active".to_string()), 500.0, 500.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 500.0, 500.0, 80.0, 40.0);
         let targets = make_test_nodes();
         let result = snap_to_nodes(&active, &targets, 10.0);
 
@@ -197,7 +197,7 @@ mod tests {
     #[cfg(test)]
     #[test]
     fn story_empty_target_list_returns_none() {
-        let active = SnapNode::new(NodeId("active".to_string()), 110.0, 100.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 110.0, 100.0, 80.0, 40.0);
         let targets: Vec<SnapNode> = vec![];
         let result = snap_to_nodes(&active, &targets, 10.0);
 
@@ -207,10 +207,10 @@ mod tests {
     #[cfg(test)]
     #[test]
     fn story_selects_closest_snap_target() {
-        let active = SnapNode::new(NodeId("active".to_string()), 148.0, 100.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 148.0, 100.0, 80.0, 40.0);
         let targets = vec![
-            SnapNode::new(NodeId("n1".to_string()), 100.0, 100.0, 100.0, 50.0),
-            SnapNode::new(NodeId("n2".to_string()), 150.0, 100.0, 100.0, 50.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 100.0, 100.0, 100.0, 50.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 150.0, 100.0, 100.0, 50.0),
         ];
         let result = snap_to_nodes(&active, &targets, 50.0);
 
@@ -223,9 +223,9 @@ mod tests {
 
     fn make_aligned_nodes() -> Vec<SnapNode> {
         vec![
-            SnapNode::new(NodeId("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n3".to_string()), 100.0, 300.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n3".to_string()), 100.0, 300.0, 80.0, 40.0),
         ]
     }
 
@@ -327,7 +327,7 @@ mod tests {
     #[test]
     fn story_single_node_remains_unchanged() {
         let nodes = vec![SnapNode::new(
-            NodeId("n1".to_string()),
+            NodeId::new("n1".to_string()),
             50.0,
             100.0,
             80.0,
@@ -343,9 +343,9 @@ mod tests {
 
     fn make_distributed_nodes() -> Vec<SnapNode> {
         vec![
-            SnapNode::new(NodeId("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n3".to_string()), 100.0, 300.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n3".to_string()), 100.0, 300.0, 80.0, 40.0),
         ]
     }
 
@@ -377,8 +377,8 @@ mod tests {
     #[test]
     fn story_fewer_than_three_nodes_returns_error() {
         let nodes = vec![
-            SnapNode::new(NodeId("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
         ];
 
         let result = distribute_horizontally(&nodes);
@@ -394,9 +394,9 @@ mod tests {
     #[test]
     fn story_distribution_maintains_node_order() {
         let nodes = vec![
-            SnapNode::new(NodeId("n3".to_string()), 100.0, 300.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n3".to_string()), 100.0, 300.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 0.0, 100.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 50.0, 200.0, 80.0, 40.0),
         ];
 
         let result = distribute_horizontally(&nodes).unwrap();
@@ -493,8 +493,8 @@ mod tests {
     #[test]
     fn story_multi_node_drag_preserves_relative_offsets() {
         let nodes = vec![
-            SnapNode::new(NodeId("n1".to_string()), 40.0, 40.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 140.0, 140.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 40.0, 40.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 140.0, 140.0, 80.0, 40.0),
         ];
         let drag_delta = Point::new(10.0, 10.0);
 
@@ -569,8 +569,8 @@ mod tests {
     #[test]
     fn story_all_nodes_snap_together() {
         let nodes = vec![
-            SnapNode::new(NodeId("n1".to_string()), 47.0, 53.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 147.0, 153.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 47.0, 53.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 147.0, 153.0, 80.0, 40.0),
         ];
 
         let results = snap_multi_nodes(&nodes, 10.0);
@@ -585,8 +585,8 @@ mod tests {
     #[test]
     fn story_relative_positions_preserved() {
         let nodes = vec![
-            SnapNode::new(NodeId("n1".to_string()), 47.0, 53.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 147.0, 153.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 47.0, 53.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 147.0, 153.0, 80.0, 40.0),
         ];
         let _original_offset = (nodes[1].x - nodes[0].x, nodes[1].y - nodes[0].y);
 
@@ -601,8 +601,8 @@ mod tests {
     #[test]
     fn story_primary_selection_determines_snap_target() {
         let nodes = vec![
-            SnapNode::new(NodeId("n1".to_string()), 47.0, 53.0, 80.0, 40.0),
-            SnapNode::new(NodeId("n2".to_string()), 147.0, 153.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n1".to_string()), 47.0, 53.0, 80.0, 40.0),
+            SnapNode::new(NodeId::new("n2".to_string()), 147.0, 153.0, 80.0, 40.0),
         ];
 
         let results = snap_multi_to_primary(&nodes, 0, 10.0);
@@ -625,7 +625,7 @@ mod tests {
     #[test]
     fn story_single_node_snaps_independently() {
         let nodes = vec![SnapNode::new(
-            NodeId("n1".to_string()),
+            NodeId::new("n1".to_string()),
             47.0,
             53.0,
             80.0,
@@ -689,9 +689,9 @@ mod tests {
     #[test]
     fn story_snap_result_contains_target_info() {
         use crate::geometry::snap::mod_types::SnapType;
-        let active = SnapNode::new(NodeId("active".to_string()), 110.0, 100.0, 80.0, 40.0);
+        let active = SnapNode::new(NodeId::new("active".to_string()), 110.0, 100.0, 80.0, 40.0);
         let targets = vec![SnapNode::new(
-            NodeId("target".to_string()),
+            NodeId::new("target".to_string()),
             100.0,
             100.0,
             100.0,
@@ -703,7 +703,7 @@ mod tests {
         // Distance to center_x is 0, which is within threshold 10
         // So it correctly snaps to CenterX, not EdgeLeft
         assert!(result.active);
-        assert_eq!(result.target_node_id, NodeId("target".to_string()));
+        assert_eq!(result.target_node_id, NodeId::new("target".to_string()));
         assert_eq!(result.snap_type, SnapType::CenterX);
     }
 }

@@ -43,8 +43,6 @@ pub enum Error {
 }
 
 pub fn save_document(path: &Path, doc: &DiagramDocument) -> Result<(), Error> {
-    // Validate document floats BEFORE serialization
-    // (serde_json converts NaN to null, making it undetectable after serialization)
     validate_document_floats(doc)?;
 
     let json_value =
@@ -55,68 +53,43 @@ pub fn save_document(path: &Path, doc: &DiagramDocument) -> Result<(), Error> {
     let mut writer = BufWriter::new(file);
     serde_json::to_writer(&mut writer, &json_value)
         .map_err(|e| Error::SerializationFailed(e.to_string()))?;
-    // Explicitly flush to catch IO errors (e.g., disk full)
     writer.flush().map_err(Error::IoError)?;
 
     Ok(())
 }
 
-/// Validates that all float fields in the document are finite.
-/// Must be called BEFORE `serde_json::to_value` because that function converts NaN to null.
+fn check_finite(val: f64, msg: &str) -> Result<(), Error> {
+    if val.is_finite() {
+        Ok(())
+    } else {
+        Err(Error::SerializationFailed(msg.into()))
+    }
+}
+
 fn validate_document_floats(doc: &DiagramDocument) -> Result<(), Error> {
-    // Check editor state
-    if !doc.editor_state.camera_x.0.is_finite() {
-        return Err(Error::SerializationFailed("Non-finite camera_x".into()));
-    }
-    if !doc.editor_state.camera_y.0.is_finite() {
-        return Err(Error::SerializationFailed("Non-finite camera_y".into()));
-    }
-    if !doc.editor_state.zoom.0.is_finite() {
-        return Err(Error::SerializationFailed("Non-finite zoom".into()));
+    let es = &doc.editor_state;
+    check_finite(es.camera_x.0, "Non-finite camera_x")?;
+    check_finite(es.camera_y.0, "Non-finite camera_y")?;
+    check_finite(es.zoom.0, "Non-finite zoom")?;
+
+    for (id, node) in &doc.document.nodes {
+        check_finite(node.x.0, &format!("Non-finite x in node {id}"))?;
+        check_finite(node.y.0, &format!("Non-finite y in node {id}"))?;
+        check_finite(node.width.0, &format!("Non-finite width in node {id}"))?;
+        check_finite(node.height.0, &format!("Non-finite height in node {id}"))?;
     }
 
-    // Check all nodes (ID is the map key, not a field on Node)
-    for (node_id, node) in &doc.document.nodes {
-        if !node.x.0.is_finite() {
-            return Err(Error::SerializationFailed(format!(
-                "Non-finite x in node {node_id}"
-            )));
-        }
-        if !node.y.0.is_finite() {
-            return Err(Error::SerializationFailed(format!(
-                "Non-finite y in node {node_id}"
-            )));
-        }
-        if !node.width.0.is_finite() {
-            return Err(Error::SerializationFailed(format!(
-                "Non-finite width in node {node_id}"
-            )));
-        }
-        if !node.height.0.is_finite() {
-            return Err(Error::SerializationFailed(format!(
-                "Non-finite height in node {node_id}"
-            )));
-        }
-    }
-
-    // Check all edges (ID is the map key, not a field on Edge)
-    for (edge_id, edge) in &doc.document.edges {
-        if !edge.label_offset_t.0.is_finite() {
-            return Err(Error::SerializationFailed(format!(
-                "Non-finite label_offset_t in edge {edge_id}"
-            )));
-        }
-        if !edge.thickness.0.is_finite() {
-            return Err(Error::SerializationFailed(format!(
-                "Non-finite thickness in edge {edge_id}"
-            )));
-        }
-        if let Some(ref fs) = &edge.font_size {
-            if !fs.0.is_finite() {
-                return Err(Error::SerializationFailed(format!(
-                    "Non-finite font_size in edge {edge_id}"
-                )));
-            }
+    for (id, edge) in &doc.document.edges {
+        check_finite(
+            edge.label_offset_t.0,
+            &format!("Non-finite label_offset_t in edge {id}"),
+        )?;
+        check_finite(
+            edge.thickness.0,
+            &format!("Non-finite thickness in edge {id}"),
+        )?;
+        if let Some(ref fs) = edge.font_size {
+            check_finite(fs.0, &format!("Non-finite font_size in edge {id}"))?;
         }
     }
 
@@ -124,8 +97,7 @@ fn validate_document_floats(doc: &DiagramDocument) -> Result<(), Error> {
 }
 
 fn validate_serialization(value: &Value) -> Result<(), Error> {
-    check_depth(value, 0)?;
-    Ok(())
+    check_depth(value, 0)
 }
 
 fn check_depth(value: &Value, depth: usize) -> Result<(), Error> {
@@ -170,6 +142,29 @@ pub fn load_document(path: &Path) -> Result<DiagramDocument, Error> {
     serde_json::from_value(migrated_json).map_err(|e| Error::ParseError(e.to_string()))
 }
 
+fn get_field<'a>(obj: &'a serde_json::Map<String, Value>, name: &str) -> Result<&'a Value, Error> {
+    let val = obj
+        .get(name)
+        .ok_or_else(|| Error::MissingField(name.into()))?;
+    if val.is_null() {
+        Err(Error::InvalidNull(name.into()))
+    } else {
+        Ok(val)
+    }
+}
+
+fn get_object<'a>(
+    obj: &'a serde_json::Map<String, Value>,
+    name: &str,
+) -> Result<&'a serde_json::Map<String, Value>, Error> {
+    let val = get_field(obj, name)?;
+    val.as_object().ok_or_else(|| Error::TypeMismatch {
+        field: name.into(),
+        expected: "object".into(),
+        found: type_of(val),
+    })
+}
+
 fn validate_structure(json: &Value) -> Result<(), Error> {
     let obj = json.as_object().ok_or_else(|| Error::TypeMismatch {
         field: "root".into(),
@@ -177,92 +172,34 @@ fn validate_structure(json: &Value) -> Result<(), Error> {
         found: type_of(json),
     })?;
 
-    // Check version
-    let version_val = obj
-        .get("version")
-        .ok_or_else(|| Error::MissingField("version".into()))?;
-    if version_val.is_null() {
-        return Err(Error::InvalidNull("version".into()));
-    }
-    if !version_val.is_number() {
+    let version = get_field(obj, "version")?;
+    if !version.is_number() {
         return Err(Error::TypeMismatch {
             field: "version".into(),
             expected: "number".into(),
-            found: type_of(version_val),
+            found: type_of(version),
         });
     }
 
-    // Check document sub-object
-    let document_val = obj
-        .get("document")
-        .ok_or_else(|| Error::MissingField("document".into()))?;
-    if document_val.is_null() {
-        return Err(Error::InvalidNull("document".into()));
-    }
-    let document_obj = document_val
-        .as_object()
-        .ok_or_else(|| Error::TypeMismatch {
-            field: "document".into(),
-            expected: "object".into(),
-            found: type_of(document_val),
-        })?;
-
-    // Check nodes and edges
+    let doc = get_object(obj, "document")?;
     for field in ["nodes", "edges"] {
-        let val = document_obj
-            .get(field)
-            .ok_or_else(|| Error::MissingField(field.into()))?;
-        if val.is_null() {
-            return Err(Error::InvalidNull(field.into()));
-        }
-        if !val.is_object() {
-            return Err(Error::TypeMismatch {
-                field: field.into(),
-                expected: "object".into(),
-                found: type_of(val),
-            });
-        }
-    }
+        let items = get_object(doc, field)?;
+        let item_name = &field[..field.len() - 1]; // "node" or "edge"
 
-    // Specific field checks on nodes
-    if let Some(nodes) = document_obj.get("nodes").and_then(|v| v.as_object()) {
-        for node_val in nodes.values() {
-            if node_val.is_null() {
-                return Err(Error::InvalidNull("node".into()));
+        for val in items.values() {
+            if val.is_null() {
+                return Err(Error::InvalidNull(item_name.into()));
             }
-            if let Some(node_obj) = node_val.as_object() {
-                if let Some(metadata) = node_obj.get("metadata") {
-                    if metadata.is_null() {
+            if let Some(item_obj) = val.as_object() {
+                if let Some(meta) = item_obj.get("metadata") {
+                    if meta.is_null() {
                         return Err(Error::InvalidNull("metadata".into()));
                     }
-                    if !metadata.is_object() {
+                    if !meta.is_object() {
                         return Err(Error::TypeMismatch {
                             field: "metadata".into(),
                             expected: "object".into(),
-                            found: type_of(metadata),
-                        });
-                    }
-                }
-            }
-        }
-    }
-
-    // Specific field checks on edges
-    if let Some(edges) = document_obj.get("edges").and_then(|v| v.as_object()) {
-        for edge_val in edges.values() {
-            if edge_val.is_null() {
-                return Err(Error::InvalidNull("edge".into()));
-            }
-            if let Some(edge_obj) = edge_val.as_object() {
-                if let Some(metadata) = edge_obj.get("metadata") {
-                    if metadata.is_null() {
-                        return Err(Error::InvalidNull("metadata".into()));
-                    }
-                    if !metadata.is_object() {
-                        return Err(Error::TypeMismatch {
-                            field: "metadata".into(),
-                            expected: "object".into(),
-                            found: type_of(metadata),
+                            found: type_of(meta),
                         });
                     }
                 }

@@ -8,7 +8,6 @@ use std::path::Path;
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
-use crate::store::types::ValidEvent;
 use crate::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,
     envelope_to_valid_event, fetch_events_since, parse_revision, AsyncAppendResult,
@@ -56,6 +55,16 @@ impl StoreBridge {
         })
     }
 
+    /// Helper to run an async store operation synchronously.
+    fn run_async<F, Fut, R>(&self, f: F) -> Result<R, BridgeError>
+    where
+        F: FnOnce(sqlx::SqlitePool) -> Fut,
+        Fut: std::future::Future<Output = Result<R, AsyncStoreError>>,
+    {
+        self.runtime
+            .block_on(async { f(self.pool.clone()).await.map_err(BridgeError::AsyncStore) })
+    }
+
     /// Appends an event synchronously.
     ///
     /// # Errors
@@ -65,22 +74,13 @@ impl StoreBridge {
         envelope: &EventEnvelope,
         expected_revision: Option<i64>,
     ) -> Result<AsyncAppendResult, BridgeError> {
-        let pool = self.pool.clone();
+        // Parse at boundary
+        let event = envelope_to_valid_event(envelope).map_err(BridgeError::AsyncStore)?;
+        let expected = expected_revision
+            .map(|rev| parse_revision(rev).map_err(BridgeError::AsyncStore))
+            .transpose()?;
 
-        self.runtime.block_on(async {
-            // Parse at boundary: convert envelope to ValidEvent
-            let event = envelope_to_valid_event(envelope).map_err(BridgeError::AsyncStore)?;
-
-            // Parse at boundary: convert expected_revision to Option<Revision>
-            let expected = match expected_revision {
-                Some(rev) => Some(parse_revision(rev).map_err(BridgeError::AsyncStore)?),
-                None => None,
-            };
-
-            append_event_async(&pool, event, expected)
-                .await
-                .map_err(BridgeError::AsyncStore)
-        })
+        self.run_async(|pool| async move { append_event_async(&pool, event, expected).await })
     }
 
     /// Appends a batch of events synchronously.
@@ -92,28 +92,19 @@ impl StoreBridge {
         ops: &[EventEnvelope],
         expected_revision: Option<i64>,
     ) -> Result<AsyncBatchAppendResult, BridgeError> {
-        let pool = self.pool.clone();
+        // Parse at boundary
+        let events = ops
+            .iter()
+            .map(envelope_to_valid_event)
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(BridgeError::AsyncStore)?;
+        let batch = crate::store_async::parse_bounded_batch::<1, 1000>(events)
+            .map_err(BridgeError::AsyncStore)?;
+        let expected = expected_revision
+            .map(|rev| parse_revision(rev).map_err(BridgeError::AsyncStore))
+            .transpose()?;
 
-        self.runtime.block_on(async {
-            // Parse at boundary: convert envelopes to ValidEvents
-            let events: Result<Vec<ValidEvent>, _> =
-                ops.iter().map(envelope_to_valid_event).collect();
-            let events = events.map_err(BridgeError::AsyncStore)?;
-
-            // Parse at boundary: convert to BoundedBatch (MIN=1, MAX=1000)
-            let batch = crate::store_async::parse_bounded_batch::<1, 1000>(events)
-                .map_err(BridgeError::AsyncStore)?;
-
-            // Parse at boundary: convert expected_revision to Option<Revision>
-            let expected = match expected_revision {
-                Some(rev) => Some(parse_revision(rev).map_err(BridgeError::AsyncStore)?),
-                None => None,
-            };
-
-            append_batch_async(&pool, batch, expected)
-                .await
-                .map_err(BridgeError::AsyncStore)
-        })
+        self.run_async(|pool| async move { append_batch_async(&pool, batch, expected).await })
     }
 
     /// Appends a single event idempotently, synchronously.
@@ -124,13 +115,7 @@ impl StoreBridge {
         &self,
         envelope: EventEnvelope,
     ) -> Result<AsyncAppendResult, BridgeError> {
-        let pool = self.pool.clone();
-
-        self.runtime.block_on(async {
-            append_idempotent_async(&pool, envelope)
-                .await
-                .map_err(BridgeError::AsyncStore)
-        })
+        self.run_async(|pool| async move { append_idempotent_async(&pool, envelope).await })
     }
 
     /// Fetches events since a given revision synchronously.
@@ -138,13 +123,7 @@ impl StoreBridge {
     /// # Errors
     /// Returns an error if the store is not initialized or the fetch fails.
     pub fn fetch_events_since_sync(&self, revision: i64) -> Result<Vec<EventRecord>, BridgeError> {
-        let pool = self.pool.clone();
-
-        self.runtime.block_on(async {
-            fetch_events_since(&pool, revision)
-                .await
-                .map_err(BridgeError::AsyncStore)
-        })
+        self.run_async(|pool| async move { fetch_events_since(&pool, revision).await })
     }
 
     /// Shuts down the store bridge.
@@ -161,6 +140,29 @@ impl StoreBridge {
 
 #[cfg(test)]
 mod tests {
+    use super::*;
+    use tempfile::TempDir;
+
+    #[cfg(kani)]
+    fn make_test_envelope(op_id: &str, node_id: &str, timestamp: i64) -> EventEnvelope {
+        EventEnvelope {
+            op_id: op_id.to_string(),
+            operation: diagram_models::envelope::DomainOp::NodeAdd {
+                id: node_id.to_string(),
+                x: 10.0,
+                y: 20.0,
+                width: 100.0,
+                height: 50.0,
+                label: "Test Node".to_string(),
+            },
+            author: diagram_models::envelope::Author {
+                id: "user-1".to_string(),
+                name: "Test User".to_string(),
+                email: None,
+            },
+            timestamp,
+        }
+    }
 
     #[cfg(kani)]
     #[kani::proof]
@@ -181,24 +183,7 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
-
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: diagram_models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: diagram_models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
+        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
 
         let result = bridge
             .append_event_sync(&envelope, None)
@@ -216,24 +201,7 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
-
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: diagram_models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: diagram_models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
+        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
 
         bridge
             .append_event_sync(&envelope, None)
@@ -258,41 +226,8 @@ mod tests {
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
 
-        let envelope1 = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: diagram_models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Node 1".to_string(),
-            },
-            author: diagram_models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000001,
-        };
-
-        let envelope2 = EventEnvelope {
-            op_id: "test-op-2".to_string(),
-            operation: diagram_models::envelope::DomainOp::NodeAdd {
-                id: "node-2".to_string(),
-                x: 30.0,
-                y: 40.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Node 2".to_string(),
-            },
-            author: diagram_models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000002,
-        };
+        let envelope1 = make_test_envelope("test-op-1", "node-1", 1700000001);
+        let envelope2 = make_test_envelope("test-op-2", "node-2", 1700000002);
 
         let result = bridge
             .append_batch_sync(&[envelope1, envelope2], None)
@@ -314,23 +249,7 @@ mod tests {
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
 
-        let envelope = EventEnvelope {
-            op_id: "test-op-1".to_string(),
-            operation: diagram_models::envelope::DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test Node".to_string(),
-            },
-            author: diagram_models::envelope::Author {
-                id: "user-1".to_string(),
-                name: "Test User".to_string(),
-                email: None,
-            },
-            timestamp: 1700000000,
-        };
+        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
 
         let result1 = bridge
             .append_idempotent_sync(envelope.clone())

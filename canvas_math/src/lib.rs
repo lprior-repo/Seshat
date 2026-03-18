@@ -4,6 +4,11 @@
 #![warn(clippy::pedantic)]
 #![forbid(unsafe_code)]
 
+pub const MIN_ZOOM: f64 = 0.1;
+pub const MAX_ZOOM: f64 = 4.0;
+pub const ZOOM_IN_FACTOR: f64 = 1.25;
+pub const ZOOM_OUT_FACTOR: f64 = 0.8;
+
 #[must_use]
 pub fn safe_zoom(zoom: f64) -> Option<f64> {
     (zoom.is_finite() && zoom > f64::EPSILON).then_some(zoom)
@@ -79,3 +84,9 @@ mod tests {
         assert!(!within((0.0, 0.0, 10.0, 10.0), (9.0, 9.0, 3.0, 3.0)));
     }
 }
+
+#[cfg(test)]
+mod proptests;
+
+#[cfg(kani)]
+mod kani_proofs;

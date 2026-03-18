@@ -134,7 +134,7 @@ pub fn apply_group_selection(
         (res, selected)
     });
 
-    if let Ok(_) = result {
+    if result.is_ok() {
         if let Some(tx) = db_tx {
             let ids: Vec<String> = selected_ids.iter().map(|id| id.to_string()).collect();
             let envelope =
@@ -166,7 +166,7 @@ pub fn apply_ungroup_selection(
         (res, targets)
     });
 
-    if let Ok(_) = result {
+    if result.is_ok() {
         if let Some(tx) = db_tx {
             for id in target_ids {
                 // We only dispatch ungroup for nodes that were actually subgraphs.

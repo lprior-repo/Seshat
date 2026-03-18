@@ -12,9 +12,10 @@ use diagram_models::document::EdgeId;
 use diagram_models::document::NodeId;
 use dioxus::prelude::*;
 
+#[allow(clippy::too_many_arguments)]
 pub fn use_keyboard_handler(
     mut doc_signal: Signal<DiagramDocument>,
-    mut history_signal: Signal<History>,
+    history_signal: Signal<History>,
     mut interaction_mode: Signal<InteractionMode>,
     mut tool_signal: Signal<ToolMode>,
     mut space_pressed: Signal<bool>,
@@ -158,7 +159,7 @@ pub fn use_keyboard_handler(
                                 match mode {
                                     InteractionMode::DraggingSelection { .. }
                                     | InteractionMode::ResizingSelection { .. } => {
-                                        let db_tx = db_tx.clone();
+                                        let db_tx = db_tx;
                                         let mut doc_clone = doc_signal.read().clone();
                                         interaction_mode.with_mut(|mode_mut| {
                                             let did_change = finalize_motion_release(

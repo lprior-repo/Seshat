@@ -1,7 +1,7 @@
 use dioxus::prelude::*;
 
-use diagram_models::document::DiagramDocument;
 use crate::ui::toolbar::auto_save;
+use diagram_models::document::DiagramDocument;
 
 #[cfg(target_arch = "wasm32")]
 fn use_load_auto_save(
@@ -35,9 +35,10 @@ fn use_load_auto_save(
 
         spawn(async move {
             if let Ok(msg) = eval.recv::<serde_json::Value>().await {
-                if let Some(data) = msg["data"]
-                    .as_str()
-                    .and_then(|s| if s.is_empty() { None } else { Some(s) })
+                if let Some(data) =
+                    msg["data"]
+                        .as_str()
+                        .and_then(|s| if s.is_empty() { None } else { Some(s) })
                 {
                     if let Ok(saved) = auto_save::deserialize_diagram(data) {
                         let mut doc = doc_signal.write();

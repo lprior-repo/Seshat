@@ -44,7 +44,7 @@ pub fn handle_pointer_down(
             deps.editing_node,
             deps.editing_edge,
             deps.edit_value,
-            deps.db_tx.clone(),
+            deps.db_tx,
         )
         .ok();
     }
@@ -140,7 +140,7 @@ pub fn handle_pointer_down(
             let (x, y) = snap_point(
                 (pos.0, pos.1),
                 doc.editor_state.snap_to_grid,
-                doc.editor_state.grid_size.into(),
+                doc.editor_state.grid_size,
             );
             let _ = doc.document.nodes.insert(
                 id.clone(),

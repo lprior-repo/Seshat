@@ -47,7 +47,7 @@ pub fn handle_pointer_up(
         deps.history_signal,
         deps.interaction_mode,
         deps.pending_pointer_sample,
-        deps.db_tx.clone(),
+        deps.db_tx,
     );
 
     deps.interaction_mode.with_mut(|mode| match mode {
@@ -157,9 +157,7 @@ pub fn handle_pointer_up(
             let doc_now = deps.doc_signal.read().clone();
             let snap = doc_now.editor_state.snap_to_grid;
             let grid = doc_now.editor_state.grid_size;
-            if let Some((x, y, _w, _h)) =
-                subgraph_release_bounds(*start, *current, snap, grid.into())
-            {
+            if let Some((x, y, _w, _h)) = subgraph_release_bounds(*start, *current, snap, grid) {
                 let id = NodeId::new(Uuid::new_v4().to_string());
                 let current_doc = deps.doc_signal.read().clone();
                 let history = deps.history_signal.read().clone();

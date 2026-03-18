@@ -3,9 +3,10 @@
 //! This module contains unit tests for the hit test margin functions.
 
 use crate::geometry::hit_test_margin::{
-    hit_test_with_margin, screen_to_world_margin, HitTestError, MAX_ZOOM, MIN_ZOOM,
+    hit_test_with_margin, screen_to_world_margin, HitTestError,
 };
 use crate::geometry::{Point, Rectangle};
+use canvas_math::{MAX_ZOOM, MIN_ZOOM};
 
 // Helper to create point
 const fn p(x: f64, y: f64) -> Point {

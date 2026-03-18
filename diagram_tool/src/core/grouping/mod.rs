@@ -30,7 +30,7 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(
 
     let min_z = selected
         .iter()
-        .filter_map(|id| doc.document.nodes.get(&id).map(|n| n.z_index))
+        .filter_map(|id| doc.document.nodes.get(id).map(|n| n.z_index))
         .min()
         .unwrap_or(0);
 
@@ -71,7 +71,7 @@ pub fn ungroup_selection(doc: &mut DiagramDocument) -> Result<(), GroupingError>
         .filter(|id| {
             doc.document
                 .nodes
-                .get(&id)
+                .get(id)
                 .is_some_and(|node| node.kind == NodeKind::Subgraph)
         })
         .collect();

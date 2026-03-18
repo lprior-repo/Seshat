@@ -94,7 +94,7 @@ mod tests {
     #[test]
     fn validation_issue_creation() {
         let issue = ValidationIssue {
-            code: "TEST001",
+            code: "TEST001".into(),
             message: "Test validation message".to_string(),
             severity: ValidationSeverity::Error,
             subject: None,
@@ -130,7 +130,7 @@ mod tests {
     #[test]
     fn validation_issue_with_subject() {
         let issue = ValidationIssue {
-            code: "NODE001",
+            code: "NODE001".into(),
             message: "Invalid node".to_string(),
             severity: ValidationSeverity::Warning,
             subject: Some("node-1".to_string()),

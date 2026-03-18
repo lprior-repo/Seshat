@@ -1,6 +1,5 @@
 use dioxus::prelude::*;
 
-use crate::ui::canvas::document_ops::scale_selected_nodes;
 use crate::{
     history::History,
     ui::theme::{BG_BASE, BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG},
@@ -45,11 +44,11 @@ pub fn Toolbar(
         );
         let top: f64 = (screen_y - 48.0).max(4.0);
         let can_scale = !selected_nodes.is_empty();
-        let scale_cursor = if can_scale { "pointer" } else { "not-allowed" };
-        let scale_opacity = if can_scale { "1" } else { "0.5" };
+        let _scale_cursor = if can_scale { "pointer" } else { "not-allowed" };
+        let _scale_opacity = if can_scale { "1" } else { "0.5" };
         let first_node = selected_nodes
             .first()
-            .and_then(|id| doc.document.nodes.get(&id));
+            .and_then(|id| doc.document.nodes.get(id));
         let first_edge = if selected_nodes.is_empty() && selected_edges == 1 {
             doc.editor_state
                 .selected_items

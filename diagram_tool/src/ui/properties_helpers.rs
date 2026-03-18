@@ -173,7 +173,7 @@ pub fn dispatch_edge_style_change(
 #[allow(dead_code)]
 #[must_use]
 pub fn node_label_with_id_fallback(doc: &DiagramDocument, id: &NodeId) -> String {
-    doc.document.nodes.get(&id).map_or_else(
+    doc.document.nodes.get(id).map_or_else(
         || id.to_string(),
         |node| {
             let trimmed = node.label.trim();

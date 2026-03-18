@@ -124,7 +124,7 @@ pub fn EdgeLayer(
                                         editing_node,
                                         editing_edge,
                                         edit_value,
-                                        db_tx.clone(),
+                                        db_tx,
                                     )
                                     .ok();
                                 },
@@ -136,7 +136,7 @@ pub fn EdgeLayer(
                                             editing_node,
                                             editing_edge,
                                             edit_value,
-                                            db_tx.clone(),
+                                            db_tx,
                                         )
                                         .ok();
                                     } else if evt.key() == Key::Escape {

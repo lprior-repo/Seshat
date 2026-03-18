@@ -5,7 +5,7 @@ use diagram_models::document::{
 };
 use im::HashMap;
 
-use super::{accumulated_parent_delta, calculate_grid_layout};
+use super::algorithm::{accumulated_parent_delta, calculate_grid_layout};
 
 fn node(x: f64, y: f64, locked: bool, parent: Option<NodeId>) -> Node {
     Node {

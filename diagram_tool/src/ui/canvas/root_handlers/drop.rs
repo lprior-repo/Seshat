@@ -50,7 +50,7 @@ pub fn handle_drop(
                 let (x, y) = snap_point(
                     (x - 32.0, y - 32.0),
                     doc.editor_state.snap_to_grid,
-                    doc.editor_state.grid_size.into(),
+                    doc.editor_state.grid_size,
                 );
                 let metadata = image_data_url.clone().map_or_else(HashMap::new, |image| {
                     HashMap::new().update("icon_data_url".to_string(), Value::String(image))

@@ -2,9 +2,8 @@
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use crate::perf::*;
-    use diagram_models::document::OrderedFloat;
     use crate::{CanvasCoord, ScreenCoord};
-
+    use diagram_models::document::OrderedFloat;
 
     fn make_input(dy: f64, zoom: f64, zoom_gesture: bool, discrete_wheel: bool) -> WheelInput {
         WheelInput {
@@ -196,7 +195,8 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_to_canvas_coords_when_valid_then_returns_finite() {
-        let CanvasCoord(x, y) = to_canvas_coords(ScreenCoord(100.0, 200.0), CanvasCoord(50.0, 75.0), 2.0);
+        let CanvasCoord(x, y) =
+            to_canvas_coords(ScreenCoord(100.0, 200.0), CanvasCoord(50.0, 75.0), 2.0);
         assert!(x.is_finite());
         assert!(y.is_finite());
         assert_eq!(x, 100.0 / 2.0 + 50.0);
@@ -207,7 +207,8 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_to_screen_coords_when_valid_then_returns_finite() {
-        let ScreenCoord(x, y) = to_screen_coords(CanvasCoord(100.0, 200.0), CanvasCoord(50.0, 75.0), 2.0);
+        let ScreenCoord(x, y) =
+            to_screen_coords(CanvasCoord(100.0, 200.0), CanvasCoord(50.0, 75.0), 2.0);
         assert!(x.is_finite());
         assert!(y.is_finite());
         // Correct calculation: (world - camera) * zoom
@@ -246,9 +247,8 @@ mod proptests {
     use proptest::prelude::*;
 
     use crate::perf::*;
-    use diagram_models::document::OrderedFloat;
     use crate::{CanvasCoord, ScreenCoord};
-
+    use diagram_models::document::OrderedFloat;
 
     prop_compose! {
         fn arb_finite_f64()(x in -1e6_f64..1e6_f64) -> f64 { x }

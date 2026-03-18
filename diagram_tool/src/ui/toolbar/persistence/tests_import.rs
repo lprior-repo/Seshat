@@ -1,4 +1,4 @@
-#[allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use crate::history::History;
 use crate::ui::toolbar::persistence::common::{
     apply_import_contents, prepare_import_transition, ImportTransitionError,

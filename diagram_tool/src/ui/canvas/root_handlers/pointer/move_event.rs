@@ -49,7 +49,7 @@ pub fn handle_pointer_move(
             *current = snap_point(
                 (raw.0, raw.1),
                 doc.editor_state.snap_to_grid,
-                doc.editor_state.grid_size.into(),
+                doc.editor_state.grid_size,
             );
         }
         InteractionMode::DraggingSelection { .. }

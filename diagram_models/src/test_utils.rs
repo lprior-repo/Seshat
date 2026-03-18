@@ -392,7 +392,7 @@ pub fn setup_doc_with_nodes() -> DiagramDocument {
         .add_node_with("n3", 150.0, 150.0, 50.0, 50.0);
 
     // N4: rotated node - need to use builder for metadata
-    let mut n4 = test_node_builder(10.0, 10.0, 50.0, 50.0)
+    let n4 = test_node_builder(10.0, 10.0, 50.0, 50.0)
         .with_label("n4")
         .with_metadata("rotation", serde_json::json!(std::f64::consts::FRAC_PI_4))
         .build();

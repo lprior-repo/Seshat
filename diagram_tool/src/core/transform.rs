@@ -1,5 +1,7 @@
 use crate::geometry::operations::compute_subgraph_bounds;
 use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat};
+use im::HashMap;
+use itertools::Itertools;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -12,74 +14,123 @@ pub enum TransformError {
     InvalidDelta,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AlignmentAxis {
     Horizontal,
     Vertical,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum AlignmentMode {
     Start,
     Center,
     End,
 }
 
-/// Recomputes bounds for all containers that are ancestors of the given nodes.
-///
-/// # Returns
-/// Number of containers whose bounds were updated.
-fn recompute_container_bounds(doc: &mut DiagramDocument, moved_node_ids: &[NodeId]) -> usize {
-    // Find unique parent containers of the moved nodes
-    let mut containers_to_update: Vec<NodeId> = Vec::new();
+#[derive(Clone, Copy)]
+struct NodeExtent {
+    pos: f64,
+    size: f64,
+}
 
-    for node_id in moved_node_ids {
-        if let Some(node) = doc.document.nodes.get(node_id) {
-            if let Some(parent_id) = &node.parent {
-                // Check if this parent is a subgraph container
-                if let Some(parent) = doc.document.nodes.get(parent_id) {
-                    if parent.kind == NodeKind::Subgraph {
-                        // Only add if not already in list
-                        if !containers_to_update.contains(parent_id) {
-                            containers_to_update.push(parent_id.clone());
-                        }
-                    }
-                }
-            }
+impl NodeExtent {
+    const fn from_node(node: &Node, axis: AlignmentAxis) -> Self {
+        match axis {
+            AlignmentAxis::Horizontal => Self {
+                pos: node.x.0,
+                size: node.width.0,
+            },
+            AlignmentAxis::Vertical => Self {
+                pos: node.y.0,
+                size: node.height.0,
+            },
         }
     }
 
-    // For each container, recompute bounds from children
-    let mut updated_count = 0;
-    for container_id in containers_to_update {
-        // Collect all children bounds
-        let children_bounds: Vec<(f64, f64, f64, f64)> = doc
-            .document
-            .nodes
-            .iter()
-            .filter(|(_, node)| node.parent.as_ref() == Some(&container_id))
-            .map(|(_, node)| (node.x.0, node.y.0, node.width.0, node.height.0))
-            .collect();
-
-        // Compute new bounds
-        if let Some((x, y, width, height)) = compute_subgraph_bounds(children_bounds) {
-            if let Some(container) = doc.document.nodes.get_mut(&container_id) {
-                // Add padding to the computed bounds
-                let padding = 24.0;
-                container.x = OrderedFloat(x - padding);
-                container.y = OrderedFloat(y - padding);
-                container.width = OrderedFloat(width + padding * 2.0);
-                container.height = OrderedFloat(height + padding * 2.0);
-                updated_count += 1;
-            }
+    fn apply_to(&self, node: &Node, axis: AlignmentAxis) -> Node {
+        match axis {
+            AlignmentAxis::Horizontal => Node {
+                x: OrderedFloat::new_unchecked(self.pos),
+                ..node.clone()
+            },
+            AlignmentAxis::Vertical => Node {
+                y: OrderedFloat::new_unchecked(self.pos),
+                ..node.clone()
+            },
         }
     }
+}
 
-    updated_count
+fn recompute_container_bounds(doc: &mut DiagramDocument, moved_node_ids: &[NodeId]) {
+    let containers: Vec<NodeId> = moved_node_ids
+        .iter()
+        .filter_map(|id| doc.document.nodes.get(id))
+        .filter_map(|node| node.parent.as_ref())
+        .filter(|pid| {
+            doc.document
+                .nodes
+                .get(*pid)
+                .is_some_and(|p| p.kind == NodeKind::Subgraph)
+        })
+        .unique()
+        .cloned()
+        .collect();
+
+    doc.document.nodes = containers
+        .into_iter()
+        .fold(doc.document.nodes.clone(), |nodes, cid| {
+            let children_bounds: Vec<_> = nodes
+                .iter()
+                .filter(|(_, n)| n.parent.as_ref() == Some(&cid))
+                .map(|(_, n)| (n.x.0, n.y.0, n.width.0, n.height.0))
+                .collect();
+
+            compute_subgraph_bounds(children_bounds)
+                .and_then(|(x, y, w, h)| {
+                    nodes.get(&cid).map(|container| {
+                        nodes.update(
+                            cid.clone(),
+                            Node {
+                                x: OrderedFloat::new_unchecked(x - 24.0),
+                                y: OrderedFloat::new_unchecked(y - 24.0),
+                                width: OrderedFloat::new_unchecked(w + 48.0),
+                                height: OrderedFloat::new_unchecked(h + 48.0),
+                                ..container.clone()
+                            },
+                        )
+                    })
+                })
+                .unwrap_or(nodes)
+        });
+}
+
+fn apply_transform(
+    doc: &mut DiagramDocument,
+    lock_check: impl Fn(&Node) -> bool,
+    transform_fn: impl Fn(&[NodeId], &HashMap<NodeId, Node>) -> HashMap<NodeId, Node>,
+) -> Result<(), TransformError> {
+    let selected_ids: Vec<NodeId> = doc
+        .editor_state
+        .selected_items
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .collect();
+
+    if let Some(id) = selected_ids
+        .iter()
+        .find(|id| doc.document.nodes.get(*id).is_some_and(&lock_check))
+    {
+        return Err(TransformError::LockedNode(id.clone()));
+    }
+
+    doc.document.nodes = transform_fn(&selected_ids, &doc.document.nodes);
+    recompute_container_bounds(doc, &selected_ids);
+    Ok(())
 }
 
 /// Aligns selected nodes along the specified axis.
 ///
 /// # Errors
-///
 /// Returns `TransformError::EmptySelection` if fewer than 2 nodes are selected.
 /// Returns `TransformError::LockedNode` if any selected node is locked.
 pub fn align_selection(
@@ -87,141 +138,112 @@ pub fn align_selection(
     axis: &AlignmentAxis,
     mode: &AlignmentMode,
 ) -> Result<(), TransformError> {
-    let selected = doc.editor_state.selected_items.clone();
-    if selected.len() < 2 {
+    if doc.editor_state.selected_items.len() < 2 {
         return Err(TransformError::EmptySelection);
     }
 
-    // 1. Calculate boundaries and check constraints
-    let mut min_val = f64::MAX;
-    let mut max_val = f64::MIN;
+    apply_transform(
+        doc,
+        |n| !n.lock_state.is_movable(&n.kind),
+        |selected, nodes| {
+            let extents: Vec<_> = selected
+                .iter()
+                .filter_map(|id| nodes.get(id).map(|n| NodeExtent::from_node(n, *axis)))
+                .collect();
+            let (min_val, max_val) = extents
+                .iter()
+                .fold((f64::MAX, f64::MIN), |(min, max), ext| {
+                    (min.min(ext.pos), max.max(ext.pos + ext.size))
+                });
+            let center_val = min_val + (max_val - min_val) / 2.0;
 
-    for id_str in &selected {
-        let id = diagram_models::document::NodeId::new(id_str.clone());
-        if let Some(node) = doc.document.nodes.get(&id) {
-            if !node.lock_state.is_movable(&node.kind) {
-                return Err(TransformError::LockedNode(id));
-            }
-
-            match axis {
-                AlignmentAxis::Horizontal => {
-                    min_val = min_val.min(node.x.0);
-                    max_val = max_val.max(node.x.0 + node.width.0);
-                }
-                AlignmentAxis::Vertical => {
-                    min_val = min_val.min(node.y.0);
-                    max_val = max_val.max(node.y.0 + node.height.0);
-                }
-            }
-        }
-    }
-
-    let center_val = min_val + (max_val - min_val) / 2.0;
-
-    // 2. Apply alignment
-    let mut transformed_ids: Vec<NodeId> = Vec::new();
-    for id_str in &selected {
-        let id = diagram_models::document::NodeId::new(id_str.clone());
-        transformed_ids.push(id.clone());
-        if let Some(node) = doc.document.nodes.get_mut(&id) {
-            match axis {
-                AlignmentAxis::Horizontal => {
-                    let new_x = match mode {
+            selected.iter().fold(nodes.clone(), |acc, id| {
+                acc.get(id).map_or(acc.clone(), |node| {
+                    let ext = NodeExtent::from_node(node, *axis);
+                    let pos = match mode {
                         AlignmentMode::Start => min_val,
-                        AlignmentMode::Center => center_val - (node.width.0 / 2.0),
-                        AlignmentMode::End => max_val - node.width.0,
+                        AlignmentMode::Center => center_val - (ext.size / 2.0),
+                        AlignmentMode::End => max_val - ext.size,
                     };
-                    node.x = OrderedFloat::new_unchecked(new_x);
-                }
-                AlignmentAxis::Vertical => {
-                    let new_y = match mode {
-                        AlignmentMode::Start => min_val,
-                        AlignmentMode::Center => center_val - (node.height.0 / 2.0),
-                        AlignmentMode::End => max_val - node.height.0,
-                    };
-                    node.y = OrderedFloat::new_unchecked(new_y);
-                }
-            }
-        }
-    }
-
-    // Recompute container bounds after alignment (GEO-025)
-    let _ = recompute_container_bounds(doc, &transformed_ids);
-
-    Ok(())
+                    acc.update(
+                        id.clone(),
+                        NodeExtent {
+                            pos,
+                            size: ext.size,
+                        }
+                        .apply_to(node, *axis),
+                    )
+                })
+            })
+        },
+    )
 }
 
 /// Distributes selected nodes evenly along the specified axis.
 ///
 /// # Errors
-///
-/// Returns `TransformError::EmptySelection` if fewer than 3 nodes are selected.
+/// Returns `TransformError::LockedNode` if any selected node is locked.
 pub fn distribute_selection(
     doc: &mut DiagramDocument,
     axis: &AlignmentAxis,
 ) -> Result<(), TransformError> {
-    let selected = doc.editor_state.selected_items.clone();
-    if selected.len() < 3 {
+    if doc.editor_state.selected_items.len() < 3 {
         return Ok(());
     }
 
-    let mut nodes: Vec<(NodeId, f64, f64)> = Vec::new();
-    for id_str in &selected {
-        let id = diagram_models::document::NodeId::new(id_str.clone());
-        if let Some(node) = doc.document.nodes.get(&id) {
-            if !node.lock_state.is_movable(&node.kind) {
-                return Err(TransformError::LockedNode(id));
-            }
-            match axis {
-                AlignmentAxis::Horizontal => nodes.push((id, node.x.0, node.width.0)),
-                AlignmentAxis::Vertical => nodes.push((id, node.y.0, node.height.0)),
-            }
-        }
-    }
+    apply_transform(
+        doc,
+        |n| !n.lock_state.is_movable(&n.kind),
+        |selected, nodes| {
+            let mut sorted: Vec<_> = selected
+                .iter()
+                .filter_map(|id| nodes.get(id).map(|n| (id, NodeExtent::from_node(n, *axis))))
+                .collect();
+            sorted.sort_by(|a, b| {
+                a.1.pos
+                    .partial_cmp(&b.1.pos)
+                    .unwrap_or(std::cmp::Ordering::Equal)
+            });
 
-    nodes.sort_by(|a, b| a.1.partial_cmp(&b.1).unwrap_or(std::cmp::Ordering::Equal));
+            let Some(first_elem) = sorted.first().copied() else {
+                return nodes.clone();
+            };
+            let Some(last_elem) = sorted.last().copied() else {
+                return nodes.clone();
+            };
 
-    let Some(first) = nodes.first() else {
-        return Ok(());
-    };
-    let Some(last) = nodes.last() else {
-        return Ok(());
-    };
+            let first_pos = first_elem.1.pos;
+            let total_span = (last_elem.1.pos + last_elem.1.size) - first_pos;
+            let sum_extents: f64 = sorted.iter().map(|n| n.1.size).sum();
+            #[allow(clippy::cast_precision_loss)]
+            let spacing = (total_span - sum_extents) / (sorted.len() as f64 - 1.0);
 
-    let total_span = (last.1 + last.2) - first.1;
-    let sum_of_extents: f64 = nodes.iter().map(|n| n.2).sum();
-    let available_space = total_span - sum_of_extents;
-    #[allow(clippy::cast_precision_loss)]
-    let spacing = available_space / (nodes.len() as f64 - 1.0);
-
-    let mut current_pos = first.1;
-    let mut transformed_ids: Vec<NodeId> = Vec::new();
-
-    for (id, _pos, extent) in nodes {
-        transformed_ids.push(id.clone());
-        if let Some(node) = doc.document.nodes.get_mut(&id) {
-            match axis {
-                AlignmentAxis::Horizontal => {
-                    node.x = OrderedFloat::new_unchecked(current_pos);
-                }
-                AlignmentAxis::Vertical => {
-                    node.y = OrderedFloat::new_unchecked(current_pos);
-                }
-            }
-            current_pos += extent + spacing;
-        }
-    }
-
-    // Recompute container bounds after distribution (GEO-025)
-    let _ = recompute_container_bounds(doc, &transformed_ids);
-
-    Ok(())
+            let (_, updated) =
+                sorted
+                    .into_iter()
+                    .fold((first_pos, nodes.clone()), |(pos, acc), (id, ext)| {
+                        (
+                            pos + ext.size + spacing,
+                            acc.get(id).map_or(acc.clone(), |node| {
+                                acc.update(
+                                    id.clone(),
+                                    NodeExtent {
+                                        pos,
+                                        size: ext.size,
+                                    }
+                                    .apply_to(node, *axis),
+                                )
+                            }),
+                        )
+                    });
+            updated
+        },
+    )
 }
 
 /// Translates selected nodes by `dx` and `dy`.
 ///
 /// # Errors
-///
 /// Returns `TransformError::InvalidDelta` if `dx` or `dy` is not finite.
 /// Returns `TransformError::EmptySelection` if no nodes are selected.
 /// Returns `TransformError::LockedNode` if any selected node is locked.
@@ -233,36 +255,17 @@ pub fn translate_selection(
     if !dx.is_finite() || !dy.is_finite() {
         return Err(TransformError::InvalidDelta);
     }
-
     if doc.editor_state.selected_items.is_empty() {
         return Err(TransformError::EmptySelection);
     }
 
-    let transformed_ids: Vec<NodeId> = doc
-        .editor_state
-        .selected_items
-        .iter()
-        .map(|id_str| NodeId::new(id_str.clone()))
-        .collect();
-
-    let locked_node = transformed_ids.iter().find(|id| {
-        doc.document
-            .nodes
-            .get(*id)
-            .is_some_and(|node| node.lock_state.is_locked())
-    });
-
-    if let Some(id) = locked_node {
-        return Err(TransformError::LockedNode(id.clone()));
-    }
-
-    doc.document.nodes = transformed_ids
-        .iter()
-        .fold(doc.document.nodes.clone(), |nodes, id| {
-            nodes.get(&id).map_or_else(
-                || nodes.clone(),
-                |node| {
-                    nodes.update(
+    apply_transform(
+        doc,
+        |n| n.lock_state.is_locked(),
+        |selected, nodes| {
+            selected.iter().fold(nodes.clone(), |acc, id| {
+                acc.get(id).map_or(acc.clone(), |node| {
+                    acc.update(
                         id.clone(),
                         Node {
                             x: OrderedFloat::new_unchecked(node.x.0 + dx),
@@ -270,13 +273,10 @@ pub fn translate_selection(
                             ..node.clone()
                         },
                     )
-                },
-            )
-        });
-
-    let _ = recompute_container_bounds(doc, &transformed_ids);
-
-    Ok(())
+                })
+            })
+        },
+    )
 }
 
 #[cfg(test)]

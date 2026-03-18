@@ -1,14 +1,30 @@
 use crate::geometry::primitives::Point;
+pub use diagram_models::document::types::NodeId;
 use thiserror::Error;
-
-#[derive(Debug, Clone, PartialEq, Eq, Hash)]
-pub struct NodeId(pub String);
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum SnapMode {
     #[default]
     Disabled,
     Enabled,
+}
+
+impl SnapMode {
+    /// Converts a bool to `SnapMode` for backward compatibility with existing callers.
+    #[must_use]
+    pub const fn from_bool(enabled: bool) -> Self {
+        if enabled {
+            Self::Enabled
+        } else {
+            Self::Disabled
+        }
+    }
+
+    /// Returns true if snapping is enabled.
+    #[must_use]
+    pub const fn is_enabled(self) -> bool {
+        matches!(self, Self::Enabled)
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Error)]
@@ -119,7 +135,7 @@ impl SnapResult {
         Self {
             active: false,
             snap_type: SnapType::CenterX,
-            target_node_id: NodeId(String::new()),
+            target_node_id: NodeId::new(String::new()),
             snapped_position: Point::new(0.0, 0.0),
         }
     }

@@ -7,13 +7,14 @@ use crate::export::svg::generate_svg_string;
 use anyhow::{Context, Result};
 use diagram_models::document::DiagramDocument;
 use resvg::usvg;
+use std::path::Path;
 use tiny_skia::{Pixmap, Transform};
 
 /// Export document to PNG file.
 ///
 /// # Errors
 /// Returns an error if SVG generation or PNG encoding fails.
-pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
+pub fn export_png(doc: &DiagramDocument, path: impl AsRef<Path>) -> Result<()> {
     let svg_data = generate_svg_string(doc);
 
     let mut opt = usvg::Options::default();
@@ -33,11 +34,14 @@ pub fn export_png(doc: &DiagramDocument, path: &str) -> Result<()> {
 #[cfg(test)]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
-
-    use diagram_models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
+    use super::*;
+    use anyhow::{Context, Result};
+    use diagram_models::document::{
+        DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, OrderedFloat,
+    };
     use im::HashMap;
+    use tempfile::NamedTempFile;
 
-    /// PNG file magic bytes (signature)
     const PNG_SIGNATURE: &[u8; 8] = &[137, 80, 78, 71, 13, 10, 26, 10];
 
     fn create_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
@@ -65,22 +69,35 @@ mod tests {
         )
     }
 
+    fn create_doc(
+        nodes: impl IntoIterator<Item = (NodeId, Node)>,
+        edges: impl IntoIterator<Item = (EdgeId, Edge)>,
+    ) -> DiagramDocument {
+        DiagramDocument {
+            version: 2,
+            revision: diagram_models::document::Revision::INITIAL,
+            document: DocumentData {
+                nodes: nodes.into_iter().collect(),
+                edges: edges.into_iter().collect(),
+            },
+            editor_state: diagram_models::document::EditorState::default(),
+        }
+    }
+
+    fn export_to_temp(doc: &DiagramDocument) -> Result<(NamedTempFile, Vec<u8>)> {
+        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
+        export_png(doc, temp_file.path().to_str().unwrap())?;
+        let bytes = std::fs::read(temp_file.path()).context("Failed to read PNG file")?;
+        Ok((temp_file, bytes))
+    }
+
     #[cfg(kani)]
     #[kani::proof]
     #[test]
     fn given_empty_document_when_export_png_then_creates_valid_png_file() -> Result<()> {
-        // Given
-        let doc = DiagramDocument::default();
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        assert!(bytes.len() > 8, "PNG file too small: {} bytes", bytes.len());
-        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        let (_, bytes) = export_to_temp(&DiagramDocument::default())?;
+        assert!(bytes.len() > 8);
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE);
         Ok(())
     }
 
@@ -88,34 +105,10 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_document_with_single_node_when_export_png_then_creates_valid_png() -> Result<()> {
-        // Given
-        let (node_id, node) = create_test_node("node1", 50.0, 50.0);
-        let mut nodes = HashMap::new();
-        nodes.insert(node_id, node);
-        let doc = DiagramDocument {
-            version: 2,
-            revision: diagram_models::document::Revision::INITIAL,
-            document: DocumentData {
-                nodes,
-                edges: HashMap::new(),
-            },
-            editor_state: diagram_models::document::EditorState::default(),
-        };
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
-        // Verify file has reasonable size (at least a few KB for a simple PNG)
-        assert!(
-            bytes.len() > 100,
-            "PNG file unexpectedly small: {} bytes",
-            bytes.len()
-        );
+        let doc = create_doc(vec![create_test_node("1", 50.0, 50.0)], vec![]);
+        let (_, bytes) = export_to_temp(&doc)?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE);
+        assert!(bytes.len() > 100);
         Ok(())
     }
 
@@ -123,32 +116,16 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_document_with_multiple_nodes_when_export_png_then_creates_valid_png() -> Result<()> {
-        // Given
-        let (node_id1, node1) = create_test_node("node1", 0.0, 0.0);
-        let (node_id2, node2) = create_test_node("node2", 200.0, 0.0);
-        let (node_id3, node3) = create_test_node("node3", 100.0, 150.0);
-        let mut node_map = HashMap::new();
-        node_map.insert(node_id1, node1);
-        node_map.insert(node_id2, node2);
-        node_map.insert(node_id3, node3);
-        let doc = DiagramDocument {
-            version: 2,
-            revision: diagram_models::document::Revision::INITIAL,
-            document: DocumentData {
-                nodes: node_map,
-                edges: HashMap::new(),
-            },
-            editor_state: diagram_models::document::EditorState::default(),
-        };
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        let doc = create_doc(
+            vec![
+                create_test_node("1", 0.0, 0.0),
+                create_test_node("2", 200.0, 0.0),
+                create_test_node("3", 100.0, 150.0),
+            ],
+            vec![],
+        );
+        let (_, bytes) = export_to_temp(&doc)?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE);
         Ok(())
     }
 
@@ -156,16 +133,11 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_document_with_edges_when_export_png_then_creates_valid_png() -> Result<()> {
-        // Given
-        let (src_node_id, src_node) = create_test_node("source", 0.0, 50.0);
-        let (tgt_node_id, tgt_node) = create_test_node("target", 200.0, 50.0);
-        let mut node_map = HashMap::new();
-        node_map.insert(src_node_id.clone(), src_node);
-        node_map.insert(tgt_node_id.clone(), tgt_node);
-
+        let (src_id, src_node) = create_test_node("source", 0.0, 50.0);
+        let (tgt_id, tgt_node) = create_test_node("target", 200.0, 50.0);
         let edge = Edge {
-            source: src_node_id,
-            target: tgt_node_id,
+            source: src_id.clone(),
+            target: tgt_id.clone(),
             label: String::new(),
             style: EdgeStyle::Solid,
             arrow_type: diagram_models::document::ArrowType::Default,
@@ -180,27 +152,12 @@ mod tests {
             source_port: None,
             target_port: None,
         };
-        let mut edges = HashMap::new();
-        edges.insert(EdgeId::new("edge1".to_string()), edge);
-
-        let doc = DiagramDocument {
-            version: 2,
-            revision: diagram_models::document::Revision::INITIAL,
-            document: DocumentData {
-                nodes: node_map,
-                edges,
-            },
-            editor_state: diagram_models::document::EditorState::default(),
-        };
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        let doc = create_doc(
+            vec![(src_id, src_node), (tgt_id, tgt_node)],
+            vec![(EdgeId::new("edge1".to_string()), edge)],
+        );
+        let (_, bytes) = export_to_temp(&doc)?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE);
         Ok(())
     }
 
@@ -208,19 +165,8 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_valid_document_when_export_png_then_file_exists_on_disk() -> Result<()> {
-        // Given
-        let doc = DiagramDocument::default();
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        assert!(
-            temp_file.path().exists(),
-            "PNG file should exist at {output_path:?}"
-        );
+        let (temp_file, _) = export_to_temp(&DiagramDocument::default())?;
+        assert!(temp_file.path().exists());
         Ok(())
     }
 
@@ -228,22 +174,8 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_valid_document_when_export_png_then_png_has_iend_chunk() -> Result<()> {
-        // Given
-        let doc = DiagramDocument::default();
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        // IEND chunk marks the end of a PNG file
-        let iend_marker = b"IEND";
-        assert!(
-            bytes.windows(4).any(|w| w == iend_marker),
-            "PNG file should contain IEND chunk marker"
-        );
+        let (_, bytes) = export_to_temp(&DiagramDocument::default())?;
+        assert!(bytes.windows(4).any(|w| w == b"IEND"));
         Ok(())
     }
 
@@ -251,22 +183,8 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_valid_document_when_export_png_then_png_has_ihdr_chunk() -> Result<()> {
-        // Given
-        let doc = DiagramDocument::default();
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        // IHDR chunk must be the first chunk in a PNG file (after signature)
-        let ihdr_marker = b"IHDR";
-        assert!(
-            bytes.windows(4).any(|w| w == ihdr_marker),
-            "PNG file should contain IHDR chunk marker"
-        );
+        let (_, bytes) = export_to_temp(&DiagramDocument::default())?;
+        assert!(bytes.windows(4).any(|w| w == b"IHDR"));
         Ok(())
     }
 
@@ -274,16 +192,11 @@ mod tests {
     #[kani::proof]
     #[test]
     fn given_invalid_output_path_when_export_png_then_returns_error() {
-        // Given
-        let doc = DiagramDocument::default();
-        let invalid_path = "/nonexistent/directory/output.png";
-
-        // When/Then
-        let result = export_png(&doc, invalid_path);
-        assert!(
-            result.is_err(),
-            "Expected error when exporting to invalid path"
-        );
+        assert!(export_png(
+            &DiagramDocument::default(),
+            "/nonexistent/directory/output.png"
+        )
+        .is_err());
     }
 
     #[cfg(kani)]
@@ -291,28 +204,9 @@ mod tests {
     #[test]
     fn given_document_with_large_coordinates_when_export_png_then_creates_valid_png() -> Result<()>
     {
-        // Given
-        let (node_id, node) = create_test_node("far_node", 10000.0, 10000.0);
-        let mut nodes = HashMap::new();
-        nodes.insert(node_id, node);
-        let doc = DiagramDocument {
-            version: 2,
-            revision: diagram_models::document::Revision::INITIAL,
-            document: DocumentData {
-                nodes,
-                edges: HashMap::new(),
-            },
-            editor_state: diagram_models::document::EditorState::default(),
-        };
-        let temp_file = NamedTempFile::new().context("Failed to create temp file")?;
-        let output_path = temp_file.path().to_str().context("Invalid path")?;
-
-        // When
-        export_png(&doc, output_path)?;
-
-        // Then
-        let bytes = std::fs::read(output_path).context("Failed to read PNG file")?;
-        assert_eq!(&bytes[0..8], PNG_SIGNATURE, "Invalid PNG signature");
+        let doc = create_doc(vec![create_test_node("far", 10000.0, 10000.0)], vec![]);
+        let (_, bytes) = export_to_temp(&doc)?;
+        assert_eq!(&bytes[0..8], PNG_SIGNATURE);
         Ok(())
     }
 }

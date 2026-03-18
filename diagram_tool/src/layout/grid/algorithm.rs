@@ -4,13 +4,13 @@ use diagram_models::document::{DiagramDocument, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 
-fn accumulated_parent_delta(
+pub(crate) fn accumulated_parent_delta(
     parent_id: &NodeId,
     deltas: &HashMap<NodeId, (f64, f64)>,
     nodes: &HashMap<NodeId, diagram_models::document::Node>,
 ) -> Option<(f64, f64)> {
     std::iter::successors(Some(parent_id.clone()), |id| {
-        nodes.get(&id).and_then(|node| node.parent.clone())
+        nodes.get(id).and_then(|node| node.parent.clone())
     })
     .take(nodes.len())
     .fold(None, |acc: Option<(f64, f64)>, id| {
@@ -102,7 +102,7 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
         .filter_map(|(id, (nx, ny))| {
             doc.document
                 .nodes
-                .get(&id)
+                .get(id)
                 .map(|node| (id.clone(), (nx - node.x.0, ny - node.y.0)))
         })
         .collect();
@@ -111,7 +111,7 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
         .document
         .nodes
         .iter()
-        .map(|(id, node)| match positions.get(&id) {
+        .map(|(id, node)| match positions.get(id) {
             Some(&(nx, ny)) => {
                 let mut next_node = node.clone();
                 next_node.x = OrderedFloat(nx);

@@ -29,19 +29,22 @@ pub fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
     doc.document
         .nodes
         .iter()
-        .fold(selected_set, |acc: HashSet<NodeId>, (id, node)| {
-            let node_rect = (node.x.0, node.y.0, node.width.0, node.height.0);
-            let included = selected_subgraphs
-                .iter()
-                .any(|subgraph_rect| within(*subgraph_rect, node_rect));
-            if included {
-                let mut updated = acc;
-                let _ = updated.insert(id.clone());
-                updated
-            } else {
-                acc
-            }
-        })
+        .fold(
+            selected_set,
+            |acc: HashSet<NodeId>, (id, node): (&NodeId, &diagram_models::document::Node)| {
+                let node_rect = (node.x.0, node.y.0, node.width.0, node.height.0);
+                let included = selected_subgraphs
+                    .iter()
+                    .any(|subgraph_rect| within(*subgraph_rect, node_rect));
+                if included {
+                    let mut updated = acc;
+                    let _ = updated.insert(id.clone());
+                    updated
+                } else {
+                    acc
+                }
+            },
+        )
         .into_iter()
         .collect::<Vec<_>>()
 }

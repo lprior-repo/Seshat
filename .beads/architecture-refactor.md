@@ -1,107 +1,97 @@
-# Architecture Refactor Report
+STATUS: REFACTORED
 
-## Beads Reviewed
+# Node Panel Architecture Refactor
 
-### Latest: nu_runner Module Split
+Refactored `diagram_tool/src/ui/properties/node_panel.rs` (which was 351 lines) to be strictly < 300 lines per file, adhering to the "Code is a Liability" (DRY) and Scott Wlaschin DDD principles.
 
-**Date**: 2026-03-12
+## File Splits
+The monolithic `node_panel.rs` was split into a module `node_panel/` containing the following highly-cohesive files:
+- `diagram_tool/src/ui/properties/node_panel/mod.rs` (~40 lines): The main composition component combining the sub-components.
+- `diagram_tool/src/ui/properties/node_panel/core_props.rs` (~100 lines): Handles core properties like Label, Kind, Style, and Icon.
+- `diagram_tool/src/ui/properties/node_panel/layout_props.rs` (~125 lines): Manages layout-related data such as Position, Size, and Font Size.
+- `diagram_tool/src/ui/properties/node_panel/meta_props.rs` (~100 lines): Handles meta aspects like Lock State, Tags, Connections, and ID.
+- `diagram_tool/src/ui/properties/node_panel/update.rs` (~40 lines): Extracts the duplicated mutation logic into a single generic, highly cohesive update function `update_node_if_changed` that cleanly encapsulates explicit state transitions, adhering to Scott Wlaschin DDD (explicitly modeling state changes).
 
-**Original File**: `nu_runner/src/lib.rs` - 582 lines
+Total lines across all files are well under 300 each, and redundant logic was drastically reduced. The implementation compiles cleanly with no clippy warnings.
 
-**Issue**: File exceeded 300 line limit
+---
 
-**Solution**: Split into multiple modules following DDD principles
+# Sidebar Architecture Refactor
 
-### Previous Reviews
+Refactored `diagram_tool/src/ui/sidebar.rs` (which was 494 lines) to be strictly < 300 lines per file.
 
-- `seshat-zrx` - UI Dispatch: Prop Panel Node Shape (already implemented)
-- `seshat-6j0` - Edge Style Dispatch (adds dispatch_update_edge_style)
-- `seshat-6jd` - AI Conflict State Signal
-- `seshat-7fz` - WAL Poller Dropped Event Detection
-- `seshat-3t5` - Toast Component for AI Conflict State
-- `seshat-fsa` - Toast Auto-Dismiss After 3 Seconds
+## File Splits
+The monolithic `sidebar.rs` was split into a module `sidebar/` containing the following cohesive files:
+- `diagram_tool/src/ui/sidebar/mod.rs` (289 lines): Orchestrates state, search inputs, grid components, and layout. Explicit separation of purely functional models vs. view-rendering logic.
+- `diagram_tool/src/ui/sidebar/models.rs` (160 lines): Extracted structs (`CategoryBucket`, `ProviderBucket`) and pure functions (`bucket_icons_by_category`, `search_matches`, `build_provider_buckets`). Strongly separates UI presentation and domain rules.
+- `diagram_tool/src/ui/sidebar/icon_tile.rs` (66 lines): Handles the presentation component and pure function for data URL image mapping (`icon_data_url`).
 
-## Issues Found
+Total lines across all files are strictly under 300 each, keeping components small and reusable. No `clippy` warnings were introduced and the codebase compiles cleanly.
 
-### 2. File Exceeding 300 Lines: `nu_runner/src/lib.rs`
+---
 
-**Original**: 582 lines  
-**Issue**: Single file exceeded 300 line limit with mixed concerns
+# UI Canvas Math Architecture Refactor
 
-**Solution**: Split into focused modules with explicit responsibilities
+Refactored `diagram_tool/src/ui/canvas/math.rs` (which was 445 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
 
-**Files Changed/Created**:
+## Actions Taken
+- The `diagram_tool/src/ui/canvas/math.rs` file was completely disconnected from the crate tree (dead code). It consisted solely of `f64` primitive testing via `proptest!` and `kani::proofs` for functions re-exported from the `canvas_math` crate.
+- The UI layer has already evolved to use strongly-typed DDD wrappers (e.g. `CanvasCoord`, `ScreenCoord`) located in `canvas_domain/src/math.rs`, rendering the primitive UI wrappers obsolete.
+- To make the codebase EXTREMELY DRY and remove liability, `diagram_tool/src/ui/canvas/math.rs` was completely deleted.
+- The valuable tests were salvaged and relocated precisely where they belong: into the `canvas_math` crate itself.
+- Created `canvas_math/src/proptests.rs` and `canvas_math/src/kani_proofs.rs` (both strictly < 300 lines) to house these mathematical invariant checks.
+- Stripped erroneous `#[cfg(kani)]` attributes from `proptest!` blocks which were preventing tests from running in standard `cargo test` pipelines. 
 
-| File | Lines | Purpose |
-|------|-------|---------|
-| `lib.rs` | 224 | Module declarations, re-exports, tests |
-| `types.rs` | 103 | Core domain types (NuOutput, NuConfig, NuRunner) |
-| `newtypes.rs` | 255 | Value objects (NuPath, TimeoutMs, ExitCode, EnvVars, Command) |
-| `errors.rs` | 70 | Error taxonomy (NuError) |
-| `state.rs` | 68 | State machine (RunnerState, RunnerStateError) |
-| `validation.rs` | 184 | Pure validation functions |
-| `runner.rs` | 200 | Implementation (Actions layer) |
-| `main.rs` | 1 | Entry point |
+Codebase is now cleaner, tests run properly, primitive obsession is handled by domain wrappers, and the project compiles cleanly with zero clippy warnings.
 
-### DDD Improvements Applied
+---
 
-1. **Newtypes (Eliminating Primitive Obsession)**:
-   - `NuPath` - Wraps `String` for nushell executable path
-   - `TimeoutMs` - Wraps `u64` for timeout, rejects zero
-   - `ExitCode` - Wraps `i32` with semantic methods
-   - `EnvVars` - Wraps `HashMap<String, String>` for UTF-8 guarantee
-   - `Command` - Wraps validated command strings
+# Dispatch Create Refactor
 
-2. **Explicit State Machine**:
-   - Replaced `is_executing: bool` with `RunnerState` enum
-   - State transitions: `start_executing()`, `finish_executing()`
+Refactored `diagram_tool/src/ui/dispatch/create.rs` (which was 286 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
 
-3. **Error Taxonomy**:
-   - `NuError` with 7 explicit variants
+## Actions Taken
+- Consolidated the creation of `EventEnvelope` by extracting the redundant wrapping logic (author, timestamp, op_id) into a single highly cohesive `wrap` function.
+- Preserved existing domain models (`DomainOp`, `NodeId`, `EdgeId`) to keep domain boundaries explicit and parse at boundaries.
+- Reduced the file length from 286 lines to ~130 lines, making it EXTREMELY DRY.
+- Codebase is much cleaner, compiles perfectly, and has zero clippy warnings.
 
-### 1. File Exceeding 300 Lines: `ai_event_detection.rs` (seshat-7fz)
+---
 
-**Original**: 421 lines  
-**Issue**: Had 246 lines of inline tests (lines 175-421)
+# Perf Metrics Refactor
 
-**Solution**: Extracted tests to separate file following codebase pattern (`tests.rs`)
+Refactored `diagram_tool/src/perf/metrics.rs` (which was 341 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
 
-**Files Changed**:
-- `diagram_tool/src/ai_event_detection.rs` - Removed inline test module, added `mod tests;` declaration
-- `diagram_tool/src/ai_event_detection/tests.rs` - NEW file containing all tests
+## Actions Taken
+- Split the monolithic file into `diagram_tool/src/perf/metrics/mod.rs` (~10 lines), `frame.rs` (~70 lines), `percentiles.rs` (~115 lines), and `statistics.rs` (~140 lines).
+- All files are well under the 300 lines limit.
+- Simplified initialization patterns using `Default` where applicable for `Percentiles` and `Statistics` zero-states, eliminating duplicate verbose inline 0.0 allocations making the logic EXTREMELY DRY.
+- Preserved strict type invariants and structural validation ("Make Illegal States Unrepresentable") for each specific performance domain concept.
+- Tested and ensured zero clippy warnings.
 
-## Final Line Counts
+---
 
-| File | Lines | Status |
-|------|-------|--------|
-| `nu_runner/src/lib.rs` | 224 | ✅ Under 300 |
-| `nu_runner/src/types.rs` | 103 | ✅ Under 300 |
-| `nu_runner/src/newtypes.rs` | 255 | ✅ Under 300 |
-| `nu_runner/src/errors.rs` | 70 | ✅ Under 300 |
-| `nu_runner/src/state.rs` | 68 | ✅ Under 300 |
-| `nu_runner/src/validation.rs` | 184 | ✅ Under 300 |
-| `nu_runner/src/runner.rs` | 200 | ✅ Under 300 |
-| `ai_event_detection.rs` | 176 | ✅ Under 300 |
-| `ai_event_detection/tests.rs` | 248 | ✅ Separate test file |
-| `hooks/ai_conflict.rs` | 80 | ✅ Under 300 |
+# Viewport Operations Refactor
 
-## DDD Compliance
+Refactored `diagram_tool/src/viewport/operations.rs` (which was 327 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
 
-The reviewed code follows Scott Wlaschin DDD principles:
+## Actions Taken
+- Reduced from 327 lines to 110 lines, securely under the 300 line limit.
+- Applied "Code is a Liability" and EXTREMELY DRY principles by entirely eliminating dead/redundant wrapper methods (`apply_pan`, `apply_zoom_in`, etc.) that were merely polluting the module and proxying directly to existing methods on `ViewportState`.
+- Retained highly cohesive pure calculation and validation functions (`calculate_fit_zoom`, `clamp_zoom`, etc.).
+- Removed redundant unit tests mirroring `viewport.pan` tests.
+- Module compiles completely and has zero clippy warnings.
 
-1. **Parse, don't validate**: `AiConflictState` struct with `has_valid_reason()` method
-2. **Make illegal states unrepresentable**: `DropDetectionResult` uses `Option<String>` for optional conflict message
-3. **NewTypes**: Uses `NodeId`, `EdgeId`, `Author` from models instead of primitives
-4. **Pure functions**: `detect_dropped_ai_events()`, `find_dropped_op_ids()`, `generate_conflict_message()` are all pure calculations
+---
 
-### nu_runner DDD Features
+# UI Toolbar Components Refactor
 
-1. **Newtypes**: `NuPath`, `TimeoutMs`, `ExitCode`, `EnvVars`, `Command` eliminate primitive obsession
-2. **Explicit State**: `RunnerState` enum replaces boolean flag
-3. **Error Taxonomy**: 7 explicit `NuError` variants
-4. **Parse at Boundaries**: Validation functions convert raw inputs to domain types
+Refactored `diagram_tool/src/ui/toolbar/components.rs` (which was 349 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
 
-## Notes
-
-- Pre-existing files (`dispatch.rs`, `properties.rs`, `app.rs`, `toast.rs`) exceed 300 lines but were not modified by the current beads - they existed before
-- The compilation errors shown are pre-existing issues in the codebase unrelated to these beads
+## Actions Taken
+- Subdivided `components.rs` into a highly-cohesive directory module `components/`.
+- Created `mod.rs` (9 lines), `base.rs` (51 lines), `tool_history.rs` (94 lines), `edit_align.rs` (168 lines), and `export_view.rs` (149 lines).
+- Replaced inline match-based conditional logic with strongly typed action enums (`EditAction`, `AlignAction`, `ExportAction`, `PanelToggle`) making states robust ("Make Illegal States Unrepresentable").
+- Extracted tuple-based variant implementations for DRY iteration within the Dioxus macros (`rsx!`), vastly reducing repetitive HTML button elements.
+- Cleaned dangling unit binding issues (`let_unit_value`) in adjacent file `core/transform.rs` exposed during build phase.
+- Module compiles completely, tests passed, and has zero clippy warnings.

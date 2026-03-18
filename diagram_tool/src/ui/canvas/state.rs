@@ -93,7 +93,7 @@ pub fn use_canvas_state() -> CanvasState {
         editing_edge,
         edit_value,
         viewport_size,
-        db_tx.clone(),
+        db_tx,
     );
 
     use_touch_handler(
@@ -112,33 +112,33 @@ pub fn use_canvas_state() -> CanvasState {
         interaction_mode,
         pending_pointer_sample,
         pending_wheel_sample,
-        db_tx.clone(),
+        db_tx,
     );
 
     use_resize_handler(canvas_origin, viewport_size);
 
-    let mut current_deps = PointerDeps {
-        doc_signal: doc_signal.clone(),
-        history_signal: history_signal.clone(),
-        tool_signal: tool_signal.clone(),
-        interaction_mode: interaction_mode.clone(),
-        edge_style_default: edge_style_default.clone(),
-        arrow_type_default: arrow_type_default.clone(),
-        editing_node: editing_node.clone(),
-        editing_edge: editing_edge.clone(),
-        edit_value: edit_value.clone(),
-        space_pressed: space_pressed.clone(),
-        shift_pressed: shift_pressed.clone(),
-        ctrl_pressed: ctrl_pressed.clone(),
-        meta_pressed: meta_pressed.clone(),
-        space_pan_active: space_pan_active.clone(),
-        multi_touch_active: multi_touch_active.clone(),
-        pending_pointer_sample: pending_pointer_sample.clone(),
-        captured_pointer: captured_pointer.clone(),
-        active_pointers: active_pointers.clone(),
-        canvas_origin: canvas_origin.clone(),
-        db_tx: db_tx.clone(),
-        toast: toast.clone(),
+    let current_deps = PointerDeps {
+        doc_signal,
+        history_signal,
+        tool_signal,
+        interaction_mode,
+        edge_style_default,
+        arrow_type_default,
+        editing_node,
+        editing_edge,
+        edit_value,
+        space_pressed,
+        shift_pressed,
+        ctrl_pressed,
+        meta_pressed,
+        space_pan_active,
+        multi_touch_active,
+        pending_pointer_sample,
+        captured_pointer,
+        active_pointers,
+        canvas_origin,
+        db_tx,
+        toast,
     };
     use_pointer_handler(current_deps);
 

@@ -97,7 +97,7 @@ pub fn apply_z_order_operation(doc: &mut DiagramDocument, op: ZOrderOp) -> bool 
         .filter(|id| {
             doc.document
                 .nodes
-                .get(&id)
+                .get(id)
                 .is_some_and(|node| node.lock_state.is_movable(&node.kind))
         })
         .collect::<BTreeSet<_>>();
@@ -121,7 +121,7 @@ pub fn apply_z_order_operation(doc: &mut DiagramDocument, op: ZOrderOp) -> bool 
 
         let min_z = ordered
             .iter()
-            .filter_map(|id| doc.document.nodes.get(&id).map(|node| node.z_index))
+            .filter_map(|id| doc.document.nodes.get(id).map(|node| node.z_index))
             .min()
             .unwrap_or(0);
 

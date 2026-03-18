@@ -13,4 +13,9 @@
 
 pub mod error;
 pub mod file_lock;
+pub mod id;
 pub mod manager;
+pub mod state;
+
+#[cfg(test)]
+mod tests;

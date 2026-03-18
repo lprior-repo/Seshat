@@ -2,9 +2,7 @@ use dioxus::prelude::*;
 
 use diagram_models::document::{DiagramDocument, Revision};
 use diagram_models::schema::validate_schema;
-use diagram_models::validation::{
-    validate_document_data, ValidationIssue, ValidationSeverity,
-};
+use diagram_models::validation::{validate_document_data, ValidationIssue, ValidationSeverity};
 
 use super::types::VALIDATION_IDLE_MS;
 
@@ -13,7 +11,7 @@ pub(crate) fn collect_validation_issues(doc: &DiagramDocument) -> Vec<Validation
         .err()
         .map(|e| ValidationIssue {
             severity: ValidationSeverity::Error,
-            code: "schema",
+            code: diagram_models::validation::ValidationCode::SCHEMA,
             message: e.to_string(),
             subject: None,
         })

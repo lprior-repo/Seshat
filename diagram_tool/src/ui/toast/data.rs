@@ -1,15 +1,8 @@
 use super::{Toast, ToastAction, ToastId, ToastIntent, ToastUpdate, MAX_TOASTS};
+#[derive(Default)]
 pub struct ToastQueue {
     next_id: u64,
     items: Vec<Toast>,
-}
-impl Default for ToastQueue {
-    fn default() -> Self {
-        Self {
-            next_id: 0,
-            items: Vec::new(),
-        }
-    }
 }
 impl ToastQueue {
     #[must_use]
@@ -37,11 +30,10 @@ impl ToastQueue {
         });
         while self.items.len() > MAX_TOASTS {
             self.items.remove(
-                if let Some(x) = self.items.iter().position(|x| x.dismissed) {
-                    x
-                } else {
-                    0
-                },
+                self.items
+                    .iter()
+                    .position(|x| x.dismissed)
+                    .unwrap_or_default(),
             );
         }
         id

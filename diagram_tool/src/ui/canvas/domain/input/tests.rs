@@ -1,4 +1,5 @@
 use super::*;
+use crate::ui::canvas::domain::types::{CanvasPoint, CanvasVector};
 
 fn point(x: f64, y: f64) -> CanvasPoint {
     CanvasPoint::new(x, y).unwrap()
@@ -18,10 +19,10 @@ fn test_returns_pan_action_for_two_finger_movement_inp_004() {
     let (state, _) = process_pointer_event(
         &state,
         &PointerEvent::Down {
-            id: 1,
+            id: PointerId(1),
             pointer_type: PointerType::Touch,
             pos: point(0.0, 0.0),
-            time_ms: 0,
+            time: TimeMs(0),
         },
         &config,
     )
@@ -29,10 +30,10 @@ fn test_returns_pan_action_for_two_finger_movement_inp_004() {
     let (state, _) = process_pointer_event(
         &state,
         &PointerEvent::Down {
-            id: 2,
+            id: PointerId(2),
             pointer_type: PointerType::Touch,
             pos: point(10.0, 10.0),
-            time_ms: 10,
+            time: TimeMs(10),
         },
         &config,
     )
@@ -41,13 +42,18 @@ fn test_returns_pan_action_for_two_finger_movement_inp_004() {
     let (_state, actions) = process_pointer_event(
         &state,
         &PointerEvent::Move {
-            id: 1,
+            id: PointerId(1),
             pos: point(5.0, 5.0),
         },
         &config,
     )
     .unwrap();
-    assert_eq!(actions, vec![Action::PanCamera { dx: 5.0, dy: 5.0 }]);
+    assert_eq!(
+        actions,
+        vec![Action::PanCamera {
+            vector: CanvasVector::new(5.0, 5.0).unwrap()
+        }]
+    );
     assert!(!actions
         .iter()
         .any(|a| matches!(a, Action::MoveShape { .. })));
@@ -75,10 +81,10 @@ fn test_returns_double_tap_action_when_tapped_twice_rapidly_inp_006() {
     let (state, a1) = process_pointer_event(
         &state,
         &PointerEvent::Down {
-            id: 1,
+            id: PointerId(1),
             pointer_type: PointerType::Touch,
             pos: point(0.0, 0.0),
-            time_ms: 0,
+            time: TimeMs(0),
         },
         &config,
     )
@@ -88,10 +94,10 @@ fn test_returns_double_tap_action_when_tapped_twice_rapidly_inp_006() {
     let (_state, a2) = process_pointer_event(
         &state,
         &PointerEvent::Down {
-            id: 1,
+            id: PointerId(1),
             pointer_type: PointerType::Touch,
             pos: point(1.0, 1.0),
-            time_ms: 100,
+            time: TimeMs(100),
         },
         &config,
     )
@@ -121,12 +127,12 @@ fn test_returns_error_when_pointer_move_received_for_untracked_id() {
     let res = process_pointer_event(
         &state,
         &PointerEvent::Move {
-            id: 99,
+            id: PointerId(99),
             pos: point(0.0, 0.0),
         },
         &config,
     );
-    assert_eq!(res, Err(Error::UntrackedPointer(99)));
+    assert_eq!(res, Err(Error::UntrackedPointer(PointerId(99))));
 }
 
 #[cfg(kani)]
@@ -140,10 +146,10 @@ fn test_returns_error_when_too_many_simultaneous_pointers_active() {
         let (next_state, _) = process_pointer_event(
             &state,
             &PointerEvent::Down {
-                id: i,
+                id: PointerId(i),
                 pointer_type: PointerType::Touch,
                 pos: point(0.0, 0.0),
-                time_ms: 0,
+                time: TimeMs(0),
             },
             &config,
         )
@@ -154,10 +160,10 @@ fn test_returns_error_when_too_many_simultaneous_pointers_active() {
     let res = process_pointer_event(
         &state,
         &PointerEvent::Down {
-            id: 10,
+            id: PointerId(10),
             pointer_type: PointerType::Touch,
             pos: point(0.0, 0.0),
-            time_ms: 0,
+            time: TimeMs(0),
         },
         &config,
     );
@@ -174,13 +180,13 @@ fn test_handles_pointer_up_without_prior_down_gracefully() {
     let res = process_pointer_event(
         &state,
         &PointerEvent::Up {
-            id: 1,
+            id: PointerId(1),
             pos: point(0.0, 0.0),
-            time_ms: 0,
+            time: TimeMs(0),
         },
         &config,
     );
-    assert_eq!(res, Err(Error::UntrackedPointer(1)));
+    assert_eq!(res, Err(Error::UntrackedPointer(PointerId(1))));
 }
 
 #[cfg(kani)]
@@ -203,6 +209,6 @@ fn test_p2_violation_returns_negative_hit_padding_error() {
 #[kani::proof]
 #[test]
 fn test_p3_violation_returns_duplicate_pointer_id_error() {
-    let res = TwoFingerGesture::new(1, 1);
+    let res = TwoFingerGesture::new(PointerId(1), PointerId(1));
     assert_eq!(res, Err(Error::DuplicatePointerId));
 }
