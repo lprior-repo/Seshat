@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 use crate::document::{
     DiagramDocument, DocumentData, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };

@@ -4,9 +4,9 @@
 #![allow(unused_imports)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 #![forbid(unsafe_code)]
 
 #[cfg(kani)]

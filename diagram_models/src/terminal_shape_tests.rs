@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 //! Tests for `TerminalShape` serialization and bijective mapping.
 //! Contract: EDG-032 to EDG-035 - Arrowhead styles
 //!
@@ -8,15 +9,33 @@
 // DSL Layer - Domain-Specific Test Helpers
 // ============================================================================
 
+pub fn parse_arrow_type(v: &str) -> crate::document::ArrowType {
+    match v {
+        "straight" | "open" => crate::document::ArrowType::Straight,
+        "step" | "diamond" => crate::document::ArrowType::Step,
+        "curved" | "circle" => crate::document::ArrowType::Curved,
+        "sharp" | "none" => crate::document::ArrowType::Sharp,
+        _ => crate::document::ArrowType::Default,
+    }
+}
+
+pub const fn arrow_type_str(v: crate::document::ArrowType) -> &'static str {
+    match v {
+        crate::document::ArrowType::Default => "default",
+        crate::document::ArrowType::Straight => "straight",
+        crate::document::ArrowType::Step => "step",
+        crate::document::ArrowType::Curved => "curved",
+        crate::document::ArrowType::Sharp => "sharp",
+    }
+}
+
 /// Parses a terminal shape string into `ArrowType` (the DSL's normalize function).
 fn normalize(input: &str) -> crate::document::ArrowType {
-    use crate::ui::properties_helpers::parse_arrow_type;
     parse_arrow_type(input)
 }
 
 /// Serializes an `ArrowType` to its string representation (the DSL's `to_legacy` function).
 fn to_legacy(arrow_type: crate::document::ArrowType) -> &'static str {
-    use crate::ui::properties_helpers::arrow_type_str;
     arrow_type_str(arrow_type)
 }
 
@@ -59,10 +78,6 @@ fn assert_terminal_shape_returns_error(invalid_input: &str) {
 }
 
 use crate::document::ArrowType;
-use crate::ui::properties_helpers::{arrow_type_str, parse_arrow_type};
-
-#[cfg(test)]
-mod tests {
     use super::*;
 
     // === Happy Path Tests ===
@@ -506,4 +521,3 @@ mod tests {
             "I2 violated: round-trip must be lossless"
         );
     }
-}

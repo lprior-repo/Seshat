@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 //! Tests for hit test margin calculations.
 //!
 //! This module contains unit tests for the hit test margin functions.

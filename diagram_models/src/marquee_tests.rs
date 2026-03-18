@@ -1,14 +1,6 @@
-#[cfg(test)]
-mod marquee_tests {
-    use crate::document::{
-        DiagramDocument, DocumentError, LockState, NodeId, NodeKind, OrderedFloat, ValidRect,
-    };
-    use crate::spatial_index::MarqueeMode;
-    use crate::test_utils::builders::{
-        setup_doc_with_nodes, test_node, test_node_builder, DocBuilder,
-    };
-    use im::HashMap;
-    use serde_json::json;
+use crate::document::{DiagramDocument, DocumentError, ValidRect, NodeId};
+use crate::spatial_index::MarqueeMode;
+use crate::test_utils::{setup_doc_with_nodes, test_node};
 
     #[test]
     fn should_reject_marquee_with_negative_dimensions() {
@@ -83,4 +75,3 @@ mod marquee_tests {
         assert!(!doc.editor_state.selected_items.is_empty());
         assert_eq!(doc.document, doc_before.document);
     }
-}

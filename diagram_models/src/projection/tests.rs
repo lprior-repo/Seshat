@@ -4,6 +4,7 @@
 #![allow(clippy::nursery)]
 
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod tests {
     use crate::document::LockState;
     use crate::envelope::Author;

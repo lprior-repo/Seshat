@@ -262,7 +262,7 @@ mod tests {
 
         // INV1: All children should have the group as parent
         for id in &node_ids {
-            let node = doc.document.nodes.get(&id).unwrap();
+            let node = doc.document.nodes.get(id).unwrap();
             assert_eq!(
                 node.parent.as_ref(),
                 Some(&group_id),

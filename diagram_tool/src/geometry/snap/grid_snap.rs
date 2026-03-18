@@ -3,8 +3,9 @@ pub use diagram_models::document::{GridError, GridSize};
 
 use super::mod_types::SnapMode;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, thiserror::Error)]
 pub enum GridSnapError {
+    #[error("Coordinate is not finite")]
     NotFinite,
 }
 

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use crate::store::durable::conflict::generate_conflict_diff;
 use crate::store::durable::cursor::fetch_events_cursor;
 use crate::store::durable::error::DurableError;

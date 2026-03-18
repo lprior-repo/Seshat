@@ -1,9 +1,11 @@
+#![allow(dead_code, unused_imports)]
 //! Subgraph cascade deletion and reparenting tests
 //!
 //! Tests for SUB-032 (reparent mode) and SUB-034 (delete mode) cascade behaviors.
 //! Uses REAL production code functions: `apply_ungroup` from projection ops.
 
 #![cfg(test)]
+#![allow(clippy::unnecessary_unwrap)]
 
 mod tests {
     use crate::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};

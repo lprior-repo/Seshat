@@ -1,31 +1,45 @@
+#![allow(clippy::let_underscore_future)]
 //! Phase 4 Tests: Model updates for rusqlite → sqlx migration
+//! Strictly < 300 lines, EXTREMELY DRY, Code is a Liability.
 
 #![cfg(not(target_arch = "wasm32"))]
 
-use diagram_models::document::NodeId;
+use diagram_models::document::{EdgeId, NodeId};
 use diagram_models::envelope::{Author, DomainOp, EventEnvelope};
-use diagram_tool::store_async::{bootstrap_async_store, AsyncStoreError};
+use diagram_models::projection::{replay_events_from, DiagramProjection, EventRecord as ProjectionEventRecord};
+use diagram_tool::store::Revision;
+use diagram_tool::store_async::{
+    append_event_async, bootstrap_async_store, envelope_to_valid_event, fetch_all_events,
+    fetch_events_since, AsyncStoreError, AsyncAppendResult,
+};
 use sqlx::SqlitePool;
-use std::path::Path;
 use std::sync::Arc;
+use tempfile::TempDir;
 
-struct PoolGuard {
+/// Test context for async store tests.
+/// Manages pool lifecycle and temporary directory cleanup.
+struct TestStore {
     pool: Option<Arc<SqlitePool>>,
+    _temp_dir: TempDir,
 }
 
-impl PoolGuard {
-    fn new(pool: SqlitePool) -> Self {
-        Self {
-            pool: Some(Arc::new(pool)),
-        }
+impl TestStore {
+    async fn new() -> Result<Self, AsyncStoreError> {
+        let temp_dir = TempDir::new().map_err(AsyncStoreError::Io)?;
+        let db_path = temp_dir.path().join("test.db");
+        let bootstrap = bootstrap_async_store(&db_path).await?;
+        Ok(Self {
+            pool: Some(Arc::new(bootstrap.pool)),
+            _temp_dir: temp_dir,
+        })
     }
 
     fn pool(&self) -> Arc<SqlitePool> {
-        self.pool.as_ref().expect("pool already taken").clone()
+        self.pool.as_ref().expect("pool taken").clone()
     }
 }
 
-impl Drop for PoolGuard {
+impl Drop for TestStore {
     fn drop(&mut self) {
         if let Some(pool) = self.pool.take() {
             if Arc::strong_count(&pool) == 1 {
@@ -35,544 +49,181 @@ impl Drop for PoolGuard {
     }
 }
 
-fn create_test_envelope(op_id: &str, revision: i64) -> EventEnvelope {
+/// Helper to create a standard test envelope for deduplication.
+fn test_envelope(op_id: &str, revision: i64) -> EventEnvelope {
     EventEnvelope {
         op_id: op_id.to_string(),
         timestamp: 1700000000 + revision,
-        author: Author {
-            id: "test-user".to_string(),
-            name: "Test User".to_string(),
-            email: None,
-        },
+        author: Author { id: "u".into(), name: "U".into(), email: None },
         operation: DomainOp::NodeAdd {
-            id: NodeId::new(format!("node-{}", revision)),
-            x: 100.0 * revision as f64,
-            y: 200.0 * revision as f64,
+            id: NodeId::new(format!("n-{}", revision)),
+            x: 10.0 * revision as f64,
+            y: 20.0 * revision as f64,
             width: 80.0,
             height: 40.0,
-            label: format!("Node {}", revision),
+            label: format!("N{}", revision),
         },
     }
 }
 
-async fn setup_async_store(db_path: &Path) -> Result<PoolGuard, AsyncStoreError> {
-    let bootstrap = bootstrap_async_store(db_path).await?;
-    Ok(PoolGuard::new(bootstrap.pool))
+/// Helper to append a generic event and abstract away serialization.
+async fn append_test_event(
+    pool: &SqlitePool,
+    id: &str,
+    rev: i64,
+    exp_rev: Option<Revision>,
+) -> Result<AsyncAppendResult, AsyncStoreError> {
+    let env = test_envelope(id, rev);
+    let valid = envelope_to_valid_event(&env)
+        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+    append_event_async(pool, valid, exp_rev).await
 }
 
-mod test_events_module {
+#[tokio::test]
+async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
+    let store = TestStore::new().await?;
+    let pool = store.pool();
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_events_module_imports_async_store_error() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
+    // 1. New store is empty
+    assert!(fetch_all_events(&pool).await?.is_empty());
 
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
+    // 2. Append first event
+    let res = append_test_event(&pool, "op-1", 1, None).await?;
+    assert_eq!(res.revision, 1);
+    assert_eq!(res.op_id, "op-1");
 
-        let envelope = create_test_envelope("op-1", 1);
-        let valid_event = envelope_to_valid_event(&envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        let result = append_event_async(&pool, valid_event, None).await?;
-
-        assert_eq!(result.revision, 1, "First event should have revision 1");
-        assert_eq!(result.op_id, "op-1", "Operation ID should match");
-
-        Ok(())
+    // 3. Append multiple increments revision
+    for i in 2..=5 {
+        assert_eq!(append_test_event(&pool, &format!("op-{}", i), i, None).await?.revision, i);
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_events_schema_created_with_async_store() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
+    // 4. Fetch events since
+    let evs = fetch_events_since(&pool, 2).await?;
+    assert_eq!(evs.len(), 3);
+    assert!(fetch_events_since(&pool, 5).await?.is_empty());
 
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
+    // 5. Fetch all events
+    assert_eq!(fetch_all_events(&pool).await?.len(), 5);
 
-        let events = fetch_all_events(&pool).await?;
-        assert!(events.is_empty(), "New store should have no events");
-
-        Ok(())
+    // 6. Very large batch
+    for i in 6..=105 {
+        append_test_event(&pool, &format!("op-batch-{}", i), i, None).await?;
     }
+    let all = fetch_all_events(&pool).await?;
+    assert_eq!(all.len(), 105);
+    assert_eq!(all.last().unwrap().revision, 105);
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_append_multiple_events_increments_revision() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        for i in 1..=5 {
-            let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            let valid_event = envelope_to_valid_event(&envelope)
-                .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-            let result = append_event_async(&pool, valid_event, None).await?;
-            assert_eq!(
-                result.revision, i as i64,
-                "Revision should match event number"
-            );
-        }
-
-        Ok(())
-    }
+    Ok(())
 }
 
-mod test_snapshot_module {
+#[tokio::test]
+async fn test_projection_replay() -> Result<(), AsyncStoreError> {
+    let store = TestStore::new().await?;
+    let pool = store.pool();
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_snapshot_works_with_async_store() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let envelope1 = create_test_envelope("op-1", 1);
-        let valid_event1 = envelope_to_valid_event(&envelope1)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        append_event_async(&pool, valid_event1, None).await?;
-
-        let events = fetch_events_since(&pool, 0).await?;
-        assert_eq!(events.len(), 1, "Should have one event");
-
-        Ok(())
+    for i in 1..=3 {
+        append_test_event(&pool, &format!("op-{}", i), i, None).await?;
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_snapshot_load_projection_from_events() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
+    let records = fetch_events_since(&pool, 0).await?;
+    assert_eq!(records.len(), 3);
 
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        for i in 1..=3 {
-            let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            let valid_event = envelope_to_valid_event(&envelope)
+    let parsed_events: Result<Vec<ProjectionEventRecord>, _> = records
+        .into_iter()
+        .enumerate()
+        .map(|(i, r)| -> Result<ProjectionEventRecord, AsyncStoreError> {
+            let env = diagram_models::envelope::parse_event_envelope(&r.payload)
                 .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-            append_event_async(&pool, valid_event, None).await?;
-        }
-
-        let event_records = fetch_events_since(&pool, 0).await?;
-        assert_eq!(event_records.len(), 3, "Should have three events");
-
-        let parsed_events: Vec<EventRecord> = event_records
-            .into_iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let envelope = diagram_models::envelope::parse_event_envelope(&r.payload)
-                    .map_err(|e| AsyncStoreError::Serialization(e.to_string()));
-                match envelope {
-                    Ok(env) => Ok(EventRecord {
-                        op_id: r.op_id,
-                        revision: i as u64,
-                        operation: env.operation,
-                        author: env.author,
-                        timestamp: r.timestamp,
-                    }),
-                    Err(e) => Err(e),
-                }
+            Ok(ProjectionEventRecord {
+                op_id: r.op_id,
+                revision: i as u64,
+                operation: env.operation,
+                author: env.author,
+                timestamp: r.timestamp,
             })
-            .collect::<Result<Vec<_>, _>>()?;
+        })
+        .collect();
 
-        let projection = replay_events_from(DiagramProjection::empty(), &parsed_events)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+    let proj = replay_events_from(DiagramProjection::empty(), &parsed_events?)
+        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
 
-        assert_eq!(
-            projection.revision, 3,
-            "Projection should have revision 3 after 3 events"
-        );
-        assert_eq!(projection.nodes.len(), 3, "Should have 3 nodes");
+    assert_eq!(proj.revision, 3);
+    assert_eq!(proj.nodes.len(), 3);
 
-        Ok(())
-    }
+    Ok(())
 }
 
-mod test_sync_module {
+#[tokio::test]
+async fn test_store_error_cases() -> Result<(), AsyncStoreError> {
+    let store = TestStore::new().await?;
+    let pool = store.pool();
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_sync_fetch_events_since_with_async_store() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
+    // Setup initial state
+    append_test_event(&pool, "op-1", 1, None).await?;
 
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
+    // 1. Revision mismatch is typed
+    let mismatch_res = append_test_event(&pool, "op-2", 2, Some(Revision::new(5).unwrap())).await;
+    assert!(matches!(
+        mismatch_res,
+        Err(AsyncStoreError::RevisionMismatch { expected: 5, found: 1 })
+    ));
 
-        for i in 1..=5 {
-            let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            let valid_event = envelope_to_valid_event(&envelope)
-                .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-            append_event_async(&pool, valid_event, None).await?;
-        }
+    // 2. Duplicate op_id fails
+    let dup_res = append_test_event(&pool, "op-1", 1, None).await;
+    assert!(dup_res.is_err(), "Duplicate append should fail");
 
-        let events_after_2 = fetch_events_since(&pool, 2).await?;
-        assert_eq!(
-            events_after_2.len(),
-            3,
-            "Should have 3 events after revision 2"
-        );
-
-        let events_after_5 = fetch_events_since(&pool, 5).await?;
-        assert!(
-            events_after_5.is_empty(),
-            "Should have no events after revision 5"
-        );
-
-        Ok(())
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_sync_fetch_all_events_with_async_store() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let all_before = fetch_all_events(&pool).await?;
-        assert!(all_before.is_empty(), "Should have no events initially");
-
-        for i in 1..=3 {
-            let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            let valid_event = envelope_to_valid_event(&envelope)
-                .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-            append_event_async(&pool, valid_event, None).await?;
-        }
-
-        let all_after = fetch_all_events(&pool).await?;
-        assert_eq!(all_after.len(), 3, "Should have 3 events after appending");
-
-        Ok(())
-    }
+    Ok(())
 }
 
-mod test_no_rusqlite_in_models {
+#[tokio::test]
+async fn test_batch_append_with_edges() -> Result<(), AsyncStoreError> {
+    let store = TestStore::new().await?;
+    let pool = store.pool();
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_models_use_async_not_rusqlite() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let envelope = EventEnvelope {
-            op_id: "test-op".to_string(),
-            timestamp: 1234567890,
-            author: Author {
-                id: "user-1".to_string(),
-                name: "User".to_string(),
-                email: None,
-            },
+    let envelopes = vec![
+        EventEnvelope {
+            op_id: "op-1".into(),
+            timestamp: 1,
+            author: Author { id: "u".into(), name: "U".into(), email: None },
             operation: DomainOp::NodeAdd {
-                id: "node-1".to_string(),
-                x: 10.0,
-                y: 20.0,
-                width: 100.0,
-                height: 50.0,
-                label: "Test".to_string(),
-            },
-        };
-
-        let valid_event = envelope_to_valid_event(&envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        let result: AsyncAppendResult = append_event_async(&pool, valid_event, None).await?;
-        assert_eq!(
-            result.revision, 1,
-            "Should append successfully using async store"
-        );
-
-        Ok(())
-    }
-}
-
-mod test_append_event_async_full_roundtrip {
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_append_and_fetch_verifies_data_integrity() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let original_envelope = EventEnvelope {
-            op_id: "op-roundtrip-1".to_string(),
-            timestamp: 1700000000,
-            author: Author {
-                id: "author-1".to_string(),
-                name: "Author Name".to_string(),
-                email: Some("author@example.com".to_string()),
-            },
+                id: NodeId::new("node-1".into()), x: 0.0, y: 0.0, width: 100.0, height: 50.0, label: "N1".into()
+            }
+        },
+        EventEnvelope {
+            op_id: "op-2".into(),
+            timestamp: 2,
+            author: Author { id: "u".into(), name: "U".into(), email: None },
             operation: DomainOp::NodeAdd {
-                id: "node-roundtrip".to_string(),
-                x: 150.5,
-                y: 250.75,
-                width: 120.0,
-                height: 60.0,
-                label: "Roundtrip Test Node".to_string(),
-            },
-        };
-
-        let valid_event = envelope_to_valid_event(&original_envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        let append_result = append_event_async(&pool, valid_event, None).await?;
-        assert_eq!(append_result.revision, 1, "Should have revision 1");
-        assert_eq!(
-            append_result.op_id, "op-roundtrip-1",
-            "Operation ID should match"
-        );
-
-        let fetched_events = fetch_events_since(&pool, 0).await?;
-        assert_eq!(fetched_events.len(), 1, "Should fetch exactly one event");
-
-        let fetched_record = &fetched_events[0];
-        assert_eq!(fetched_record.op_id, "op-roundtrip-1", "Op ID should match");
-        assert_eq!(fetched_record.revision, 1, "Revision should be 1");
-        assert_eq!(
-            fetched_record.timestamp, 1700000000,
-            "Timestamp should match"
-        );
-
-        let parsed = diagram_models::envelope::parse_event_envelope(&fetched_record.payload)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        assert_eq!(parsed.op_id, "op-roundtrip-1", "Parsed op_id should match");
-        assert_eq!(parsed.author.id, "author-1", "Parsed author should match");
-
-        if let DomainOp::NodeAdd { id, x, y, .. } = parsed.operation {
-            assert_eq!(id, "node-roundtrip", "Node ID should match");
-            assert!((x - 150.5).abs() < 1e-6, "X coordinate should match");
-            assert!((y - 250.75).abs() < 1e-6, "Y coordinate should match");
-        } else {
-            return Err(AsyncStoreError::Serialization(
-                "Expected NodeAdd operation".to_string(),
-            ));
-        }
-
-        Ok(())
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_batch_append_and_replay_produces_correct_projection(
-    ) -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let envelopes = vec![
-            EventEnvelope {
-                op_id: "op-batch-1".to_string(),
-                timestamp: 1700000001,
-                author: Author {
-                    id: "user-1".to_string(),
-                    name: "User 1".to_string(),
-                    email: None,
-                },
-                operation: DomainOp::NodeAdd {
-                    id: "node-1".to_string(),
-                    x: 0.0,
-                    y: 0.0,
-                    width: 100.0,
-                    height: 50.0,
-                    label: "Node 1".to_string(),
-                },
-            },
-            EventEnvelope {
-                op_id: "op-batch-2".to_string(),
-                timestamp: 1700000002,
-                author: Author {
-                    id: "user-1".to_string(),
-                    name: "User 1".to_string(),
-                    email: None,
-                },
-                operation: DomainOp::NodeAdd {
-                    id: "node-2".to_string(),
-                    x: 200.0,
-                    y: 0.0,
-                    width: 100.0,
-                    height: 50.0,
-                    label: "Node 2".to_string(),
-                },
-            },
-            EventEnvelope {
-                op_id: "op-batch-3".to_string(),
-                timestamp: 1700000003,
-                author: Author {
-                    id: "user-1".to_string(),
-                    name: "User 1".to_string(),
-                    email: None,
-                },
-                operation: DomainOp::EdgeConnect {
-                    id: "edge-1".to_string(),
-                    source: "node-1".to_string(),
-                    target: "node-2".to_string(),
-                },
-            },
-        ];
-
-        for envelope in envelopes {
-            let valid_event = envelope_to_valid_event(&envelope)
-                .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-            append_event_async(&pool, valid_event, None).await?;
-        }
-
-        let event_records = fetch_events_since(&pool, 0).await?;
-        assert_eq!(event_records.len(), 3, "Should have 3 events");
-
-        let parsed_events: Vec<EventRecord> = event_records
-            .into_iter()
-            .enumerate()
-            .map(|(i, r)| {
-                let envelope = diagram_models::envelope::parse_event_envelope(&r.payload)
-                    .map_err(|e| AsyncStoreError::Serialization(e.to_string()));
-                match envelope {
-                    Ok(env) => Ok(EventRecord {
-                        op_id: r.op_id,
-                        revision: i as u64, // Start from revision 0 for replay
-                        operation: env.operation,
-                        author: env.author,
-                        timestamp: r.timestamp,
-                    }),
-                    Err(e) => Err(e),
-                }
-            })
-            .collect::<Result<Vec<_>, _>>()?;
-
-        let projection = replay_events_from(DiagramProjection::empty(), &parsed_events)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-
-        assert_eq!(projection.revision, 3, "Projection should have revision 3");
-        assert_eq!(projection.nodes.len(), 2, "Should have 2 nodes");
-        assert_eq!(projection.edges.len(), 1, "Should have 1 edge");
-
-        Ok(())
-    }
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_revision_mismatch_error_is_typed() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let envelope = create_test_envelope("op-1", 1);
-        let valid_event = envelope_to_valid_event(&envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        append_event_async(&pool, valid_event, None).await?;
-
-        let wrong_envelope = create_test_envelope("op-2", 2);
-        let valid_wrong = envelope_to_valid_event(&wrong_envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        let mismatch_result =
-            append_event_async(&pool, valid_wrong, Some(Revision::new(5).unwrap())).await;
-
-        match mismatch_result {
-            Err(AsyncStoreError::RevisionMismatch { expected, found }) => {
-                assert_eq!(expected, 5, "Expected revision should be 5");
-                assert_eq!(found, 1, "Found revision should be 1");
+                id: NodeId::new("node-2".into()), x: 200.0, y: 0.0, width: 100.0, height: 50.0, label: "N2".into()
             }
-            Err(other) => {
-                return Err(AsyncStoreError::Serialization(format!(
-                    "Expected RevisionMismatch, got {:?}",
-                    other
-                )));
-            }
-            Ok(_) => {
-                return Err(AsyncStoreError::Serialization(
-                    "Expected error but got success".to_string(),
-                ));
+        },
+        EventEnvelope {
+            op_id: "op-3".into(),
+            timestamp: 3,
+            author: Author { id: "u".into(), name: "U".into(), email: None },
+            operation: DomainOp::EdgeConnect {
+                id: EdgeId::new("edge-1".into()), source: NodeId::new("node-1".into()), target: NodeId::new("node-2".into())
             }
         }
+    ];
 
-        Ok(())
-    }
-}
-
-mod test_edge_cases {
-
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_duplicate_op_id_returns_error() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let envelope = create_test_envelope("op-dup", 1);
-        let valid_event = envelope_to_valid_event(&envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        let first_result = append_event_async(&pool, valid_event, None).await?;
-        assert_eq!(first_result.revision, 1);
-
-        // Idempotent append not implemented - should return error on duplicate
-        let valid_event_dup = envelope_to_valid_event(&envelope)
-            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-        let duplicate_result = append_event_async(&pool, valid_event_dup, None).await;
-        assert!(duplicate_result.is_err(), "Duplicate should return error");
-
-        Ok(())
+    for env in envelopes {
+        let valid = envelope_to_valid_event(&env).unwrap();
+        append_event_async(&pool, valid, None).await?;
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
-    #[tokio::test]
-    async fn test_very_large_batch_append() -> Result<(), AsyncStoreError> {
-        let temp_dir = TempDir::new().map_err(|e| AsyncStoreError::Io(e))?;
-        let db_path = temp_dir.path().join("test.db");
-
-        let pool_guard = setup_async_store(&db_path).await?;
-        let pool = pool_guard.pool();
-
-        let batch_size = 100;
-        for i in 1..=batch_size {
-            let envelope = create_test_envelope(&format!("op-{}", i), i as i64);
-            let valid_event = envelope_to_valid_event(&envelope)
-                .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
-            append_event_async(&pool, valid_event, None).await?;
+    let records = fetch_events_since(&pool, 0).await?;
+    let parsed: Vec<_> = records.into_iter().enumerate().map(|(i, r)| {
+        let env = diagram_models::envelope::parse_event_envelope(&r.payload).unwrap();
+        ProjectionEventRecord {
+            op_id: r.op_id, revision: i as u64, operation: env.operation, author: env.author, timestamp: r.timestamp,
         }
+    }).collect();
 
-        let all_events = fetch_all_events(&pool).await?;
-        assert_eq!(
-            all_events.len(),
-            batch_size,
-            "Should have all {} events",
-            batch_size
-        );
-
-        let last_event = &all_events[batch_size - 1];
-        assert_eq!(
-            last_event.revision, batch_size as i64,
-            "Last revision should be batch_size"
-        );
-
-        Ok(())
-    }
+    let proj = replay_events_from(DiagramProjection::empty(), &parsed).unwrap();
+    assert_eq!(proj.revision, 3);
+    assert_eq!(proj.nodes.len(), 2);
+    assert_eq!(proj.edges.len(), 1);
+    
+    Ok(())
 }

@@ -1,11 +1,12 @@
-use crate::document::{
-    DiagramDocument, DocumentData, EditorState, LockState, NodeId, NodeKind, OrderedFloat,
+#![allow(dead_code, unused_imports)]
+use crate::document::{LockState, NodeId};
+use crate::multi_select::{
+    copy_selection, delete_selection, move_selection, paste_selection, resize_selection, Error,
+    NonEmptyVec, Rect, Vector2D,
 };
-use crate::test_utils::builders::{setup_doc, test_node, test_node_builder, DocBuilder};
-use im::HashMap;
+use crate::test_utils::setup_doc;
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg_attr(kani, kani::proof)]
 #[test]
 fn test_mul031_move_preserves_relative_positions() {
     let mut doc = setup_doc();
@@ -38,8 +39,7 @@ fn test_mul031_move_preserves_relative_positions() {
     assert_eq!(node_b.x.0 - node_a.x.0, 10.0);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg_attr(kani, kani::proof)]
 #[test]
 fn test_mul032_resize_scales_items_proportionally() {
     let mut doc = setup_doc();
@@ -83,8 +83,7 @@ fn test_mul032_resize_scales_items_proportionally() {
     assert_eq!(node_b.width.0, 60.0);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg_attr(kani, kani::proof)]
 #[test]
 fn test_mul033_delete_removes_all_selected_items() {
     let mut doc = setup_doc();
@@ -108,8 +107,7 @@ fn test_mul033_delete_removes_all_selected_items() {
     assert!(doc.editor_state.selected_items.is_empty());
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg_attr(kani, kani::proof)]
 #[test]
 fn test_mul034_copy_paste_duplicates_selection_with_offset() {
     let mut doc = setup_doc();
@@ -143,8 +141,7 @@ fn test_mul034_copy_paste_duplicates_selection_with_offset() {
     assert!(!doc.editor_state.selected_items.contains("A"));
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg_attr(kani, kani::proof)]
 #[test]
 fn test_p2_violation_returns_item_locked_error() {
     let mut doc = setup_doc();
@@ -167,8 +164,7 @@ fn test_p2_violation_returns_item_locked_error() {
     assert_eq!(res, Err(Error::ItemLocked));
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg_attr(kani, kani::proof)]
 #[test]
 fn test_p3_violation_returns_invalid_hierarchy_error() {
     let mut doc = setup_doc();

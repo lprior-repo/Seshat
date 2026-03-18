@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 use crate::document::{
     ArrowType, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };

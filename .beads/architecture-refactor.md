@@ -95,3 +95,74 @@ Refactored `diagram_tool/src/ui/toolbar/components.rs` (which was 349 lines) adh
 - Extracted tuple-based variant implementations for DRY iteration within the Dioxus macros (`rsx!`), vastly reducing repetitive HTML button elements.
 - Cleaned dangling unit binding issues (`let_unit_value`) in adjacent file `core/transform.rs` exposed during build phase.
 - Module compiles completely, tests passed, and has zero clippy warnings.
+
+---
+
+# History Feature Tests Refactor
+
+Refactored `diagram_tool/src/history/tests/feature_his_003_008.rs` (which was 360 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
+
+## Actions Taken
+- Consolidated repetitive document state setup, mutation, and undo/redo checks via a higher-order `run_undo_test` execution pipeline.
+- Replaced redundant inline initialization of domain objects across 10 distinct integration tests.
+- Reduced the file length drastically from 360 lines to ~155 lines.
+- Maintained exact Kani property-based assertion semantics and proofs intact.
+- Ensured absolute DRYness with strict `< 300` line compliance.
+- File compiles perfectly.
+
+---
+
+# History Undo/Redo Tests Refactor
+
+Refactored `diagram_tool/src/history/tests/undo_redo.rs` (which was 318 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
+
+## Actions Taken
+- Reduced from 318 lines to exactly 123 lines (well under the 300 line limit).
+- Consolidated repetitive state pushes into a single `push_docs(count)` helper function and simplified document revision generation with `doc(steps)`, making the tests extremely DRY.
+- Avoided deeply nested `if let Some` bindings and explicitly unwrapped options, treating tests as pure linear Given-When-Then sequences.
+- Complies with Scott Wlaschin DDD by acting purely on cleanly-defined state transitions (`push_docs`, `doc()`) instead of repetitive ad-hoc setups.
+- Maintained existing Kani proof boundaries and property validations without changes to the underlying model logic.
+
+---
+
+# CLI E2E Tests Refactor
+
+Refactored `diagram_tool/tests/cli_e2e.rs` (which was 454 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
+
+## Actions Taken
+- Split the monolithic `cli_e2e.rs` into a cohesive directory module `cli_e2e/`.
+- Created `mod.rs` equivalent via module declarations in `cli_e2e.rs` (8 lines).
+- Created `cli_e2e/common.rs` (~90 lines) encapsulating the common E2E setup and abstractions like `E2eTestContext` and `CommandResult` to model file system setup and stdout parsing.
+- Created `cli_e2e/validate.rs` (~80 lines), `cli_e2e/patch.rs` (~70 lines), and `cli_e2e/layout_render.rs` (~40 lines) to categorically divide specific command executions.
+- Substantially reduced redundancy and made tests extremely DRY by leveraging the centralized `E2eTest` context management and explicit transition methods (`validate()`, `patch()`).
+- Used strong abstraction returning `CommandResult` containing methods mapping strictly to the problem domain (e.g. `has_error_event("schema_violation")`).
+- Changed raw `#[cfg(kani)]` to standard `#[cfg_attr(kani, kani::proof)]` to prevent compiled-out dead code.
+- All files are well under the 300 line limit. Tests compile cleanly without warnings.
+
+---
+
+# Phase 4 Model Updates Tests Refactor
+
+Refactored `diagram_tool/tests/phase4_model_updates.rs` (which was 578 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
+
+## Actions Taken
+- Reduced from 578 lines to exactly 228 lines, strictly adhering to the `< 300` line limit without needing to split the file.
+- Encapsulated deeply repetitive async setup and temporary directory teardown inside a cleanly abstracted `TestStore` guard.
+- Eliminated massive boilerplate across 11 test functions using a DRY `append_test_event` utility that centralizes dummy `EventEnvelope` construction and validates database parsing mappings implicitly.
+- Corrected dead-code issues: Removed blanket `#[cfg(kani)]` attributes from what were purely tokio integration tests, restoring them as functional integration test targets.
+- Preserved strict type parsing mappings for `EventRecord` vs `AsyncStoreError` validation.
+- File compiles perfectly with 0 warnings, and all 4 refactored macro-tests successfully run and pass.
+
+---
+
+# Phase 1 Rusqlite Removal Tests Refactor
+
+Refactored `diagram_tool/tests/phase1_rusqlite_removal.rs` (which was 378 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
+
+## Actions Taken
+- Reduced `phase1_rusqlite_removal.rs` from 378 lines to ~165 lines.
+- Extracted shared testing boilerplate, errors, and utility functions into a separate `phase1` module (`diagram_tool/tests/phase1/mod.rs`), making the tests extremely DRY.
+- Consolidated database bootstrap logic into a reusable `setup_test_db()` helper method.
+- Resolved type compilation errors by strictly enforcing NewTypes (e.g. replacing bare strings with `NodeId::new(...)` in `DomainOp::NodeAdd`), ensuring illegal states are unrepresentable.
+- Applied `#[cfg_attr(kani, kani::proof)]` to tests correctly so they compile as functional tokio integration tests when Kani is absent, preventing dead code.
+- Both files are well under the 300 line limit, compile perfectly with 0 warnings, and pass all 8 test cases.

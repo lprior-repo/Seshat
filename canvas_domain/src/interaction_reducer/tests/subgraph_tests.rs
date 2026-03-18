@@ -5,6 +5,7 @@ use diagram_models::document::{
 };
 use im::HashMap;
 
+#[allow(clippy::too_many_arguments)]
 fn make_subgraph_node(
     id: &str,
     x: f64,

@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 //! Subgraph save-reload stability tests
 //!
 //! These tests verify that subgraph data structures properly serialize and deserialize

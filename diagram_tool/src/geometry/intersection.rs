@@ -218,14 +218,15 @@ mod tests {
     }
 
     #[test]
-    fn test_line_line_intersection_crossing() {
+    fn test_line_line_intersection_crossing() -> Result<(), &'static str> {
         let a = LineSegment::new_unchecked(Point::new(0.0, 0.0), Point::new(10.0, 10.0));
         let b = LineSegment::new_unchecked(Point::new(0.0, 10.0), Point::new(10.0, 0.0));
         let result = line_line_intersection(a, b);
         assert!(result.is_some());
-        let p = result.unwrap();
+        let p = result.ok_or("expected Some")?;
         assert!((p.x - 5.0).abs() < EPSILON);
         assert!((p.y - 5.0).abs() < EPSILON);
+        Ok(())
     }
 
     #[test]

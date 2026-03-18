@@ -1,3 +1,4 @@
+#![allow(clippy::field_reassign_with_default, clippy::nonminimal_bool, clippy::bool_comparison)]
 //! Integration tests for history module
 //!
 //! End-to-end tests for the complete history workflow.

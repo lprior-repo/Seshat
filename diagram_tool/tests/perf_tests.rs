@@ -5,9 +5,9 @@
 //! - PERF-002: 3000 nodes zoom at 120 FPS
 //! - PERF-003: 3000 nodes marquee select 500 nodes in <100ms
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 #![forbid(unsafe_code)]
 
 use diagram_tool::perf::{

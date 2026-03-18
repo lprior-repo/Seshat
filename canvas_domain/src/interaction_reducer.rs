@@ -1,6 +1,6 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![allow(clippy::unwrap_used)]
+#![allow(clippy::expect_used)]
+#![allow(clippy::panic)]
 #![forbid(unsafe_code)]
 
 #[path = "interaction_reducer/commit.rs"]

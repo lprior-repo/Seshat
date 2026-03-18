@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Integration tests for seshat-1pz: PRAGMA synchronous=NORMAL
 //!
 //! These tests verify that the async SQLite store correctly configures

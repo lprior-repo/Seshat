@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use crate::ui::canvas::domain::{CanvasEvent, CanvasPoint, CanvasVector, SelectionMode};
 
 fn pt() -> CanvasPoint {

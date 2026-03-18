@@ -345,8 +345,10 @@ impl DocBuilder {
             edges: self.edges,
         };
 
-        let mut editor_state = EditorState::default();
-        editor_state.selected_items = self.selected_items;
+        let editor_state = EditorState {
+            selected_items: self.selected_items,
+            ..Default::default()
+        };
 
         DiagramDocument {
             version: 2,

@@ -8,62 +8,66 @@ use crate::geometry::routing::*;
 // --------------------------------------------------------------------------
 
 #[test]
-fn test_returns_success_when_points_are_vertically_aligned() {
+fn test_returns_success_when_points_are_vertically_aligned() -> Result<(), RoutingError> {
     let from = Point::new(50.0, 10.0);
     let to = Point::new(50.0, 100.0);
 
-    let route = compute_orthogonal_route(from, to).expect("Should compute route");
+    let route = compute_orthogonal_route(from, to)?;
 
     assert_eq!(route.points.len(), 2);
     assert!(is_orthogonal(&route));
+    Ok(())
 }
 
 #[test]
-fn test_returns_success_when_points_are_horizontally_aligned() {
+fn test_returns_success_when_points_are_horizontally_aligned() -> Result<(), RoutingError> {
     let from = Point::new(10.0, 50.0);
     let to = Point::new(100.0, 50.0);
 
-    let route = compute_orthogonal_route(from, to).expect("Should compute route");
+    let route = compute_orthogonal_route(from, to)?;
 
     assert_eq!(route.points.len(), 2);
     assert!(is_orthogonal(&route));
+    Ok(())
 }
 
 #[test]
-fn test_returns_success_l_shape_when_points_are_diagonal() {
+fn test_returns_success_l_shape_when_points_are_diagonal() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 0.0);
     let to = Point::new(100.0, 50.0);
 
-    let route = compute_orthogonal_route(from, to).expect("Should compute route");
+    let route = compute_orthogonal_route(from, to)?;
 
     assert_eq!(route.points.len(), 3);
     assert!(is_orthogonal(&route));
+    Ok(())
 }
 
 #[test]
-fn test_returns_success_detour_when_avoiding_obstacle() {
+fn test_returns_success_detour_when_avoiding_obstacle() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 25.0);
     let to = Point::new(150.0, 25.0);
     let obstacle = AABB::new(50.0, 0.0, 100.0, 50.0);
 
-    let route =
-        compute_orthogonal_route_avoiding(from, to, &obstacle).expect("Should compute route");
+    let route = compute_orthogonal_route_avoiding(from, to, &obstacle)?;
 
     assert!(route.points.len() > 2);
     assert!(is_orthogonal(&route));
     assert!(!route_intersects(&route, &obstacle));
+    Ok(())
 }
 
 #[test]
-fn test_returns_symmetric_route_when_endpoints_are_swapped() {
+fn test_returns_symmetric_route_when_endpoints_are_swapped() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 0.0);
     let to = Point::new(100.0, 50.0);
 
-    let route_ab = compute_orthogonal_route(from, to).expect("Should compute route");
-    let route_ba = compute_orthogonal_route(to, from).expect("Should compute route");
+    let route_ab = compute_orthogonal_route(from, to)?;
+    let route_ba = compute_orthogonal_route(to, from)?;
 
     let reversed_ab: Vec<Point> = route_ab.points.into_iter().rev().collect();
     assert_eq!(reversed_ab, route_ba.points);
+    Ok(())
 }
 
 // --------------------------------------------------------------------------
@@ -178,39 +182,49 @@ fn test_handles_very_large_coordinates() {
 }
 
 #[test]
-fn test_handles_negative_coordinates() {
+fn test_handles_negative_coordinates() -> Result<(), anyhow::Error> {
     let from = Point::new(-100.0, -50.0);
     let to = Point::new(-50.0, -100.0);
 
-    let route = compute_orthogonal_route(from, to).expect("Should compute route");
+    let route = compute_orthogonal_route(from, to)?;
     assert!(is_orthogonal(&route));
-    assert_eq!(*route.points.first().unwrap(), from);
-    assert_eq!(*route.points.last().unwrap(), to);
+    assert_eq!(
+        *route
+            .points
+            .first()
+            .ok_or(anyhow::anyhow!("empty points"))?,
+        from
+    );
+    assert_eq!(
+        *route.points.last().ok_or(anyhow::anyhow!("empty points"))?,
+        to
+    );
+    Ok(())
 }
 
 #[test]
-fn test_detour_margin_calculation_near_boundaries() {
+fn test_detour_margin_calculation_near_boundaries() -> Result<(), RoutingError> {
     // Tests that obstacle avoidance works even if the endpoints are near the margins
     let from = Point::new(0.0, 10.0);
     let to = Point::new(100.0, 10.0);
     let obstacle = AABB::new(40.0, 0.0, 60.0, 50.0);
 
-    let route =
-        compute_orthogonal_route_avoiding(from, to, &obstacle).expect("Should compute route");
+    let route = compute_orthogonal_route_avoiding(from, to, &obstacle)?;
     assert!(!route_intersects(&route, &obstacle));
+    Ok(())
 }
 
 #[test]
-fn test_obstacle_avoidance_when_route_barely_touches_edge() {
+fn test_obstacle_avoidance_when_route_barely_touches_edge() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 50.0);
     let to = Point::new(100.0, 50.0);
     let obstacle = AABB::new(40.0, 50.0, 60.0, 100.0); // route is exactly on min_y
 
-    let route =
-        compute_orthogonal_route_avoiding(from, to, &obstacle).expect("Should compute route");
+    let route = compute_orthogonal_route_avoiding(from, to, &obstacle)?;
     // Should NOT intersect the strictly interior of the AABB.
     // The margin check in our implementation uses < and >, so the segment right on the boundary might pass as ok or detour, either is fine as long as no strict interior intersection.
     assert!(!route_intersects(&route, &obstacle));
+    Ok(())
 }
 
 #[test]
@@ -230,37 +244,50 @@ fn test_handles_zero_size_obstacle() {
 // --------------------------------------------------------------------------
 
 #[test]
-fn test_postcondition_route_has_minimum_two_points() {
+fn test_postcondition_route_has_minimum_two_points() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 0.0);
     let to = Point::new(10.0, 0.0);
-    let route = compute_orthogonal_route(from, to).unwrap();
+    let route = compute_orthogonal_route(from, to)?;
     assert!(route.points.len() >= 2);
+    Ok(())
 }
 
 #[test]
-fn test_postcondition_all_segments_are_strictly_orthogonal() {
+fn test_postcondition_all_segments_are_strictly_orthogonal() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 0.0);
     let to = Point::new(10.0, 20.0);
-    let route = compute_orthogonal_route(from, to).unwrap();
+    let route = compute_orthogonal_route(from, to)?;
     assert!(is_orthogonal(&route));
+    Ok(())
 }
 
 #[test]
-fn test_postcondition_start_and_end_points_match_input() {
+fn test_postcondition_start_and_end_points_match_input() -> Result<(), anyhow::Error> {
     let from = Point::new(10.0, 20.0);
     let to = Point::new(30.0, 40.0);
-    let route = compute_orthogonal_route(from, to).unwrap();
-    assert_eq!(*route.points.first().unwrap(), from);
-    assert_eq!(*route.points.last().unwrap(), to);
+    let route = compute_orthogonal_route(from, to)?;
+    assert_eq!(
+        *route
+            .points
+            .first()
+            .ok_or(anyhow::anyhow!("empty points"))?,
+        from
+    );
+    assert_eq!(
+        *route.points.last().ok_or(anyhow::anyhow!("empty points"))?,
+        to
+    );
+    Ok(())
 }
 
 #[test]
-fn test_postcondition_route_never_intersects_obstacle_interior() {
+fn test_postcondition_route_never_intersects_obstacle_interior() -> Result<(), RoutingError> {
     let from = Point::new(0.0, 25.0);
     let to = Point::new(100.0, 25.0);
     let obstacle = AABB::new(25.0, 0.0, 75.0, 50.0);
-    let route = compute_orthogonal_route_avoiding(from, to, &obstacle).unwrap();
+    let route = compute_orthogonal_route_avoiding(from, to, &obstacle)?;
     assert!(!route_intersects(&route, &obstacle));
+    Ok(())
 }
 
 // --------------------------------------------------------------------------

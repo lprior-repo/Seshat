@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use crate::store::durable::error::DurableError;
 use crate::store::durable::operation::start_operation;
 use crate::store::durable::step_journal::*;

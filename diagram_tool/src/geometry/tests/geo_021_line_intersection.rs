@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 // ============== GEO-021 to GEO-025: Intersection Algorithms ==============
 
 use super::*;

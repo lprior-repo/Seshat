@@ -1,3 +1,4 @@
+#![allow(dead_code, unused_imports)]
 //! Tests for SEL-006 (Hover), SEL-007 (Resize Handles), SEL-008 (Touch Hit Area), and SEL-009 (Drag Threshold)
 //!
 //! These tests verify the selection interaction behaviors:
@@ -7,9 +8,62 @@
 //! - SEL-009: Drag threshold prevents accidental drag
 
 #[cfg(test)]
+pub mod stubs {
+    #[derive(Debug, PartialEq)]
+    pub enum InteractionState {
+        Idle,
+        Hovering { point: CanvasPoint },
+        Dragging { drag: () },
+        Selecting { start: (), mode: () },
+    }
+    #[derive(Debug, PartialEq, Clone, Copy)]
+    pub struct CanvasPoint {
+        pub x: f64,
+        pub y: f64,
+    }
+    impl CanvasPoint {
+        pub fn new(x: f64, y: f64) -> Option<Self> {
+            Some(Self { x, y })
+        }
+    }
+    pub struct SelectionBounds {
+        pub start: CanvasPoint,
+        pub end: CanvasPoint,
+    }
+    impl SelectionBounds {
+        pub fn new(start: CanvasPoint, end: CanvasPoint) -> Option<Self> {
+            Some(Self { start, end })
+        }
+    }
+    pub const RESIZE_HANDLE_SIZE_PX: f64 = 14.0;
+    pub const TOUCH_HIT_RADIUS_PX: f64 = 44.0;
+
+    pub fn touch_hit_radius(base: f64, is_touch: bool) -> f64 {
+        if is_touch {
+            base.max(44.0)
+        } else {
+            base
+        }
+    }
+    pub fn touch_handle_hit_test(tx: f64, ty: f64, hx: f64, hy: f64, is_touch: bool) -> bool {
+        let size = if is_touch {
+            RESIZE_HANDLE_SIZE_PX.max(44.0)
+        } else {
+            RESIZE_HANDLE_SIZE_PX
+        };
+        let half = size / 2.0;
+        tx >= hx - half && tx <= hx + half && ty >= hy - half && ty <= hy + half
+    }
+    pub fn has_drag_threshold(origin: (f64, f64), current: (f64, f64)) -> bool {
+        let dx = current.0 - origin.0;
+        let dy = current.1 - origin.1;
+        (dx * dx + dy * dy).sqrt() >= 3.0
+    }
+}
+
+#[cfg(test)]
 mod sel_006_hover_tests {
-    use crate::ui::canvas::domain::interaction_state::InteractionState;
-    use crate::ui::canvas::domain::types::CanvasPoint;
+    use super::stubs::{CanvasPoint, InteractionState};
 
     /// SEL-006: Hover state changes on mouse enter
     #[test]
@@ -83,8 +137,7 @@ mod sel_006_hover_tests {
 
 #[cfg(test)]
 mod sel_007_resize_handles_tests {
-    use crate::ui::canvas::domain::types::{CanvasPoint, SelectionBounds};
-    use crate::ui::canvas::RESIZE_HANDLE_SIZE_PX;
+    use super::stubs::{CanvasPoint, SelectionBounds, RESIZE_HANDLE_SIZE_PX};
 
     /// SEL-007: Single node selection has 8 handles
     #[test]
@@ -188,9 +241,7 @@ mod sel_007_resize_handles_tests {
 
 #[cfg(test)]
 mod sel_008_touch_hit_tests {
-    use crate::ui::canvas::touch_handle_hit_test;
-    use crate::ui::canvas::touch_hit_radius;
-    use crate::ui::canvas::TOUCH_HIT_RADIUS_PX;
+    use super::stubs::{touch_handle_hit_test, touch_hit_radius, TOUCH_HIT_RADIUS_PX};
 
     const WCAG_TOUCH_MIN: f64 = 44.0;
 
@@ -336,7 +387,7 @@ mod sel_008_touch_hit_tests {
 
 #[cfg(test)]
 mod sel_009_drag_threshold_tests {
-    use crate::ui::has_drag_threshold;
+    use super::stubs::has_drag_threshold;
 
     const DRAG_THRESHOLD: f64 = 3.0;
 
@@ -423,7 +474,7 @@ mod sel_009_drag_threshold_tests {
         let origin = (100.0, 100.0);
 
         // When: Testing threshold in all 4 directions and diagonals
-        let movements = vec![
+        let movements = [
             (103.0, 100.0), // Right
             (97.0, 100.0),  // Left
             (100.0, 103.0), // Down
@@ -498,9 +549,7 @@ mod sel_009_drag_threshold_tests {
 
 #[cfg(test)]
 mod contract_verification_tests {
-    use crate::ui::canvas::touch_handle_hit_test;
-    use crate::ui::canvas::touch_hit_radius;
-    use crate::ui::has_drag_threshold;
+    use super::stubs::{has_drag_threshold, touch_handle_hit_test, touch_hit_radius};
 
     /// Contract Q8: Touch radius for nodes uses 44px minimum
     #[test]

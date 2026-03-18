@@ -1,4 +1,5 @@
 #[cfg(test)]
+#[allow(clippy::module_inception)]
 mod proptests {
     use crate::document::{
         DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,

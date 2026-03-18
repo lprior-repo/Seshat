@@ -139,7 +139,7 @@ fn test_returns_serialization_error_when_saving_non_finite_floats() {
     let file_path = temp_dir.path().join("non_finite.json");
 
     let mut doc = DiagramDocument::default();
-    doc.editor_state.camera_x = crate::document::OrderedFloat(std::f64::NAN);
+    doc.editor_state.camera_x = crate::document::OrderedFloat(f64::NAN);
 
     let result = save_document(&file_path, &doc);
     assert!(matches!(result, Err(Error::SerializationFailed(_))));
@@ -425,7 +425,7 @@ fn test_p4_null_violation_returns_invalid_null_error() {
 #[test]
 fn test_p5_violation_returns_serialization_error() {
     let mut doc = DiagramDocument::default();
-    doc.editor_state.camera_y = crate::document::OrderedFloat(std::f64::INFINITY);
+    doc.editor_state.camera_y = crate::document::OrderedFloat(f64::INFINITY);
     let temp_dir = TempDir::new().unwrap();
     let file_path = temp_dir.path().join("inf.json");
     let result = save_document(&file_path, &doc);

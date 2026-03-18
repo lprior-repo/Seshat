@@ -1,12 +1,11 @@
-#[cfg(test)]
-mod tests {
-    use crate::document::DiagramDocument;
-    use crate::document::{
-        ArrowType, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
-        OrderedFloat,
-    };
-    use crate::validation::{validate_document, ValidationCode};
-    use im::HashMap;
+#![allow(dead_code, unused_imports)]
+use crate::document::DiagramDocument;
+use crate::document::{
+    ArrowType, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId, NodeKind, NodeStyle,
+    OrderedFloat,
+};
+use crate::validation::{validate_document, ValidationCode};
+use im::HashMap;
 
     fn make_node(id: &str) -> (NodeId, Node) {
         (
@@ -212,4 +211,3 @@ mod tests {
             .iter()
             .all(|i| i.code != ValidationCode::INTERNAL_ERROR));
     }
-}

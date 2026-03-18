@@ -1,3 +1,4 @@
+#![allow(clippy::io_other_error)]
 use sqlx::SqlitePool;
 use tempfile::TempDir;
 

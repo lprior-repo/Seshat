@@ -5,28 +5,94 @@
 #[cfg(kani)]
 use crate::history::History;
 #[cfg(kani)]
-use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind, OrderedFloat, Revision};
+use diagram_models::document::{
+    DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat, Revision,
+};
 
 #[cfg(kani)]
-fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> Node {
-    Node {
-        kind: NodeKind::Node,
-        icon: String::new(),
-        label: label.to_string(),
-        x: OrderedFloat(x),
-        y: OrderedFloat(y),
-        width: OrderedFloat(width),
-        height: OrderedFloat(height),
-        font_size: None,
-        font_weight: None,
-        lock_state: LockState::Unlocked,
-        parent: None,
-        dag_rank: None,
-        tags: im::Vector::new(),
-        metadata: im::HashMap::new(),
-        z_index: 0,
-        style: None,
-        collapsed: None,
+struct HistoryDsl {
+    history: History,
+    doc: DiagramDocument,
+    node_id: NodeId,
+}
+
+#[cfg(kani)]
+impl HistoryDsl {
+    fn new(x: f64, y: f64, w: f64, h: f64) -> Self {
+        let mut doc = DiagramDocument::default();
+        doc.revision = Revision::INITIAL;
+        let node_id = NodeId::new("node-1".to_string());
+        doc.document.nodes.insert(
+            node_id.clone(),
+            Node {
+                kind: NodeKind::Node,
+                icon: String::new(),
+                label: "node-1".to_string(),
+                x: OrderedFloat(x),
+                y: OrderedFloat(y),
+                width: OrderedFloat(w),
+                height: OrderedFloat(h),
+                font_size: None,
+                font_weight: None,
+                lock_state: LockState::Unlocked,
+                parent: None,
+                dag_rank: None,
+                tags: im::Vector::new(),
+                metadata: im::HashMap::new(),
+                z_index: 0,
+                style: None,
+                collapsed: None,
+            },
+        );
+        Self {
+            history: History::new().push(doc.clone()),
+            doc,
+            node_id,
+        }
+    }
+
+    fn set_pos(&mut self, x: f64, y: f64) {
+        if let Some(n) = self.doc.document.nodes.get_mut(&self.node_id) {
+            n.x = OrderedFloat(x);
+            n.y = OrderedFloat(y);
+        }
+        self.doc.revision = self.doc.revision.increment();
+    }
+
+    fn set_size(&mut self, w: f64, h: f64) {
+        if let Some(n) = self.doc.document.nodes.get_mut(&self.node_id) {
+            n.width = OrderedFloat(w);
+            n.height = OrderedFloat(h);
+        }
+        self.doc.revision = self.doc.revision.increment();
+    }
+
+    fn push(&mut self) {
+        self.history = self.history.push(self.doc.clone());
+    }
+
+    fn undo(&mut self) -> bool {
+        if let Some((restored, new_history)) = self.history.undo(self.doc.clone()) {
+            self.history = new_history;
+            self.doc = restored;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn redo(&mut self) -> bool {
+        if let Some((restored, new_history)) = self.history.redo(self.doc.clone()) {
+            self.history = new_history;
+            self.doc = restored;
+            true
+        } else {
+            false
+        }
+    }
+
+    fn node(&self) -> Node {
+        self.doc.document.nodes.get(&self.node_id).unwrap().clone()
     }
 }
 
@@ -35,36 +101,13 @@ fn make_node_for_his(label: &str, x: f64, y: f64, width: f64, height: f64) -> No
 #[kani::proof]
 #[test]
 fn given_node_at_position_when_moved_and_undo_then_position_restored() {
-    let mut doc_before = DiagramDocument::default();
-    let node_id = NodeId::new("node-1".to_string());
-    let _ = doc_before.document.nodes.insert(
-        node_id.clone(),
-        make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
-    );
+    let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
+    dsl.set_pos(200.0, 200.0);
+    assert!(dsl.undo(), "undo should succeed");
 
-    // Push the initial state (this is what undo will restore to)
-    let history = History::new().push(doc_before.clone());
-
-    // Move the node (this is the current state after the operation)
-    let mut doc_after = doc_before.clone();
-    if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
-        node.x = OrderedFloat(200.0);
-        node.y = OrderedFloat(200.0);
-    }
-    doc_after.revision = doc_after.revision.increment();
-
-    // Undo should restore the initial position
-    let Some((restored, _)) = history.undo(doc_after) else {
-        panic!("undo should succeed");
-    };
-
-    let restored_node = restored
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(restored_node.x.0, 100.0, "x should be restored to 100.0");
-    assert_eq!(restored_node.y.0, 100.0, "y should be restored to 100.0");
+    let n = dsl.node();
+    assert_eq!(n.x.0, 100.0, "x should be restored");
+    assert_eq!(n.y.0, 100.0, "y should be restored");
 }
 
 /// HIS-002: Resize undo restores exact original dimensions
@@ -72,42 +115,13 @@ fn given_node_at_position_when_moved_and_undo_then_position_restored() {
 #[kani::proof]
 #[test]
 fn given_node_with_dimensions_when_resized_and_undo_then_dimensions_restored() {
-    let mut doc_before = DiagramDocument::default();
-    let node_id = NodeId::new("node-1".to_string());
-    let _ = doc_before.document.nodes.insert(
-        node_id.clone(),
-        make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
-    );
+    let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
+    dsl.set_size(160.0, 80.0);
+    assert!(dsl.undo(), "undo should succeed");
 
-    // Push the initial state (this is what undo will restore to)
-    let history = History::new().push(doc_before.clone());
-
-    // Resize the node (this is the current state after the operation)
-    let mut doc_after = doc_before.clone();
-    if let Some(node) = doc_after.document.nodes.get_mut(&node_id) {
-        node.width = OrderedFloat(160.0);
-        node.height = OrderedFloat(80.0);
-    }
-    doc_after.revision = doc_after.revision.increment();
-
-    // Undo should restore original dimensions
-    let Some((restored, _)) = history.undo(doc_after) else {
-        panic!("undo should succeed");
-    };
-
-    let restored_node = restored
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(
-        restored_node.width.0, 80.0,
-        "width should be restored to 80.0"
-    );
-    assert_eq!(
-        restored_node.height.0, 40.0,
-        "height should be restored to 40.0"
-    );
+    let n = dsl.node();
+    assert_eq!(n.width.0, 80.0, "width should be restored");
+    assert_eq!(n.height.0, 40.0, "height should be restored");
 }
 
 /// HIS-011: Push after undo clears redo stack
@@ -115,63 +129,27 @@ fn given_node_with_dimensions_when_resized_and_undo_then_dimensions_restored() {
 #[kani::proof]
 #[test]
 fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
-    let mut doc1 = DiagramDocument::default();
-    let node_id = NodeId::new("node-1".to_string());
-    let _ = doc1.document.nodes.insert(
-        node_id.clone(),
-        make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
-    );
+    let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
 
-    let history = History::new()
-        .push(doc1.clone())
-        .push({
-            let mut d = doc1.clone();
-            if let Some(n) = d.document.nodes.get_mut(&node_id) {
-                n.x = OrderedFloat(200.0);
-            }
-            d.revision = d.revision.increment();
-            d
-        })
-        .push({
-            let mut d = doc1.clone();
-            if let Some(n) = d.document.nodes.get_mut(&node_id) {
-                n.x = OrderedFloat(300.0);
-            }
-            d.revision = d.revision.increment();
-            d
-        });
+    dsl.set_pos(200.0, 100.0);
+    dsl.push();
 
-    // Undo to create redo entries
-    let current = {
-        let mut d = doc1.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(400.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(300.0, 100.0);
+    dsl.push();
 
-    let Some((_, after_undo)) = history.undo(current.clone()) else {
-        panic!("undo should succeed");
-    };
+    dsl.set_pos(400.0, 100.0);
+
+    assert!(dsl.undo(), "undo should succeed");
     assert!(
-        !after_undo.can_redo() == false,
+        dsl.history.can_redo(),
         "redo stack should have entries after undo"
     );
 
-    // Push a new state - redo stack should be cleared
-    let new_doc = {
-        let mut d = doc1.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(500.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
-    let after_push = after_undo.push(new_doc);
+    dsl.set_pos(500.0, 100.0);
+    dsl.push();
 
     assert!(
-        after_push.can_redo() == false,
+        !dsl.history.can_redo(),
         "redo stack should be empty after push"
     );
 }
@@ -181,87 +159,24 @@ fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
 #[kani::proof]
 #[test]
 fn given_history_with_multiple_states_when_undo_multiple_times_then_walks_back_correctly() {
-    let mut doc_a = DiagramDocument::default();
-    let node_id = NodeId::new("node-1".to_string());
-    let _ = doc_a.document.nodes.insert(
-        node_id.clone(),
-        make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
-    );
-    doc_a.revision = Revision::INITIAL;
+    let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
 
-    let doc_b = {
-        let mut d = doc_a.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(200.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(200.0, 100.0);
+    dsl.push();
 
-    let doc_c = {
-        let mut d = doc_b.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(300.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(300.0, 100.0);
+    dsl.push();
 
-    let current = {
-        let mut d = doc_c.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(400.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(400.0, 100.0);
 
-    let history = History::new()
-        .push(doc_a.clone())
-        .push(doc_b.clone())
-        .push(doc_c.clone());
+    assert!(dsl.undo(), "first undo should succeed");
+    assert_eq!(dsl.node().x.0, 300.0, "first undo should restore x=300");
 
-    // First undo -> C
-    let Some((state_c, history_after_1)) = history.undo(current.clone()) else {
-        panic!("first undo should succeed");
-    };
-    let node_c = state_c
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(
-        node_c.x.0, 300.0,
-        "first undo should restore state C (x=300)"
-    );
+    assert!(dsl.undo(), "second undo should succeed");
+    assert_eq!(dsl.node().x.0, 200.0, "second undo should restore x=200");
 
-    // Second undo -> B
-    let Some((state_b, history_after_2)) = history_after_1.undo(state_c.clone()) else {
-        panic!("second undo should succeed");
-    };
-    let node_b = state_b
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(
-        node_b.x.0, 200.0,
-        "second undo should restore state B (x=200)"
-    );
-
-    // Third undo -> A
-    let Some((state_a, _)) = history_after_2.undo(state_b.clone()) else {
-        panic!("third undo should succeed");
-    };
-    let node_a = state_a
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(
-        node_a.x.0, 100.0,
-        "third undo should restore state A (x=100)"
-    );
+    assert!(dsl.undo(), "third undo should succeed");
+    assert_eq!(dsl.node().x.0, 100.0, "third undo should restore x=100");
 }
 
 /// HIS-013: Redo after multiple undos works correctly
@@ -269,85 +184,23 @@ fn given_history_with_multiple_states_when_undo_multiple_times_then_walks_back_c
 #[kani::proof]
 #[test]
 fn given_history_after_multiple_undos_when_redo_then_walks_forward_correctly() {
-    let mut doc_a = DiagramDocument::default();
-    let node_id = NodeId::new("node-1".to_string());
-    let _ = doc_a.document.nodes.insert(
-        node_id.clone(),
-        make_node_for_his("node-1", 100.0, 100.0, 80.0, 40.0),
-    );
-    doc_a.revision = Revision::INITIAL;
+    let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
 
-    let doc_b = {
-        let mut d = doc_a.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(200.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(200.0, 100.0);
+    dsl.push();
 
-    let doc_c = {
-        let mut d = doc_b.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(300.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(300.0, 100.0);
+    dsl.push();
 
-    let current = {
-        let mut d = doc_c.clone();
-        if let Some(n) = d.document.nodes.get_mut(&node_id) {
-            n.x = OrderedFloat(400.0);
-        }
-        d.revision = d.revision.increment();
-        d
-    };
+    dsl.set_pos(400.0, 100.0);
 
-    let history = History::new()
-        .push(doc_a.clone())
-        .push(doc_b.clone())
-        .push(doc_c.clone());
+    assert!(dsl.undo()); // -> 300
+    assert!(dsl.undo()); // -> 200
+    assert_eq!(dsl.node().x.0, 200.0, "should be at state x=200");
 
-    // Undo twice (now at B)
-    let Some((state_c, history_after_1)) = history.undo(current.clone()) else {
-        panic!("first undo should succeed");
-    };
-    let Some((state_b, history_after_2)) = history_after_1.undo(state_c.clone()) else {
-        panic!("second undo should succeed");
-    };
-    let node_b = state_b
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(node_b.x.0, 200.0, "should be at state B (x=200)");
+    assert!(dsl.redo(), "first redo should succeed");
+    assert_eq!(dsl.node().x.0, 300.0, "first redo should restore x=300");
 
-    // Redo once -> C
-    let Some((state_c_again, history_after_redo1)) = history_after_2.redo(state_b.clone()) else {
-        panic!("first redo should succeed");
-    };
-    let node_c = state_c_again
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(
-        node_c.x.0, 300.0,
-        "first redo should restore state C (x=300)"
-    );
-
-    // Redo again -> current (400)
-    let Some((state_current, _)) = history_after_redo1.redo(state_c_again.clone()) else {
-        panic!("second redo should succeed");
-    };
-    let node_final = state_current
-        .document
-        .nodes
-        .get(&node_id)
-        .expect("node should exist");
-    assert_eq!(
-        node_final.x.0, 400.0,
-        "second redo should restore current state (x=400)"
-    );
+    assert!(dsl.redo(), "second redo should succeed");
+    assert_eq!(dsl.node().x.0, 400.0, "second redo should restore x=400");
 }

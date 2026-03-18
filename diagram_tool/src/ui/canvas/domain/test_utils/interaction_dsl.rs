@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used)]
 use crate::ui::canvas::domain::{
     parse_event, transition, CanvasError, CanvasEvent, InteractionState, RawEvent,
 };

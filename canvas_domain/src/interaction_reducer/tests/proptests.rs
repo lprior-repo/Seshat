@@ -446,7 +446,7 @@ proptest! {
             current: (current_x, current_y),
         };
         if start_x.is_nan() || start_y.is_nan() || current_x.is_nan() || current_y.is_nan() {
-            prop_assert!(mode1 != mode2 || true);
+            prop_assert!(true);
         } else {
             prop_assert_eq!(mode1, mode2);
         }
