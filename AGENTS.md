@@ -10,6 +10,21 @@
 {"workflow": "jj new main → codanna serve --watch → moon run :check --force → implement → jj commit → jj git push → /land", "stack": "codanna + moon + functional-rust + go-skill + dioxus-wasm-constraints"}
 ```
 
+## Building & Running
+
+**This is a Dioxus WASM application. Use `dx` CLI (NOT `cargo run`):**
+
+```bash
+cd diagram_tool && dx serve --port 3333 --open false   # Dev server with hot-reload
+dx bundle                                                  # Production build
+```
+
+**CI / Validation:**
+```bash
+moon run :ci-source    # Format + clippy + tests
+npx playwright test    # E2E tests
+```
+
 To learn more about this project, refer to the core documentation in `docs/`:
 - `docs/00_CODEBASE_MAP.md`: Where things live (UI, Models, CLI).
 - `docs/04_DATA_CALC_ACTIONS.md`: The Functional Rust pattern (Data -> Calc -> Actions).

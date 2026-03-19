@@ -29,3 +29,27 @@ Consult the following before writing code:
 - **`docs/06_DIOXUS_PATTERNS.md`** - Frontend UI state management.
 - **`docs/07_TESTING_STRATEGY.md`** - Testing rigor.
 - **`docs/13_LESSONS_LEARNED.md`** - **CRITICAL**: Contains strict Dioxus WASM constraints and TDD rules. Read before touching Cargo configs or UI code.
+
+## 5. Building & Running the App
+
+**This is a Dioxus WASM application. You MUST use the Dioxus CLI:**
+
+```bash
+# Install Dioxus CLI (if not present)
+cargo install dioxus-cli
+
+# Start the dev server with hot-reload
+cd diagram_tool && dx serve --port 3333 --open false
+
+# Build for production
+dx bundle
+```
+
+**IMPORTANT**: Do NOT use `cargo run` for the web app. It will panic on non-wasm targets because the codebase uses `wasm-bindgen` imports. Always use `dx serve`.
+
+**Validation commands:**
+```bash
+moon run :ci-source    # Full CI pipeline (fmt + clippy + tests)
+moon run :test         # Run unit tests
+npx playwright test    # Run E2E tests
+```
