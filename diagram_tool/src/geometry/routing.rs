@@ -168,22 +168,20 @@ pub fn compute_orthogonal_route_avoiding(
 /// Wrapper for `compute_orthogonal_route` that provides backward compatibility.
 ///
 /// This wrapper exists for legacy callers that expect `OrthogonalRoute` directly.
-/// Errors result in an empty route, but the error is NOT silently swallowed -
-/// the explicit match handles it visibly in code.
+/// Errors result in an empty route with error information discarded.
 ///
 /// For new code, prefer `compute_orthogonal_route` directly which returns
 /// `Result<OrthogonalRoute, RoutingError>` for proper error handling.
 ///
 /// # Contract
 /// - Q1: If input is valid, returns non-empty `OrthogonalRoute`
-/// - Q2: If input is invalid, error is explicitly handled (not silently swallowed)
+/// - Q2: If input is invalid, returns empty route (error information is discarded)
 #[must_use]
 pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
     match compute_orthogonal_route(from, to) {
         Ok(route) => route,
         Err(_e) => {
-            // Error is visible in code structure (matched explicitly, not silently dropped).
-            // Legacy callers receive empty route; new code should use compute_orthogonal_route directly.
+            // Error information is discarded - legacy callers receive empty route.
             // TODO: Once all callers are updated to handle Result, remove this wrapper
             OrthogonalRoute { points: vec![] }
         }
