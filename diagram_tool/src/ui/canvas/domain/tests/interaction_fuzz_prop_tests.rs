@@ -1,4 +1,8 @@
-use crate::ui::canvas::domain::{CanvasEvent, CanvasPoint, CanvasVector, SelectionMode};
+use super::super::test_utils::interaction_dsl::CanvasTestDsl;
+use super::super::test_utils::parse_helpers::{all_events, pt, vec};
+use crate::ui::canvas::domain::{
+    CanvasEvent, CanvasPoint, CanvasVector, InteractionState, SelectionMode,
+};
 use proptest::prelude::*;
 
 proptest! {
@@ -54,6 +58,158 @@ proptest! {
                 state = next_state;
             }
             // If transition errors, we just stay in current state for the sake of folding.
+        }
+    }
+}
+
+// =============================================================================
+// Exhaustive State Machine Tests (Kani)
+// =============================================================================
+
+#[cfg(kani)]
+#[kani::proof]
+#[test]
+fn test_exhaustive_idle_transitions() {
+    let state = InteractionState::Idle;
+    for event in all_events() {
+        let dsl = CanvasTestDsl::new()
+            .given_state(state.clone())
+            .when_parsed_event(event.clone());
+
+        match event {
+            CanvasEvent::MouseDownTarget { .. } | CanvasEvent::TouchDownTarget { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Dragging { .. }
+                ));
+            }
+            CanvasEvent::MouseDownBackground { .. } | CanvasEvent::TouchDownBackground { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Selecting { .. }
+                ));
+            }
+            CanvasEvent::MouseMove { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Hovering { .. }
+                ));
+            }
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp | CanvasEvent::TouchMove { .. } => {
+                assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
+            }
+            _ => {
+                assert!(dsl.last_result.unwrap().is_err());
+            }
+        }
+    }
+}
+
+#[cfg(kani)]
+#[kani::proof]
+#[test]
+fn test_exhaustive_hovering_transitions() {
+    let state = InteractionState::Hovering { point: pt() };
+    for event in all_events() {
+        let dsl = CanvasTestDsl::new()
+            .given_state(state.clone())
+            .when_parsed_event(event.clone());
+
+        match event {
+            CanvasEvent::MouseDownTarget { .. } | CanvasEvent::TouchDownTarget { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Dragging { .. }
+                ));
+            }
+            CanvasEvent::MouseDownBackground { .. } | CanvasEvent::TouchDownBackground { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Selecting { .. }
+                ));
+            }
+            CanvasEvent::MouseMove { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Hovering { .. }
+                ));
+            }
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp => {
+                assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
+            }
+            _ => {
+                assert!(dsl.last_result.unwrap().is_err());
+            }
+        }
+    }
+}
+
+#[cfg(kani)]
+#[kani::proof]
+#[test]
+fn test_exhaustive_dragging_transitions() {
+    let state = InteractionState::Dragging {
+        drag: crate::ui::canvas::domain::DragState {
+            start: pt(),
+            current: pt(),
+            cumulative_offset: vec(),
+        },
+    };
+    for event in all_events() {
+        let dsl = CanvasTestDsl::new()
+            .given_state(state.clone())
+            .when_parsed_event(event.clone());
+
+        match event {
+            CanvasEvent::DragMove { .. } | CanvasEvent::TouchMove { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Dragging { .. }
+                ));
+            }
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp => {
+                assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
+            }
+            CanvasEvent::MouseMove { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Dragging { .. }
+                ));
+            }
+            _ => {
+                assert!(dsl.last_result.unwrap().is_err());
+            }
+        }
+    }
+}
+
+#[cfg(kani)]
+#[kani::proof]
+#[test]
+fn test_exhaustive_selecting_transitions() {
+    let state = InteractionState::Selecting {
+        start: pt(),
+        current: pt(),
+        mode: SelectionMode::Replace,
+    };
+    for event in all_events() {
+        let dsl = CanvasTestDsl::new()
+            .given_state(state.clone())
+            .when_parsed_event(event.clone());
+
+        match event {
+            CanvasEvent::MouseMove { .. } | CanvasEvent::TouchMove { .. } => {
+                assert!(matches!(
+                    dsl.state.unwrap(),
+                    InteractionState::Selecting { .. }
+                ));
+            }
+            CanvasEvent::MouseUp | CanvasEvent::TouchUp => {
+                assert!(matches!(dsl.state.unwrap(), InteractionState::Idle));
+            }
+            _ => {
+                assert!(dsl.last_result.unwrap().is_err());
+            }
         }
     }
 }

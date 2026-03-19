@@ -189,76 +189,41 @@ func invoke(ctx context.Context, parentJSON []byte, parentName string, fnName st
 	switch parentName {
 	case "Seshat":
 		switch fnName {
-		case "Check":
+		case "ContainerEcho":
 			var parent Seshat
 			err = json.Unmarshal(parentJSON, &parent)
 			if err != nil {
 				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
 			}
-			var src *dagger.Directory
-			if inputArgs["src"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["src"]), &src)
+			var stringArg string
+			if inputArgs["stringArg"] != nil {
+				err = json.Unmarshal([]byte(inputArgs["stringArg"]), &stringArg)
 				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg src", err))
+					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg stringArg", err))
 				}
 			}
-			return nil, (*Seshat).Check(&parent, ctx, src)
-		case "Ci":
+			return (*Seshat).ContainerEcho(&parent, stringArg), nil
+		case "GrepDir":
 			var parent Seshat
 			err = json.Unmarshal(parentJSON, &parent)
 			if err != nil {
 				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
 			}
-			var src *dagger.Directory
-			if inputArgs["src"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["src"]), &src)
+			var directoryArg *dagger.Directory
+			if inputArgs["directoryArg"] != nil {
+				err = json.Unmarshal([]byte(inputArgs["directoryArg"]), &directoryArg)
 				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg src", err))
+					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg directoryArg", err))
 				}
 			}
-			return (*Seshat).Ci(&parent, ctx, src)
-		case "Clippy":
-			var parent Seshat
-			err = json.Unmarshal(parentJSON, &parent)
-			if err != nil {
-				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
-			}
-			var src *dagger.Directory
-			if inputArgs["src"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["src"]), &src)
+			var pattern string
+			if inputArgs["pattern"] != nil {
+				err = json.Unmarshal([]byte(inputArgs["pattern"]), &pattern)
 				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg src", err))
+					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg pattern", err))
 				}
 			}
-			return nil, (*Seshat).Clippy(&parent, ctx, src)
-		case "Fmt":
-			var parent Seshat
-			err = json.Unmarshal(parentJSON, &parent)
-			if err != nil {
-				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
-			}
-			var src *dagger.Directory
-			if inputArgs["src"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["src"]), &src)
-				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg src", err))
-				}
-			}
-			return nil, (*Seshat).Fmt(&parent, ctx, src)
-		case "Test":
-			var parent Seshat
-			err = json.Unmarshal(parentJSON, &parent)
-			if err != nil {
-				panic(fmt.Errorf("%s: %w", "failed to unmarshal parent object", err))
-			}
-			var src *dagger.Directory
-			if inputArgs["src"] != nil {
-				err = json.Unmarshal([]byte(inputArgs["src"]), &src)
-				if err != nil {
-					panic(fmt.Errorf("%s: %w", "failed to unmarshal input arg src", err))
-				}
-			}
-			return nil, (*Seshat).Test(&parent, ctx, src)
+			return (*Seshat).GrepDir(&parent, ctx, directoryArg, pattern)
 		default:
 			return nil, fmt.Errorf("unknown function %s", fnName)
 		}
