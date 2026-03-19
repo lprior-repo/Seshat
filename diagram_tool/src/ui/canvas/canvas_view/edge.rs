@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 use super::geometry::{interpolate_polyline_point, quadratic_bezier_point, quadratic_control};
-use diagram_models::document::{ArrowType, Edge, Point};
+use diagram_models::document::{ArrowType, Edge, SerializedPoint};
 use std::fmt::Write as _;
 
 #[must_use]
@@ -69,7 +69,7 @@ pub(crate) fn routed_polyline_points(
     tx: f64,
     ty: f64,
     semantics: EdgePathSemantics,
-    bend_points: &im::Vector<Point>,
+    bend_points: &im::Vector<SerializedPoint>,
 ) -> Vec<(f64, f64)> {
     if !bend_points.is_empty() {
         let mut points = Vec::with_capacity(bend_points.len() + 2);

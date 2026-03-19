@@ -2,7 +2,8 @@
 //!
 //! Operations for scaling and transforming groups of nodes.
 
-use crate::document::{Node, NodeId, OrderedFloat, Point};
+use crate::document::{Node, NodeId, OrderedFloat};
+use crate::geometry::Point;
 
 use super::types::CanvasState;
 use super::types::PositiveScale;
@@ -51,11 +52,10 @@ fn calculate_scaled_nodes(
     anchor: Point,
 ) -> Result<Vec<(NodeId, Node)>, GroupTransformError> {
     let scale = scale_factor.value();
-    let anchor_clone = anchor;
 
     selection
         .iter()
-        .map(|id| transform_single_node(subgraph, id, scale, anchor_clone.clone()))
+        .map(|id| transform_single_node(subgraph, id, scale, anchor))
         .collect()
 }
 
@@ -85,8 +85,8 @@ fn compute_scaled_dimensions(
     scale: f64,
     anchor: Point,
 ) -> Result<(f64, f64, f64, f64), GroupTransformError> {
-    let new_x = (node.x.0 - anchor.x.0).mul_add(scale, anchor.x.0);
-    let new_y = (node.y.0 - anchor.y.0).mul_add(scale, anchor.y.0);
+    let new_x = (node.x.0 - anchor.x).mul_add(scale, anchor.x);
+    let new_y = (node.y.0 - anchor.y).mul_add(scale, anchor.y);
     let new_w = (node.width.0 * scale).max(MIN_DIMENSION);
     let new_h = (node.height.0 * scale).max(MIN_DIMENSION);
 

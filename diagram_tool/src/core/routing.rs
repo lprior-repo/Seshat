@@ -2,8 +2,9 @@
 
 pub use crate::geometry::routing::RoutingError;
 use diagram_models::document::{
-    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat, Point,
+    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat,
 };
+use diagram_models::geometry::Point;
 use diagram_models::port::{compute_port_absolute_position, PortAnchor};
 
 /// Constant for maximum number of edges between same node pair

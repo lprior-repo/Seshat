@@ -133,10 +133,10 @@ fn test_compute_straight_line_route_between_centers_successfully() {
     let edge = create_edge_obj("n1", "n2");
     let (start, end) = compute_straight_line_route(&doc, &edge).unwrap();
 
-    assert_eq!(start.x.0, 50.0);
-    assert_eq!(start.y.0, 50.0);
-    assert_eq!(end.x.0, 250.0);
-    assert_eq!(end.y.0, 50.0);
+    assert_eq!(start.x, 50.0);
+    assert_eq!(start.y, 50.0);
+    assert_eq!(end.x, 250.0);
+    assert_eq!(end.y, 50.0);
 }
 
 #[test]
@@ -166,10 +166,10 @@ fn test_compute_straight_line_route_between_named_ports_successfully() {
 
     let (start, end) = compute_straight_line_route(&doc, &edge).unwrap();
 
-    assert_eq!(start.x.0, 50.0);
-    assert_eq!(start.y.0, 100.0);
-    assert_eq!(end.x.0, 50.0);
-    assert_eq!(end.y.0, 200.0);
+    assert_eq!(start.x, 50.0);
+    assert_eq!(start.y, 100.0);
+    assert_eq!(end.x, 50.0);
+    assert_eq!(end.y, 200.0);
 }
 
 #[test]
@@ -189,8 +189,8 @@ fn test_compute_straight_line_route_for_self_loop_returns_same_points() {
     let (start, end) = compute_straight_line_route(&doc, &edge).unwrap();
 
     assert_eq!(start, end);
-    assert_eq!(start.x.0, 50.0);
-    assert_eq!(start.y.0, 50.0);
+    assert_eq!(start.x, 50.0);
+    assert_eq!(start.y, 50.0);
 }
 
 #[test]

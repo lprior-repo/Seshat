@@ -1,8 +1,9 @@
 //! Edge-related domain types for diagram documents.
 //!
-//! Contains Edge, `EdgeStyle`, `ArrowType`, Point, and related types.
+//! Contains Edge, `EdgeStyle`, `ArrowType`, SerializedPoint, and related types.
 
 use super::types::{NodeId, OrderedFloat};
+use crate::geometry::Point as CanonicalPoint;
 use im::HashMap;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -29,13 +30,38 @@ pub enum ArrowType {
     Straight,
 }
 
-/// A point in 2D space
+/// A point in 2D space for serialization boundary only.
+/// Uses OrderedFloat for serialization compatibility.
+/// Internal code should use canonical Point from geometry module.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
-pub struct Point {
+pub struct SerializedPoint {
     pub x: OrderedFloat,
     pub y: OrderedFloat,
 }
+
+impl From<CanonicalPoint> for SerializedPoint {
+    fn from(p: CanonicalPoint) -> Self {
+        Self {
+            x: OrderedFloat(p.x),
+            y: OrderedFloat(p.y),
+        }
+    }
+}
+
+impl From<SerializedPoint> for CanonicalPoint {
+    fn from(sp: SerializedPoint) -> Self {
+        CanonicalPoint::new(sp.x.0, sp.y.0)
+    }
+}
+
+/// Deprecated: Use SerializedPoint for serialization boundary.
+/// For internal geometric operations, use crate::geometry::Point.
+#[deprecated(
+    since = "1.0.0",
+    note = "Use SerializedPoint for serialization or Point from geometry module"
+)]
+pub type Point = SerializedPoint;
 
 /// Default label offset (0.5 = middle of edge)
 const fn default_label_offset() -> OrderedFloat {
@@ -78,7 +104,7 @@ pub struct Edge {
     #[serde(default = "default_directed")]
     pub directed: bool,
     #[serde(default)]
-    pub bend_points: im::Vector<Point>,
+    pub bend_points: im::Vector<SerializedPoint>,
     #[serde(default)]
     pub tags: im::Vector<String>,
     #[serde(default)]
@@ -94,7 +120,7 @@ pub struct Edge {
 #[cfg(test)]
 mod tests {
     use super::super::types::{NodeId, OrderedFloat};
-    use super::{ArrowType, Edge, Point};
+    use super::{ArrowType, Edge, SerializedPoint};
 
     fn create_test_edge(source: &str, target: &str) -> Edge {
         Edge {
@@ -128,11 +154,11 @@ mod tests {
     fn edge_with_bend_points_roundtrips() {
         let mut edge = create_test_edge("n1", "n2");
         edge.bend_points = im::vector![
-            Point {
+            SerializedPoint {
                 x: OrderedFloat(10.0),
                 y: OrderedFloat(20.0)
             },
-            Point {
+            SerializedPoint {
                 x: OrderedFloat(30.0),
                 y: OrderedFloat(40.0)
             }

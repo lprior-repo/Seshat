@@ -1,4 +1,5 @@
-use crate::document::{DiagramDocument, Point};
+use crate::document::DiagramDocument;
+use crate::geometry::Point;
 use crate::selection::types::{ElementId, SelectionError};
 
 fn is_element_visible(metadata: &im::HashMap<String, serde_json::Value>) -> bool {
@@ -14,8 +15,8 @@ pub fn hit_test(
 ) -> Result<Option<ElementId>, SelectionError> {
     use itertools::Itertools;
 
-    let px = point.x.0;
-    let py = point.y.0;
+    let px = point.x;
+    let py = point.y;
 
     let hit = document
         .document

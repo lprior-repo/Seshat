@@ -1,3 +1,5 @@
+use diagram_models::geometry::Point;
+
 /// Maximum pan distance from origin in world units
 pub const MAX_PAN_DISTANCE: f64 = 10000.0;
 
@@ -18,19 +20,11 @@ pub enum ViewportError {
     InvalidViewport,
 }
 
-/// A point in world coordinates
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct WorldPoint {
-    pub x: f64,
-    pub y: f64,
-}
+/// A point in world coordinates (alias for Point)
+pub type WorldPoint = Point;
 
-/// A point in screen coordinates
-#[derive(Debug, Clone, Copy, PartialEq, Default)]
-pub struct ScreenPoint {
-    pub x: f64,
-    pub y: f64,
-}
+/// A point in screen coordinates (alias for Point)
+pub type ScreenPoint = Point;
 
 /// Result of fit-to-content calculation
 #[derive(Debug, Clone, Copy, PartialEq)]

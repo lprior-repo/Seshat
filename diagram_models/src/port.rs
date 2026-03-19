@@ -1,4 +1,5 @@
-use crate::document::{Node, OrderedFloat, Point};
+use crate::document::{Node, OrderedFloat};
+use crate::geometry::Point;
 use serde::{Deserialize, Serialize};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, thiserror::Error)]
@@ -46,32 +47,32 @@ pub enum PortAnchor {
 
 #[must_use]
 pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
-    let half_w = node.width / 2.0;
-    let half_h = node.height / 2.0;
+    let half_w = node.width.0 / 2.0;
+    let half_h = node.height.0 / 2.0;
     match port {
         PortAnchor::Top => Point {
-            x: node.x + half_w,
-            y: node.y,
+            x: node.x.0 + half_w,
+            y: node.y.0,
         },
         PortAnchor::Bottom => Point {
-            x: node.x + half_w,
-            y: node.y + node.height,
+            x: node.x.0 + half_w,
+            y: node.y.0 + node.height.0,
         },
         PortAnchor::Left => Point {
-            x: node.x,
-            y: node.y + half_h,
+            x: node.x.0,
+            y: node.y.0 + half_h,
         },
         PortAnchor::Right => Point {
-            x: node.x + node.width,
-            y: node.y + half_h,
+            x: node.x.0 + node.width.0,
+            y: node.y.0 + half_h,
         },
         PortAnchor::Center => Point {
-            x: node.x + half_w,
-            y: node.y + half_h,
+            x: node.x.0 + half_w,
+            y: node.y.0 + half_h,
         },
         PortAnchor::Custom(offset) => Point {
-            x: node.x + (node.width * offset.x.0),
-            y: node.y + (node.height * offset.y.0),
+            x: node.x.0 + (node.width.0 * offset.x.0),
+            y: node.y.0 + (node.height.0 * offset.y.0),
         },
     }
 }
@@ -127,8 +128,8 @@ mod tests {
     fn test_edge_connects_to_top_port_anchor_successfully() {
         let node = create_test_node(0.0, 0.0, 100.0, 100.0);
         let pt = compute_port_absolute_position(&node, &PortAnchor::Top);
-        assert_eq!(pt.x.0, 50.0);
-        assert_eq!(pt.y.0, 0.0);
+        assert_eq!(pt.x, 50.0);
+        assert_eq!(pt.y, 0.0);
     }
 
     #[test]
@@ -140,8 +141,8 @@ mod tests {
         )
         .unwrap();
         let pt = compute_port_absolute_position(&node, &PortAnchor::Custom(offset));
-        assert_eq!(pt.x.0, 35.0);
-        assert_eq!(pt.y.0, 95.0);
+        assert_eq!(pt.x, 35.0);
+        assert_eq!(pt.y, 95.0);
     }
 
     #[test]
@@ -186,8 +187,8 @@ mod tests {
     fn test_edge_port_anchor_computes_correctly_for_zero_width_node() {
         let node = create_test_node(10.0, 10.0, 0.0, 0.0);
         let pt = compute_port_absolute_position(&node, &PortAnchor::Center);
-        assert_eq!(pt.x.0, 10.0);
-        assert_eq!(pt.y.0, 10.0);
+        assert_eq!(pt.x, 10.0);
+        assert_eq!(pt.y, 10.0);
     }
 
     #[test]

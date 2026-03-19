@@ -28,18 +28,9 @@ pub enum MarqueeMode {
     Intersect,
 }
 
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Point {
-    pub x: f64,
-    pub y: f64,
-}
-
-impl Point {
-    #[must_use]
-    pub const fn new(x: f64, y: f64) -> Self {
-        Self { x, y }
-    }
-}
+// Re-export Point for backwards compatibility
+#[deprecated(since = "1.0.0", note = "Use crate::geometry::Point instead")]
+pub use crate::geometry::Point;
 
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Rect {

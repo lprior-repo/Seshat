@@ -2,7 +2,8 @@
 //!
 //! Operations for hit-testing and evaluating node selections.
 
-use crate::document::{NodeId, NodeKind, Point};
+use crate::document::{NodeId, NodeKind};
+use crate::geometry::Point;
 
 use super::types::CanvasState;
 use super::types::Error;
@@ -31,8 +32,8 @@ pub fn evaluate_selection(
 ) -> Result<SelectionResult, Error> {
     use itertools::Itertools;
 
-    let px = click_pos.x.0;
-    let py = click_pos.y.0;
+    let px = click_pos.x;
+    let py = click_pos.y;
 
     let hit = canvas
         .nodes
