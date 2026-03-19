@@ -20,6 +20,8 @@ use crate::ui::editor::ToolMode;
 use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
 use crate::ui::toolbar::{Toolbar, ToolbarStats};
+use crate::ui::sidebar::Sidebar;
+use crate::ui::mobile::SidebarUiState;
 use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 
 use dioxus::prelude::*;
@@ -36,6 +38,7 @@ pub fn App() -> Element {
     use_context_provider(|| Signal::new(ArrowType::Default));
     use_context_provider(|| Signal::new(ToastQueue::default()));
     use_context_provider(|| Signal::new(ToolbarStats::default()));
+    use_context_provider(|| Signal::new(SidebarUiState::default()));
     use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
     use_context_provider(|| Signal::new(0_u64));
     use_context_provider(|| Signal::new(Option::<crate::ui::toast::AiConflictState>::None));
@@ -85,6 +88,7 @@ pub fn App() -> Element {
                     flex: "1",
                     position: "relative",
                     min_width: "0",
+                    Sidebar {}
                     Canvas {}
                 }
             }
