@@ -30,7 +30,7 @@ pub enum BridgeError {
 }
 
 pub struct StoreBridge {
-    pool: sqlx::SqlitePool,
+    pool: Option<sqlx::SqlitePool>,
     runtime: Runtime,
 }
 
@@ -50,7 +50,7 @@ impl StoreBridge {
             .map_err(BridgeError::AsyncStore)?;
 
         Ok(Self {
-            pool: bootstrap.pool,
+            pool: Some(bootstrap.pool),
             runtime,
         })
     }
@@ -61,8 +61,9 @@ impl StoreBridge {
         F: FnOnce(sqlx::SqlitePool) -> Fut,
         Fut: std::future::Future<Output = Result<R, AsyncStoreError>>,
     {
+        let pool = self.pool.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
         self.runtime
-            .block_on(async { f(self.pool.clone()).await.map_err(BridgeError::AsyncStore) })
+            .block_on(async { f(pool.clone()).await.map_err(BridgeError::AsyncStore) })
     }
 
     /// Appends an event synchronously.
@@ -132,7 +133,9 @@ impl StoreBridge {
     /// Never returns an error currently, but signature is kept for symmetry.
     pub fn shutdown(self) -> Result<(), BridgeError> {
         self.runtime.block_on(async {
-            self.pool.close().await;
+            if let Some(pool) = self.pool {
+                pool.close().await;
+            }
             Ok(())
         })
     }
