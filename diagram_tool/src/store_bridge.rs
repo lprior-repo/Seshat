@@ -146,12 +146,12 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    #[cfg(kani)]
     fn make_test_envelope(op_id: &str, node_id: &str, timestamp: i64) -> EventEnvelope {
+        use diagram_models::document::NodeId;
         EventEnvelope {
             op_id: op_id.to_string(),
             operation: diagram_models::envelope::DomainOp::NodeAdd {
-                id: node_id.to_string(),
+                id: NodeId::new(node_id.to_string()),
                 x: 10.0,
                 y: 20.0,
                 width: 100.0,
@@ -167,8 +167,6 @@ mod tests {
         }
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_spawn_and_shutdown() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -178,8 +176,6 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_append_event_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -196,8 +192,6 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_fetch_events_since_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -220,8 +214,6 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_append_batch_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
@@ -243,8 +235,6 @@ mod tests {
         bridge.shutdown().expect("Failed to shutdown");
     }
 
-    #[cfg(kani)]
-    #[kani::proof]
     #[test]
     fn test_append_idempotent_sync() {
         let temp_dir = TempDir::new().expect("Failed to create temp dir");
