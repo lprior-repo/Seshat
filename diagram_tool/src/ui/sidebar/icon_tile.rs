@@ -4,7 +4,6 @@ use dioxus::prelude::*;
 use crate::{
     app::DraggedIconPayload,
     icons::{IconMeta, ICONS},
-    ui::theme::{BG_BASE, BG_ELEVATED, BORDER},
 };
 
 pub fn icon_data_url(icon: &IconMeta) -> Option<String> {
@@ -32,14 +31,12 @@ fn IconImage(src: Option<String>) -> Element {
         if let Some(src_str) = src {
             img {
                 src: "{src_str}",
-                width: "32px",
-                height: "32px",
-                style: "object-fit: contain; pointer-events: none;",
+                class: "w-8 h-8 object-contain pointer-events-none",
                 draggable: "false"
             }
         } else {
             div {
-                style: "width: 32px; height: 32px; border-radius: 4px; background: #1f2937;"
+                class: "w-8 h-8 rounded bg-muted"
             }
         }
     }
@@ -49,7 +46,7 @@ fn IconImage(src: Option<String>) -> Element {
 fn IconLabel(text: String) -> Element {
     rsx! {
         span {
-            style: "font-size: 10px; color: color-mix(in oklch, white 60%, transparent); text-align: center; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word;",
+            class: "text-[10px] text-muted-foreground text-center leading-tight line-clamp-2 break-words",
             "{text}"
         }
     }
@@ -88,13 +85,12 @@ pub fn IconTile(
 
     rsx! {
         button {
-            class: "icon-item",
+            class: "icon-item flex flex-col justify-center items-center gap-1.5 p-2 rounded-md border border-border bg-gradient-to-b from-background to-card cursor-grab shadow-inner hover:bg-muted/50",
             "data-testid": "icon-item",
             title: "{title_display}\n{title_key}\n{category_for_title}",
             draggable: "true",
             onmousedown: move |_| handle_drag(&current_icon_mousedown, &data_url_memo.read(), &mut dragging_icon),
             ondragstart: move |_| handle_drag(&current_icon_dragstart, &data_url_memo.read(), &mut dragging_icon),
-            style: "cursor: grab; border: 1px solid {BORDER}; border-radius: 6px; padding: 8px 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; background: linear-gradient(180deg, {BG_BASE} 0%, {BG_ELEVATED} 100%); box-shadow: inset 0 0 0 1px color-mix(in oklch, {BORDER} 60%, transparent);",
             IconImage { src: data_url_memo.read().clone() }
             IconLabel { text: current_icon.display_name.clone() }
         }
