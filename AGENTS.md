@@ -3,10 +3,9 @@
 ```jsonl
 {"skill": "moon", "description": "Build system - task running, caching, CI/CD", "commands": ["moon run <task>", "moon :ci-hardening --force", "moon check", "moon test", "moon run :clippy-source", "moon run :ci-source"]}
 {"skill": "functional-rust", "description": "Zero panics/unwrap/mut - Data→Calc→Actions pattern", "rules": ["No panics", "No unwrap", "No mut by default", "Result<T, E> for errors", "clippy-source pipeline for flawless source"]}
-{"skill": "go-skill", "description": "BRCLI-first execution - top-priority bead to main", "workflow": "1. jj new main 2. Pick bead from .beads/issues.jsonl 3. Implement 4. jj commit 5. jj git push"}
 {"skill": "landing-skill", "description": "Session completion - validates quality, syncs main, closes bead", "commands": ["/land"]}
 {"skill": "dioxus-wasm-constraints", "description": "Dioxus WASM Build Constraint Guard", "rules": ["NEVER include `tokio`, `mio`, `sqlx`, or `reqwest` (with default TLS) in the `wasm32-unknown-unknown` target. ALWAYS isolate server/db dependencies behind `#[cfg(not(target_arch = \"wasm32\"))]`. ALWAYS use `default = [\"web\"]` in Cargo.toml. Dioxus `fullstack` feature MUST NOT be active when building purely for web."]}
-{"workflow": "jj new main → moon run :check --force → implement → jj commit → jj git push → /land", "stack": "moon + functional-rust + go-skill + dioxus-wasm-constraints"}
+{"workflow": "jj new main → moon run :check --force → implement → jj commit → jj push → /land", "stack": "moon + functional-rust + landing-skill + dioxus-wasm-constraints"}
 ```
 
 ## Building & Running
@@ -131,10 +130,10 @@ For more details, see README.md and docs/QUICKSTART.md.
 3. **Update issue status** - Close finished work, update in-progress items
 4. **PUSH TO REMOTE** - This is MANDATORY:
    ```bash
-   git pull --rebase
+   jj pull --rebase
    bd sync
-   git push
-   git status  # MUST show "up to date with origin"
+   jj push
+   jj status  # MUST show "up to date with origin"
    ```
 5. **Clean up** - Clear stashes, prune remote branches
 6. **Verify** - All changes committed AND pushed

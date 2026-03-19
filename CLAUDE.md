@@ -5,7 +5,7 @@ This project strictly follows specific engineering practices. You **must** adher
 ## 1. Core Mandates
 - **Skills**: ALWAYS invoke the `functional-rust` skill ALWAYS before starting work.
 - **TDD Guard**: You MUST use strict Test-Driven Development. No implementation code without a failing test. Tests must be piped through `tdd-guard-rust` (e.g., `cargo nextest run 2>&1 | tdd-guard-rust --project-root . --passthrough`).
-- **NO Subagents**: You must NEVER use subagents or autonomous execution (`go-skill`, `Task` tool). All dev work happens in this interactive session.
+- **NO Subagents**: You must NEVER use subagents or autonomous execution (`Task` tool). All dev work happens in this interactive session.
 - **Moon & BD**: Use `moon` for all build tasks. Use `bd` (beads) for ALL issue tracking (no markdown TODOs).
 - **Jujutsu (`jj`)**: Use `jj` for version control alongside `git`.
 
@@ -19,7 +19,7 @@ A session is NOT complete until all these steps are done:
 1. Pass the Code Review Stage (`black-hat-reviewer` & `truth-serum`).
 2. Run `moon run :ci-source` and ensure it passes completely.
 3. File remaining/discovered work with `bd`.
-4. Push to remote (`git pull --rebase`, `bd sync`, `git push`, verify status is up to date). NEVER leave work stranded locally.
+4. Push to remote (`jj pull --rebase`, `bd sync`, `jj push`, verify status is up to date). NEVER leave work stranded locally.
 
 ## 4. Documentation Map
 Consult the following before writing code:
