@@ -1,13 +1,12 @@
 # AGENTS
 
 ```jsonl
-{"skill": "codanna", "description": "Code intelligence - semantic search, symbol lookups, call graphs", "commands": ["codanna init", "codanna index", "codanna serve --watch"], "mcp": "codanna --config .codanna/settings.toml serve --watch"}
 {"skill": "moon", "description": "Build system - task running, caching, CI/CD", "commands": ["moon run <task>", "moon :ci-hardening --force", "moon check", "moon test", "moon run :clippy-source", "moon run :ci-source"]}
 {"skill": "functional-rust", "description": "Zero panics/unwrap/mut - Data→Calc→Actions pattern", "rules": ["No panics", "No unwrap", "No mut by default", "Result<T, E> for errors", "clippy-source pipeline for flawless source"]}
 {"skill": "go-skill", "description": "BRCLI-first execution - top-priority bead to main", "workflow": "1. jj new main 2. Pick bead from .beads/issues.jsonl 3. Implement 4. jj commit 5. jj git push"}
 {"skill": "landing-skill", "description": "Session completion - validates quality, syncs main, closes bead", "commands": ["/land"]}
 {"skill": "dioxus-wasm-constraints", "description": "Dioxus WASM Build Constraint Guard", "rules": ["NEVER include `tokio`, `mio`, `sqlx`, or `reqwest` (with default TLS) in the `wasm32-unknown-unknown` target. ALWAYS isolate server/db dependencies behind `#[cfg(not(target_arch = \"wasm32\"))]`. ALWAYS use `default = [\"web\"]` in Cargo.toml. Dioxus `fullstack` feature MUST NOT be active when building purely for web."]}
-{"workflow": "jj new main → codanna serve --watch → moon run :check --force → implement → jj commit → jj git push → /land", "stack": "codanna + moon + functional-rust + go-skill + dioxus-wasm-constraints"}
+{"workflow": "jj new main → moon run :check --force → implement → jj commit → jj git push → /land", "stack": "moon + functional-rust + go-skill + dioxus-wasm-constraints"}
 ```
 
 ## Building & Running

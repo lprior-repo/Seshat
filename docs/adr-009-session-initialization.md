@@ -29,7 +29,6 @@ ALWAYS invoke the functional-rust skill at session start.
 moon --version
 bd ready --json
 jj --version
-codanna serve  # background
 ```
 
 ## Step 4: Check for Ready Work

@@ -41,10 +41,6 @@ playwright-report/
 # Local scratch workspaces
 dont-fuck-up/
 
-# Codanna
-.codanna/
-.codannaignore
-
 # Vendored third-party resources
 third_party/
 

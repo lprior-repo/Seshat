@@ -6,7 +6,6 @@ This project strictly follows specific engineering practices. You **must** adher
 - **Skills**: ALWAYS invoke the `functional-rust` skill ALWAYS before starting work.
 - **TDD Guard**: You MUST use strict Test-Driven Development. No implementation code without a failing test. Tests must be piped through `tdd-guard-rust` (e.g., `cargo nextest run 2>&1 | tdd-guard-rust --project-root . --passthrough`).
 - **NO Subagents**: You must NEVER use subagents or autonomous execution (`go-skill`, `Task` tool). All dev work happens in this interactive session.
-- **Codanna**: Always use `codanna` for semantic search.
 - **Moon & BD**: Use `moon` for all build tasks. Use `bd` (beads) for ALL issue tracking (no markdown TODOs).
 - **Jujutsu (`jj`)**: Use `jj` for version control alongside `git`.
 
