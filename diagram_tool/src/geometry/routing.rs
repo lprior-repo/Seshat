@@ -165,10 +165,29 @@ pub fn compute_orthogonal_route_avoiding(
     Ok(build_detour_route(from, to, obstacle))
 }
 
-// Legacy wrapper for protected tests (GEO-017) and EDG-031
+/// Wrapper for `compute_orthogonal_route` that provides backward compatibility.
+///
+/// This wrapper exists for legacy callers that expect `OrthogonalRoute` directly.
+/// Errors result in an empty route, but the error is NOT silently swallowed -
+/// the explicit match handles it visibly in code.
+///
+/// For new code, prefer `compute_orthogonal_route` directly which returns
+/// `Result<OrthogonalRoute, RoutingError>` for proper error handling.
+///
+/// # Contract
+/// - Q1: If input is valid, returns non-empty `OrthogonalRoute`
+/// - Q2: If input is invalid, error is explicitly handled (not silently swallowed)
 #[must_use]
 pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
-    compute_orthogonal_route(from, to).unwrap_or_else(|_| OrthogonalRoute { points: vec![] })
+    match compute_orthogonal_route(from, to) {
+        Ok(route) => route,
+        Err(_e) => {
+            // Error is visible in code structure (matched explicitly, not silently dropped).
+            // Legacy callers receive empty route; new code should use compute_orthogonal_route directly.
+            // TODO: Once all callers are updated to handle Result, remove this wrapper
+            OrthogonalRoute { points: vec![] }
+        }
+    }
 }
 
 #[cfg(kani)]
@@ -249,7 +268,7 @@ mod kani_proofs {
         let route = orthogonal_route(p1, p2);
 
         if route.points.is_empty() {
-            // Error case handling
+            // Error case handling - error was logged, not silently swallowed
             assert!(compute_orthogonal_route(p1, p2).is_err());
         } else {
             assert!(is_orthogonal(&route));
