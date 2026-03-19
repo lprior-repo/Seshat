@@ -155,7 +155,7 @@ fn ProviderAccordion(
 fn SidebarFooter(total_components: usize) -> Element {
     rsx! {
         div {
-            class: "mt-auto pt-[15px] pb-[5px] border-t border-[color-mix(in_oklch,white_20%,transparent)] text-center text-[11px] text-[color-mix(in_oklch,white_60%,transparent)] leading-[1.5]",
+            style: "margin-top: auto; padding-top: 15px; padding-bottom: 5px; border-top: 1px solid {BORDER_SUBTLE}; text-align: center; font-size: 11px; color: {TEXT_MUTED}; line-height: 1.5;",
             "{total_components} components available"
             br {}
             "Drag to canvas to add"

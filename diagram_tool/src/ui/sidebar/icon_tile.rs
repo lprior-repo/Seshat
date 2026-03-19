@@ -4,6 +4,7 @@ use dioxus::prelude::*;
 use crate::{
     app::DraggedIconPayload,
     icons::{IconMeta, ICONS},
+    ui::theme::{BG_BASE, BG_ELEVATED, BORDER},
 };
 
 pub fn icon_data_url(icon: &IconMeta) -> Option<String> {
@@ -29,9 +30,17 @@ pub fn icon_data_url(icon: &IconMeta) -> Option<String> {
 fn IconImage(src: Option<String>) -> Element {
     rsx! {
         if let Some(src_str) = src {
-            img { src: "{src_str}", class: "w-8 h-8 object-contain pointer-events-none", draggable: "false" }
+            img {
+                src: "{src_str}",
+                width: "32px",
+                height: "32px",
+                style: "object-fit: contain; pointer-events: none;",
+                draggable: "false"
+            }
         } else {
-            div { class: "w-8 h-8 rounded bg-gray-800" }
+            div {
+                style: "width: 32px; height: 32px; border-radius: 4px; background: #1f2937;"
+            }
         }
     }
 }
@@ -39,7 +48,10 @@ fn IconImage(src: Option<String>) -> Element {
 #[component]
 fn IconLabel(text: String) -> Element {
     rsx! {
-        span { class: "text-[10px] text-gray-400 text-center leading-tight line-clamp-2 break-words", "{text}" }
+        span {
+            style: "font-size: 10px; color: color-mix(in oklch, white 60%, transparent); text-align: center; line-height: 1.1; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; text-overflow: ellipsis; word-break: break-word;",
+            "{text}"
+        }
     }
 }
 
@@ -71,17 +83,18 @@ pub fn IconTile(
 
     let title_display = current_icon.display_name.clone();
     let title_key = current_icon.icon_key.clone();
-    let icon_for_mousedown = current_icon.clone();
-    let icon_for_dragstart = current_icon.clone();
+    let current_icon_mousedown = current_icon.clone();
+    let current_icon_dragstart = current_icon.clone();
 
     rsx! {
         button {
-            class: "icon-item flex flex-col justify-center items-center gap-1.5 p-2 rounded-md border border-gray-700 bg-gradient-to-b from-gray-800 to-gray-900 cursor-grab shadow-inner hover:bg-gray-700",
+            class: "icon-item",
             "data-testid": "icon-item",
             title: "{title_display}\n{title_key}\n{category_for_title}",
             draggable: "true",
-            onmousedown: move |_| handle_drag(&icon_for_mousedown, &data_url_memo.read(), &mut dragging_icon),
-            ondragstart: move |_| handle_drag(&icon_for_dragstart, &data_url_memo.read(), &mut dragging_icon),
+            onmousedown: move |_| handle_drag(&current_icon_mousedown, &data_url_memo.read(), &mut dragging_icon),
+            ondragstart: move |_| handle_drag(&current_icon_dragstart, &data_url_memo.read(), &mut dragging_icon),
+            style: "cursor: grab; border: 1px solid {BORDER}; border-radius: 6px; padding: 8px 4px; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: 6px; background: linear-gradient(180deg, {BG_BASE} 0%, {BG_ELEVATED} 100%); box-shadow: inset 0 0 0 1px color-mix(in oklch, {BORDER} 60%, transparent);",
             IconImage { src: data_url_memo.read().clone() }
             IconLabel { text: current_icon.display_name.clone() }
         }
