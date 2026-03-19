@@ -148,11 +148,21 @@ fn build_detour_route(from: Point, to: Point, obstacle: &AABB) -> OrthogonalRout
 /// # Errors
 /// Returns errors from `compute_orthogonal_route`.
 /// Returns `RoutingError::EndpointInsideObstacle` if endpoints are strictly inside the obstacle.
+/// Returns `RoutingError::InvalidEndpoint` if obstacle coordinates are not finite.
 pub fn compute_orthogonal_route_avoiding(
     from: Point,
     to: Point,
     obstacle: &AABB,
 ) -> Result<OrthogonalRoute, RoutingError> {
+    // Validate obstacle coordinates are finite
+    if !obstacle.min_x.is_finite()
+        || !obstacle.min_y.is_finite()
+        || !obstacle.max_x.is_finite()
+        || !obstacle.max_y.is_finite()
+    {
+        return Err(RoutingError::InvalidEndpoint);
+    }
+
     if is_inside(from, obstacle) || is_inside(to, obstacle) {
         return Err(RoutingError::EndpointInsideObstacle);
     }
