@@ -154,15 +154,15 @@ pub async fn append_batch_async<const MIN: usize, const MAX: usize>(
 ///
 /// # Errors
 /// Returns an error if the query fails or timestamp parsing fails.
-pub async fn lookup_existing_op_async(
-    pool: &SqlitePool,
+pub async fn lookup_existing_op_id_in_tx(
+    conn: &mut sqlx::SqliteConnection,
     op_id: &str,
 ) -> Result<Option<super::types::EventRecord>, AsyncStoreError> {
     let result = sqlx::query_as::<_, (String, i64, String, String)>(
         "SELECT operation_id, revision, timestamp, payload FROM events WHERE operation_id = ?1",
     )
     .bind(op_id)
-    .fetch_optional(pool)
+    .fetch_optional(conn)
     .await
     .map_err(AsyncStoreError::Sqlx)?;
 
@@ -254,7 +254,7 @@ pub async fn append_idempotent_async(
                 || e.to_string().contains("constraint");
 
             if is_unique_constraint {
-                let existing = lookup_existing_op_async(pool, &envelope.op_id).await?;
+                let existing = lookup_existing_op_id_in_tx(&mut tx, &envelope.op_id).await?;
 
                 match existing {
                     Some(record) => {

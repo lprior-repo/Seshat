@@ -17,11 +17,11 @@ use crate::hooks::keyboard::use_global_keyboard;
 use crate::ui::canvas::Canvas;
 use crate::ui::commands::ClipboardData;
 use crate::ui::editor::ToolMode;
+use crate::ui::mobile::SidebarUiState;
+use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::{ToastQueue, Toaster};
 use crate::ui::toolbar::{Toolbar, ToolbarStats};
-use crate::ui::sidebar::Sidebar;
-use crate::ui::mobile::SidebarUiState;
 use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 
 use dioxus::prelude::*;

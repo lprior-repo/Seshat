@@ -10,7 +10,6 @@ serde_json      = "1.0"
 uuid            = { version = "1.0", features = ["v4", "serde", "js"] }
 include_dir     = { version = "0.7", features = ["glob"] }
 tiny-skia       = "0.11"
-image           = "0.25"
 base64          = "0.22"
 resvg           = "0.44"
 clap            = { version = "4.0", features = ["derive"] }

@@ -24,8 +24,7 @@ func (m *Seshat) baseContainer(src *dagger.Directory) *dagger.Container {
 			rustup default stable && \
 			curl -fsSL https://mise.run | bash && \
 			ln -s ~/.local/bin/mise /usr/local/bin/mise && \
-			eval "$(/root/.local/bin/mise activate bash)" && \
-			mise trust && \
+			cd /src && mise trust -y && \
 			cargo install --locked kani-verifier && \
 			cargo kani setup
 		`}).
@@ -70,19 +69,19 @@ func (m *Seshat) Test(ctx context.Context, src *dagger.Directory) error {
 func (m *Seshat) Kani(ctx context.Context, src *dagger.Directory) (string, error) {
 	ctr := m.baseContainer(src)
 
-	// Run Kani on canvas_math (the only crate without problematic dependencies)
-	// Other crates (diagram_models, canvas_domain, diagram_tool) have rav1e dependency
-	// that fails with Kani due to macro ambiguity issues
+	// Run Kani on canvas_math (pure math functions, fully verifiable)
+	// Note: Other crates (diagram_models, canvas_domain, diagram_tool) have data structures
+	// (im::HashMap, getrandom syscall) that Kani struggles with
 	out, err := ctr.WithExec([]string{"bash", "-c", `
 		eval "$(/root/.local/bin/mise activate bash)" && \
 		export PATH="$HOME/.cargo/bin:$PATH" && \
 		cd /src && \
 		echo "=== Running Kani on canvas_math ===" && \
-		cargo kani -p canvas_math 2>&1 || true
+		cargo kani -p canvas_math
 	`}).Stdout(ctx)
 
 	if err != nil {
-		return out, err
+		return fmt.Sprintf("Kani verification failed:\n%s", out), err
 	}
 
 	return fmt.Sprintf("Kani verification results:\n%s", out), nil
@@ -122,12 +121,11 @@ func (m *Seshat) Ci(ctx context.Context, src *dagger.Directory) (string, error) 
 	output += "TEST PASSED\n" + out
 
 	// Run Kani on canvas_math only
-	out, err = ctr.WithExec([]string{"bash", "-c", "eval \"$(/root/.local/bin/mise activate bash)\" && export PATH=\"$HOME/.cargo/bin:$PATH\" && cd /src && cargo kani -p canvas_math 2>&1"}).Stdout(ctx)
+	out, err = ctr.WithExec([]string{"bash", "-c", "eval \"$(/root/.local/bin/mise activate bash)\" && export PATH=\"$HOME/.cargo/bin:$PATH\" && cd /src && cargo kani -p canvas_math"}).Stdout(ctx)
 	if err != nil {
-		output += "KANI: " + out + "\n"
-	} else {
-		output += "KANI PASSED\n" + out
+		return output + "KANI FAILED\n" + out, err
 	}
+	output += "KANI PASSED\n" + out
 
 	return output, nil
 }

@@ -20,7 +20,7 @@ pub mod types;
 // Re-export for backward compatibility
 pub use append::{
     append_batch_async, append_event_async, append_idempotent_async, classify_duplicate_async,
-    lookup_existing_op_async,
+    lookup_existing_op_id_in_tx,
 };
 pub use bootstrap::{bootstrap_async_store, create_async_pool, read_store_pragmas_async};
 pub use error::{AsyncStoreError, DuplicateKind, CURRENT_SCHEMA_VERSION};

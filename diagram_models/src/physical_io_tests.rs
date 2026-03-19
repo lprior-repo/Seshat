@@ -89,6 +89,10 @@ fn test_returns_identical_document_after_physical_roundtrip() {
 #[cfg(unix)]
 fn test_returns_permission_error_when_saving_to_protected_directory() {
     use std::path::Path;
+    // Skip if running as root (root bypasses permission checks)
+    if std::os::unix::fs::MetadataExt::uid(&std::fs::metadata("/").unwrap()) == 0 {
+        return;
+    }
     let result = save_document(
         Path::new("/root/forbidden.json"),
         &DiagramDocument::default(),
@@ -392,6 +396,10 @@ fn test_p1_violation_returns_not_found_error() {
 #[test]
 #[cfg(unix)]
 fn test_p2_violation_returns_permission_error() {
+    // Skip if running as root (root bypasses permission checks)
+    if std::os::unix::fs::MetadataExt::uid(&std::fs::metadata("/").unwrap()) == 0 {
+        return;
+    }
     let result = save_document(
         std::path::Path::new("/root/forbidden_2.json"),
         &DiagramDocument::default(),
