@@ -6,11 +6,13 @@
 
 use diagram_models::document::{EdgeId, NodeId};
 use diagram_models::envelope::{Author, DomainOp, EventEnvelope};
-use diagram_models::projection::{replay_events_from, DiagramProjection, EventRecord as ProjectionEventRecord};
+use diagram_models::projection::{
+    replay_events_from, DiagramProjection, EventRecord as ProjectionEventRecord,
+};
 use diagram_tool::store::Revision;
 use diagram_tool::store_async::{
     append_event_async, bootstrap_async_store, envelope_to_valid_event, fetch_all_events,
-    fetch_events_since, AsyncStoreError, AsyncAppendResult,
+    fetch_events_since, AsyncAppendResult, AsyncStoreError,
 };
 use sqlx::SqlitePool;
 use std::sync::Arc;
@@ -54,7 +56,11 @@ fn test_envelope(op_id: &str, revision: i64) -> EventEnvelope {
     EventEnvelope {
         op_id: op_id.to_string(),
         timestamp: 1700000000 + revision,
-        author: Author { id: "u".into(), name: "U".into(), email: None },
+        author: Author {
+            id: "u".into(),
+            name: "U".into(),
+            email: None,
+        },
         operation: DomainOp::NodeAdd {
             id: NodeId::new(format!("n-{}", revision)),
             x: 10.0 * revision as f64,
@@ -74,8 +80,8 @@ async fn append_test_event(
     exp_rev: Option<Revision>,
 ) -> Result<AsyncAppendResult, AsyncStoreError> {
     let env = test_envelope(id, rev);
-    let valid = envelope_to_valid_event(&env)
-        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
+    let valid =
+        envelope_to_valid_event(&env).map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
     append_event_async(pool, valid, exp_rev).await
 }
 
@@ -94,7 +100,12 @@ async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
 
     // 3. Append multiple increments revision
     for i in 2..=5 {
-        assert_eq!(append_test_event(&pool, &format!("op-{}", i), i, None).await?.revision, i);
+        assert_eq!(
+            append_test_event(&pool, &format!("op-{}", i), i, None)
+                .await?
+                .revision,
+            i
+        );
     }
 
     // 4. Fetch events since
@@ -165,7 +176,10 @@ async fn test_store_error_cases() -> Result<(), AsyncStoreError> {
     let mismatch_res = append_test_event(&pool, "op-2", 2, Some(Revision::new(5).unwrap())).await;
     assert!(matches!(
         mismatch_res,
-        Err(AsyncStoreError::RevisionMismatch { expected: 5, found: 1 })
+        Err(AsyncStoreError::RevisionMismatch {
+            expected: 5,
+            found: 1
+        })
     ));
 
     // 2. Duplicate op_id fails
@@ -184,27 +198,51 @@ async fn test_batch_append_with_edges() -> Result<(), AsyncStoreError> {
         EventEnvelope {
             op_id: "op-1".into(),
             timestamp: 1,
-            author: Author { id: "u".into(), name: "U".into(), email: None },
+            author: Author {
+                id: "u".into(),
+                name: "U".into(),
+                email: None,
+            },
             operation: DomainOp::NodeAdd {
-                id: NodeId::new("node-1".into()), x: 0.0, y: 0.0, width: 100.0, height: 50.0, label: "N1".into()
-            }
+                id: NodeId::new("node-1".into()),
+                x: 0.0,
+                y: 0.0,
+                width: 100.0,
+                height: 50.0,
+                label: "N1".into(),
+            },
         },
         EventEnvelope {
             op_id: "op-2".into(),
             timestamp: 2,
-            author: Author { id: "u".into(), name: "U".into(), email: None },
+            author: Author {
+                id: "u".into(),
+                name: "U".into(),
+                email: None,
+            },
             operation: DomainOp::NodeAdd {
-                id: NodeId::new("node-2".into()), x: 200.0, y: 0.0, width: 100.0, height: 50.0, label: "N2".into()
-            }
+                id: NodeId::new("node-2".into()),
+                x: 200.0,
+                y: 0.0,
+                width: 100.0,
+                height: 50.0,
+                label: "N2".into(),
+            },
         },
         EventEnvelope {
             op_id: "op-3".into(),
             timestamp: 3,
-            author: Author { id: "u".into(), name: "U".into(), email: None },
+            author: Author {
+                id: "u".into(),
+                name: "U".into(),
+                email: None,
+            },
             operation: DomainOp::EdgeConnect {
-                id: EdgeId::new("edge-1".into()), source: NodeId::new("node-1".into()), target: NodeId::new("node-2".into())
-            }
-        }
+                id: EdgeId::new("edge-1".into()),
+                source: NodeId::new("node-1".into()),
+                target: NodeId::new("node-2".into()),
+            },
+        },
     ];
 
     for env in envelopes {
@@ -213,17 +251,25 @@ async fn test_batch_append_with_edges() -> Result<(), AsyncStoreError> {
     }
 
     let records = fetch_events_since(&pool, 0).await?;
-    let parsed: Vec<_> = records.into_iter().enumerate().map(|(i, r)| {
-        let env = diagram_models::envelope::parse_event_envelope(&r.payload).unwrap();
-        ProjectionEventRecord {
-            op_id: r.op_id, revision: i as u64, operation: env.operation, author: env.author, timestamp: r.timestamp,
-        }
-    }).collect();
+    let parsed: Vec<_> = records
+        .into_iter()
+        .enumerate()
+        .map(|(i, r)| {
+            let env = diagram_models::envelope::parse_event_envelope(&r.payload).unwrap();
+            ProjectionEventRecord {
+                op_id: r.op_id,
+                revision: i as u64,
+                operation: env.operation,
+                author: env.author,
+                timestamp: r.timestamp,
+            }
+        })
+        .collect();
 
     let proj = replay_events_from(DiagramProjection::empty(), &parsed).unwrap();
     assert_eq!(proj.revision, 3);
     assert_eq!(proj.nodes.len(), 2);
     assert_eq!(proj.edges.len(), 1);
-    
+
     Ok(())
 }

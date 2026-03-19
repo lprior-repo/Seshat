@@ -5,8 +5,12 @@ mod phase1;
 
 use diagram_models::document::types::NodeId;
 use diagram_models::envelope::{Author, DomainOp, EventEnvelope};
-use diagram_tool::store_async::{append_event_async, envelope_to_valid_event, fetch_latest_revision};
-use phase1::{has_dependency, has_feature, read_cargo_toml, setup_test_db, Phase1Error, Phase1Result};
+use diagram_tool::store_async::{
+    append_event_async, envelope_to_valid_event, fetch_latest_revision,
+};
+use phase1::{
+    has_dependency, has_feature, read_cargo_toml, setup_test_db, Phase1Error, Phase1Result,
+};
 use tempfile::TempDir;
 
 #[cfg_attr(kani, kani::proof)]
@@ -14,7 +18,9 @@ use tempfile::TempDir;
 async fn test_rusqlite_removed() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
     if has_dependency(&content, "rusqlite") {
-        return Err(Phase1Error::DependencyFound("rusqlite still present in Cargo.toml".into()));
+        return Err(Phase1Error::DependencyFound(
+            "rusqlite still present in Cargo.toml".into(),
+        ));
     }
     Ok(())
 }
@@ -33,7 +39,9 @@ async fn test_sqlx_tokio_available() -> Phase1Result<()> {
         return Err(Phase1Error::FeatureMismatch("sqlx missing features".into()));
     }
     if !has_feature(&content, "tokio", "rt") || !has_feature(&content, "tokio", "sync") {
-        return Err(Phase1Error::FeatureMismatch("tokio missing features".into()));
+        return Err(Phase1Error::FeatureMismatch(
+            "tokio missing features".into(),
+        ));
     }
     Ok(())
 }
@@ -43,10 +51,14 @@ async fn test_sqlx_tokio_available() -> Phase1Result<()> {
 async fn test_sqlx_tokio_non_optional() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
     if content.contains("sqlx = {") && content.contains("optional = true") {
-        return Err(Phase1Error::FeatureMismatch("sqlx should not be optional".into()));
+        return Err(Phase1Error::FeatureMismatch(
+            "sqlx should not be optional".into(),
+        ));
     }
     if content.contains("tokio = {") && content.contains("optional = true") {
-        return Err(Phase1Error::FeatureMismatch("tokio should not be optional".into()));
+        return Err(Phase1Error::FeatureMismatch(
+            "tokio should not be optional".into(),
+        ));
     }
     Ok(())
 }
@@ -69,24 +81,41 @@ async fn test_async_bootstrap() -> Phase1Result<()> {
     let pool = bootstrap.pool;
 
     if bootstrap.schema_version != 1 {
-        return Err(Phase1Error::Store(format!("Expected schema version 1, got {}", bootstrap.schema_version)));
+        return Err(Phase1Error::Store(format!(
+            "Expected schema version 1, got {}",
+            bootstrap.schema_version
+        )));
     }
 
-    let revision = fetch_latest_revision(&pool).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let revision = fetch_latest_revision(&pool)
+        .await
+        .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if revision != 0 {
-        return Err(Phase1Error::Store(format!("Expected initial revision 0, got {}", revision)));
+        return Err(Phase1Error::Store(format!(
+            "Expected initial revision 0, got {}",
+            revision
+        )));
     }
 
-    let table_exists: (i32,) = sqlx::query_as("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events'")
-        .fetch_one(&pool).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let table_exists: (i32,) =
+        sqlx::query_as("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='events'")
+            .fetch_one(&pool)
+            .await
+            .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if table_exists.0 == 0 {
         return Err(Phase1Error::Store("events table not created".into()));
     }
 
-    let schema_table_exists: (i32,) = sqlx::query_as("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'")
-        .fetch_one(&pool).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let schema_table_exists: (i32,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='schema_version'",
+    )
+    .fetch_one(&pool)
+    .await
+    .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if schema_table_exists.0 == 0 {
-        return Err(Phase1Error::Store("schema_version table not created".into()));
+        return Err(Phase1Error::Store(
+            "schema_version table not created".into(),
+        ));
     }
 
     pool.close().await;
@@ -117,19 +146,33 @@ async fn test_async_append() -> Phase1Result<()> {
         timestamp: 1700000000,
     };
 
-    let valid_event = envelope_to_valid_event(&envelope).map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
-    let result = append_event_async(&pool, valid_event, None).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let valid_event =
+        envelope_to_valid_event(&envelope).map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let result = append_event_async(&pool, valid_event, None)
+        .await
+        .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
 
     if result.revision != 1 {
-        return Err(Phase1Error::Store(format!("Expected revision 1, got {}", result.revision)));
+        return Err(Phase1Error::Store(format!(
+            "Expected revision 1, got {}",
+            result.revision
+        )));
     }
     if result.op_id != "test-op-phase1" {
-        return Err(Phase1Error::Store(format!("Expected op_id 'test-op-phase1', got '{}'", result.op_id)));
+        return Err(Phase1Error::Store(format!(
+            "Expected op_id 'test-op-phase1', got '{}'",
+            result.op_id
+        )));
     }
 
-    let latest_revision = fetch_latest_revision(&pool).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let latest_revision = fetch_latest_revision(&pool)
+        .await
+        .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if latest_revision != 1 {
-        return Err(Phase1Error::Store(format!("Expected latest revision 1, got {}", latest_revision)));
+        return Err(Phase1Error::Store(format!(
+            "Expected latest revision 1, got {}",
+            latest_revision
+        )));
     }
 
     pool.close().await;
@@ -161,17 +204,28 @@ async fn test_async_append_increments_revision() -> Phase1Result<()> {
             timestamp: 1700000000 + i as i64,
         };
 
-        let valid_event = envelope_to_valid_event(&envelope).map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
-        let result = append_event_async(&pool, valid_event, None).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+        let valid_event = envelope_to_valid_event(&envelope)
+            .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+        let result = append_event_async(&pool, valid_event, None)
+            .await
+            .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
 
         if result.revision != i {
-            return Err(Phase1Error::Store(format!("Expected revision {}, got {}", i, result.revision)));
+            return Err(Phase1Error::Store(format!(
+                "Expected revision {}, got {}",
+                i, result.revision
+            )));
         }
     }
 
-    let latest_revision = fetch_latest_revision(&pool).await.map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
+    let latest_revision = fetch_latest_revision(&pool)
+        .await
+        .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if latest_revision != 3 {
-        return Err(Phase1Error::Store(format!("Expected final revision 3, got {}", latest_revision)));
+        return Err(Phase1Error::Store(format!(
+            "Expected final revision 3, got {}",
+            latest_revision
+        )));
     }
 
     pool.close().await;
@@ -190,7 +244,9 @@ async fn test_async_bootstrap_corrupted_db() -> Phase1Result<()> {
     let result = bootstrap_async_store(&db_path).await;
     if let Ok(b) = result {
         b.pool.close().await;
-        return Err(Phase1Error::Store("Should fail with corrupted database".into()));
+        return Err(Phase1Error::Store(
+            "Should fail with corrupted database".into(),
+        ));
     }
     Ok(())
 }

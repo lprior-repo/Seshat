@@ -9,7 +9,9 @@ mod persistence_compat;
 
 use crate::history::History;
 use crate::mutation::error::MutationError;
-use crate::ui::commands::{apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset, apply_delete_selected};
+use crate::ui::commands::{
+    apply_delete_selected, apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset,
+};
 use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
 use crate::ui::theme::{ACCENT, ACCENT_SOFT, BG_SURFACE, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED};
@@ -46,11 +48,19 @@ fn IconButton(
 ) -> Element {
     let is_active = active.unwrap_or(false);
     let is_disabled = disabled.unwrap_or(false);
-    let bg = if is_active { ACCENT_SOFT } else { "transparent" };
+    let bg = if is_active {
+        ACCENT_SOFT
+    } else {
+        "transparent"
+    };
     let border = if is_active { ACCENT } else { "transparent" };
     let fill = if is_active { Some(ACCENT) } else { color };
     let opacity = if is_disabled { "0.4" } else { "1.0" };
-    let cursor = if is_disabled { "not-allowed" } else { "pointer" };
+    let cursor = if is_disabled {
+        "not-allowed"
+    } else {
+        "pointer"
+    };
 
     rsx! {
         button {
@@ -76,11 +86,19 @@ fn TextButton(
 ) -> Element {
     let is_active = active.unwrap_or(false);
     let is_disabled = disabled.unwrap_or(false);
-    let bg = if is_active { ACCENT_SOFT } else { "transparent" };
+    let bg = if is_active {
+        ACCENT_SOFT
+    } else {
+        "transparent"
+    };
     let border = if is_active { ACCENT } else { "transparent" };
     let fill = if is_active { ACCENT } else { TEXT_MAIN };
     let opacity = if is_disabled { "0.4" } else { "1.0" };
-    let cursor = if is_disabled { "not-allowed" } else { "pointer" };
+    let cursor = if is_disabled {
+        "not-allowed"
+    } else {
+        "pointer"
+    };
 
     rsx! {
         button {
@@ -104,7 +122,7 @@ pub fn Toolbar() -> Element {
     let edge_style_signal = use_context::<Signal<EdgeStyle>>();
     let arrow_type_signal = use_context::<Signal<ArrowType>>();
     let toasts = use_context::<Signal<ToastQueue>>();
-    
+
     let toolbar_stats = use_context::<Signal<ToolbarStats>>();
     let stats = *toolbar_stats.read();
     let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
@@ -138,13 +156,15 @@ pub fn Toolbar() -> Element {
                 },
                 icon: IconKind::Save
             }
-            
+
             Divider {}
-            
+
             // Stats
             div {
                 style: "color: {TEXT_MUTED}; font-family: monospace; font-size: 13px; margin: 0 8px; white-space: nowrap;",
-                "{stats.node_count} nodes {stats.edge_count} edges Rev {stats.revision}"
+                span { "data-testid": "counter-nodes", "data-count": "{stats.node_count}", "{stats.node_count} nodes " }
+                span { "data-testid": "counter-edges", "data-count": "{stats.edge_count}", "{stats.edge_count} edges " }
+                span { "data-testid": "counter-selected", "data-count": "{stats.selected_count}", "Rev {stats.revision}" }
             }
 
             Divider {}

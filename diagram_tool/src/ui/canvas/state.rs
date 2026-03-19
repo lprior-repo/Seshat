@@ -1,7 +1,6 @@
-use super::root_handlers::pointer::types::PointerDeps;
 use super::root_handlers::{
-    use_keyboard_handler, use_middle_pan_handler, use_pointer_handler, use_raf_handler,
-    use_resize_handler, use_touch_handler,
+    use_keyboard_handler, use_middle_pan_handler, use_raf_handler, use_resize_handler,
+    use_touch_handler,
 };
 use crate::app::DraggedIconPayload;
 use crate::history::History;
@@ -51,7 +50,7 @@ pub fn use_canvas_state() -> CanvasState {
     let tool_signal = use_context::<Signal<ToolMode>>();
     let edge_style_default = use_context::<Signal<EdgeStyle>>();
     let arrow_type_default = use_context::<Signal<ArrowType>>();
-    let toast = use_toast();
+    let _toast = use_toast();
 
     let interaction_mode = use_signal(|| InteractionMode::Select);
     let space_pressed = use_signal(|| false);
@@ -116,31 +115,6 @@ pub fn use_canvas_state() -> CanvasState {
     );
 
     use_resize_handler(canvas_origin, viewport_size);
-
-    let current_deps = PointerDeps {
-        doc_signal,
-        history_signal,
-        tool_signal,
-        interaction_mode,
-        edge_style_default,
-        arrow_type_default,
-        editing_node,
-        editing_edge,
-        edit_value,
-        space_pressed,
-        shift_pressed,
-        ctrl_pressed,
-        meta_pressed,
-        space_pan_active,
-        multi_touch_active,
-        pending_pointer_sample,
-        captured_pointer,
-        active_pointers,
-        canvas_origin,
-        db_tx,
-        toast,
-    };
-    use_pointer_handler(current_deps);
 
     CanvasState {
         doc_signal,

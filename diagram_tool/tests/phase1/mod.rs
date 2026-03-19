@@ -1,8 +1,8 @@
 #![cfg(not(target_arch = "wasm32"))]
 
-use thiserror::Error;
-use tempfile::TempDir;
 use diagram_tool::store_async::{bootstrap_async_store, AsyncStoreBootstrap};
+use tempfile::TempDir;
+use thiserror::Error;
 
 #[derive(Debug, Error)]
 pub enum Phase1Error {
