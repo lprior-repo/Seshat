@@ -38,6 +38,14 @@ playwright-report/
 .beads/beads.db
 .beads/beads.db-wal
 
+# Codanna code intelligence index
+.codanna/
+.codannaignore
+
+# Beads credential keys and worktrees
+.beads/.beads-credential-key
+.beads/seshat-*/
+
 # Local scratch workspaces
 dont-fuck-up/
 
