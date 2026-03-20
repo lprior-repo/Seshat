@@ -712,6 +712,7 @@ mod tests {
                 assert_eq!(target_node_id, NodeId::new("target".to_string()));
                 assert_eq!(snap_type, SnapType::CenterX);
             }
+            #[allow(clippy::panic)]
             _ => panic!("Expected snapped result"),
         }
     }

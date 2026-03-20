@@ -60,28 +60,25 @@ pub fn all_events() -> Vec<CanvasEvent> {
     let v = vec();
     vec![
         CanvasEvent::MouseDownTarget {
-            point: p.clone(),
+            point: p,
             mode: SelectionMode::Replace,
         },
         CanvasEvent::MouseDownBackground {
-            point: p.clone(),
+            point: p,
             mode: SelectionMode::Replace,
         },
-        CanvasEvent::MouseMove { point: p.clone() },
-        CanvasEvent::DragMove { delta: v.clone() },
+        CanvasEvent::MouseMove { point: p },
+        CanvasEvent::DragMove { delta: v },
         CanvasEvent::MouseUp,
         CanvasEvent::TouchDownTarget {
-            point: p.clone(),
+            point: p,
             mode: SelectionMode::Replace,
         },
         CanvasEvent::TouchDownBackground {
-            point: p.clone(),
+            point: p,
             mode: SelectionMode::Replace,
         },
-        CanvasEvent::TouchMove {
-            point: p.clone(),
-            delta: v.clone(),
-        },
+        CanvasEvent::TouchMove { point: p, delta: v },
         CanvasEvent::TouchUp,
     ]
 }

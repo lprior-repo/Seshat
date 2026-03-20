@@ -23,21 +23,44 @@ pub struct ProviderBucket {
     pub categories: Vec<CategoryBucket>,
 }
 
-pub fn matches_query(icon: &IconMeta, query: &str) -> bool {
+pub struct ProviderBucketsResult {
+    pub buckets: Vec<ProviderBucket>,
+    pub is_truncated: bool,
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct LowercasedQuery<'a>(&'a str);
+
+impl<'a> LowercasedQuery<'a> {
+    pub fn new(query: &'a str) -> Option<Self> {
+        if query
+            .chars()
+            .all(|c| c.is_lowercase() || !c.is_alphabetic())
+        {
+            Some(Self(query))
+        } else {
+            None
+        }
+    }
+
+    pub fn empty() -> Self {
+        Self("")
+    }
+
+    pub fn as_str(&self) -> &'a str {
+        self.0
+    }
+
+    pub fn is_empty(&self) -> bool {
+        self.0.is_empty()
+    }
+}
+
+pub fn matches_query(icon: &IconMeta, query: LowercasedQuery<'_>) -> bool {
     if query.is_empty() {
         return true;
     }
-
-    let query_lower = query.to_ascii_lowercase();
-    let category = icon.category_path.join(" ").to_ascii_lowercase();
-
-    icon.icon_key.to_ascii_lowercase().contains(&query_lower)
-        || icon
-            .display_name
-            .to_ascii_lowercase()
-            .contains(&query_lower)
-        || icon.provider.to_ascii_lowercase().contains(&query_lower)
-        || category.contains(&query_lower)
+    icon.search_terms.contains(query.as_str())
 }
 
 pub fn category_label(icon: &IconMeta) -> String {
@@ -49,14 +72,20 @@ pub fn category_label(icon: &IconMeta) -> String {
 }
 
 pub fn category_key(provider: &str, category_label: &str) -> String {
-    let normalized = category_label
+    let mut normalized = String::with_capacity(category_label.len());
+    for (i, segment) in category_label
         .split('/')
         .map(str::trim)
-        .filter(|segment| !segment.is_empty())
-        .map(str::to_ascii_lowercase)
-        .collect::<Vec<_>>()
-        .join("/");
-
+        .filter(|s| !s.is_empty())
+        .enumerate()
+    {
+        if i > 0 {
+            normalized.push('/');
+        }
+        for c in segment.chars() {
+            normalized.extend(c.to_lowercase());
+        }
+    }
     format!("{}/{}", provider.to_ascii_lowercase(), normalized)
 }
 
@@ -75,80 +104,144 @@ pub fn bucket_icons_by_category(icons: Vec<IconMeta>) -> Vec<CategoryBucket> {
         .collect()
 }
 
-pub fn search_matches(index: &[IconMeta], query: &str) -> (usize, Vec<IconMeta>) {
-    index.iter().fold(
-        (0_usize, Vec::<IconMeta>::new()),
-        |(count, mut visible), icon| {
-            if matches_query(icon, query) {
-                if visible.len() < MAX_SEARCH_RESULTS {
-                    visible.push(icon.clone());
-                }
-                (count + 1, visible)
-            } else {
-                (count, visible)
+pub fn search_matches(index: &[IconMeta], query: LowercasedQuery<'_>) -> (usize, Vec<IconMeta>) {
+    let mut visible = Vec::with_capacity(MAX_SEARCH_RESULTS.min(100));
+    let mut count = 0;
+    for icon in index {
+        if matches_query(icon, query.clone()) {
+            if visible.len() < MAX_SEARCH_RESULTS {
+                visible.push(icon.clone());
             }
-        },
-    )
+            count += 1;
+        }
+    }
+    (count, visible)
+}
+
+fn build_empty_bucket(
+    provider: &String,
+    provider_limits: &BTreeMap<String, usize>,
+    index: &crate::icons::IconIndex,
+) -> ProviderBucket {
+    let icons = index.icons_by_provider(provider);
+    let limit = provider_limits
+        .get(provider)
+        .copied()
+        .unwrap_or(INITIAL_PROVIDER_LIMIT);
+    let visible: Vec<IconMeta> = icons.iter().take(limit).map(|&i| i.clone()).collect();
+
+    ProviderBucket {
+        provider: provider.clone(),
+        total_count: icons.len(),
+        visible_count: visible.len(),
+        has_more: icons.len() > visible.len(),
+        categories: bucket_icons_by_category(visible),
+    }
+}
+
+fn build_search_buckets(query: LowercasedQuery<'_>) -> ProviderBucketsResult {
+    let (match_count, limited) = search_matches(&icon_index().all, query);
+    let mut grouped = BTreeMap::<String, Vec<IconMeta>>::new();
+
+    for icon in limited {
+        grouped.entry(icon.provider.clone()).or_default().push(icon);
+    }
+
+    let buckets = grouped
+        .into_iter()
+        .map(|(provider, icons)| ProviderBucket {
+            total_count: icons.len(),
+            visible_count: icons.len(),
+            has_more: false,
+            categories: bucket_icons_by_category(icons),
+            provider,
+        })
+        .collect();
+
+    ProviderBucketsResult {
+        buckets,
+        is_truncated: match_count > MAX_SEARCH_RESULTS,
+    }
 }
 
 pub fn build_provider_buckets(
-    query: &str,
+    query: LowercasedQuery<'_>,
     provider_limits: &BTreeMap<String, usize>,
-) -> (Vec<ProviderBucket>, bool) {
-    let index = icon_index();
-
+) -> ProviderBucketsResult {
     if query.is_empty() {
+        let index = icon_index();
         let buckets = index
             .by_provider
             .keys()
-            .map(|provider| {
-                let provider_icons = index.icons_by_provider(provider);
-                let limit = provider_limits
-                    .get(provider)
-                    .copied()
-                    .unwrap_or(INITIAL_PROVIDER_LIMIT);
-                let visible_icons: Vec<IconMeta> = provider_icons
-                    .iter()
-                    .take(limit)
-                    .map(|icon| (*icon).clone())
-                    .collect();
-                let visible_count = visible_icons.len();
-                let total_count = provider_icons.len();
-
-                ProviderBucket {
-                    provider: provider.clone(),
-                    total_count,
-                    visible_count,
-                    has_more: total_count > visible_count,
-                    categories: bucket_icons_by_category(visible_icons),
-                }
-            })
+            .map(|provider| build_empty_bucket(provider, provider_limits, index))
             .collect();
-        (buckets, false)
+        ProviderBucketsResult {
+            buckets,
+            is_truncated: false,
+        }
     } else {
-        let (total_match_count, limited) = search_matches(&icon_index().all, query);
-        let grouped =
-            limited
-                .into_iter()
-                .fold(BTreeMap::<String, Vec<IconMeta>>::new(), |mut acc, icon| {
-                    acc.entry(icon.provider.clone()).or_default().push(icon);
-                    acc
-                });
+        build_search_buckets(query)
+    }
+}
 
-        let buckets = grouped
-            .into_iter()
-            .map(|(provider, icons)| {
-                let visible_count = icons.len();
-                ProviderBucket {
-                    provider,
-                    total_count: visible_count,
-                    visible_count,
-                    has_more: false,
-                    categories: bucket_icons_by_category(icons),
-                }
-            })
-            .collect();
+#[cfg(test)]
+#[allow(clippy::expect_used)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
 
-        (buckets, total_match_count > MAX_SEARCH_RESULTS)
+    #[test]
+    fn given_empty_query_when_matches_query_then_returns_true() {
+        let icon = IconMeta {
+            icon_key: String::from("aws/analytics/athena"),
+            provider: String::from("aws"),
+            category_path: vec![String::from("Analytics")],
+            file_relpath: String::from("aws/Analytics/athena.svg"),
+            display_name: String::from("Athena"),
+            search_terms: String::from("aws/analytics/athena athena aws analytics"),
+        };
+        assert!(matches_query(&icon, LowercasedQuery::empty()));
+    }
+
+    #[test]
+    fn given_matching_query_when_matches_query_then_returns_true() {
+        let icon = IconMeta {
+            icon_key: String::from("aws/analytics/athena"),
+            provider: String::from("aws"),
+            category_path: vec![String::from("Analytics")],
+            file_relpath: String::from("aws/Analytics/athena.svg"),
+            display_name: String::from("Athena"),
+            search_terms: String::from("aws/analytics/athena athena aws analytics"),
+        };
+        // The search query is expected to be already lowercased by the UI
+        assert!(matches_query(
+            &icon,
+            LowercasedQuery::new("athena").unwrap()
+        ));
+        assert!(matches_query(&icon, LowercasedQuery::new("aws").unwrap()));
+        assert!(matches_query(
+            &icon,
+            LowercasedQuery::new("analytics").unwrap()
+        ));
+    }
+
+    #[test]
+    fn given_non_matching_query_when_matches_query_then_returns_false() {
+        let icon = IconMeta {
+            icon_key: String::from("aws/analytics/athena"),
+            provider: String::from("aws"),
+            category_path: vec![String::from("Analytics")],
+            file_relpath: String::from("aws/Analytics/athena.svg"),
+            display_name: String::from("Athena"),
+            search_terms: String::from("aws/analytics/athena athena aws analytics"),
+        };
+        assert!(!matches_query(
+            &icon,
+            LowercasedQuery::new("database").unwrap()
+        ));
+        assert!(!matches_query(
+            &icon,
+            LowercasedQuery::new("azure").unwrap()
+        ));
     }
 }

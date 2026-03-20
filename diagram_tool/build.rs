@@ -61,6 +61,7 @@ struct IconEntry {
     category_path: Vec<String>,
     file_relpath: String,
     display_name: String,
+    search_terms: String,
 }
 
 #[derive(serde::Serialize)]
@@ -117,12 +118,22 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
 
     let display_name = title_case(file_stem);
 
+    let search_terms = format!(
+        "{} {} {} {}",
+        icon_key,
+        display_name,
+        provider,
+        category_path.join(" ")
+    )
+    .to_ascii_lowercase();
+
     Some(IconEntry {
         icon_key,
         provider,
         category_path,
         file_relpath: relpath_str.to_string(),
         display_name,
+        search_terms,
     })
 }
 
@@ -161,6 +172,7 @@ pub struct IconMeta {
     pub category_path: Vec<String>,
     pub file_relpath: String,
     pub display_name: String,
+    pub search_terms: String,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]

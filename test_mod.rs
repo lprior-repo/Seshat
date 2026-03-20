@@ -26,10 +26,10 @@ use crate::{
 use self::icon_tile::IconTile;
 use self::models::{
     build_provider_buckets, category_key, ProviderBucket, DEFAULT_EXPANDED_CATEGORY,
-    DEFAULT_EXPANDED_PROVIDER, INITIAL_PROVIDER_LIMIT, LOAD_MORE_STEP,
+    DEFAULT_EXPANDED_PROVIDER, INITIAL_PROVIDER_LIMIT, LOAD_MORE_STEP, MAX_SEARCH_RESULTS,
 };
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy)]
 struct SidebarState {
     search: Signal<String>,
     expanded_providers: Signal<BTreeSet<String>>,
@@ -40,20 +40,14 @@ struct SidebarState {
 fn use_sidebar_state() -> SidebarState {
     SidebarState {
         search: use_signal(String::new),
-        expanded_providers: use_signal(|| {
-            BTreeSet::from([String::from(DEFAULT_EXPANDED_PROVIDER)])
-        }),
-        expanded_categories: use_signal(|| {
-            BTreeSet::from([String::from(DEFAULT_EXPANDED_CATEGORY)])
-        }),
+        expanded_providers: use_signal(|| BTreeSet::from([String::from(DEFAULT_EXPANDED_PROVIDER)])),
+        expanded_categories: use_signal(|| BTreeSet::from([String::from(DEFAULT_EXPANDED_CATEGORY)])),
         provider_limits: use_signal(BTreeMap::new),
     }
 }
 
 fn toggle_set(state: &mut Signal<BTreeSet<String>>, key: &str, query_active: bool) {
-    if query_active {
-        return;
-    }
+    if query_active { return; }
     let mut state = state.write();
     if !state.remove(key) {
         state.insert(key.to_string());
@@ -79,7 +73,7 @@ fn SearchBox(mut search: Signal<String>, search_is_truncated: bool) -> Element {
         if search_is_truncated {
             div {
                 class: "text-[11px] text-muted-foreground mb-2",
-                "Showing first {models::MAX_SEARCH_RESULTS} matches. Refine search to narrow results."
+                "Showing first {MAX_SEARCH_RESULTS} matches. Refine search to narrow results."
             }
         }
     }
@@ -102,18 +96,14 @@ fn get_category_icon(category_name: &str) -> crate::ui::icons::IconKind {
 
 #[component]
 fn CategoryButton(
-    name: String,
-    count: usize,
-    icon_kind: crate::ui::icons::IconKind,
-    expanded: bool,
-    onclick: EventHandler<MouseEvent>,
+    name: String, count: usize, icon_kind: crate::ui::icons::IconKind, expanded: bool, onclick: EventHandler<MouseEvent>
 ) -> Element {
     let base_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-transparent bg-transparent text-foreground cursor-pointer text-[13px] hover:bg-white/5 transition-colors";
     let active_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-[var(--accent)] bg-[oklch(0.12_0.02_165)] text-foreground cursor-pointer text-[13px] transition-colors";
-
+    
     rsx! {
         button {
-            class: if expanded { active_class } else { base_class },
+            class: "{if expanded { active_class } else { base_class }}",
             onclick: move |e| onclick.call(e),
             div {
                 class: "flex items-center gap-2",
@@ -127,10 +117,7 @@ fn CategoryButton(
 }
 
 #[component]
-fn CategoryGrid(
-    icons: Vec<crate::icons::IconMeta>,
-    dragging_icon: Signal<Option<DraggedIconPayload>>,
-) -> Element {
+fn CategoryGrid(icons: Vec<crate::icons::IconMeta>, dragging_icon: Signal<Option<DraggedIconPayload>>) -> Element {
     rsx! {
         div {
             class: "grid grid-cols-3 gap-[5px] mt-1 pl-4",
@@ -143,33 +130,31 @@ fn CategoryGrid(
 
 #[component]
 fn CategoryAccordion(
-    provider: String,
-    category: models::CategoryBucket,
-    query_active: bool,
-    mut expanded_categories: Signal<BTreeSet<String>>,
+    provider: String, category: models::CategoryBucket, query_active: bool, mut expanded_categories: Signal<BTreeSet<String>>
 ) -> Element {
     let category_state_key = category_key(&provider, &category.name);
     let expanded = query_active || expanded_categories.read().contains(&category_state_key);
     let app_state = use_context::<crate::app::AppState>();
 
     rsx! {
-        SidebarMenuSubItem { key: "{provider}-{category.name}",
-            div { class: "flex flex-col gap-1 w-full",
+        SidebarMenuSubItem {
+            key: "{provider}-{category.name}",
+            div {
+                class: "flex flex-col gap-1 w-full",
                 CategoryButton {
                     name: category.name.clone(), count: category.icons.len(), icon_kind: get_category_icon(&category.name), expanded,
                     onclick: move |_| toggle_set(&mut expanded_categories, &category_state_key, query_active)
                 }
-                if expanded { CategoryGrid { icons: category.icons.clone(), dragging_icon: app_state.dragging_icon } }
+                if expanded {
+                    CategoryGrid { icons: category.icons.clone(), dragging_icon: app_state.dragging_icon }
+                }
             }
         }
     }
 }
 
 #[component]
-fn LoadMoreButton(
-    provider: String,
-    mut provider_limits: Signal<BTreeMap<String, usize>>,
-) -> Element {
+fn LoadMoreButton(provider: String, mut provider_limits: Signal<BTreeMap<String, usize>>) -> Element {
     rsx! {
         SidebarMenuButton {
             label: String::from("Load more"),
@@ -184,25 +169,25 @@ fn LoadMoreButton(
 
 #[component]
 fn ProviderAccordion(
-    bucket: ProviderBucket,
-    query_active: bool,
-    mut state: SidebarState,
+    bucket: ProviderBucket, query_active: bool, mut exp_prov: Signal<BTreeSet<String>>, exp_cat: Signal<BTreeSet<String>>, lims: Signal<BTreeMap<String, usize>>
 ) -> Element {
     let provider = bucket.provider.clone();
-    let expanded = query_active || state.expanded_providers.read().contains(&provider);
+    let expanded = query_active || exp_prov.read().contains(&provider);
 
     rsx! {
         SidebarMenuItem {
             SidebarGroup {
                 provider: provider.clone(), expanded, query_active, total_count: bucket.total_count,
-                ontoggle: move |_| toggle_set(&mut state.expanded_providers, &bucket.provider, query_active),
+                ontoggle: move |_| toggle_set(&mut exp_prov, &provider, query_active),
                 children: rsx! {
                     SidebarMenuSub {
                         for category in bucket.categories {
-                            CategoryAccordion { provider: provider.clone(), category, query_active, expanded_categories: state.expanded_categories }
+                            CategoryAccordion { provider: provider.clone(), category, query_active, expanded_categories: exp_cat }
                         }
                     }
-                    if bucket.has_more { LoadMoreButton { provider: provider.clone(), provider_limits: state.provider_limits } }
+                    if bucket.has_more {
+                        LoadMoreButton { provider: provider.clone(), provider_limits: lims }
+                    }
                 }
             }
         }
@@ -221,7 +206,7 @@ fn SidebarFooter(total_components: usize) -> Element {
     }
 }
 
-fn render_mobile_closed(sidebar_ui: Signal<crate::ui::mobile::SidebarUiState>) -> Element {
+fn render_mobile_closed(sidebar_ui: Signal<crate::ui::sidebar_primitives::SidebarState>) -> Element {
     rsx! {
         SidebarProvider {
             sidebar_ui, side: SidebarSide::Left, variant: SidebarVariant::Sidebar, collapsible: SidebarCollapsible::Offcanvas,
@@ -233,7 +218,7 @@ fn render_mobile_closed(sidebar_ui: Signal<crate::ui::mobile::SidebarUiState>) -
     }
 }
 
-fn render_desktop_closed(sidebar_ui: Signal<crate::ui::mobile::SidebarUiState>) -> Element {
+fn render_desktop_closed(sidebar_ui: Signal<crate::ui::sidebar_primitives::SidebarState>) -> Element {
     rsx! {
         SidebarProvider {
             sidebar_ui, side: SidebarSide::Left, variant: SidebarVariant::Sidebar, collapsible: SidebarCollapsible::Offcanvas,
@@ -251,20 +236,27 @@ fn get_panel_class(is_mobile: bool) -> String {
 }
 
 fn render_sidebar_content(
-    sidebar_ui: Signal<crate::ui::mobile::SidebarUiState>,
-    is_mobile: bool,
-    result: models::ProviderBucketsResult,
-    state: SidebarState,
+    sidebar_ui: Signal<crate::ui::sidebar_primitives::SidebarState>, is_mobile: bool, result: models::ProviderBucketsResult, state: SidebarState
 ) -> Element {
     let query_active = !state.search.read().trim().is_empty();
-    let action_label = if is_mobile { "Close" } else { "Hide" }.to_string();
     rsx! {
-        SidebarSheet { class: Some(String::from("flex flex-col flex-1 min-h-0 gap-2.5")),
-            SidebarHeader { title: String::from("Components"), action_label, onaction: move |_| { close_sidebar(sidebar_ui); } }
+        SidebarSheet {
+            class: Some(String::from("flex flex-col flex-1 min-h-0 gap-2.5")),
+            SidebarHeader {
+                title: String::from("Components"),
+                action_label: if is_mobile { String::from("Close") } else { String::from("Hide") },
+                onaction: move |_| { close_sidebar(sidebar_ui); }
+            }
             SearchBox { search: state.search, search_is_truncated: result.is_truncated }
-            SidebarInset { class: Some(String::from("flex flex-1 min-h-0 flex-col overflow-y-auto pr-2 -mr-2")),
+            SidebarInset {
+                class: Some(String::from("flex flex-1 min-h-0 flex-col overflow-y-auto pr-2 -mr-2")),
                 SidebarMenu {
-                    for bucket in result.buckets { ProviderAccordion { bucket, query_active, state } }
+                    for bucket in result.buckets {
+                        ProviderAccordion {
+                            bucket, query_active, exp_prov: state.expanded_providers, 
+                            exp_cat: state.expanded_categories, lims: state.provider_limits
+                        }
+                    }
                 }
             }
             SidebarFooter { total_components: crate::icons::icon_index().all.len() }
@@ -273,10 +265,7 @@ fn render_sidebar_content(
 }
 
 fn render_open_sidebar(
-    sidebar_ui: Signal<crate::ui::mobile::SidebarUiState>,
-    is_mobile: bool,
-    result: models::ProviderBucketsResult,
-    state: SidebarState,
+    sidebar_ui: Signal<crate::ui::sidebar_primitives::SidebarState>, is_mobile: bool, result: models::ProviderBucketsResult, state: SidebarState
 ) -> Element {
     rsx! {
         SidebarProvider {
@@ -304,9 +293,8 @@ pub fn Sidebar() -> Element {
         return render_desktop_closed(sidebar_ui);
     }
 
-    let trimmed = state.search.read().trim().to_lowercase();
-    let lowercased =
-        models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
+    let trimmed = state.search.read().trim().to_ascii_lowercase();
+    let lowercased = models::LowercasedQuery::new(&trimmed).expect("valid lowercase");
     let result = build_provider_buckets(lowercased, &state.provider_limits.read());
 
     render_open_sidebar(sidebar_ui, ui_state.is_mobile, result, state)

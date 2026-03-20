@@ -112,11 +112,18 @@ pub fn SidebarOverlay(onclick: EventHandler<MouseEvent>) -> Element {
 }
 
 #[component]
-pub fn SidebarSheet(style: String, children: Element) -> Element {
+pub fn SidebarSheet(
+    #[props(default)] class: Option<String>,
+    #[props(default)] style: Option<String>,
+    children: Element,
+) -> Element {
+    let sheet_class = merge_class("sidebar", class.as_deref());
+    let sheet_style = style.unwrap_or_default();
+
     rsx! {
         div {
-            class: "sidebar",
-            style: "{style}",
+            class: "{sheet_class}",
+            style: "{sheet_style}",
             {children}
         }
     }
