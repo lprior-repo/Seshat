@@ -229,6 +229,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                     height,
                     is_selected,
                     is_hovered,
+                    is_editing: interaction_state.is_editing(),
                     tool_signal,
                     interaction_mode,
                     canvas_origin,

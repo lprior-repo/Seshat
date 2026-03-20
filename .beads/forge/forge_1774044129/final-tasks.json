@@ -1,0 +1,884 @@
+[
+  {
+    "id": "task-001",
+    "title": "test: Implement proptest harness generator for document state",
+    "type": "chore",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Create a property-based test generator that yields valid DiagramDocument structures for invariant validation.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL provide a deterministic proptest strategy for diagram states."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN requested by the test runner",
+          "shall": "THE SYSTEM SHALL generate a DiagramDocument with valid node and edge relations."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF the generated edges form a cycle",
+          "shall_not": "THE SYSTEM SHALL NOT emit the state as valid",
+          "because": "the core DAG invariant forbids it"
+        },
+        {
+          "condition": "IF negative coordinates are generated",
+          "shall_not": "THE SYSTEM SHALL NOT allow them in valid tests",
+          "because": "coordinates must be strictly positive"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Property testing framework is configured in Cargo.toml"
+      ],
+      "postconditions": [
+        "Generator outputs DiagramDocument instances"
+      ],
+      "invariants": [
+        "All generated edges strictly reference existing node IDs"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Generates 100 unique valid document states successfully",
+        "Generates an empty document state correctly"
+      ],
+      "error": [
+        "Rejects generation requests with negative node bounds",
+        "Fails generation if cyclic references are forced"
+      ],
+      "edge": [
+        "Generates documents with maximum allowed node counts"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/document.rs"
+      ],
+      "patterns": [
+        "proptest::strategy::Strategy implementation for nested structs"
+      ],
+      "questions": [
+        "How to enforce acyclic edge generation in proptest?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Define node generator strategy"
+      ],
+      "phase_1": [
+        "Define edge generator strategy using prior node IDs"
+      ],
+      "phase_2": [
+        "Assemble into DiagramDocument strategy"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/test_infrastructure_tests.rs"
+      ],
+      "similar": [
+        "Existing basic mock generators"
+      ],
+      "external_references": [
+        "Assumes DAG constraint is the only complex invariant",
+        "Open: Does proptest need a size limit?"
+      ]
+    }
+  },
+  {
+    "id": "task-002",
+    "title": "calc: Implement hit testing logic for node bounding boxes",
+    "type": "task",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Calculate the top-most intersecting node ID for a given coordinate.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL identify intersected nodes by coordinate."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN coordinate falls within multiple bounding boxes",
+          "shall": "THE SYSTEM SHALL return the highest z-index."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF coordinate is outside all bounds",
+          "shall_not": "THE SYSTEM SHALL NOT return an ID",
+          "because": "click is in empty canvas"
+        },
+        {
+          "condition": "IF node is locked but invisible",
+          "shall_not": "THE SYSTEM SHALL NOT return it",
+          "because": "hidden items are unclickable"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Coordinate is finite f64"
+      ],
+      "postconditions": [
+        "Returns Option<NodeId>"
+      ],
+      "invariants": [
+        "Hit test calculation is pure and side-effect free"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Returns ID when inside bounds",
+        "Returns top-most ID for overlapping"
+      ],
+      "error": [
+        "Returns None for empty canvas",
+        "Returns None for NaN coordinate"
+      ],
+      "edge": [
+        "Returns topmost node when exactly on boundary border"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/geometry/bounds.rs"
+      ],
+      "patterns": [
+        "AABB intersection calculation"
+      ],
+      "questions": [
+        "Are boundaries inclusive or exclusive?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Define AABB boundary check"
+      ],
+      "phase_1": [
+        "Implement z-index sorting for overlapping matches"
+      ],
+      "phase_2": [
+        "Return matched ID or None"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/geometry/bounds_tests.rs"
+      ],
+      "similar": [
+        "Selection bounding box calculation"
+      ],
+      "external_references": [
+        "Clarification: Bounds are inclusive of edges"
+      ]
+    }
+  },
+  {
+    "id": "task-003",
+    "title": "state: Implement selection append operation for multiselect",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Add a node ID to the current selection set.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL maintain a unique set of selected IDs."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN append is called with an ID",
+          "shall": "THE SYSTEM SHALL add it to the set."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF ID is already selected",
+          "shall_not": "THE SYSTEM SHALL NOT duplicate it",
+          "because": "it is a mathematical set"
+        },
+        {
+          "condition": "IF ID is invalid",
+          "shall_not": "THE SYSTEM SHALL NOT append it",
+          "because": "selection must reflect valid entities"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node ID exists in document"
+      ],
+      "postconditions": [
+        "Selection set contains the new ID"
+      ],
+      "invariants": [
+        "Selection never contains duplicates"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Adds new ID to empty selection",
+        "Adds new ID to existing selection"
+      ],
+      "error": [
+        "Rejects append of non-existent ID",
+        "Ignores append of already selected ID"
+      ],
+      "edge": [
+        "Appends max u32 nodes without crashing"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/selection.rs"
+      ],
+      "patterns": [
+        "Immutable HashSet append"
+      ],
+      "questions": [
+        "Is selection ordered?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Validate Node ID against document"
+      ],
+      "phase_1": [
+        "Clone selection set and insert new ID"
+      ],
+      "phase_2": [
+        "Return updated selection state"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/models/selection_tests.rs"
+      ],
+      "similar": [
+        "Node insertion logic"
+      ],
+      "external_references": [
+        "Clarification: Selection order is irrelevant"
+      ]
+    }
+  },
+  {
+    "id": "task-004",
+    "title": "calc: Implement clipboard entity JSON serialization",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Serialize a subset of nodes and their internal edges into a JSON string.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL output a valid JSON representation of selected entities."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN serialization is requested",
+          "shall": "THE SYSTEM SHALL extract and encode the specified subset."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF selection is empty",
+          "shall_not": "THE SYSTEM SHALL NOT serialize",
+          "because": "there is no payload"
+        },
+        {
+          "condition": "IF an edge points to an unselected node",
+          "shall_not": "THE SYSTEM SHALL NOT include the edge",
+          "because": "it would be a dangling reference"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Selection is non-empty"
+      ],
+      "postconditions": [
+        "Returns a valid JSON String payload"
+      ],
+      "invariants": [
+        "Only fully contained subgraphs/edges are serialized"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Serializes single node successfully",
+        "Serializes two nodes and their connecting edge"
+      ],
+      "error": [
+        "Fails serialization on empty selection",
+        "Excludes dangling edges connected to unselected nodes"
+      ],
+      "edge": [
+        "Serializes deep nested subgraphs"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/clipboard.rs"
+      ],
+      "patterns": [
+        "serde_json::to_string usage"
+      ],
+      "questions": [
+        "How are edges filtered during copy?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Filter nodes by selection IDs"
+      ],
+      "phase_1": [
+        "Filter edges where both source and target are in selection"
+      ],
+      "phase_2": [
+        "Serialize the filtered payload to JSON"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/models/clipboard_tests.rs"
+      ],
+      "similar": [
+        "Document full serialization"
+      ],
+      "external_references": [
+        "Clarification: Dangling edges are explicitly excluded, not errors"
+      ]
+    }
+  },
+  {
+    "id": "task-005",
+    "title": "calc: Implement UUID remap for clipboard deserialization",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Generate new UUIDs for deserialized nodes and map internal edge references.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL guarantee new unique IDs for pasted entities."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN JSON payload is parsed",
+          "shall": "THE SYSTEM SHALL replace all old IDs with newly generated ones."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF payload contains invalid JSON",
+          "shall_not": "THE SYSTEM SHALL NOT panic",
+          "because": "it must return an error"
+        },
+        {
+          "condition": "IF edge references an ID missing from the payload",
+          "shall_not": "THE SYSTEM SHALL NOT keep the edge",
+          "because": "it breaks graph integrity"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Payload is valid JSON structure"
+      ],
+      "postconditions": [
+        "Returns nodes and edges with brand new IDs"
+      ],
+      "invariants": [
+        "Internal edge references correctly point to the newly generated Node IDs"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Assigns new UUIDs to all nodes",
+        "Updates edge source/target to the new UUIDs"
+      ],
+      "error": [
+        "Fails gracefully if edge references missing node",
+        "Fails gracefully if JSON payload is malformed"
+      ],
+      "edge": [
+        "Handles an empty payload gracefully"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/clipboard.rs"
+      ],
+      "patterns": [
+        "ID dictionary mapping pattern"
+      ],
+      "questions": [
+        "How are parent IDs remapped for subgraphs?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Deserialize JSON into raw structs"
+      ],
+      "phase_1": [
+        "Generate ID map (old -> new) for all nodes"
+      ],
+      "phase_2": [
+        "Update all node parent IDs and edge source/targets using the map"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/models/clipboard_tests.rs"
+      ],
+      "similar": [
+        "Node duplication logic"
+      ],
+      "external_references": [
+        "Clarification: Parent IDs must also be updated in the mapping pass"
+      ]
+    }
+  },
+  {
+    "id": "task-006",
+    "title": "state: Implement undo stack snapshot append",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Push the current document state onto the bounded history stack and clear the redo stack.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL persist document states in an undo history."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a new state is appended",
+          "shall": "THE SYSTEM SHALL clear all redo entries."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF the stack reaches capacity",
+          "shall_not": "THE SYSTEM SHALL NOT exceed the memory limit",
+          "because": "it must evict the oldest entry"
+        },
+        {
+          "condition": "IF the new state equals the top state",
+          "shall_not": "THE SYSTEM SHALL NOT append a duplicate",
+          "because": "it creates redundant undo steps"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Provided state is valid"
+      ],
+      "postconditions": [
+        "Undo stack length increases by 1 (or max capacity)"
+      ],
+      "invariants": [
+        "Redo stack is always empty immediately after an append"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Pushes state onto empty stack successfully",
+        "Clears redo stack upon new push"
+      ],
+      "error": [
+        "Refuses to push identical consecutive state",
+        "Evicts oldest entry when limit is exceeded"
+      ],
+      "edge": [
+        "Handles push when capacity is exactly 1"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/history.rs"
+      ],
+      "patterns": [
+        "Bounded vector / VecDeque logic"
+      ],
+      "questions": [
+        "What is the max capacity?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Check if new state equals top of undo stack"
+      ],
+      "phase_1": [
+        "Clear the redo stack"
+      ],
+      "phase_2": [
+        "Push to undo stack and truncate if over capacity"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/models/history_tests.rs"
+      ],
+      "similar": [
+        "Standard undo/redo patterns"
+      ],
+      "external_references": [
+        "Clarification: Max capacity is 100 entries"
+      ]
+    }
+  },
+  {
+    "id": "task-007",
+    "title": "calc: Implement parent cycle detection for reparenting",
+    "type": "task",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Traverse the parent chain to ensure a node is not reparented to its own descendant.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL prevent cyclic subgraph hierarchies."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN reparenting is attempted",
+          "shall": "THE SYSTEM SHALL validate the ancestor chain."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF target parent is self",
+          "shall_not": "THE SYSTEM SHALL NOT allow reparenting",
+          "because": "a node cannot contain itself"
+        },
+        {
+          "condition": "IF target parent is a descendant",
+          "shall_not": "THE SYSTEM SHALL NOT allow reparenting",
+          "because": "it creates a cyclic dependency loop"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node and Target Parent exist in document"
+      ],
+      "postconditions": [
+        "Returns Result indicating validity"
+      ],
+      "invariants": [
+        "Hierarchy remains a strict tree (no cycles)"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Approves valid reparenting to sibling",
+        "Approves reparenting to root (None)"
+      ],
+      "error": [
+        "Rejects reparenting to self",
+        "Rejects reparenting to a direct child"
+      ],
+      "edge": [
+        "Rejects reparenting to deep descendant (level 10)"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/subgraph.rs"
+      ],
+      "patterns": [
+        "Tree traversal to root"
+      ],
+      "questions": [
+        "Do we need to cache depth?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Resolve target parent ID"
+      ],
+      "phase_1": [
+        "Iterate upwards using parent pointers"
+      ],
+      "phase_2": [
+        "Return error if starting node ID is encountered"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/models/subgraph_tests.rs"
+      ],
+      "similar": [
+        "DAG cycle detection for edges"
+      ],
+      "external_references": [
+        "Clarification: Tree traversal is fast enough, no caching needed"
+      ]
+    }
+  },
+  {
+    "id": "task-008",
+    "title": "calc: Implement endpoint coordinate recalculation for bound edges",
+    "type": "task",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Compute new edge start/end coordinates when connected nodes move.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL maintain visual connection points for edges."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a node translates",
+          "shall": "THE SYSTEM SHALL recalculate attachment points for connected edges."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF node is deleted",
+          "shall_not": "THE SYSTEM SHALL NOT panic on missing coordinates",
+          "because": "the edge will be deleted subsequently"
+        },
+        {
+          "condition": "IF edge has manual routing",
+          "shall_not": "THE SYSTEM SHALL NOT reset internal waypoints",
+          "because": "only endpoints update"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node bounding boxes are available"
+      ],
+      "postconditions": [
+        "Returns updated edge geometry"
+      ],
+      "invariants": [
+        "Edge endpoints lie exactly on the boundaries of connected nodes"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Updates source coordinate on move",
+        "Updates target coordinate on move"
+      ],
+      "error": [
+        "Returns original geometry if node is missing (graceful degradation)",
+        "Returns original geometry if no move detected"
+      ],
+      "edge": [
+        "Calculates correct center point if node has zero width/height"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/geometry/edges.rs"
+      ],
+      "patterns": [
+        "Line-to-AABB intersection math"
+      ],
+      "questions": [
+        "Are edge endpoints bound to centers or nearest edges?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Fetch source and target node bounds"
+      ],
+      "phase_1": [
+        "Calculate center-to-center line vector"
+      ],
+      "phase_2": [
+        "Determine intersection points with bounding boxes"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/geometry/edges_tests.rs"
+      ],
+      "similar": [
+        "Hit testing logic"
+      ],
+      "external_references": [
+        "Clarification: Endpoints snap to nearest bounding box edge"
+      ]
+    }
+  },
+  {
+    "id": "task-009",
+    "title": "calc: Implement world-to-screen coordinate transformation matrix",
+    "type": "task",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Multiply world coordinates by zoom and offset to yield screen coordinates.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL accurately project document space to viewport space."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN zoom or pan changes",
+          "shall": "THE SYSTEM SHALL update the projection transform."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF zoom is exactly zero",
+          "shall_not": "THE SYSTEM SHALL NOT apply the transform",
+          "because": "it yields unrecoverable coordinates"
+        },
+        {
+          "condition": "IF zoom is negative",
+          "shall_not": "THE SYSTEM SHALL NOT apply the transform",
+          "because": "it flips the axis inappropriately"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Zoom is strictly positive",
+        "Coordinates are finite"
+      ],
+      "postconditions": [
+        "Returns valid transformed coordinates"
+      ],
+      "invariants": [
+        "Transform maintains affine properties (parallel lines remain parallel)"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Transforms 0,0 with no pan/zoom correctly",
+        "Transforms coordinates accurately with 2x zoom and offset"
+      ],
+      "error": [
+        "Rejects NaN zoom factor",
+        "Rejects infinite pan coordinates"
+      ],
+      "edge": [
+        "Handles extremely large float values without overflow panics"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/geometry/transform.rs"
+      ],
+      "patterns": [
+        "Affine 2D matrix multiplication"
+      ],
+      "questions": [
+        "What is the center of scaling?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Validate inputs are finite and >0 for zoom"
+      ],
+      "phase_1": [
+        "Apply zoom scaling factor"
+      ],
+      "phase_2": [
+        "Apply translation offset"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/geometry/transform_tests.rs"
+      ],
+      "similar": [
+        "Selection resizing scaling"
+      ],
+      "external_references": [
+        "Clarification: Zoom origin is always 0,0 before translation"
+      ]
+    }
+  },
+  {
+    "id": "task-010",
+    "title": "calc: Implement spatial index chunking for viewport visibility",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Filter a list of nodes to only those intersecting the viewport bounds.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL exclude off-screen nodes from rendering pipelines."
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN viewport bounds change",
+          "shall": "THE SYSTEM SHALL compute the visible subset of nodes."
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF viewport bounds are invalid",
+          "shall_not": "THE SYSTEM SHALL NOT panic",
+          "because": "it must return empty set or all gracefully"
+        },
+        {
+          "condition": "IF node is fully outside bounds",
+          "shall_not": "THE SYSTEM SHALL NOT include it in the visible list",
+          "because": "it wastes render cycles"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Viewport bounds are defined"
+      ],
+      "postconditions": [
+        "Returns a subset of Node IDs"
+      ],
+      "invariants": [
+        "Any node partially or fully inside the viewport is included"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Returns only visible nodes when partially zoomed",
+        "Returns empty list if viewport covers empty space"
+      ],
+      "error": [
+        "Handles inverted viewport bounds gracefully (min > max)",
+        "Handles NaN bounds gracefully"
+      ],
+      "edge": [
+        "Handles nodes that perfectly overlap the viewport border"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/calc/visibility.rs"
+      ],
+      "patterns": [
+        "QuadTree or simple AABB iteration filtering"
+      ],
+      "questions": [
+        "Do we need a true spatial index or just linear scan for 3000 nodes?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Extract viewport AABB bounds"
+      ],
+      "phase_1": [
+        "Iterate node bounding boxes and check intersection"
+      ],
+      "phase_2": [
+        "Return list of intersecting node IDs"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "diagram_tool/src/calc/visibility_tests.rs"
+      ],
+      "similar": [
+        "Hit testing node bounds"
+      ],
+      "external_references": [
+        "Clarification: Linear scan is fine for MVP 3000 nodes, keep it simple"
+      ]
+    }
+  }
+]

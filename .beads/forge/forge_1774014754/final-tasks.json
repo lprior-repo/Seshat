@@ -1,0 +1,1081 @@
+[
+  {
+    "id": "task-001",
+    "title": "domain: Add current_offset to DraggingSelection interaction mode",
+    "type": "feature",
+    "priority": 1,
+    "effort": "15min",
+    "description": "Expand InteractionMode enum to include current_offset tuple for canvas coordinates",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL store canvas movement offset during drags"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a drag begins",
+          "shall": "THE SYSTEM SHALL initialize offset to origin"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF mode is not dragging",
+          "shall_not": "THE SYSTEM SHALL NOT store offsets",
+          "because": "Offsets are transient"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "InteractionMode enum is defined"
+      ],
+      "postconditions": [
+        "DraggingSelection variant contains offset tuple"
+      ],
+      "invariants": [
+        "Offset tuple type does not allocate memory"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Constructing DraggingSelection succeeds",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Accessing offset on non-DraggingSelection variant fails",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Constructing with negative coordinates succeeds"
+      ]
+    },
+    "research": {
+      "files": [
+        "interaction.rs"
+      ],
+      "patterns": [
+        "Existing enum variants"
+      ],
+      "questions": [
+        "Are there serialization constraints?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Locate enum"
+      ],
+      "phase_1": [
+        "Update variant"
+      ],
+      "phase_2": [
+        "Fix compiler errors"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "domain.rs"
+      ],
+      "similar": [
+        "Other modes"
+      ],
+      "external_references": [
+        "Resolved: Coordinates represent zoom-adjusted delta"
+      ]
+    }
+  },
+  {
+    "id": "task-002",
+    "title": "calc: Partition movable nodes for ghost layer",
+    "type": "task",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Create pure function separating nodes into static and ghost layer vectors using selection state",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL isolate movable selected nodes"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN partitioning nodes",
+          "shall": "THE SYSTEM SHALL place unlocked selected nodes in the ghost partition"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF a node is locked",
+          "shall_not": "THE SYSTEM SHALL NOT place it in the ghost partition",
+          "because": "Locked nodes cannot be moved"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node map is accessible"
+      ],
+      "postconditions": [
+        "Returns tuple of static and ghost node IDs"
+      ],
+      "invariants": [
+        "No nodes are lost or duplicated during partitioning"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Unlocked selected node goes to ghost partition",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Invalid node ID fails gracefully",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Locked selected node goes to static partition"
+      ]
+    },
+    "research": {
+      "files": [
+        "node_layer.rs"
+      ],
+      "patterns": [
+        "Iterator partitioning"
+      ],
+      "questions": [
+        "How is selection state currently tracked?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Define function signature"
+      ],
+      "phase_1": [
+        "Implement partitioning iterator"
+      ],
+      "phase_2": [
+        "Return partition tuple"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "node.rs"
+      ],
+      "similar": [
+        "Existing filter maps"
+      ],
+      "external_references": [
+        "Resolved: Locked nodes stay in static layer regardless of selection"
+      ]
+    }
+  },
+  {
+    "id": "task-003",
+    "title": "calc: Calculate grid-snapped drag offset",
+    "type": "task",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Create pure function computing the canvas-coordinate translation delta from origin anchor",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL calculate snapped coordinate deltas"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN computing offset",
+          "shall": "THE SYSTEM SHALL align the delta to the nearest grid step"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF grid snap is disabled",
+          "shall_not": "THE SYSTEM SHALL NOT snap coordinates",
+          "because": "Free movement was requested"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Origin coordinate is valid"
+      ],
+      "postconditions": [
+        "Returns computed f64 tuple delta"
+      ],
+      "invariants": [
+        "Delta math does not mutate domain state"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Computes correct snapped offset for positive drag",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "NaN inputs result in zero offset",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Negative drag computes correctly"
+      ]
+    },
+    "research": {
+      "files": [
+        "pointer_drag.rs"
+      ],
+      "patterns": [
+        "Existing snap math"
+      ],
+      "questions": [
+        "Where is grid size defined?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Create pure math function"
+      ],
+      "phase_1": [
+        "Implement snap rounding"
+      ],
+      "phase_2": [
+        "Return tuple"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "geometry.rs"
+      ],
+      "similar": [
+        "Grid snap utilities"
+      ],
+      "external_references": [
+        "Resolved: Delta represents distance from original mouse down"
+      ]
+    }
+  },
+  {
+    "id": "task-004",
+    "title": "action: Update interaction mode signal with offset",
+    "type": "feature",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Mutate the InteractionMode signal state during pointer drag events using the calculated offset",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL update dragging offset reactively"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a drag pointer moves",
+          "shall": "THE SYSTEM SHALL update the InteractionMode signal"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF not actively dragging",
+          "shall_not": "THE SYSTEM SHALL NOT mutate the signal",
+          "because": "It causes unnecessary renders"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Signal is initialized"
+      ],
+      "postconditions": [
+        "Signal contains latest offset"
+      ],
+      "invariants": [
+        "Document CRDT is not mutated"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Signal value reflects drag event",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Missing signal logs error",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Zero delta updates signal without issue"
+      ]
+    },
+    "research": {
+      "files": [
+        "pointer_drag.rs"
+      ],
+      "patterns": [
+        "Signal mutation"
+      ],
+      "questions": [
+        "How does Dioxus schedule this signal update?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Locate pointer drag handler"
+      ],
+      "phase_1": [
+        "Call offset calculator"
+      ],
+      "phase_2": [
+        "Mutate signal"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "interaction.rs"
+      ],
+      "similar": [
+        "Selection rectangle signal updates"
+      ],
+      "external_references": [
+        "Resolved: Signal mutation happens per frame"
+      ]
+    }
+  },
+  {
+    "id": "task-005",
+    "title": "ui: Render ghost layer div",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Mount an empty div applying translate3d hardware acceleration for the separated dragging nodes",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL render hoisted dragging nodes"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN drag offset is non-zero",
+          "shall": "THE SYSTEM SHALL apply translate3d to the ghost layer"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF drag offset is zero",
+          "shall_not": "THE SYSTEM SHALL NOT render the ghost layer container",
+          "because": "Nodes belong in the static layer"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Ghost node partition exists"
+      ],
+      "postconditions": [
+        "DOM contains div with ghost-layer class"
+      ],
+      "invariants": [
+        "Inner nodes use original absolute positions"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Div renders with translate3d string",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Invalid offset string handles gracefully",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Empty ghost partition renders no div"
+      ]
+    },
+    "research": {
+      "files": [
+        "node_layer.rs"
+      ],
+      "patterns": [
+        "Dioxus inline styles"
+      ],
+      "questions": [
+        "Does translate3d cause blurry text on this platform?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Read signal for offset"
+      ],
+      "phase_1": [
+        "Format translate string"
+      ],
+      "phase_2": [
+        "Render div wrapper"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "node.rs"
+      ],
+      "similar": [
+        "Selection box overlay"
+      ],
+      "external_references": [
+        "Resolved: translate3d uses GPU acceleration"
+      ]
+    }
+  },
+  {
+    "id": "task-006",
+    "title": "calc: Determine edge boundary crossing state",
+    "type": "task",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Create pure function classifying an edge as internal or boundary based on the layer membership of its nodes",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL classify edges for rendering strategy"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN evaluating an edge",
+          "shall": "THE SYSTEM SHALL return boundary if only one node is selected"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF both nodes are unselected",
+          "shall_not": "THE SYSTEM SHALL NOT classify it as boundary",
+          "because": "It remains entirely static"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node partitions are known"
+      ],
+      "postconditions": [
+        "Returns enum of Static, Boundary, or Internal"
+      ],
+      "invariants": [
+        "Edge state does not mutate domain"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Edge between selected and unselected returns Boundary",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Edge with missing node returns Error state",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Edge to self returns Internal if selected"
+      ]
+    },
+    "research": {
+      "files": [
+        "edge_layer.rs"
+      ],
+      "patterns": [
+        "Edge iteration"
+      ],
+      "questions": [
+        "Is edge direction relevant here?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Define EdgeRenderState enum"
+      ],
+      "phase_1": [
+        "Implement classification function"
+      ],
+      "phase_2": [
+        "Write unit tests"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "edge.rs"
+      ],
+      "similar": [
+        "Edge connectivity checks"
+      ],
+      "external_references": [
+        "Resolved: Internal means both nodes are in the ghost layer"
+      ]
+    }
+  },
+  {
+    "id": "task-007",
+    "title": "ui: Render straight line preview for boundary edges",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Draw a straight svg line connecting a static source pin to a translated ghost target pin",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL render elastic lines for boundary edges"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN rendering a boundary edge",
+          "shall": "THE SYSTEM SHALL draw a direct line between pins"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF edge is internal",
+          "shall_not": "THE SYSTEM SHALL NOT draw a straight line",
+          "because": "Internal edges translate exactly and keep curves"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Edge is classified as Boundary"
+      ],
+      "postconditions": [
+        "SVG line element is rendered"
+      ],
+      "invariants": [
+        "Path string computation does not drop frames"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Straight line SVG string is generated correctly",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Missing pin data skips render",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Zero length line does not panic"
+      ]
+    },
+    "research": {
+      "files": [
+        "edge_layer.rs"
+      ],
+      "patterns": [
+        "SVG path rendering"
+      ],
+      "questions": [
+        "Do straight lines need arrowheads?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Branch render logic on edge state"
+      ],
+      "phase_1": [
+        "Calculate moving pin absolute coordinate"
+      ],
+      "phase_2": [
+        "Render SVG line element"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "geometry.rs"
+      ],
+      "similar": [
+        "Temporary edge drawing mode"
+      ],
+      "external_references": [
+        "Resolved: Straight lines save bezier calculation CPU cycles"
+      ]
+    }
+  },
+  {
+    "id": "task-008",
+    "title": "calc: Resolve subgraph recursive selection",
+    "type": "task",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Create pure function extending the selection set to include all nested descendants of selected parent nodes",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL recursively select subgraph children"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN identifying dragged nodes",
+          "shall": "THE SYSTEM SHALL append all children to the ghost partition"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF a child is locked",
+          "shall_not": "THE SYSTEM SHALL NOT prevent the parent from moving",
+          "because": "Only the child is immobilized"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node hierarchy is accessible"
+      ],
+      "postconditions": [
+        "Returns flat list of all affected node IDs"
+      ],
+      "invariants": [
+        "Graph traversal completes deterministically"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Child nodes are correctly identified",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Missing parent fails gracefully",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Deeply nested nodes resolve fully"
+      ]
+    },
+    "research": {
+      "files": [
+        "selection.rs"
+      ],
+      "patterns": [
+        "Graph traversal"
+      ],
+      "questions": [
+        "How deep can subgraphs nest?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Create recursive walker"
+      ],
+      "phase_1": [
+        "Flatten results"
+      ],
+      "phase_2": [
+        "Deduplicate node IDs"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "graph.rs"
+      ],
+      "similar": [
+        "Deletion cascade logic"
+      ],
+      "external_references": [
+        "Resolved: Descendants must move synchronously with parents"
+      ]
+    }
+  },
+  {
+    "id": "task-009",
+    "title": "action: Apply final offset to Document map",
+    "type": "feature",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Mutate the Document HashMap applying the final translation offset to all selected nodes upon pointer release",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL persist node movements on drop"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN pointer release occurs",
+          "shall": "THE SYSTEM SHALL apply the final offset to the CRDT map"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF offset is exactly zero",
+          "shall_not": "THE SYSTEM SHALL NOT mutate the document",
+          "because": "It generates empty revisions"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Drag interaction is completing"
+      ],
+      "postconditions": [
+        "Node coordinates are updated in map"
+      ],
+      "invariants": [
+        "Unselected nodes remain perfectly unchanged"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Nodes acquire new coordinates via mutation",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Applying to invalid node ID aborts",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Massive batch update completes under 10ms"
+      ]
+    },
+    "research": {
+      "files": [
+        "interaction_reducer.rs"
+      ],
+      "patterns": [
+        "CRDT map mutation"
+      ],
+      "questions": [
+        "Does this trigger a global re-render?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Extract offset from signal"
+      ],
+      "phase_1": [
+        "Iterate resolved ghost nodes"
+      ],
+      "phase_2": [
+        "Apply mutation to im::HashMap"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "document.rs"
+      ],
+      "similar": [
+        "Batch deletion"
+      ],
+      "external_references": [
+        "Resolved: This is the single source of truth update"
+      ]
+    }
+  },
+  {
+    "id": "task-010",
+    "title": "action: Dispatch NodeMove domain events",
+    "type": "feature",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Push DomainOp NodeMove events into the transaction log for each translated node",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL log all coordinate mutations"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN nodes are finalized in map",
+          "shall": "THE SYSTEM SHALL push events to the log"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF document mutation fails",
+          "shall_not": "THE SYSTEM SHALL NOT push events",
+          "because": "Log would become desynced"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Document mutation succeeded"
+      ],
+      "postconditions": [
+        "Log contains NodeMove ops"
+      ],
+      "invariants": [
+        "Log length strictly increases"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Event pushed matches exact coordinate changes",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Missing logger handles gracefully",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Multiple events batch into single undo step"
+      ]
+    },
+    "research": {
+      "files": [
+        "interaction_reducer.rs"
+      ],
+      "patterns": [
+        "Event dispatch"
+      ],
+      "questions": [
+        "How are ops grouped for undo?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Construct NodeMove ops"
+      ],
+      "phase_1": [
+        "Push to log"
+      ],
+      "phase_2": [
+        "Verify undo group ID"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "history.rs"
+      ],
+      "similar": [
+        "Node creation events"
+      ],
+      "external_references": [
+        "Resolved: Events enable undo/redo capability"
+      ]
+    }
+  },
+  {
+    "id": "task-011",
+    "title": "action: Cancel drag on escape key",
+    "type": "feature",
+    "priority": 1,
+    "effort": "30min",
+    "description": "Reset InteractionMode to Select without mutating Document",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL allow aborting active drags"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN escape is pressed during drag",
+          "shall": "THE SYSTEM SHALL instantly revert to Selection mode"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF escape is pressed",
+          "shall_not": "THE SYSTEM SHALL NOT mutate the document",
+          "because": "The drag was explicitly aborted"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "InteractionMode is DraggingSelection"
+      ],
+      "postconditions": [
+        "InteractionMode is Select"
+      ],
+      "invariants": [
+        "Document revision remains completely untouched"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Escape sets mode to select",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Escape without active drag does nothing",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Repeated escapes do not error"
+      ]
+    },
+    "research": {
+      "files": [
+        "keyboard.rs"
+      ],
+      "patterns": [
+        "Key event matching"
+      ],
+      "questions": [
+        "Does this prevent default browser behavior?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Catch escape key event"
+      ],
+      "phase_1": [
+        "Check current mode"
+      ],
+      "phase_2": [
+        "Reset signal state"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "interaction.rs"
+      ],
+      "similar": [
+        "Aborting text editing"
+      ],
+      "external_references": [
+        "Resolved: Escape key acts as abort mechanism"
+      ]
+    }
+  },
+  {
+    "id": "task-012",
+    "title": "test: Assert motion release applies offset correctly",
+    "type": "task",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Update basic_tests.rs asserting finalize_motion_release mutates the Document map with the offset tuple",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL verify domain mutations via proptests"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN tests execute",
+          "shall": "THE SYSTEM SHALL inject random tuples and verify map state"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF offset is zero",
+          "shall_not": "THE SYSTEM SHALL NOT increment document revision in tests",
+          "because": "Zero offsets are no-ops"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Reducer exposes testable pure functions"
+      ],
+      "postconditions": [
+        "Test asserts true for all injected offsets"
+      ],
+      "invariants": [
+        "Tests do not use real DOM"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Standard offset test passes",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Test fails if offset is applied incorrectly",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Test passes with max f64 values"
+      ]
+    },
+    "research": {
+      "files": [
+        "basic_tests.rs"
+      ],
+      "patterns": [
+        "Proptest macros"
+      ],
+      "questions": [
+        "How is test state initialized?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Write proptest generator"
+      ],
+      "phase_1": [
+        "Call finalize_motion_release"
+      ],
+      "phase_2": [
+        "Assert map values"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "interaction_reducer.rs"
+      ],
+      "similar": [
+        "Existing movement tests"
+      ],
+      "external_references": [
+        "Resolved: Proptests ensure edge case coordinate safety"
+      ]
+    }
+  },
+  {
+    "id": "task-013",
+    "title": "test: Assert ghost layer translates correctly in e2e",
+    "type": "task",
+    "priority": 1,
+    "effort": "1hr",
+    "description": "Create playwright test verifying Z-index hoisting via ghost-layer div class",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL verify visual layer hoisting"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN mouse is dragged",
+          "shall": "THE SYSTEM SHALL verify the ghost-layer DOM presence"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF mouseup fires",
+          "shall_not": "THE SYSTEM SHALL NOT leave the ghost-layer in DOM",
+          "because": "It must be destroyed on commit"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "E2E environment is running"
+      ],
+      "postconditions": [
+        "Playwright assertions pass"
+      ],
+      "invariants": [
+        "Does not interfere with other tests"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Ghost layer class appears during drag",
+        "Secondary test assertion for happy path passes"
+      ],
+      "error": [
+        "Test fails if class is absent",
+        "Secondary error verification passes correctly"
+      ],
+      "edge": [
+        "Test passes for very small drag distances"
+      ]
+    },
+    "research": {
+      "files": [
+        "movement.spec.ts"
+      ],
+      "patterns": [
+        "Playwright locator assertions"
+      ],
+      "questions": [
+        "How do we trigger precise mouse movements?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Create playwright spec"
+      ],
+      "phase_1": [
+        "Write drag simulation"
+      ],
+      "phase_2": [
+        "Assert DOM state before and after mouseup"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "playwright.config.ts"
+      ],
+      "similar": [
+        "Selection box E2E test"
+      ],
+      "external_references": [
+        "Resolved: Validates hardware acceleration illusion matches spec"
+      ]
+    }
+  }
+]

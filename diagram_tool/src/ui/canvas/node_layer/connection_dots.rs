@@ -15,6 +15,7 @@ pub struct ConnectionDotsProps {
     pub height: f64,
     pub is_selected: bool,
     pub is_hovered: bool,
+    pub is_editing: bool,
     pub tool_signal: Signal<ToolMode>,
     pub interaction_mode: Signal<InteractionMode>,
     pub canvas_origin: ReadSignal<(f64, f64)>,
@@ -23,8 +24,8 @@ pub struct ConnectionDotsProps {
 
 #[component]
 pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
-    let show_connection_dots =
-        props.is_selected || props.is_hovered || *props.tool_signal.read() == ToolMode::Edge;
+    let show_connection_dots = !props.is_editing
+        && (props.is_selected || props.is_hovered || *props.tool_signal.read() == ToolMode::Edge);
 
     if !show_connection_dots {
         return rsx! {};

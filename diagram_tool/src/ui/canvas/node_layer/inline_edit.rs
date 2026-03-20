@@ -31,6 +31,7 @@ pub fn InlineEdit(props: InlineEditProps) -> Element {
             class: "{props.class}",
             value: "{edit_value}",
             style: "{style}",
+            autofocus: true,
             onmousedown: move |evt| evt.stop_propagation(),
             oninput: move |evt| edit_value.set(evt.value()),
             onblur: move |_| {

@@ -50,13 +50,18 @@ pub fn dispatch_node_resize(
 }
 
 pub fn mutate_doc_with_history<F, E>(
-    _doc_signal: &mut Signal<DiagramDocument>,
-    _history_signal: &mut Signal<History>,
-    _f: F,
+    doc_signal: &mut Signal<DiagramDocument>,
+    history_signal: &mut Signal<History>,
+    f: F,
 ) -> Result<(), E>
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, E>,
 {
+    let current = doc_signal.read().clone();
+    let new_doc = f(&current)?;
+    let new_history = history_signal.read().push(current);
+    *history_signal.write() = new_history;
+    *doc_signal.write() = new_doc;
     Ok(())
 }
 

@@ -30,12 +30,13 @@ pub fn handle_double_click(state: CanvasState, evt: Event<dioxus::prelude::Mouse
         doc.editor_state.zoom.0,
     );
 
+    // Extend hit area 20px below the node body to cover the label rendered at bottom:-18px
     let hit_node = ordered_node_cache.read().iter().rev().find_map(|id| {
         doc.document.nodes.get(id).and_then(|node| {
             (pos.0 >= node.x.0
                 && pos.0 <= node.x.0 + node.width.0
                 && pos.1 >= node.y.0
-                && pos.1 <= node.y.0 + node.height.0)
+                && pos.1 <= node.y.0 + node.height.0 + 20.0)
                 .then(|| (id.clone(), node.label.clone()))
         })
     });

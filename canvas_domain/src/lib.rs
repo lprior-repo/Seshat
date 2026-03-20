@@ -1,4 +1,5 @@
 #![forbid(unsafe_code)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
 
 pub mod interaction_reducer;
 pub mod math;

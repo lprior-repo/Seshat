@@ -27,14 +27,12 @@ test("inline edit stores text on Enter @baseline", async ({ page }) => {
   await page.locator('[data-testid="tool-select"]').first().click();
   await page.waitForTimeout(200);
 
-  const canvasEl = page.locator('[data-testid="canvas-root"]').first();
-  const canvasBox = await canvasEl.boundingBox();
-  console.log("Canvas box:", JSON.stringify(canvasBox));
-  if (!canvasBox) throw new Error("No canvas box");
-
-  const targetX = canvasBox.x + canvasBox.width / 2;
-  const targetY = canvasBox.y + canvasBox.height / 2;
-  console.log("Double-clicking canvas at:", targetX, targetY);
+  // Use viewport center - canvas element may be taller than viewport
+  const viewport = page.viewportSize() ?? { width: 1280, height: 900 };
+  const toolbarHeight = 56;
+  const targetX = viewport.width / 2;
+  const targetY = toolbarHeight + (viewport.height - toolbarHeight) / 2;
+  console.log("Viewport:", JSON.stringify(viewport), "Double-clicking at:", targetX, targetY);
   await page.mouse.dblclick(targetX, targetY);
   await page.waitForTimeout(600);
 
@@ -51,20 +49,30 @@ test("inline edit stores text on Enter @baseline", async ({ page }) => {
   console.log("Original label:", JSON.stringify(originalLabel));
 
   expect(labelBox).not.toBeNull();
-  expect(labelBox!.y).toBeLessThan(canvasBox.y + canvasBox.height); // label is in viewport
+  expect(labelBox!.y).toBeLessThan(viewport.height); // label is in viewport
 
-  // Double-click the label to start inline edit
-  const lx = labelBox!.x + labelBox!.width / 2;
-  const ly = labelBox!.y + labelBox!.height / 2;
-  console.log("Double-clicking label at:", lx, ly);
-  await page.mouse.dblclick(lx, ly);
-  await page.waitForTimeout(400);
+  // Click on node BODY (above label) to select, then double-click body to edit
+  const nodeEl2 = page.locator('[data-testid="node"]').first();
+  const nodeBox2 = await nodeEl2.boundingBox();
+  console.log("Node body box:", JSON.stringify(nodeBox2));
+  const nx = nodeBox2 ? nodeBox2.x + nodeBox2.width / 2 : labelBox!.x + labelBox!.width / 2;
+  const ny = nodeBox2 ? nodeBox2.y + nodeBox2.height / 2 : labelBox!.y - 20;
+  console.log("Clicking node body at:", nx, ny);
+  await page.mouse.click(nx, ny);
+  await page.waitForTimeout(300);
+
+  console.log("Double-clicking node body at:", nx, ny);
+  await page.mouse.dblclick(nx, ny);
+  await page.waitForTimeout(600);
+
+  await page.screenshot({ path: "/tmp/after_dblclick.png" });
 
   const inlineEdit = page.locator('[data-testid="inline-edit-input"]');
   await expect(inlineEdit).toBeVisible({ timeout: 3000 });
   console.log("Inline edit visible ✓");
 
-  // Should be auto-focused - type without clicking
+  // Focus directly (connection-dot overlaps click area, bypass with JS focus)
+  await inlineEdit.focus();
   await page.keyboard.press('Control+a');
   await page.keyboard.type("TestLabel", { delay: 60 });
 

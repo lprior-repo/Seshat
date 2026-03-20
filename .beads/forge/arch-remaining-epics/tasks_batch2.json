@@ -1,0 +1,236 @@
+[
+  {
+    "id": "task-008",
+    "title": "perf: establish 3000-node performance baseline and test harness",
+    "type": "epic",
+    "priority": 1,
+    "effort": "2hr",
+    "description": "Establish a measurable performance baseline for the application using 3000 nodes, profiling rendering, pan/zoom, and selection operations.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL collect and store performance metrics for 3000-node documents"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a 3000-node document is loaded",
+          "shall": "THE SYSTEM SHALL log the load latency and initialization time"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF the benchmark test fails to complete",
+          "shall_not": "THE SYSTEM SHALL NOT crash silently",
+          "because": "we need partial telemetry to debug performance bottlenecks"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Test document with 3000 nodes is generated"
+      ],
+      "postconditions": [
+        "Baseline metrics are captured"
+      ],
+      "invariants": [
+        "Metric collection does not alter the document state"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "PERF-001 runs successfully on 3000 nodes and outputs rendering FPS",
+        "PERF-002 captures zoom/pan frame rates correctly under sustained interaction"
+      ],
+      "error": [
+        "Metrics fallback if frame tracking API fails to initialize",
+        "Memory exhaustion handles gracefully without corrupting document state"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/performance_tests.rs"
+      ],
+      "patterns": [
+        "dioxus component rendering lifecycle",
+        "requestAnimationFrame timing"
+      ],
+      "questions": [
+        "How do we measure accurate FPS in headless Dioxus tests?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Research headless performance measurement in Dioxus"
+      ],
+      "phase_1": [
+        "Create script to generate 3000-node diagram"
+      ],
+      "phase_2": [
+        "Implement PERF-001 and PERF-002 measurement harness"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "architecture-spec.md"
+      ],
+      "similar": [
+        "Excalidraw benchmark scripts"
+      ]
+    }
+  },
+  {
+    "id": "task-009",
+    "title": "perf: implement viewport virtualization and LOD for large documents",
+    "type": "epic",
+    "priority": 1,
+    "effort": "4hr",
+    "description": "Implement viewport-based virtualization and Level of Detail (LOD) simplification to guarantee 120 FPS on 3000-node documents.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL maintain 120 FPS during all interactions with 3000 nodes"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a node moves outside the viewport bounds",
+          "shall": "THE SYSTEM SHALL omit the node from the rendering tree"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF a node is partially inside the viewport",
+          "shall_not": "THE SYSTEM SHALL NOT omit the node from the rendering tree",
+          "because": "clipping must be handled visually, not skipped entirely"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Viewport bounds are known and updated on pan/zoom"
+      ],
+      "postconditions": [
+        "Only visible nodes and edges are rendered"
+      ],
+      "invariants": [
+        "Virtualization does not affect selection state"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Nodes fully outside viewport are not rendered in DOM",
+        "Edges connecting to off-screen nodes are still rendered if they cross viewport bounds"
+      ],
+      "error": [
+        "Degraded mode when spatial index update fails falls back to naive rendering",
+        "Handling extreme zoom levels gracefully without float precision crashes"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/canvas.rs",
+        "diagram_tool/src/viewport.rs"
+      ],
+      "patterns": [
+        "Spatial indexing (R-Tree or QuadTree)"
+      ],
+      "questions": [
+        "What is the most efficient spatial index for Dioxus web/desktop?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Evaluate QuadTree implementation"
+      ],
+      "phase_1": [
+        "Integrate QuadTree into node storage"
+      ],
+      "phase_2": [
+        "Filter render list based on viewport intersection"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "architecture-spec.md"
+      ],
+      "similar": [
+        "virtual scrolling libraries"
+      ]
+    }
+  },
+  {
+    "id": "task-010",
+    "title": "subgraphs: implement SUB-* reliability and reparenting logic",
+    "type": "epic",
+    "priority": 1,
+    "effort": "4hr",
+    "description": "Fix and complete the subgraph grouping, parent-child relationships, and container boundary logic based on SUB-* test cases.",
+    "ears": {
+      "ubiquitous": [
+        "THE SYSTEM SHALL prevent circular parent-child relationships"
+      ],
+      "event_driven": [
+        {
+          "trigger": "WHEN a child node is dragged outside its parent container bounds",
+          "shall": "THE SYSTEM SHALL auto-expand the parent container to enclose the child"
+        }
+      ],
+      "unwanted": [
+        {
+          "condition": "IF a parent subgraph is deleted",
+          "shall_not": "THE SYSTEM SHALL NOT implicitly delete its children",
+          "because": "children must be reparented to the root layer to avoid unintended data loss"
+        }
+      ]
+    },
+    "contracts": {
+      "preconditions": [
+        "Node target is of kind Subgraph"
+      ],
+      "postconditions": [
+        "Child node parent_id points to the target Subgraph"
+      ],
+      "invariants": [
+        "No node can be its own ancestor"
+      ]
+    },
+    "tests": {
+      "happy": [
+        "Moving a child updates its relative position, keeping it in the parent",
+        "Deleting a parent moves children to the root layer"
+      ],
+      "error": [
+        "Attempting to set a node's parent to itself returns CircularParent error",
+        "Attempting to reparent to a non-subgraph node returns InvalidParent error"
+      ]
+    },
+    "research": {
+      "files": [
+        "diagram_tool/src/models/subgraph.rs",
+        "diagram_tool/src/operations/reparent.rs"
+      ],
+      "patterns": [
+        "Cycle detection in directed graphs"
+      ],
+      "questions": [
+        "How do we handle multi-select dragging of parent and child simultaneously?"
+      ]
+    },
+    "implementation": {
+      "phase_0": [
+        "Implement cycle detection in schema validation"
+      ],
+      "phase_1": [
+        "Implement reparenting logic to adjust absolute to relative coords"
+      ],
+      "phase_2": [
+        "Write and pass SUB-001 to SUB-034 test suite"
+      ]
+    },
+    "context": {
+      "related_files": [
+        "architecture-spec.md"
+      ],
+      "similar": [
+        "Figma groups and frames"
+      ]
+    }
+  }
+]
