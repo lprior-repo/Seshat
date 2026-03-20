@@ -8,8 +8,6 @@ use crate::ui::editor::ToolMode;
 use canvas_domain::interaction_reducer::{finalize_motion_release, InteractionMode};
 use canvas_domain::selection_geometry::selected_node_ids;
 use diagram_models::document::DiagramDocument;
-use diagram_models::document::EdgeId;
-use diagram_models::document::NodeId;
 use dioxus::prelude::*;
 
 #[allow(clippy::too_many_arguments)]
@@ -24,8 +22,7 @@ pub fn use_keyboard_handler(
     mut meta_pressed: Signal<bool>,
     mut nudge_batch_active: Signal<bool>,
     mut space_pan_active: Signal<bool>,
-    mut editing_node: Signal<Option<NodeId>>,
-    mut editing_edge: Signal<Option<EdgeId>>,
+    mut editor_state: Signal<crate::ui::canvas::state::EditorState>,
     mut edit_value: Signal<String>,
     viewport_size: Signal<(f64, f64)>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
@@ -149,9 +146,13 @@ pub fn use_keyboard_handler(
                             }
                         }
                         "Escape" => {
-                            if editing_node.read().is_some() || editing_edge.read().is_some() {
-                                editing_node.set(None);
-                                editing_edge.set(None);
+                            let is_editing = matches!(
+                                *editor_state.read(),
+                                crate::ui::canvas::state::EditorState::EditingNode(_)
+                                    | crate::ui::canvas::state::EditorState::EditingEdge(_)
+                            );
+                            if is_editing {
+                                editor_state.set(crate::ui::canvas::state::EditorState::Idle);
                                 edit_value.set(String::new());
                                 apply_clear_selection(doc_signal);
                             } else {

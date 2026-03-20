@@ -21,8 +21,7 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
     let shift_pressed = state.shift_pressed;
     let ctrl_pressed = state.ctrl_pressed;
     let meta_pressed = state.meta_pressed;
-    let mut editing_node = state.editing_node;
-    let mut editing_edge = state.editing_edge;
+    let mut editor_state = state.editor_state;
     let mut edit_value = state.edit_value;
     let mut space_pan_active = state.space_pan_active;
     let multi_touch_active = state.multi_touch_active;
@@ -32,12 +31,17 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
     if *multi_touch_active.read() {
         return;
     }
-    if editing_node.read().is_some() || editing_edge.read().is_some() {
+    let (node_target, edge_target) = match *editor_state.read() {
+        crate::ui::canvas::state::EditorState::EditingNode(ref id) => (Some(id.clone()), None),
+        crate::ui::canvas::state::EditorState::EditingEdge(ref id) => (None, Some(id.clone())),
+        _ => (None, None),
+    };
+    if node_target.is_some() || edge_target.is_some() {
         commit_inline_edit(
             doc_signal,
             history_signal,
-            editing_node,
-            editing_edge,
+            node_target,
+            edge_target,
             edit_value,
             db_tx,
         )
@@ -161,8 +165,7 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
                 let _ = doc.editor_state.selected_items.insert(id.to_string());
                 doc.revision = doc.revision.increment();
             });
-            editing_edge.set(None);
-            editing_node.set(None);
+            editor_state.set(crate::ui::canvas::state::EditorState::Idle);
             edit_value.set(String::new());
             tool_signal.set(ToolMode::Select);
         }

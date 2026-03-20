@@ -7,13 +7,13 @@ pub mod node_element;
 use std::collections::HashSet;
 
 use canvas_domain::interaction_reducer::InteractionMode;
-use diagram_models::document::{DiagramDocument, EdgeId, Node, NodeId};
+use diagram_models::document::{DiagramDocument, Node, NodeId};
 use dioxus::prelude::*;
 
 use crate::history::History;
 use crate::ui::editor::ToolMode;
 
-use self::node_element::{NodeElement, NodeElementProps};
+use self::node_element::{NodeElement, NodeElementProps, NodeInteractionState};
 
 #[component]
 pub fn NodeLayer(
@@ -21,10 +21,8 @@ pub fn NodeLayer(
     mut history_signal: Signal<History>,
     mut tool_signal: Signal<ToolMode>,
     mut interaction_mode: Signal<InteractionMode>,
-    mut editing_node: Signal<Option<NodeId>>,
-    mut editing_edge: Signal<Option<EdgeId>>,
+    mut editor_state: Signal<crate::ui::canvas::state::EditorState>,
     mut edit_value: Signal<String>,
-    mut hovered_node: Signal<Option<NodeId>>,
     viewport_size: Signal<(f64, f64)>,
     ordered_node_cache: Memo<Vec<NodeId>>,
     mut canvas_origin: Signal<(f64, f64)>,
@@ -50,7 +48,11 @@ pub fn NodeLayer(
     let culling_min_y = camera_y - margin_y;
     let culling_max_x = camera_x + (viewport_w / zoom) + margin_x;
     let culling_max_y = camera_y + (viewport_h / zoom) + margin_y;
-    let hovered_now = hovered_node.read().clone();
+    let editor_state_val = editor_state.read().clone();
+    let hovered_now = match editor_state_val {
+        crate::ui::canvas::state::EditorState::HoveringNode(ref id) => Some(id.clone()),
+        _ => None,
+    };
 
     let node_rows = ordered_node_cache
         .read()
@@ -77,28 +79,34 @@ pub fn NodeLayer(
             node_rows.into_iter().map(move |(id, node): (NodeId, Node)| {
                 let is_selected = selected_items.contains(id.as_str());
                 let is_hovered = hovered_now.as_ref() == Some(&id);
-                let is_editing = editing_node.read().as_ref() == Some(&id);
+                let is_editing = matches!(editor_state_val, crate::ui::canvas::state::EditorState::EditingNode(ref edit_id) if edit_id == &id);
+
+                let interaction_state = if is_editing {
+                    NodeInteractionState::Editing
+                } else if is_selected {
+                    NodeInteractionState::Selected { hovered: is_hovered }
+                } else if is_hovered {
+                    NodeInteractionState::Hovered
+                } else {
+                    NodeInteractionState::Normal
+                };
 
                 let props = NodeElementProps {
                     id: id.clone(),
                     node,
-                    is_selected,
-                    is_hovered,
-                    is_editing,
+                    interaction_state,
                     doc_signal,
                     history_signal,
                     tool_signal,
                     interaction_mode,
-                    editing_node,
-                    editing_edge,
+                    editor_state,
                     edit_value,
-                    hovered_node,
-                    canvas_origin,
-                    shift_pressed,
-                    ctrl_pressed,
-                    meta_pressed,
-                    space_pressed,
-                    multi_touch_active,
+                    canvas_origin: canvas_origin.into(),
+                    shift_pressed: shift_pressed.into(),
+                    ctrl_pressed: ctrl_pressed.into(),
+                    meta_pressed: meta_pressed.into(),
+                    space_pressed: space_pressed.into(),
+                    multi_touch_active: multi_touch_active.into(),
                     space_pan_active,
                     db_tx,
                     pending_pointer_sample,

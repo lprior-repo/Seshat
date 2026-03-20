@@ -3,12 +3,10 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use crate::history::History;
 use crate::ui::commands::{
     apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
-    apply_redo, apply_select_all, apply_undo, apply_ungroup_selection, ClipboardData,
+    apply_redo, apply_select_all, apply_undo, apply_ungroup_selection,
 };
-use diagram_models::document::DiagramDocument;
 use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::*;
 
@@ -17,9 +15,10 @@ use dioxus::prelude::*;
 /// Must be called inside a component that has `Signal<DiagramDocument>` and
 /// `Signal<History>` in context (i.e. after the context providers in `App`).
 pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
-    let doc_signal = use_context::<Signal<DiagramDocument>>();
-    let history_signal = use_context::<Signal<History>>();
-    let clipboard_signal = use_context::<Signal<Option<ClipboardData>>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let doc_signal = app_state.document;
+    let history_signal = app_state.history;
+    let clipboard_signal = app_state.clipboard;
 
     use_effect(move || {
         let mut eval = document::eval(

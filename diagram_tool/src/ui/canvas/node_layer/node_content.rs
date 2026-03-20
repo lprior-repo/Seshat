@@ -1,4 +1,4 @@
-use diagram_models::document::{DiagramDocument, EdgeId, Node, NodeId, NodeKind};
+use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind};
 use dioxus::prelude::*;
 
 use crate::history::History;
@@ -6,12 +6,13 @@ use crate::ui::canvas::document_ops::{fit_icon_side, node_image_data_url};
 use crate::ui::theme::{ACCENT, BG_BASE, TEXT_MAIN, TEXT_MUTED};
 
 use super::inline_edit::InlineEdit;
+use super::node_element::NodeInteractionState;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct NodeContentProps {
     pub node: Node,
     pub id: NodeId,
-    pub is_editing_node: bool,
+    pub interaction_state: NodeInteractionState,
     pub font_px: f64,
     pub provider_top: String,
     pub node_initials: String,
@@ -20,8 +21,7 @@ pub struct NodeContentProps {
     pub zoom: f64,
     pub doc_signal: Signal<DiagramDocument>,
     pub history_signal: Signal<History>,
-    pub editing_node: Signal<Option<NodeId>>,
-    pub editing_edge: Signal<Option<EdgeId>>,
+    pub editor_state: Signal<crate::ui::canvas::state::EditorState>,
     pub edit_value: Signal<String>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 }
@@ -29,11 +29,10 @@ pub struct NodeContentProps {
 #[component]
 pub fn NodeContent(props: NodeContentProps) -> Element {
     let node = props.node;
-    let is_editing_node = props.is_editing_node;
+    let is_editing_node = props.interaction_state.is_editing();
     let font_px = props.font_px;
 
-    let mut editing_node = props.editing_node;
-    let mut editing_edge = props.editing_edge;
+    let mut editor_state = props.editor_state;
     let mut edit_value = props.edit_value;
 
     if node.kind == NodeKind::Text {
@@ -44,8 +43,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                     style: "width: 100%; padding: 2px 4px; border-radius: 2px; border: 1px solid {ACCENT}; background: transparent; color: {TEXT_MAIN}; font-size: {font_px}px; text-align: center;".to_string(),
                     doc_signal: props.doc_signal,
                     history_signal: props.history_signal,
-                    editing_node: props.editing_node,
-                    editing_edge: props.editing_edge,
+                    editor_state: props.editor_state,
                     db_tx: props.db_tx,
                 }
             }
@@ -59,8 +57,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                         let edit_label = node.label.clone();
                         move |evt| {
                             evt.stop_propagation();
-                            editing_edge.set(None);
-                            editing_node.set(Some(id_edit_text.clone()));
+                            editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_text.clone()));
                             edit_value.set(edit_label.clone());
                         }
                     },
@@ -71,8 +68,11 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
     } else if node.kind == NodeKind::Subgraph {
         rsx! {
             div {
-                style: "position: absolute; top: 0; left: 0; right: 0; height: 32px; border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 12px; background: color-mix(in oklch, var(--node-bg-subgraph) 80%, transparent); border-radius: 9px 9px 0 0; pointer-events: none;",
+                "data-testid": "subgraph-header",
+                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] pointer-events-none",
+                style: "border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--node-bg-subgraph) 80%, transparent);",
                 span {
+                    "data-testid": "subgraph-header-text",
                     style: "font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); pointer-events: none;",
                     "{node.label}"
                 }
@@ -83,8 +83,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                     style: format!("position:absolute; top:8px; left:8px; right:8px; width: calc(100% - 16px); padding: 2px 4px; border-radius: 4px; border: 1px solid {ACCENT}; background: {BG_BASE}; color: {TEXT_MAIN}; font-size: {font_px}px;"),
                     doc_signal: props.doc_signal,
                     history_signal: props.history_signal,
-                    editing_node: props.editing_node,
-                    editing_edge: props.editing_edge,
+                    editor_state: props.editor_state,
                     db_tx: props.db_tx,
                 }
             } else {
@@ -93,13 +92,13 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                     rsx! {
                         span {
                             "data-testid": "node-label",
-                            style: "position:absolute; top:8px; left:10px; font-size:{font_px}px; color:{TEXT_MUTED};",
+                            class: "absolute top-[8px] left-[10px]",
+                            style: "font-size:{font_px}px; color:{TEXT_MUTED};",
                             ondoubleclick: {
                                 let edit_label = node.label.clone();
                                 move |evt| {
                                     evt.stop_propagation();
-                                    editing_edge.set(None);
-                                    editing_node.set(Some(id_edit_subgraph.clone()));
+                                    editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_subgraph.clone()));
                                     edit_value.set(edit_label.clone());
                                 }
                             },
@@ -116,7 +115,9 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
         let node_image = node_image_data_url(&node);
         rsx! {
             div {
-                style: "position:absolute; left:0; right:0; top:0; height:4px; border-radius:8px 8px 0 0; background:{provider_top}; opacity:0.75;"
+                "data-testid": "node-color-bar",
+                class: "absolute left-0 right-0 top-0 h-[4px] rounded-t-[8px] opacity-75",
+                style: "background:{provider_top};"
             }
 
             if props.zoom >= 0.3 {
@@ -125,6 +126,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                         || {
                             rsx! {
                                 span {
+                                    "data-testid": "node-initials",
                                     style: "font-size: {font_px * 1.1}px; color: {provider_top}; font-weight: 700; font-family: monospace;",
                                     "{props.node_initials}"
                                 }
@@ -133,6 +135,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                         |icon_src| {
                             rsx! {
                                 img {
+                                    "data-testid": "node-icon",
                                     src: "{icon_src}",
                                     width: "{icon_w}px",
                                     height: "{icon_h}px",
@@ -150,8 +153,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                     style: format!("position:absolute; left:6px; right:6px; bottom:-22px; width: calc(100% - 12px); padding: 2px 4px; border-radius: 4px; border: 1px solid {ACCENT}; background: {BG_BASE}; color: {TEXT_MAIN}; font-size: {font_px}px; text-align:center;"),
                     doc_signal: props.doc_signal,
                     history_signal: props.history_signal,
-                    editing_node: props.editing_node,
-                    editing_edge: props.editing_edge,
+                    editor_state: props.editor_state,
                     db_tx: props.db_tx,
                 }
             } else if props.zoom >= 0.3 {
@@ -160,13 +162,13 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                     rsx! {
                         span {
                             "data-testid": "node-label",
-                            style: "position:absolute; left:0; right:0; bottom:-18px; text-align:center; font-size:{font_px}px; color:{TEXT_MAIN};",
+                            class: "absolute left-0 right-0 bottom-[-18px] text-center",
+                            style: "font-size:{font_px}px; color:{TEXT_MAIN};",
                             ondoubleclick: {
                                 let edit_label = node.label.clone();
                                 move |evt| {
                                     evt.stop_propagation();
-                                    editing_edge.set(None);
-                                    editing_node.set(Some(id_edit_node.clone()));
+                                    editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_node.clone()));
                                     edit_value.set(edit_label.clone());
                                 }
                             },

@@ -13,7 +13,7 @@ use dioxus::prelude::*;
 use crate::{
     app::DraggedIconPayload,
     ui::{
-        mobile::{close_sidebar, open_sidebar, SidebarUiState},
+        mobile::{close_sidebar, open_sidebar},
         sidebar_primitives::{
             Sidebar as SidebarPanel, SidebarCollapsible, SidebarGroup, SidebarHeader, SidebarInset,
             SidebarMenu, SidebarMenuButton, SidebarMenuItem, SidebarMenuSub, SidebarMenuSubItem,
@@ -172,8 +172,9 @@ pub fn Sidebar() -> Element {
     let expanded_categories: Signal<BTreeSet<String>> =
         use_signal(|| BTreeSet::from([String::from(DEFAULT_EXPANDED_CATEGORY)]));
     let provider_limits: Signal<BTreeMap<String, usize>> = use_signal(BTreeMap::new);
-    let dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
-    let sidebar_ui = use_context::<Signal<SidebarUiState>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let dragging_icon = app_state.dragging_icon;
+    let sidebar_ui = app_state.sidebar;
 
     let trimmed_query = search.read().trim().to_ascii_lowercase();
     let query_active = !trimmed_query.is_empty();

@@ -63,7 +63,8 @@ pub fn Toolbar(
             .map_or(11.0, |v| v.0);
         rsx! {
             div {
-                style: "position:absolute; left:{screen_x}px; top:{top}px; transform: translateX(-50%); z-index:25; display:flex; align-items:center; gap:6px; padding:6px 8px; border:1px solid {BORDER}; border-radius:8px; background:{TOOLBAR_BG}f2; backdrop-filter: blur(6px);",
+                class: "absolute -translate-x-1/2 flex items-center gap-[6px] px-[8px] py-[6px] rounded-[8px] backdrop-blur-sm",
+                style: "left: {screen_x}px; top: {top}px; z-index: 25; border: 1px solid {BORDER}; background: {TOOLBAR_BG}f2;",
                 onmousedown: move |evt| evt.stop_propagation(),
 
                 button {
@@ -133,7 +134,8 @@ pub fn SelectionPill(doc_signal: Signal<DiagramDocument>) -> Element {
     if selected_count > 0 {
         rsx! {
             div {
-                style: "position:absolute; left:12px; bottom:12px; z-index:20; border:1px solid {BORDER}; border-radius:8px; background:{TOOLBAR_BG}e8; color:{TEXT_MUTED}; font-size:11px; padding:5px 9px; backdrop-filter: blur(6px); box-shadow: 0 4px 12px color-mix(in oklch, black 24%, transparent);",
+                class: "absolute left-[12px] bottom-[12px] z-[20] rounded-[8px] text-[11px] px-[9px] py-[5px] backdrop-blur-sm",
+                style: "border:1px solid {BORDER}; background:{TOOLBAR_BG}e8; color:{TEXT_MUTED}; box-shadow: 0 4px 12px color-mix(in oklch, black 24%, transparent);",
                 "{selected_count} item{plural} selected"
             }
         }

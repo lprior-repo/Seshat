@@ -1,13 +1,15 @@
+use crate::app::AppState;
 use crate::ui::theme::{BG_ELEVATED, BG_SURFACE, BORDER, TEXT_MAIN, TEXT_MUTED};
-use crate::ui::toast::{AiConflictState, ToastId, ToastIntent, ToastQueue};
+use crate::ui::toast::{ToastId, ToastIntent};
 use dioxus::prelude::*;
 use std::collections::HashSet;
 const DISMISS_REMOVE_DELAY_MS: u64 = 1_000_000;
 const CONFLICT_TOAST_DISMISS_MS: u64 = 3_000;
 #[component]
 pub fn Toaster() -> Element {
-    let mut toasts = use_context::<Signal<ToastQueue>>();
-    let mut ai_conflict_state: Signal<Option<AiConflictState>> = use_context();
+    let app_state = use_context::<AppState>();
+    let mut toasts = app_state.toasts;
+    let mut ai_conflict_state = app_state.ai_conflict;
     let items = toasts.read().items().to_vec();
     let mut pending_remove: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
     let mut pending_dismiss: Signal<HashSet<ToastId>> = use_signal(HashSet::new);
@@ -31,18 +33,16 @@ pub fn Toaster() -> Element {
             let mut toasts_signal = toasts;
             let mut pending_signal = pending_dismiss;
             let mut conflict_state_clone = ai_conflict_state;
-            let mut eval = document::eval(&format!(
-                "setTimeout(() => dioxus.send({{ kind: 'dismiss-conflict', id: {} }}), {});",
-                id.0, CONFLICT_TOAST_DISMISS_MS
-            ));
             spawn(async move {
-                if eval.recv::<serde_json::Value>().await.is_ok() {
-                    toasts_signal.with_mut(|queue| {
-                        let _ = queue.dismiss(id);
-                    });
-                    conflict_state_clone.write().take();
-                    let _ = pending_signal.write().remove(&id);
-                }
+                gloo_timers::future::sleep(std::time::Duration::from_millis(
+                    CONFLICT_TOAST_DISMISS_MS,
+                ))
+                .await;
+                toasts_signal.with_mut(|queue| {
+                    let _ = queue.dismiss(id);
+                });
+                conflict_state_clone.write().take();
+                let _ = pending_signal.write().remove(&id);
             });
         }
     });
@@ -62,17 +62,15 @@ pub fn Toaster() -> Element {
             let _ = pending_remove.write().insert(id);
             let mut toasts_signal = toasts;
             let mut pending_signal = pending_remove;
-            let mut eval = document::eval(&format!(
-                "setTimeout(() => dioxus.send({{ kind: 'remove-toast', id: {} }}), {});",
-                id.0, DISMISS_REMOVE_DELAY_MS
-            ));
             spawn(async move {
-                if eval.recv::<serde_json::Value>().await.is_ok() {
-                    toasts_signal.with_mut(|queue| {
-                        let _ = queue.remove(id);
-                    });
-                    let _ = pending_signal.write().remove(&id);
-                }
+                gloo_timers::future::sleep(std::time::Duration::from_millis(
+                    DISMISS_REMOVE_DELAY_MS,
+                ))
+                .await;
+                toasts_signal.with_mut(|queue| {
+                    let _ = queue.remove(id);
+                });
+                let _ = pending_signal.write().remove(&id);
             });
         }
     });

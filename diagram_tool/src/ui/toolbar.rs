@@ -7,7 +7,7 @@ pub mod auto_save;
 mod persistence;
 mod persistence_compat;
 
-use crate::history::History;
+use crate::app::AppState;
 use crate::mutation::error::MutationError;
 use crate::ui::commands::{
     apply_delete_selected, apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset,
@@ -15,8 +15,6 @@ use crate::ui::commands::{
 use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
 use crate::ui::theme::{ACCENT, ACCENT_SOFT, BG_SURFACE, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED};
-use crate::ui::toast::ToastQueue;
-use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -116,16 +114,17 @@ fn TextButton(
 
 #[component]
 pub fn Toolbar() -> Element {
-    let doc_signal = use_context::<Signal<DiagramDocument>>();
-    let history_signal = use_context::<Signal<History>>();
-    let mut tool_signal = use_context::<Signal<ToolMode>>();
-    let edge_style_signal = use_context::<Signal<EdgeStyle>>();
-    let arrow_type_signal = use_context::<Signal<ArrowType>>();
-    let toasts = use_context::<Signal<ToastQueue>>();
+    let app_state = use_context::<AppState>();
+    let doc_signal = app_state.document;
+    let history_signal = app_state.history;
+    let mut tool_signal = app_state.tool_mode;
+    let edge_style_signal = app_state.edge_style;
+    let arrow_type_signal = app_state.arrow_type;
+    let toasts = app_state.toasts;
 
-    let toolbar_stats = use_context::<Signal<ToolbarStats>>();
+    let toolbar_stats = app_state.toolbar_stats;
     let stats = *toolbar_stats.read();
-    let viewport_size_signal = use_context::<Signal<(f64, f64)>>();
+    let viewport_size_signal = app_state.viewport_size;
 
     let undo_disabled = !history_signal.read().can_undo();
     let redo_disabled = !history_signal.read().can_redo();

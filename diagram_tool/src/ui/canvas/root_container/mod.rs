@@ -47,9 +47,16 @@ pub fn RootContainer(state: CanvasState) -> Element {
         }
     };
 
+    let state_drop = state.clone();
     let handle_drop = move |evt: Event<dioxus::prelude::DragData>| {
-        evt.prevent_default();
-        drag_over.set(false);
+        crate::ui::canvas::root_handlers::handle_drop(
+            evt,
+            state_drop.drag_over,
+            state_drop.dragging_icon,
+            state_drop.doc_signal,
+            state_drop.history_signal,
+            state_drop.canvas_origin,
+        );
     };
 
     let state_dbclick = state.clone();
@@ -83,7 +90,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
 
             div {
                 "data-testid": "canvas-hit-layer",
-                style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
+                style: "position: absolute; inset: 0; pointer-events: none; opacity: 0;"
             }
 
             svg {
@@ -123,8 +130,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 EdgeLayer {
                     doc_signal: state.doc_signal,
                     history_signal: state.history_signal,
-                    editing_node: state.editing_node,
-                    editing_edge: state.editing_edge,
+                    editor_state: state.editor_state,
                     edit_value: state.edit_value,
                     viewport_size: state.viewport_size,
                     db_tx: state.db_tx
@@ -149,10 +155,8 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 history_signal: state.history_signal,
                 tool_signal: state.tool_signal,
                 interaction_mode: state.interaction_mode,
-                editing_node: state.editing_node,
-                editing_edge: state.editing_edge,
+                editor_state: state.editor_state,
                 edit_value: state.edit_value,
-                hovered_node: state.hovered_node,
                 viewport_size: state.viewport_size,
                 ordered_node_cache: state.ordered_node_cache,
                 canvas_origin: state.canvas_origin,

@@ -1,7 +1,6 @@
-
-use canvas_domain::interaction_reducer::{InteractionMode, ResizeHandle, start_resize_interaction};
-use canvas_domain::selection_geometry::{selected_node_ids, selection_bounds};
+use canvas_domain::interaction_reducer::{start_resize_interaction, InteractionMode, ResizeHandle};
 use canvas_domain::perf::to_screen_coords;
+use canvas_domain::selection_geometry::{selected_node_ids, selection_bounds};
 use diagram_models::document::DiagramDocument;
 
 use dioxus::{html::input_data::MouseButton, prelude::*};
@@ -11,7 +10,6 @@ use crate::ui::theme::{
     ACCENT, BG_BASE, SELECTION_BOUNDS_STROKE, SELECTION_RECT_FILL, SELECTION_RECT_STROKE,
     SUBGRAPH_PREVIEW_FILL, SUBGRAPH_PREVIEW_STROKE,
 };
-
 
 use diagram_models::document::DiagramDocument;
 
@@ -75,7 +73,8 @@ pub(crate) fn selection_handles_overlay(
         rsx! {
             div {
                 "data-testid": "selection-bounds",
-                style: "position:absolute; left:{sx - pad}px; top:{sy - pad}px; width:{box_w}px; height:{box_h}px; border:{SELECTION_BOUNDS_STROKE}; pointer-events:none; z-index:15;"
+                class: "absolute pointer-events-none",
+                style: "left: {sx - pad}px; top: {sy - pad}px; width: {box_w}px; height: {box_h}px; z-index: 15; border: {SELECTION_BOUNDS_STROKE};"
             }
             if !selected_nodes.is_empty() {
                 for (handle, hx, hy, cursor, stable_test_id) in handles {
@@ -92,7 +91,8 @@ pub(crate) fn selection_handles_overlay(
                             ResizeHandle::Sw => "sw",
                             ResizeHandle::W => "w",
                         },
-                        style: "position:absolute; left:{hx - hs/2.0}px; top:{hy - hs/2.0}px; width:{hs}px; height:{hs}px; border-radius:2px; border:1px solid {BG_BASE}; background:{ACCENT}; cursor:{cursor}; z-index:16;",
+                        class: "absolute rounded-[2px]",
+                        style: "left: {hx - hs/2.0}px; top: {hy - hs/2.0}px; width: {hs}px; height: {hs}px; z-index: 16; border: 1px solid {BG_BASE}; background: {ACCENT}; cursor: {cursor};",
                         onmousedown: move |evt| {
                             if evt.data.trigger_button() != Some(MouseButton::Primary) {
                                 return;
@@ -109,7 +109,7 @@ pub(crate) fn selection_handles_overlay(
                                 false,
                             );
                         },
-                        div { style: "position:absolute; inset:0; pointer-events:none; opacity:0;" }
+                        div { class: "absolute inset-0 pointer-events-none opacity-0" }
                     }
                 }
             }
@@ -166,7 +166,11 @@ pub(crate) fn rubber_band_overlay(
 ) -> Element {
     if let InteractionMode::RubberBand { start, current } = mode {
         let s = &doc.editor_state;
-        let ScreenCoord(rx, ry) = to_screen_coords(canvas_domain::CanvasCoord(start.0.min(current.0), start.1.min(current.1)), canvas_domain::CanvasCoord(s.camera_x.0, s.camera_y.0), s.zoom.0);
+        let ScreenCoord(rx, ry) = to_screen_coords(
+            canvas_domain::CanvasCoord(start.0.min(current.0), start.1.min(current.1)),
+            canvas_domain::CanvasCoord(s.camera_x.0, s.camera_y.0),
+            s.zoom.0,
+        );
         let rw = (start.0 - current.0).abs() * s.zoom.0;
         let rh = (start.1 - current.1).abs() * s.zoom.0;
         rsx! {
@@ -191,7 +195,11 @@ pub(crate) fn subgraph_preview_overlay(
         let min_y = start.1.min(current.1);
         let width = (start.0 - current.0).abs();
         let height = (start.1 - current.1).abs();
-        let ScreenCoord(screen_x, screen_y) = to_screen_coords(canvas_domain::CanvasCoord(min_x, min_y), canvas_domain::CanvasCoord(editor.camera_x.0, editor.camera_y.0), editor.zoom.0);
+        let ScreenCoord(screen_x, screen_y) = to_screen_coords(
+            canvas_domain::CanvasCoord(min_x, min_y),
+            canvas_domain::CanvasCoord(editor.camera_x.0, editor.camera_y.0),
+            editor.zoom.0,
+        );
         rsx! {
             rect {
                 x: "{screen_x}", y: "{screen_y}", width: "{width * editor.zoom.0}", height: "{height * editor.zoom.0}",

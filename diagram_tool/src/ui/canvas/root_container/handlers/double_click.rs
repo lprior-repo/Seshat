@@ -14,8 +14,7 @@ pub fn handle_double_click(state: CanvasState, evt: Event<dioxus::prelude::Mouse
     let mut doc_signal = state.doc_signal;
     let mut history_signal = state.history_signal;
     let tool_signal = state.tool_signal;
-    let mut editing_node = state.editing_node;
-    let mut editing_edge = state.editing_edge;
+    let mut editor_state = state.editor_state;
     let mut edit_value = state.edit_value;
     let ordered_node_cache = state.ordered_node_cache;
     let canvas_origin = state.canvas_origin;
@@ -42,8 +41,7 @@ pub fn handle_double_click(state: CanvasState, evt: Event<dioxus::prelude::Mouse
     });
 
     if let Some((nid, label)) = hit_node {
-        editing_edge.set(None);
-        editing_node.set(Some(nid));
+        editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(nid));
         edit_value.set(label);
         return;
     }
@@ -57,8 +55,7 @@ pub fn handle_double_click(state: CanvasState, evt: Event<dioxus::prelude::Mouse
         doc_signal.with_mut(|d| {
             d.editor_state.selected_items = select_single(eid.to_string());
         });
-        editing_node.set(None);
-        editing_edge.set(Some(eid));
+        editor_state.set(crate::ui::canvas::state::EditorState::EditingEdge(eid));
         edit_value.set(label);
         return;
     }
@@ -102,8 +99,7 @@ pub fn handle_double_click(state: CanvasState, evt: Event<dioxus::prelude::Mouse
             let _ = d.editor_state.selected_items.insert(id.to_string());
             d.revision = d.revision.increment();
         });
-        editing_edge.set(None);
-        editing_node.set(None);
+        editor_state.set(crate::ui::canvas::state::EditorState::Idle);
         edit_value.set(String::new());
     }
 }

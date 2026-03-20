@@ -19,8 +19,9 @@ use dioxus::prelude::*;
 #[component]
 #[allow(clippy::approx_constant, clippy::float_cmp)]
 pub fn PropertiesPanel() -> Element {
-    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
-    let mut history = use_context::<Signal<History>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let mut doc_signal = app_state.document;
+    let mut history = app_state.history;
 
     let selected_ids = use_memo(move || doc_signal.read().editor_state.selected_items.clone());
     let selected_items: Vec<String> = selected_ids.read().iter().cloned().collect();

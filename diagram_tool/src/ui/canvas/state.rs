@@ -12,6 +12,14 @@ use diagram_models::document::{ArrowType, DiagramDocument, EdgeId, EdgeStyle, No
 use dioxus::prelude::*;
 use std::collections::HashSet;
 
+#[derive(Clone, PartialEq, Debug)]
+pub enum EditorState {
+    Idle,
+    HoveringNode(NodeId),
+    EditingNode(NodeId),
+    EditingEdge(EdgeId),
+}
+
 #[derive(Clone, PartialEq)]
 pub struct CanvasState {
     pub doc_signal: Signal<DiagramDocument>,
@@ -26,9 +34,7 @@ pub struct CanvasState {
     pub ctrl_pressed: Signal<bool>,
     pub meta_pressed: Signal<bool>,
     pub drag_over: Signal<bool>,
-    pub hovered_node: Signal<Option<NodeId>>,
-    pub editing_node: Signal<Option<NodeId>>,
-    pub editing_edge: Signal<Option<EdgeId>>,
+    pub editor_state: Signal<EditorState>,
     pub edit_value: Signal<String>,
     pub nudge_batch_active: Signal<bool>,
     pub space_pan_active: Signal<bool>,
@@ -44,12 +50,13 @@ pub struct CanvasState {
 }
 
 pub fn use_canvas_state() -> CanvasState {
-    let doc_signal = use_context::<Signal<DiagramDocument>>();
-    let dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
-    let history_signal = use_context::<Signal<History>>();
-    let tool_signal = use_context::<Signal<ToolMode>>();
-    let edge_style_default = use_context::<Signal<EdgeStyle>>();
-    let arrow_type_default = use_context::<Signal<ArrowType>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let doc_signal = app_state.document;
+    let dragging_icon = app_state.dragging_icon;
+    let history_signal = app_state.history;
+    let tool_signal = app_state.tool_mode;
+    let edge_style_default = app_state.edge_style;
+    let arrow_type_default = app_state.arrow_type;
     let _toast = use_toast();
 
     let interaction_mode = use_signal(|| InteractionMode::Select);
@@ -58,13 +65,11 @@ pub fn use_canvas_state() -> CanvasState {
     let ctrl_pressed = use_signal(|| false);
     let meta_pressed = use_signal(|| false);
     let drag_over = use_signal(|| false);
-    let hovered_node = use_signal(|| Option::<NodeId>::None);
-    let editing_node = use_signal(|| Option::<NodeId>::None);
-    let editing_edge = use_signal(|| Option::<EdgeId>::None);
+    let editor_state = use_signal(|| EditorState::Idle);
     let edit_value = use_signal(String::new);
     let nudge_batch_active = use_signal(|| false);
     let space_pan_active = use_signal(|| false);
-    let viewport_size = use_context::<Signal<(f64, f64)>>();
+    let viewport_size = app_state.viewport_size;
     let pending_pointer_sample = use_signal(|| Option::<(f64, f64)>::None);
     let pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
     let multi_touch_active = use_signal(|| false);
@@ -88,8 +93,7 @@ pub fn use_canvas_state() -> CanvasState {
         meta_pressed,
         nudge_batch_active,
         space_pan_active,
-        editing_node,
-        editing_edge,
+        editor_state,
         edit_value,
         viewport_size,
         db_tx,
@@ -129,9 +133,7 @@ pub fn use_canvas_state() -> CanvasState {
         ctrl_pressed,
         meta_pressed,
         drag_over,
-        hovered_node,
-        editing_node,
-        editing_edge,
+        editor_state,
         edit_value,
         nudge_batch_active,
         space_pan_active,

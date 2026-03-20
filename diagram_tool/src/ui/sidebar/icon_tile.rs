@@ -32,11 +32,13 @@ fn IconImage(src: Option<String>) -> Element {
             img {
                 src: "{src_str}",
                 class: "w-8 h-8 object-contain pointer-events-none",
+                style: "width: 32px; height: 32px; object-fit: contain;",
                 draggable: "false"
             }
         } else {
             div {
-                class: "w-8 h-8 rounded bg-muted"
+                class: "w-8 h-8 rounded bg-muted",
+                style: "width: 32px; height: 32px;"
             }
         }
     }

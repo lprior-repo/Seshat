@@ -6,47 +6,30 @@
 
 mod async_sync;
 mod autosave_hooks;
+mod state;
 mod types;
 mod validation;
 
+pub use state::AppState;
 pub use types::DraggedIconPayload;
 
-use crate::history::History;
 use crate::hooks::e2e_reset::use_e2e_reset_hook;
 use crate::hooks::keyboard::use_global_keyboard;
 use crate::ui::canvas::Canvas;
-use crate::ui::commands::ClipboardData;
-use crate::ui::editor::ToolMode;
-use crate::ui::mobile::SidebarUiState;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
-use crate::ui::toast::{ToastQueue, Toaster};
+use crate::ui::toast::Toaster;
 use crate::ui::toolbar::{Toolbar, ToolbarStats};
-use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 
 use dioxus::prelude::*;
 
 #[allow(non_snake_case)]
 #[allow(clippy::too_many_lines)]
 pub fn App() -> Element {
-    use_context_provider(|| Signal::new(DiagramDocument::default()));
-    let _dragging_icon = use_context_provider(|| Signal::new(Option::<DraggedIconPayload>::None));
-    use_context_provider(|| Signal::new(History::new()));
-    use_context_provider(|| Signal::new(Option::<ClipboardData>::None));
-    use_context_provider(|| Signal::new(ToolMode::Select));
-    use_context_provider(|| Signal::new(EdgeStyle::Solid));
-    use_context_provider(|| Signal::new(ArrowType::Default));
-    use_context_provider(|| Signal::new(ToastQueue::default()));
-    use_context_provider(|| Signal::new(ToolbarStats::default()));
-    use_context_provider(|| Signal::new(SidebarUiState::default()));
-    use_context_provider(|| Signal::new((1200.0_f64, 800.0_f64)));
-    use_context_provider(|| Signal::new(0_u64));
-    use_context_provider(|| Signal::new(Option::<crate::ui::toast::AiConflictState>::None));
-    use_context_provider(|| Signal::new(false));
-    use_context_provider(|| Signal::new(std::collections::HashSet::<String>::new()));
+    let state = AppState::provide();
 
-    let doc_signal = use_context::<Signal<DiagramDocument>>();
-    let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
+    let doc_signal = state.document;
+    let mut toolbar_stats = state.toolbar_stats;
 
     let keyboard_db_tx = async_sync::provide_db_event_context();
     use_global_keyboard(keyboard_db_tx);
@@ -75,19 +58,15 @@ pub fn App() -> Element {
 
     rsx! {
         ThemeProvider {
+            document::Style {
+                "@import 'tailwindcss';"
+            }
             div {
-                display: "flex",
-                flex_direction: "column",
-                width: "100vw",
-                height: "100vh",
-                overflow: "hidden",
+                class: "flex flex-col w-screen h-screen overflow-hidden",
                 Toolbar {}
                 Toaster {}
                 div {
-                    display: "flex",
-                    flex: "1",
-                    position: "relative",
-                    min_width: "0",
+                    class: "flex flex-1 relative min-w-0",
                     Sidebar {}
                     Canvas {}
                 }

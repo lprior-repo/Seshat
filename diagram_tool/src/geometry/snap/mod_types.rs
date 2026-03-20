@@ -114,35 +114,32 @@ pub enum SnapType {
 
 // SnapResult for smart alignment
 #[derive(Debug, Clone, PartialEq)]
-pub struct SnapResult {
-    pub active: bool,
-    pub snap_type: SnapType,
-    pub target_node_id: NodeId,
-    pub snapped_position: Point,
+pub enum SnapResult {
+    Snapped {
+        snap_type: SnapType,
+        target_node_id: NodeId,
+        snapped_position: Point,
+    },
+    Unsnapped,
 }
 
 impl SnapResult {
     #[must_use]
     pub const fn to_position(&self) -> Option<Point> {
-        if self.active {
-            Some(self.snapped_position)
-        } else {
-            None
+        match self {
+            Self::Snapped {
+                snapped_position, ..
+            } => Some(*snapped_position),
+            Self::Unsnapped => None,
         }
     }
     #[must_use]
     pub const fn inactive() -> Self {
-        Self {
-            active: false,
-            snap_type: SnapType::CenterX,
-            target_node_id: NodeId::new(String::new()),
-            snapped_position: Point::new(0.0, 0.0),
-        }
+        Self::Unsnapped
     }
     #[must_use]
     pub const fn new(snap_type: SnapType, target_node_id: NodeId, snapped_position: Point) -> Self {
-        Self {
-            active: true,
+        Self::Snapped {
             snap_type,
             target_node_id,
             snapped_position,

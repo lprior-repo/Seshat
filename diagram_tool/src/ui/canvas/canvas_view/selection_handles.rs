@@ -78,7 +78,8 @@ pub(crate) fn selection_handles_overlay(
         rsx! {
             div {
                 "data-testid": "selection-bounds",
-                style: "position:absolute; left:{sx - pad}px; top:{sy - pad}px; width:{box_w}px; height:{box_h}px; border:{SELECTION_BOUNDS_STROKE}; pointer-events:none; z-index:15;"
+                class: "absolute pointer-events-none",
+                style: "left: {sx - pad}px; top: {sy - pad}px; width: {box_w}px; height: {box_h}px; z-index: 15; border: {SELECTION_BOUNDS_STROKE};"
             }
             if !selected_nodes.is_empty() {
                 for (handle, hx, hy, cursor, stable_test_id) in handles {
@@ -95,7 +96,8 @@ pub(crate) fn selection_handles_overlay(
                             ResizeHandle::Sw => "sw",
                             ResizeHandle::W => "w",
                         },
-                        style: "position:absolute; left:{hx - hs/2.0}px; top:{hy - hs/2.0}px; width:{hs}px; height:{hs}px; border-radius:2px; border:1px solid {BG_BASE}; background:{ACCENT}; cursor:{cursor}; z-index:16;",
+                        class: "absolute rounded-[2px]",
+                        style: "left: {hx - hs/2.0}px; top: {hy - hs/2.0}px; width: {hs}px; height: {hs}px; z-index: 16; border: 1px solid {BG_BASE}; background: {ACCENT}; cursor: {cursor};",
                         onmousedown: move |evt| {
                             if evt.data.trigger_button() != Some(MouseButton::Primary) {
                                 return;
@@ -112,7 +114,7 @@ pub(crate) fn selection_handles_overlay(
                                 false, // aspect_lock_enabled - TODO: connect to Shift key
                             );
                         },
-                        div { style: "position:absolute; inset:0; pointer-events:none; opacity:0;" }
+                        div { class: "absolute inset-0 pointer-events-none opacity-0" }
                     }
                 }
             }

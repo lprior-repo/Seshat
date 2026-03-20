@@ -1,6 +1,9 @@
 use canvas_domain::interaction_reducer::{finalize_motion_release, InteractionMode};
 use canvas_domain::perf::to_canvas_coords;
-use diagram_models::document::{DiagramDocument, EdgeId, NodeId, OrderedFloat};
+use canvas_domain::{CanvasCoord, ScreenCoord};
+use diagram_models::document::{
+    ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat,
+};
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use im::HashMap;
@@ -14,6 +17,145 @@ use crate::ui::editor::ToolMode;
 use crate::ui::interaction::{
     drag_original_positions, select_single, toggle_selection, with_auto_selected_edges,
 };
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CanvasEvent {
+    NodeSelected {
+        id: NodeId,
+        additive: bool,
+        canvas_pos: CanvasCoord,
+        client_pos: ScreenCoord,
+    },
+    EdgeDrawingStarted {
+        from_node: NodeId,
+        current_pos: CanvasCoord,
+    },
+    EdgeDrawingFinished {
+        from_node: NodeId,
+        to_node: NodeId,
+        current_pos: CanvasCoord,
+        continue_drawing: bool,
+        edge_style: EdgeStyle,
+        arrow_type: ArrowType,
+    },
+    PanStarted {
+        last_pos: ScreenCoord,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq)]
+pub enum CanvasError {
+    CircularConnectionRejected,
+    InvalidStateTransition,
+    NodeNotFound(NodeId),
+}
+
+pub struct CanvasState {
+    pub document: DiagramDocument,
+    pub interaction_mode: InteractionMode,
+}
+
+pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasState, CanvasError> {
+    match event {
+        CanvasEvent::NodeSelected {
+            id,
+            additive,
+            canvas_pos,
+            client_pos,
+        } => {
+            let was_selected = state
+                .document
+                .editor_state
+                .selected_items
+                .contains(id.as_str());
+            let selected = if additive {
+                toggle_selection(&state.document.editor_state.selected_items, &id.to_string())
+            } else if !was_selected {
+                select_single(id.to_string())
+            } else {
+                state.document.editor_state.selected_items.clone()
+            };
+            state.document.editor_state.selected_items =
+                with_auto_selected_edges(&state.document, &selected);
+            let original_positions = drag_original_positions(
+                &state.document,
+                &state.document.editor_state.selected_items,
+            );
+            state.interaction_mode = InteractionMode::DraggingSelection {
+                anchor_canvas: (canvas_pos.0, canvas_pos.1),
+                anchor_client: (client_pos.0, client_pos.1),
+                original_positions,
+                did_move: false,
+            };
+            Ok(state)
+        }
+        CanvasEvent::EdgeDrawingStarted {
+            from_node,
+            current_pos,
+        } => {
+            if !matches!(state.interaction_mode, InteractionMode::DrawingEdge { .. }) {
+                state.interaction_mode = InteractionMode::DrawingEdge {
+                    from_node,
+                    current_pos: (current_pos.0, current_pos.1),
+                };
+            }
+            Ok(state)
+        }
+        CanvasEvent::PanStarted { last_pos } => {
+            state.interaction_mode = InteractionMode::Panning {
+                last_pos: (last_pos.0, last_pos.1),
+            };
+            Ok(state)
+        }
+        CanvasEvent::EdgeDrawingFinished {
+            from_node,
+            to_node,
+            current_pos,
+            continue_drawing,
+            edge_style,
+            arrow_type,
+        } => {
+            if from_node != to_node {
+                let candidate_edge = Edge {
+                    source: from_node,
+                    target: to_node.clone(),
+                    label: String::new(),
+                    style: edge_style,
+                    arrow_type,
+                    label_offset_t: OrderedFloat(0.5),
+                    color: None,
+                    thickness: OrderedFloat(1.5),
+                    directed: true,
+                    bend_points: im::Vector::new(),
+                    tags: im::Vector::new(),
+                    metadata: HashMap::new(),
+                    font_size: None,
+                    source_port: None,
+                    target_port: None,
+                };
+                if edge_preserves_dag(&state.document, &candidate_edge) {
+                    state.document.document.edges = state
+                        .document
+                        .document
+                        .edges
+                        .update(EdgeId::new(Uuid::new_v4().to_string()), candidate_edge);
+                    state.document.revision = state.document.revision.increment();
+                } else {
+                    return Err(CanvasError::CircularConnectionRejected);
+                }
+            }
+            if continue_drawing {
+                state.interaction_mode = InteractionMode::DrawingEdge {
+                    from_node: to_node,
+                    current_pos: (current_pos.0, current_pos.1),
+                };
+            } else {
+                state.interaction_mode = InteractionMode::Select;
+            }
+            Ok(state)
+        }
+    }
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_mousedown(
@@ -41,54 +183,43 @@ pub fn handle_mousedown(
     let local_x = coords.x - origin.0;
     let local_y = coords.y - origin.1;
     let pos = to_canvas_coords(
-        canvas_domain::ScreenCoord(local_x, local_y),
-        canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
+        ScreenCoord(local_x, local_y),
+        CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
         doc.editor_state.zoom.0,
     );
 
-    if space_pressed || is_middle || is_right || tool == ToolMode::Pan {
+    let event = if space_pressed || is_middle || is_right || tool == ToolMode::Pan {
         space_pan_active.set(space_pressed && !is_middle && !is_right && tool != ToolMode::Pan);
-        interaction_mode.set(InteractionMode::Panning {
-            last_pos: (local_x, local_y),
-        });
-        return;
-    }
-
-    if !is_primary {
-        return;
-    }
-
-    if tool == ToolMode::Edge {
-        let mode_now = interaction_mode.read().clone();
-        if !matches!(mode_now, InteractionMode::DrawingEdge { .. }) {
-            interaction_mode.set(InteractionMode::DrawingEdge {
+        Some(CanvasEvent::PanStarted {
+            last_pos: ScreenCoord(local_x, local_y),
+        })
+    } else if is_primary {
+        if tool == ToolMode::Edge {
+            Some(CanvasEvent::EdgeDrawingStarted {
                 from_node: id.clone(),
-                current_pos: (pos.0, pos.1),
-            });
+                current_pos: CanvasCoord(pos.0, pos.1),
+            })
+        } else {
+            Some(CanvasEvent::NodeSelected {
+                id,
+                additive,
+                canvas_pos: CanvasCoord(pos.0, pos.1),
+                client_pos: ScreenCoord(local_x, local_y),
+            })
         }
     } else {
-        let was_selected = doc.editor_state.selected_items.contains(id.as_str());
+        None
+    };
 
-        doc_signal.with_mut(|d| {
-            let selected = if additive {
-                toggle_selection(&d.editor_state.selected_items, &id.to_string())
-            } else if !was_selected {
-                select_single(id.to_string())
-            } else {
-                d.editor_state.selected_items.clone()
-            };
-            d.editor_state.selected_items = with_auto_selected_edges(d, &selected);
-        });
-
-        let current_doc = doc_signal.read().clone();
-        let original_positions =
-            drag_original_positions(&current_doc, &current_doc.editor_state.selected_items);
-        interaction_mode.set(InteractionMode::DraggingSelection {
-            anchor_canvas: (pos.0, pos.1),
-            anchor_client: (local_x, local_y),
-            original_positions,
-            did_move: false,
-        });
+    if let Some(event) = event {
+        let initial_state = CanvasState {
+            document: doc_signal.read().clone(),
+            interaction_mode: interaction_mode.read().clone(),
+        };
+        if let Ok(new_state) = apply_event(initial_state, event) {
+            doc_signal.set(new_state.document);
+            interaction_mode.set(new_state.interaction_mode);
+        }
     }
 }
 
@@ -102,8 +233,8 @@ pub fn handle_mouseup(
     pending_pointer_sample: Signal<Option<(f64, f64)>>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
     mut tool_signal: Signal<ToolMode>,
-    edge_style_default: diagram_models::document::EdgeStyle,
-    arrow_type_default: diagram_models::document::ArrowType,
+    edge_style_default: EdgeStyle,
+    arrow_type_default: ArrowType,
     canvas_origin: (f64, f64),
     toast: crate::ui::toast::ToastApi,
 ) {
@@ -116,67 +247,30 @@ pub fn handle_mouseup(
         db_tx,
     );
     let mode = interaction_mode.read().clone();
-    match mode {
-        InteractionMode::DrawingEdge { from_node, .. } => {
-            if from_node != id {
-                let doc_now = doc_signal.read().clone();
-                let candidate_edge = diagram_models::document::Edge {
-                    source: from_node,
-                    target: id.clone(),
-                    label: String::new(),
-                    style: edge_style_default,
-                    arrow_type: arrow_type_default,
-                    label_offset_t: OrderedFloat(0.5),
-                    color: None,
-                    thickness: OrderedFloat(1.5),
-                    directed: true,
-                    bend_points: im::Vector::new(),
-                    tags: im::Vector::new(),
-                    metadata: HashMap::new(),
-                    font_size: None,
-                    source_port: None,
-                    target_port: None,
-                };
 
-                if edge_preserves_dag(&doc_now, &candidate_edge) {
-                    let history = history_signal.read().clone();
-                    *history_signal.write() = history.push(doc_now);
-                    doc_signal.with_mut(|doc| {
-                        doc.document.edges = doc
-                            .document
-                            .edges
-                            .update(EdgeId::new(Uuid::new_v4().to_string()), candidate_edge);
-                        doc.revision = doc.revision.increment();
-                    });
-                } else {
-                    let _ = toast.show(
-                        crate::ui::toast::ToastIntent::Warning,
-                        "Cannot create circular connection",
-                        None,
-                    );
-                }
-            }
-            if *tool_signal.read() == ToolMode::Edge {
-                let doc_now = doc_signal.read().clone();
-                let coords = evt.data.coordinates().client();
-                let origin = sync_canvas_origin().unwrap_or(canvas_origin);
-                let local_x = coords.x - origin.0;
-                let local_y = coords.y - origin.1;
-                let pos = to_canvas_coords(
-                    canvas_domain::ScreenCoord(local_x, local_y),
-                    canvas_domain::CanvasCoord(
-                        doc_now.editor_state.camera_x.0,
-                        doc_now.editor_state.camera_y.0,
-                    ),
-                    doc_now.editor_state.zoom.0,
-                );
-                interaction_mode.set(InteractionMode::DrawingEdge {
-                    from_node: id.clone(),
-                    current_pos: (pos.0, pos.1),
-                });
-            } else {
-                interaction_mode.set(InteractionMode::Select);
-            }
+    let event = match mode {
+        InteractionMode::DrawingEdge { from_node, .. } => {
+            let doc_now = doc_signal.read().clone();
+            let coords = evt.data.coordinates().client();
+            let origin = sync_canvas_origin().unwrap_or(canvas_origin);
+            let local_x = coords.x - origin.0;
+            let local_y = coords.y - origin.1;
+            let pos = to_canvas_coords(
+                ScreenCoord(local_x, local_y),
+                CanvasCoord(
+                    doc_now.editor_state.camera_x.0,
+                    doc_now.editor_state.camera_y.0,
+                ),
+                doc_now.editor_state.zoom.0,
+            );
+            Some(CanvasEvent::EdgeDrawingFinished {
+                from_node,
+                to_node: id,
+                current_pos: CanvasCoord(pos.0, pos.1),
+                continue_drawing: *tool_signal.read() == ToolMode::Edge,
+                edge_style: edge_style_default,
+                arrow_type: arrow_type_default,
+            })
         }
         InteractionMode::DraggingSelection { .. } | InteractionMode::ResizingSelection { .. } => {
             let mut doc_clone = doc_signal.read().clone();
@@ -186,8 +280,32 @@ pub fn handle_mouseup(
                     doc_signal.set(doc_clone);
                 }
             });
+            None
         }
-        _ => {}
+        _ => None,
+    };
+
+    if let Some(event) = event {
+        let initial_state = CanvasState {
+            document: doc_signal.read().clone(),
+            interaction_mode: interaction_mode.read().clone(),
+        };
+        match apply_event(initial_state, event) {
+            Ok(new_state) => {
+                let history = history_signal.read().clone();
+                *history_signal.write() = history.push(doc_signal.read().clone());
+                doc_signal.set(new_state.document);
+                interaction_mode.set(new_state.interaction_mode);
+            }
+            Err(CanvasError::CircularConnectionRejected) => {
+                let _ = toast.show(
+                    crate::ui::toast::ToastIntent::Warning,
+                    "Cannot create circular connection",
+                    None,
+                );
+            }
+            Err(_) => {}
+        }
     }
 
     if *tool_signal.read() != ToolMode::Edge {

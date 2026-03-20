@@ -153,7 +153,7 @@ pub struct ToastUpdate {
 }
 #[must_use]
 pub fn use_toast() -> ToastApi {
-    ToastApi::from_signal(use_context::<Signal<ToastQueue>>())
+    ToastApi::from_signal(use_context::<crate::app::AppState>().toasts)
 }
 #[must_use]
 #[allow(dead_code)]

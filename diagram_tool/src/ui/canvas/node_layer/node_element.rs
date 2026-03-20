@@ -10,29 +10,50 @@ use crate::{
 };
 use canvas_domain::interaction_reducer::InteractionMode;
 use canvas_domain::perf::to_screen_coords;
-use diagram_models::document::{DiagramDocument, EdgeId, Node, NodeId, NodeKind};
+use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind};
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum NodeInteractionState {
+    #[default]
+    Normal,
+    Hovered,
+    Selected {
+        hovered: bool,
+    },
+    Editing,
+}
+
+impl NodeInteractionState {
+    pub fn is_selected(self) -> bool {
+        matches!(self, Self::Selected { .. } | Self::Editing)
+    }
+
+    pub fn is_hovered(self) -> bool {
+        matches!(self, Self::Hovered | Self::Selected { hovered: true })
+    }
+
+    pub fn is_editing(self) -> bool {
+        matches!(self, Self::Editing)
+    }
+}
 
 #[derive(Props, Clone, PartialEq)]
 pub struct NodeElementProps {
     pub id: NodeId,
     pub node: Node,
-    pub is_selected: bool,
-    pub is_hovered: bool,
-    pub is_editing: bool,
+    pub interaction_state: NodeInteractionState,
     pub doc_signal: Signal<DiagramDocument>,
     pub history_signal: Signal<History>,
     pub tool_signal: Signal<ToolMode>,
     pub interaction_mode: Signal<InteractionMode>,
-    pub editing_node: Signal<Option<NodeId>>,
-    pub editing_edge: Signal<Option<EdgeId>>,
+    pub editor_state: Signal<crate::ui::canvas::state::EditorState>,
     pub edit_value: Signal<String>,
-    pub hovered_node: Signal<Option<NodeId>>,
-    pub canvas_origin: Signal<(f64, f64)>,
-    pub shift_pressed: Signal<bool>,
-    pub ctrl_pressed: Signal<bool>,
-    pub meta_pressed: Signal<bool>,
-    pub space_pressed: Signal<bool>,
-    pub multi_touch_active: Signal<bool>,
+    pub canvas_origin: ReadSignal<(f64, f64)>,
+    pub shift_pressed: ReadSignal<bool>,
+    pub ctrl_pressed: ReadSignal<bool>,
+    pub meta_pressed: ReadSignal<bool>,
+    pub space_pressed: ReadSignal<bool>,
+    pub multi_touch_active: ReadSignal<bool>,
     pub space_pan_active: Signal<bool>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
     pub pending_pointer_sample: Signal<Option<(f64, f64)>>,
@@ -47,10 +68,8 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let history_signal = props.history_signal;
     let tool_signal = props.tool_signal;
     let interaction_mode = props.interaction_mode;
-    let editing_node = props.editing_node;
-    let editing_edge = props.editing_edge;
+    let mut editor_state = props.editor_state;
     let edit_value = props.edit_value;
-    let mut hovered_node = props.hovered_node;
     let canvas_origin = props.canvas_origin;
     let shift_pressed = props.shift_pressed;
     let ctrl_pressed = props.ctrl_pressed;
@@ -61,8 +80,9 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let db_tx = props.db_tx;
     let pending_pointer_sample = props.pending_pointer_sample;
 
-    let edge_style_default = use_context::<Signal<diagram_models::document::EdgeStyle>>();
-    let arrow_type_default = use_context::<Signal<diagram_models::document::ArrowType>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let edge_style_default = app_state.edge_style;
+    let arrow_type_default = app_state.arrow_type;
     let toast = crate::ui::toast::use_toast();
 
     let node = props.node;
@@ -72,9 +92,9 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let id_mouseenter = id.clone();
     let id_mouseleave = id.clone();
     let id_data_attr = id.to_string();
-    let is_selected = props.is_selected;
-    let is_hovered = props.is_hovered;
-    let is_editing_node = props.is_editing;
+    let interaction_state = props.interaction_state;
+    let is_selected = interaction_state.is_selected();
+    let is_hovered = interaction_state.is_hovered();
     let camera_x = props.camera_x;
     let camera_y = props.camera_y;
     let zoom = props.zoom;
@@ -128,12 +148,15 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                 NodeKind::Subgraph => "subgraph",
                 NodeKind::Text => "text",
             },
-            style: "position: absolute; left: {left}px; top: {top}px; width: {width}px; height: {height}px; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); border-radius: 10px; background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: inherit; z-index: {z_index}; box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
+            style: "position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: inherit; border-radius: 10px; left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
 
-            onmouseenter: move |_| hovered_node.set(Some(id_mouseenter.clone())),
+            onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_mouseenter.clone())),
             onmouseleave: move |_| {
-                if hovered_node.read().as_ref() == Some(&id_mouseleave) {
-                    hovered_node.set(None);
+                let should_clear = if let crate::ui::canvas::state::EditorState::HoveringNode(ref hid) = *editor_state.read() {
+                    hid == &id_mouseleave
+                } else { false };
+                if should_clear {
+                    editor_state.set(crate::ui::canvas::state::EditorState::Idle);
                 }
             },
 
@@ -175,14 +198,15 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
 
             div {
                 "data-testid": "node-hitbox",
-                style: "position:absolute; inset:0; pointer-events:none; opacity:0;"
+                class: "absolute opacity-0",
+                style: "inset: 0; pointer-events: none;"
             }
 
             {
                 let content_props = super::node_content::NodeContentProps {
                     node: node.clone(),
                     id: id.clone(),
-                    is_editing_node,
+                    interaction_state,
                     font_px,
                     provider_top: provider_top.to_string(),
                     node_initials,
@@ -191,8 +215,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                     zoom,
                     doc_signal,
                     history_signal,
-                    editing_node,
-                    editing_edge,
+                    editor_state,
                     edit_value,
                     db_tx,
                 };

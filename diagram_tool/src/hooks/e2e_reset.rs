@@ -14,7 +14,6 @@
 //! The hook also exposes `window.__seshatE2eReady` as a boolean that tests
 //! can poll to know when the WASM app has fully initialised its signals.
 
-use crate::app::DraggedIconPayload;
 use crate::history::History;
 use crate::ui::editor::ToolMode;
 use crate::ui::toast::ToastQueue;
@@ -25,16 +24,17 @@ use dioxus::prelude::*;
 /// Must be called inside the `App` component after all `use_context_provider`
 /// calls so that every signal is already present in context.
 pub fn use_e2e_reset_hook() {
-    let mut doc_signal = use_context::<Signal<DiagramDocument>>();
-    let mut dragging_icon = use_context::<Signal<Option<DraggedIconPayload>>>();
-    let mut history_signal = use_context::<Signal<History>>();
-    let mut tool_mode = use_context::<Signal<ToolMode>>();
-    let mut edge_style = use_context::<Signal<EdgeStyle>>();
-    let mut arrow_type = use_context::<Signal<ArrowType>>();
-    let mut toast_queue = use_context::<Signal<ToastQueue>>();
-    let mut toolbar_stats = use_context::<Signal<ToolbarStats>>();
-    let mut viewport_size = use_context::<Signal<(f64, f64)>>();
-    let mut validate_trigger = use_context::<Signal<u64>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let mut doc_signal = app_state.document;
+    let mut dragging_icon = app_state.dragging_icon;
+    let mut history_signal = app_state.history;
+    let mut tool_mode = app_state.tool_mode;
+    let mut edge_style = app_state.edge_style;
+    let mut arrow_type = app_state.arrow_type;
+    let mut toast_queue = app_state.toasts;
+    let mut toolbar_stats = app_state.toolbar_stats;
+    let mut viewport_size = app_state.viewport_size;
+    let mut validate_trigger = app_state.validate_trigger;
 
     use_effect(move || {
         let mut eval = document::eval(

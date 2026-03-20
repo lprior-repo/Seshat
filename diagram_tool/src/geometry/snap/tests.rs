@@ -703,8 +703,16 @@ mod tests {
         // Active center is at (150, 120), target center_x is 150
         // Distance to center_x is 0, which is within threshold 10
         // So it correctly snaps to CenterX, not EdgeLeft
-        assert!(result.active);
-        assert_eq!(result.target_node_id, NodeId::new("target".to_string()));
-        assert_eq!(result.snap_type, SnapType::CenterX);
+        match result {
+            crate::geometry::snap::mod_types::SnapResult::Snapped {
+                target_node_id,
+                snap_type,
+                ..
+            } => {
+                assert_eq!(target_node_id, NodeId::new("target".to_string()));
+                assert_eq!(snap_type, SnapType::CenterX);
+            }
+            _ => panic!("Expected snapped result"),
+        }
     }
 }

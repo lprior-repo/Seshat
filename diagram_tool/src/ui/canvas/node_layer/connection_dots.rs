@@ -17,7 +17,7 @@ pub struct ConnectionDotsProps {
     pub is_hovered: bool,
     pub tool_signal: Signal<ToolMode>,
     pub interaction_mode: Signal<InteractionMode>,
-    pub canvas_origin: Signal<(f64, f64)>,
+    pub canvas_origin: ReadSignal<(f64, f64)>,
     pub doc_signal: Signal<DiagramDocument>,
 }
 
@@ -42,7 +42,8 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
     rsx! {
         for (dot_x, dot_y) in dot_specs {
             div {
-                style: "position:absolute; left:{dot_x - 10.0}px; top:{dot_y - 10.0}px; width:20px; height:20px; border-radius:999px; background: transparent; cursor: crosshair;",
+                style: "position: absolute; width: 20px; height: 20px; border-radius: 999px; background: transparent; cursor: crosshair; left: {dot_x - 10.0}px; top: {dot_y - 10.0}px;",
+                "data-testid": "connection-dot",
                 onmousedown: {
                     let current_id = id.clone();
                     move |evt| {
@@ -67,7 +68,7 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
                     }
                 },
                 div {
-                    style: "position:absolute; left:5px; top:5px; width:10px; height:10px; border-radius:999px; background:{ACCENT}; border:1px solid {BG_BASE}; opacity:0.9; pointer-events:none;"
+                    style: "position: absolute; left: 5px; top: 5px; width: 10px; height: 10px; border-radius: 999px; opacity: 0.9; pointer-events: none; background:{ACCENT}; border:1px solid {BG_BASE};"
                 }
             }
         }

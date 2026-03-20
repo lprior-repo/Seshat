@@ -1,7 +1,5 @@
 use dioxus::prelude::*;
 
-#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-use crate::ui::toast::{AiConflictState, ToastQueue};
 use diagram_models::document::DiagramDocument;
 use diagram_models::envelope::EventEnvelope;
 
@@ -35,9 +33,10 @@ pub(crate) fn provide_db_event_context() -> Option<Coroutine<EventEnvelope>> {
 
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
 pub(crate) fn use_conflict_toast_effect() {
-    let toast_queue = use_context::<Signal<ToastQueue>>();
-    let ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
-    let mut conflict_toast_shown = use_context::<Signal<bool>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let toast_queue = app_state.toasts;
+    let ai_conflict_state = app_state.ai_conflict;
+    let mut conflict_toast_shown = app_state.conflict_toast_shown;
 
     use_effect(move || {
         let has_conflict = ai_conflict_state.read().is_some();
@@ -62,8 +61,9 @@ pub(crate) fn use_conflict_toast_effect() {}
 pub(crate) fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
     let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
     let last_sync_revision = use_signal(|| 0_i64);
-    let pending_ai_ops = use_context::<Signal<std::collections::HashSet<String>>>();
-    let _ai_conflict_state = use_context::<Signal<Option<AiConflictState>>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let pending_ai_ops = app_state.pending_ai_ops;
+    let _ai_conflict_state = app_state.ai_conflict;
 
     use_future(move || {
         let store_bridge = store_bridge.clone();

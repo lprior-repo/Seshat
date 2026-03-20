@@ -18,12 +18,11 @@ use super::types::CommitError;
 pub fn commit_inline_edit(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
-    mut editing_node: Signal<Option<NodeId>>,
-    mut editing_edge: Signal<Option<EdgeId>>,
+    node_target: Option<NodeId>,
+    edge_target: Option<EdgeId>,
     edit_value: Signal<String>,
     db_tx: Option<Coroutine<EventEnvelope>>,
 ) -> Result<bool, CommitError> {
-    let node_target = editing_node.read().clone();
     if let Some(node_id) = node_target {
         let changed = commit_node_edit(
             &mut doc_signal,
@@ -32,11 +31,9 @@ pub fn commit_inline_edit(
             &edit_value,
             &db_tx,
         )?;
-        editing_node.set(None);
         return Ok(changed);
     }
 
-    let edge_target = editing_edge.read().clone();
     if let Some(edge_id) = edge_target {
         let changed = commit_edge_edit(
             &mut doc_signal,
@@ -45,7 +42,6 @@ pub fn commit_inline_edit(
             &edit_value,
             &db_tx,
         )?;
-        editing_edge.set(None);
         return Ok(changed);
     }
 

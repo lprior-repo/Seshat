@@ -1,0 +1,16 @@
+diagram_tool/src/app/autosave_hooks.rs
+diagram_tool/src/app/validation.rs
+diagram_tool/src/ui/sidebar_primitives/provider.rs
+diagram_tool/src/ui/sidebar_persistence.rs
+diagram_tool/src/ui/mobile.rs
+diagram_tool/src/ui/toast/render.rs
+diagram_tool/src/ui/theme_provider.rs
+diagram_tool/src/ui/toolbar/export_actions.rs
+diagram_tool/src/ui/toolbar/persistence/open.rs
+diagram_tool/src/ui/canvas/root_handlers/resize.rs
+diagram_tool/src/ui/canvas/root_handlers/raf.rs
+diagram_tool/src/ui/canvas/root_handlers/middle_pan.rs
+diagram_tool/src/ui/canvas/root_handlers/touch.rs
+diagram_tool/src/ui/canvas/root_handlers/keyboard.rs
+diagram_tool/src/hooks/keyboard.rs
+diagram_tool/src/hooks/e2e_reset.rs

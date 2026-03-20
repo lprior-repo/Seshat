@@ -107,9 +107,10 @@ fn use_persist_auto_save(
 
 #[cfg(target_arch = "wasm32")]
 pub(crate) fn use_auto_save(doc_signal: Signal<DiagramDocument>) {
-    let tool_signal = use_context::<Signal<ToolMode>>();
-    let edge_style_signal = use_context::<Signal<EdgeStyle>>();
-    let arrow_type_signal = use_context::<Signal<ArrowType>>();
+    let app_state = use_context::<crate::app::AppState>();
+    let tool_signal = app_state.tool_mode;
+    let edge_style_signal = app_state.edge_style;
+    let arrow_type_signal = app_state.arrow_type;
     let last_saved_revision = use_signal(auto_save::default_revision);
 
     use_load_auto_save(
