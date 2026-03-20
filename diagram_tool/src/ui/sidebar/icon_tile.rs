@@ -90,7 +90,10 @@ pub fn IconTile(
             title: "{title_display}\n{title_key}\n{category_for_title}",
             draggable: "true",
             onmousedown: move |_| handle_drag(&current_icon_mousedown, &data_url_memo.read(), &mut dragging_icon),
-            ondragstart: move |_evt| {
+            ondragstart: move |evt| {
+                let dt = evt.data().data_transfer();
+                let _ = dt.set_data("text/plain", &current_icon_dragstart.icon_key);
+                dt.set_effect_allowed("copy");
                 handle_drag(&current_icon_dragstart, &data_url_memo.read(), &mut dragging_icon);
             },
             IconImage { src: data_url_memo.read().clone() }
