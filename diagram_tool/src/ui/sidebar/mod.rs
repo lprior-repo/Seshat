@@ -20,7 +20,6 @@ use crate::{
             SidebarOverlay, SidebarProvider, SidebarRail, SidebarSheet, SidebarSide,
             SidebarTrigger, SidebarVariant,
         },
-        theme::{BG_BASE, BG_SURFACE, BORDER, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED},
     },
 };
 
@@ -33,18 +32,51 @@ use self::models::{
 #[component]
 fn SearchBox(mut search: Signal<String>, search_is_truncated: bool) -> Element {
     rsx! {
-        input {
-            placeholder: "Search icons...",
-            value: "{search}",
-            style: "padding: 6px 8px; width: 100%; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN};",
-            oninput: move |evt| search.set(evt.value())
+        div {
+            class: "relative mb-4",
+            crate::ui::icons::Icon {
+                kind: crate::ui::icons::IconKind::Search,
+                size: 16,
+                color: Some("var(--text-muted)"),
+            }
+            // we will position the icon absolute using inline style or utility class if we had an outer container.
+            // Let's use standard tailwind for absolute positioning:
+            div {
+                class: "absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground",
+                crate::ui::icons::Icon {
+                    kind: crate::ui::icons::IconKind::Search,
+                    size: 14,
+                    color: None,
+                }
+            }
+            input {
+                placeholder: "Search icons...",
+                value: "{search}",
+                class: "pl-8 pr-2 py-1.5 w-full rounded-md border border-[var(--border-subtle)] bg-[oklch(0.13_0.005_260)] text-foreground text-[13px] outline-none focus:border-[var(--accent)] transition-colors",
+                oninput: move |evt| search.set(evt.value())
+            }
         }
         if search_is_truncated {
             div {
-                style: "font-size: 11px; color: {TEXT_MUTED};",
+                class: "text-[11px] text-muted-foreground mb-2",
                 "Showing first {MAX_SEARCH_RESULTS} matches. Refine search to narrow results."
             }
         }
+    }
+}
+
+fn get_category_icon(category_name: &str) -> crate::ui::icons::IconKind {
+    let lower = category_name.to_lowercase();
+    if lower.contains("compute") || lower.contains("server") {
+        crate::ui::icons::IconKind::Server
+    } else if lower.contains("database") || lower.contains("storage") {
+        crate::ui::icons::IconKind::Database
+    } else if lower.contains("network") {
+        crate::ui::icons::IconKind::Network
+    } else if lower.contains("security") {
+        crate::ui::icons::IconKind::Shield
+    } else {
+        crate::ui::icons::IconKind::Grid // generic
     }
 }
 
@@ -60,14 +92,24 @@ fn CategoryAccordion(
     let category_expanded =
         query_active || expanded_categories.read().contains(&category_state_key);
     let name = category.name.clone();
+    let count = category.icons.len();
+    let icon_kind = get_category_icon(&name);
+
+    let base_btn_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-transparent bg-transparent text-foreground cursor-pointer text-[13px] hover:bg-white/5 transition-colors";
+    let active_btn_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-[var(--accent)] bg-[oklch(0.12_0.02_165)] text-foreground cursor-pointer text-[13px] transition-colors";
+    let btn_class = if category_expanded {
+        active_btn_class
+    } else {
+        base_btn_class
+    };
 
     rsx! {
         SidebarMenuSubItem {
             key: "{provider}-{name}",
             div {
-                style: "display: flex; flex-direction: column; gap: 4px;",
+                class: "flex flex-col gap-1 w-full",
                 button {
-                    style: "width: 100%; margin: 0; border: none; background: transparent; color: {TEXT_MUTED}; text-transform: uppercase; letter-spacing: 0.04em; font-size: 10px; text-align: left; padding: 0; cursor: pointer;",
+                    class: "{btn_class}",
                     onclick: move |_| {
                         if query_active { return; }
                         let mut state = expanded_categories.write();
@@ -77,13 +119,26 @@ fn CategoryAccordion(
                             state.insert(category_state_key.clone());
                         }
                     },
-                    if query_active { "{name}" } else if category_expanded { "▼ {name}" } else { "▶ {name}" }
+                    div {
+                        class: "flex items-center gap-2",
+                        crate::ui::icons::Icon {
+                            kind: if category_expanded { crate::ui::icons::IconKind::ChevronDown } else { crate::ui::icons::IconKind::ChevronRight },
+                            size: 14,
+                            color: Some("currentColor")
+                        }
+                        crate::ui::icons::Icon {
+                            kind: icon_kind,
+                            size: 14,
+                            color: Some("currentColor") // or subtle color
+                        }
+                        span { class: "font-normal", "{name}" }
+                    }
+                    span { class: "text-muted-foreground text-[11px]", "{count}" }
                 }
 
                 if category_expanded {
                     div {
-                        class: "icon-grid",
-                        style: "display: grid; grid-template-columns: repeat(4, 1fr); gap: 5px;",
+                        class: "grid grid-cols-3 gap-[5px] mt-1 pl-4",
                         for icon in category.icons.iter().cloned() {
                             IconTile { key: "{icon.icon_key}", icon, dragging_icon }
                         }
@@ -188,7 +243,7 @@ pub fn Sidebar() -> Element {
                 sidebar_ui, side: SidebarSide::Left, variant: SidebarVariant::Sidebar, collapsible: SidebarCollapsible::Offcanvas,
                 SidebarTrigger {
                     label: String::from("Browse icons"), title: String::from("Open icon browser"),
-                    style: Some(format!("position: fixed; top: 64px; left: 10px; z-index: 72; border-radius: 999px; border: 1px solid {BORDER}; background: color-mix(in oklch, {BG_SURFACE} 92%, transparent); color: {TEXT_MAIN}; padding: 7px 12px; cursor: pointer; backdrop-filter: blur(8px); box-shadow: 0 8px 16px color-mix(in oklch, black 20%, transparent);")),
+                    class: Some(String::from("fixed top-[64px] left-[10px] z-[72] rounded-full border border-border bg-surface/90 text-foreground py-1.5 px-3 cursor-pointer backdrop-blur-md shadow-lg")),
                 }
             }
         };
@@ -203,10 +258,10 @@ pub fn Sidebar() -> Element {
         };
     }
 
-    let panel_style = if ui_state.is_mobile {
-        format!("position: fixed; top: 56px; bottom: 0; left: 0; width: min(19rem, 90vw); background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_BASE} 100%); border-right: 1px solid {BORDER_SUBTLE}; padding: max(10px, env(safe-area-inset-top)) 10px max(10px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: 10px; overflow-y: auto; z-index: 70; box-shadow: 0 14px 28px color-mix(in oklch, black 26%, transparent);")
+    let panel_class = if ui_state.is_mobile {
+        String::from("fixed top-[56px] bottom-0 left-0 w-[min(19rem,90vw)] bg-gradient-to-b from-surface to-background border-r border-border-subtle p-[max(10px,env(safe-area-inset-top))] flex flex-col gap-2.5 overflow-y-auto z-[70] shadow-2xl")
     } else {
-        format!("width: 280px; max-width: 40vw; background: linear-gradient(180deg, {BG_SURFACE} 0%, {BG_BASE} 100%); border-right: 1px solid {BORDER_SUBTLE}; padding: 10px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;")
+        String::from("w-[280px] max-w-[40vw] bg-gradient-to-b from-surface to-background border-r border-border-subtle p-2.5 flex flex-col gap-2.5 overflow-y-auto")
     };
 
     rsx! {
@@ -216,7 +271,7 @@ pub fn Sidebar() -> Element {
                 SidebarOverlay { onclick: move |_| { close_sidebar(sidebar_ui); } }
             }
             SidebarPanel {
-                style: Some(panel_style),
+                class: Some(panel_class),
                 SidebarSheet {
                     style: String::new(),
                     SidebarHeader {
@@ -226,7 +281,7 @@ pub fn Sidebar() -> Element {
                     }
                     SearchBox { search, search_is_truncated }
                     SidebarInset {
-                        style: Some(String::from("display: flex; flex: 1; min-height: 0; flex-direction: column;")),
+                        class: Some(String::from("flex flex-1 min-h-0 flex-col")),
                         SidebarMenu {
                             for bucket in provider_buckets {
                                 ProviderAccordion {

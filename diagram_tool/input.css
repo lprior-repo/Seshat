@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@source "./src/**/*.{rs,html,css}";
+
+@theme {
+  --color-surface: var(--bg-surface);
+  --color-base: var(--bg-base);
+  --color-elevated: var(--bg-elevated);
+  --color-border: var(--border);
+  --color-border-subtle: var(--border-subtle);
+  --color-foreground: var(--text-main);
+  --color-muted: var(--bg-surface);
+  --color-muted-foreground: var(--text-muted);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--bg-base);
+}

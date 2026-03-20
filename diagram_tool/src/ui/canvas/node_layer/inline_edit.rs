@@ -7,6 +7,8 @@ use dioxus::prelude::*;
 #[derive(Props, Clone, PartialEq)]
 pub struct InlineEditProps {
     pub edit_value: Signal<String>,
+    #[props(default)]
+    pub class: String,
     pub style: String,
     pub doc_signal: Signal<DiagramDocument>,
     pub history_signal: Signal<History>,
@@ -26,6 +28,7 @@ pub fn InlineEdit(props: InlineEditProps) -> Element {
     rsx! {
         input {
             "data-testid": "inline-edit-input",
+            class: "{props.class}",
             value: "{edit_value}",
             style: "{style}",
             onmousedown: move |evt| evt.stop_propagation(),

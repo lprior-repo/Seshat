@@ -58,8 +58,8 @@ pub fn App() -> Element {
 
     rsx! {
         ThemeProvider {
-            document::Style {
-                "@import 'tailwindcss';"
+            document::Stylesheet {
+                href: asset!("/assets/tailwind.css")
             }
             div {
                 class: "flex flex-col w-screen h-screen overflow-hidden",

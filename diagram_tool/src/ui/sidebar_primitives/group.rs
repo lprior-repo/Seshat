@@ -1,4 +1,3 @@
-use crate::ui::theme::{BG_BASE, BORDER, BORDER_SUBTLE, TEXT_MAIN, TEXT_MUTED};
 use dioxus::prelude::*;
 
 #[component]
@@ -9,13 +8,13 @@ pub fn SidebarHeader(
 ) -> Element {
     rsx! {
         div {
-            style: "display: flex; align-items: center; justify-content: space-between; gap: 8px;",
+            class: "flex items-center justify-between gap-2 px-1 mb-2",
             h3 {
-                style: "margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {TEXT_MUTED};",
+                class: "m-0 text-base font-semibold text-foreground tracking-wide",
                 "{title}"
             }
             button {
-                style: "border: 1px solid {BORDER}; background: {BG_BASE}; color: {TEXT_MAIN}; border-radius: 6px; padding: 4px 8px; cursor: pointer; font-size: 11px;",
+                class: "bg-transparent text-muted-foreground hover:text-foreground border-none cursor-pointer text-xs",
                 onclick: move |evt| onaction.call(evt),
                 "{action_label}"
             }
@@ -35,26 +34,41 @@ pub fn SidebarGroup(
     rsx! {
         section {
             key: "{provider}",
-            style: "display: flex; flex-direction: column; gap: 6px; border: 1px solid {BORDER_SUBTLE}; border-radius: 8px; background: {BG_BASE}; padding: 6px; box-shadow: inset 0 0 0 1px color-mix(in oklch, {BORDER_SUBTLE} 40%, transparent);",
+            class: "flex flex-col mb-1",
 
             button {
-                style: "width: 100%; background: transparent; border: none; padding: 2px 4px; color: {TEXT_MAIN}; display: flex; justify-content: space-between; align-items: center; cursor: pointer; text-transform: uppercase; letter-spacing: 0.04em; font-size: 11px;",
+                class: "w-full bg-transparent border-none py-1.5 px-2 text-foreground flex justify-between items-center cursor-pointer text-[13px] hover:bg-white/5 rounded-md transition-colors",
                 onclick: move |evt| ontoggle.call(evt),
 
-                span {
-                    if query_active {
-                        "{provider}"
-                    } else if expanded {
-                        "▼ {provider}"
-                    } else {
-                        "▶ {provider}"
+                div {
+                    class: "flex items-center gap-2",
+                    crate::ui::icons::Icon {
+                        kind: if expanded { crate::ui::icons::IconKind::ChevronDown } else { crate::ui::icons::IconKind::ChevronRight },
+                        size: 14,
+                        color: Some("currentColor")
+                    }
+                    crate::ui::icons::Icon {
+                        kind: crate::ui::icons::IconKind::Cloud,
+                        size: 16,
+                        color: Some(crate::ui::theme::ACCENT) // We'll make it teal to match active, or let the caller pass an icon.
+                    }
+                    span {
+                        class: "font-medium capitalize",
+                        if query_active {
+                            "{provider}"
+                        } else {
+                            "{provider}"
+                        }
                     }
                 }
-                span { "{total_count}" }
+                span { class: "text-muted-foreground text-[11px]", "{total_count}" }
             }
 
             if expanded {
-                {children}
+                div {
+                    class: "pl-2 flex flex-col gap-0.5 mt-0.5",
+                    {children}
+                }
             }
         }
     }

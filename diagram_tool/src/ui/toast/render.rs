@@ -1,5 +1,4 @@
 use crate::app::AppState;
-use crate::ui::theme::{BG_ELEVATED, BG_SURFACE, BORDER, TEXT_MAIN, TEXT_MUTED};
 use crate::ui::toast::{ToastId, ToastIntent};
 use dioxus::prelude::*;
 use std::collections::HashSet;
@@ -77,5 +76,68 @@ pub fn Toaster() -> Element {
     if items.is_empty() {
         return rsx! {};
     }
-    rsx! {div{style:"position:fixed;right:14px;top:66px;z-index:60;display:flex;flex-direction:column;gap:8px;width:min(380px,calc(100vw-24px));pointer-events:none;",for toast in items{{let id=toast.id;let stripe=toast.intent.stripe_color();let card_shadow="0 10px 24px color-mix(in oklch, black 32%, transparent)";let card_opacity=if toast.dismissed{"0"}else{"1"};let card_transform=if toast.dismissed{"translateY(-6px)scale(0.98)"}else{"translateY(0px)scale(1)"};let card_pointer_events=if toast.dismissed{"none"}else{"auto"};rsx!{article{key:"{id:?}",style:"pointer-events:{card_pointer_events};position:relative;overflow:hidden;border:1px solid {BORDER};border-radius:10px;background:linear-gradient(180deg,{BG_ELEVATED}0%,{BG_SURFACE}100%);color:{TEXT_MAIN};box-shadow:{card_shadow};transition:opacity 180ms ease,transform 180ms ease;opacity:{card_opacity};transform:{card_transform};",div{style:"position:absolute;left:0;top:0;bottom:0;width:4px;background:{stripe};"}div{style:"padding:8px 10px 8px 12px;display:flex;gap:10px;align-items:flex-start;",div{style:"flex:1;min-width:0;",p{style:"margin:0;font-size:12px;font-weight:700;color:{TEXT_MAIN};","{toast.title}"}if let Some(detail)=toast.detail{p{style:"margin:2px 0 0;font-size:11px;color:{TEXT_MUTED};white-space:pre-wrap;","{detail}"}}}if let Some(action)=toast.action{button{style:"flex-shrink:0;border-radius:6px;border:1px solid {BORDER};background:{BG_SURFACE};color:{TEXT_MAIN};font-size:11px;line-height:1;cursor:pointer;padding:0 8px;height:22px;",onclick:move|_|{toasts.with_mut(|queue|{let target=if action.dismiss_all{None}else{Some(id)};let _=queue.dismiss_target(target);});},"{action.label}"}}button{style:"flex-shrink:0;width:22px;height:22px;border-radius:6px;border:1px solid {BORDER};background:{BG_SURFACE};color:{TEXT_MUTED};font-size:12px;line-height:1;cursor:pointer;",onclick:move|_|{toasts.with_mut(|queue|{let _=queue.dismiss_target(Some(id));});ai_conflict_state.set(None);},"x"}}}}}}}}
+    rsx! {
+        div {
+            class: "fixed right-[14px] top-[66px] z-[60] flex flex-col gap-2 w-[min(380px,calc(100vw-24px))] pointer-events-none",
+            for toast in items {
+                {
+                    let id = toast.id;
+                    let stripe = toast.intent.stripe_color();
+                    let card_shadow = "0 10px 24px color-mix(in oklch, black 32%, transparent)";
+                    let card_opacity = if toast.dismissed { "opacity-0" } else { "opacity-100" };
+                    let card_transform = if toast.dismissed { "-translate-y-1.5 scale-98" } else { "translate-y-0 scale-100" };
+                    let card_pointer_events = if toast.dismissed { "pointer-events-none" } else { "pointer-events-auto" };
+                    rsx! {
+                        article {
+                            key: "{id:?}",
+                            class: "relative overflow-hidden border border-border rounded-[10px] bg-gradient-to-b from-[var(--bg-elevated)] to-[var(--bg-surface)] text-foreground shadow-lg transition-all duration-180 ease-out {card_opacity} {card_transform} {card_pointer_events}",
+                            style: "box-shadow: {card_shadow};",
+                            div {
+                                class: "absolute left-0 top-0 bottom-0 w-1",
+                                style: "background: {stripe};"
+                            }
+                            div {
+                                class: "py-2 pr-2.5 pl-3 flex gap-2.5 items-start",
+                                div {
+                                    class: "flex-1 min-w-0",
+                                    p {
+                                        class: "m-0 text-xs font-bold text-foreground",
+                                        "{toast.title}"
+                                    }
+                                    if let Some(detail) = toast.detail {
+                                        p {
+                                            class: "mt-0.5 mb-0 text-[11px] text-muted-foreground whitespace-pre-wrap",
+                                            "{detail}"
+                                        }
+                                    }
+                                }
+                                if let Some(action) = toast.action {
+                                    button {
+                                        class: "shrink-0 rounded-md border border-border bg-surface text-foreground text-[11px] leading-none cursor-pointer px-2 h-[22px]",
+                                        onclick: move |_| {
+                                            toasts.with_mut(|queue| {
+                                                let target = if action.dismiss_all { None } else { Some(id) };
+                                                let _ = queue.dismiss_target(target);
+                                            });
+                                        },
+                                        "{action.label}"
+                                    }
+                                }
+                                button {
+                                    class: "shrink-0 w-[22px] h-[22px] rounded-md border border-border bg-surface text-muted-foreground text-xs leading-none cursor-pointer flex items-center justify-center",
+                                    onclick: move |_| {
+                                        toasts.with_mut(|queue| {
+                                            let _ = queue.dismiss_target(Some(id));
+                                        });
+                                        ai_conflict_state.set(None);
+                                    },
+                                    "x"
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 }

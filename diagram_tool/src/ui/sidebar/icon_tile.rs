@@ -32,13 +32,11 @@ fn IconImage(src: Option<String>) -> Element {
             img {
                 src: "{src_str}",
                 class: "w-8 h-8 object-contain pointer-events-none",
-                style: "width: 32px; height: 32px; object-fit: contain;",
                 draggable: "false"
             }
         } else {
             div {
                 class: "w-8 h-8 rounded bg-muted",
-                style: "width: 32px; height: 32px;"
             }
         }
     }
@@ -87,12 +85,14 @@ pub fn IconTile(
 
     rsx! {
         button {
-            class: "icon-item flex flex-col justify-center items-center gap-1.5 p-2 rounded-md border border-border bg-gradient-to-b from-background to-card cursor-grab shadow-inner hover:bg-muted/50",
+            class: "flex flex-col justify-center items-center gap-1.5 p-2 rounded-md border border-border bg-surface cursor-grab w-full box-border",
             "data-testid": "icon-item",
             title: "{title_display}\n{title_key}\n{category_for_title}",
             draggable: "true",
             onmousedown: move |_| handle_drag(&current_icon_mousedown, &data_url_memo.read(), &mut dragging_icon),
-            ondragstart: move |_| handle_drag(&current_icon_dragstart, &data_url_memo.read(), &mut dragging_icon),
+            ondragstart: move |_evt| {
+                handle_drag(&current_icon_dragstart, &data_url_memo.read(), &mut dragging_icon);
+            },
             IconImage { src: data_url_memo.read().clone() }
             IconLabel { text: current_icon.display_name.clone() }
         }

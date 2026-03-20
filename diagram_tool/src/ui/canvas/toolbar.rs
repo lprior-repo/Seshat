@@ -2,7 +2,7 @@ use dioxus::prelude::*;
 
 use crate::{
     history::History,
-    ui::theme::{BG_BASE, BORDER, TEXT_MAIN, TEXT_MUTED, TOOLBAR_BG},
+    ui::theme::{BORDER, TOOLBAR_BG},
 };
 use canvas_domain::interaction_reducer::InteractionMode;
 use canvas_domain::perf::to_screen_coords;
@@ -68,7 +68,7 @@ pub fn Toolbar(
                 onmousedown: move |evt| evt.stop_propagation(),
 
                 button {
-                    style: "border:1px solid {BORDER}; border-radius:6px; background:{BG_BASE}; color:{TEXT_MAIN}; width:24px; height:24px; cursor:pointer;",
+                    class: "border border-border rounded-md bg-[var(--bg-base)] text-foreground w-6 h-6 cursor-pointer flex items-center justify-center",
                     onclick: move |_| {
                         let selected = doc_signal.read().editor_state.selected_items.clone();
                         let current = doc_signal.read().clone();
@@ -93,9 +93,9 @@ pub fn Toolbar(
                     },
                     "-"
                 }
-                span { style: "font-size:11px; color:{TEXT_MUTED}; min-width:26px; text-align:center;", "{font_size.round()}" }
+                span { class: "text-[11px] text-muted-foreground min-w-[26px] text-center", "{font_size.round()}" }
                 button {
-                    style: "border:1px solid {BORDER}; border-radius:6px; background:{BG_BASE}; color:{TEXT_MAIN}; width:24px; height:24px; cursor:pointer;",
+                    class: "border border-border rounded-md bg-[var(--bg-base)] text-foreground w-6 h-6 cursor-pointer flex items-center justify-center",
                     onclick: move |_| {
                         let selected = doc_signal.read().editor_state.selected_items.clone();
                         let current = doc_signal.read().clone();
@@ -134,8 +134,7 @@ pub fn SelectionPill(doc_signal: Signal<DiagramDocument>) -> Element {
     if selected_count > 0 {
         rsx! {
             div {
-                class: "absolute left-[12px] bottom-[12px] z-[20] rounded-[8px] text-[11px] px-[9px] py-[5px] backdrop-blur-sm",
-                style: "border:1px solid {BORDER}; background:{TOOLBAR_BG}e8; color:{TEXT_MUTED}; box-shadow: 0 4px 12px color-mix(in oklch, black 24%, transparent);",
+                class: "absolute left-[12px] bottom-[12px] z-[20] rounded-[8px] text-[11px] px-[9px] py-[5px] backdrop-blur-sm border border-border bg-[var(--toolbar-bg)]/90 text-muted-foreground shadow-lg",
                 "{selected_count} item{plural} selected"
             }
         }

@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 
 use crate::history::History;
 use crate::ui::canvas::document_ops::{fit_icon_side, node_image_data_url};
-use crate::ui::theme::{ACCENT, BG_BASE, TEXT_MAIN, TEXT_MUTED};
+use crate::ui::theme::{TEXT_MAIN, TEXT_MUTED};
 
 use super::inline_edit::InlineEdit;
 use super::node_element::NodeInteractionState;
@@ -40,7 +40,8 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
             rsx! {
                 InlineEdit {
                     edit_value: props.edit_value,
-                    style: "width: 100%; padding: 2px 4px; border-radius: 2px; border: 1px solid {ACCENT}; background: transparent; color: {TEXT_MAIN}; font-size: {font_px}px; text-align: center;".to_string(),
+                    class: "w-full px-1 py-0.5 rounded-sm border border-[var(--accent)] bg-transparent text-[var(--text-main)] text-center",
+                    style: format!("font-size: {font_px}px;"),
                     doc_signal: props.doc_signal,
                     history_signal: props.history_signal,
                     editor_state: props.editor_state,
@@ -69,18 +70,18 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
         rsx! {
             div {
                 "data-testid": "subgraph-header",
-                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] pointer-events-none",
-                style: "border-bottom: 1px solid var(--border); background: color-mix(in oklch, var(--node-bg-subgraph) 80%, transparent);",
+                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] pointer-events-none border-b border-[var(--border)] bg-[color-mix(in_oklch,var(--node-bg-subgraph)_80%,transparent)]",
                 span {
                     "data-testid": "subgraph-header-text",
-                    style: "font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.04em; color: var(--text-muted); pointer-events: none;",
+                    class: "text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-muted)] pointer-events-none",
                     "{node.label}"
                 }
             }
             if is_editing_node {
                 InlineEdit {
                     edit_value: props.edit_value,
-                    style: format!("position:absolute; top:8px; left:8px; right:8px; width: calc(100% - 16px); padding: 2px 4px; border-radius: 4px; border: 1px solid {ACCENT}; background: {BG_BASE}; color: {TEXT_MAIN}; font-size: {font_px}px;"),
+                    class: "absolute top-2 left-2 right-2 w-[calc(100%-16px)] px-1 py-0.5 rounded border border-[var(--accent)] bg-[var(--bg-base)] text-[var(--text-main)]",
+                    style: format!("font-size: {font_px}px;"),
                     doc_signal: props.doc_signal,
                     history_signal: props.history_signal,
                     editor_state: props.editor_state,
@@ -150,7 +151,8 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
             if is_editing_node {
                 InlineEdit {
                     edit_value: props.edit_value,
-                    style: format!("position:absolute; left:6px; right:6px; bottom:-22px; width: calc(100% - 12px); padding: 2px 4px; border-radius: 4px; border: 1px solid {ACCENT}; background: {BG_BASE}; color: {TEXT_MAIN}; font-size: {font_px}px; text-align:center;"),
+                    class: "absolute left-[6px] right-[6px] bottom-[-22px] w-[calc(100%-12px)] px-1 py-0.5 rounded border border-[var(--accent)] bg-[var(--bg-base)] text-[var(--text-main)] text-center",
+                    style: format!("font-size: {font_px}px;"),
                     doc_signal: props.doc_signal,
                     history_signal: props.history_signal,
                     editor_state: props.editor_state,

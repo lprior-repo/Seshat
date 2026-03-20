@@ -73,8 +73,7 @@ pub fn EdgeLayer(
                             height: "24",
                             input {
                                 value: "{edit_value}",
-                                class: "px-[6px] py-[2px] rounded border border-solid border-[var(--accent)] bg-[var(--bg-base)] text-[var(--text-main)]",
-                                style: "width:100px; height:22px; font-size:11px;",
+                                class: "px-[6px] py-[2px] rounded border border-solid border-[var(--accent)] bg-[var(--bg-base)] text-[var(--text-main)] w-[100px] h-[22px] text-[11px]",
                                 onmousedown: move |evt| evt.stop_propagation(),
                                 oninput: move |evt| edit_value.set(evt.value()),
                                 onblur: move |_| {
@@ -129,8 +128,7 @@ pub fn EdgeLayer(
                             x: "{mid_x}",
                             y: "{mid_y - 6.0}",
                             text_anchor: "middle",
-                            class: "fill-[var(--text-muted)] opacity-60",
-                            style: "font-size:9px;",
+                            class: "fill-[var(--text-muted)] opacity-60 text-[9px]",
                             "label"
                         }
                     }

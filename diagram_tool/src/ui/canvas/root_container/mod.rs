@@ -67,12 +67,12 @@ pub fn RootContainer(state: CanvasState) -> Element {
 
     rsx! {
         div {
-            class: "canvas-container",
+            class: "canvas-container flex-1 relative overflow-hidden overscroll-none touch-none select-none box-border",
             "data-testid": "canvas-root",
-            style: "flex: 1; position: relative; overflow: hidden; overscroll-behavior: none; touch-action: none; background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; user-select: none; border: {border_style}; box-sizing: border-box;",
+            style: "background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; border: {border_style};",
 
             ondragover: move |evt| { evt.prevent_default(); },
-            ondragenter: move |_| { drag_over.set(true); },
+            ondragenter: move |evt| { evt.prevent_default(); drag_over.set(true); },
             ondragleave: move |_| { drag_over.set(false); },
             ondrop: handle_drop,
             oncontextmenu: move |evt| evt.prevent_default(),
@@ -90,11 +90,11 @@ pub fn RootContainer(state: CanvasState) -> Element {
 
             div {
                 "data-testid": "canvas-hit-layer",
-                style: "position: absolute; inset: 0; pointer-events: none; opacity: 0;"
+                class: "absolute inset-0 pointer-events-none opacity-0"
             }
 
             svg {
-                style: "position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0;",
+                class: "absolute top-0 left-0 w-full h-full pointer-events-none z-0",
                 defs {
                     marker {
                         id: "arrowhead",

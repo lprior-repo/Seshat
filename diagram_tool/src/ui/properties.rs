@@ -54,11 +54,11 @@ pub fn PropertiesPanel() -> Element {
     let selected_node_count = selected_nodes.len();
     let selected_edge_count = selected_edges.len();
     let delete_cursor = if selected_total > 0 {
-        "pointer"
+        "cursor-pointer"
     } else {
-        "not-allowed"
+        "cursor-not-allowed"
     };
-    let delete_opacity = if selected_total > 0 { "1" } else { "0.6" };
+    let delete_opacity = if selected_total > 0 { "opacity-100" } else { "opacity-60" };
 
     let delete_selected = move |_| {
         if selected_total == 0 {
@@ -114,20 +114,19 @@ pub fn PropertiesPanel() -> Element {
 
     rsx! {
         div {
-            class: "properties-panel",
-            style: "width: 260px; max-width: 40vw; background: {BG_SURFACE}; padding: 10px; border-left: 1px solid {BORDER_SUBTLE}; display: flex; flex-direction: column; gap: 10px; min-height: 0; overflow: hidden;",
+            class: "properties-panel w-[260px] max-w-[40vw] bg-surface p-2.5 border-l border-[var(--border-subtle)] flex flex-col gap-2.5 min-h-0 overflow-hidden",
 
             h3 {
-                style: "margin: 0; font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: {TEXT_MUTED};",
+                class: "m-0 text-xs tracking-[0.08em] uppercase text-muted-foreground",
                 "Properties"
             }
             p {
-                style: "margin: 0; font-size: 11px; color: {TEXT_DIM};",
+                class: "m-0 text-[11px] text-[var(--text-dim)]",
                 "{selected_node_count} node(s), {selected_edge_count} edge(s) selected"
             }
 
             div {
-                style: "flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding-right: 2px;",
+                class: "flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5",
 
                 if selected_total == 0 {
                     DefaultPanel {}
@@ -158,16 +157,16 @@ pub fn PropertiesPanel() -> Element {
 
                 if show_multi_select_hint {
                     div {
-                        style: "padding: 6px; border-radius: 6px; border: 1px dashed {BORDER}; color: {TEXT_DIM}; font-size: 11px;",
+                        class: "p-1.5 rounded-md border border-dashed border-border text-[var(--text-dim)] text-[11px]",
                         "Multiple items selected. Use delete to remove all selected items."
                     }
                 }
             }
 
             div {
-                style: "padding-top: 8px; border-top: 1px solid {BORDER_SUBTLE};",
+                class: "pt-2 border-t border-[var(--border-subtle)]",
                 button {
-                    style: "width: 100%; padding: 7px 10px; cursor: {delete_cursor}; border-radius: 6px; border: 1px solid {BORDER}; background: {BG_BASE}; color: #f87171; opacity: {delete_opacity};",
+                    class: "w-full py-[7px] px-2.5 {delete_cursor} rounded-md border border-border bg-[var(--bg-base)] text-red-400 {delete_opacity}",
                     disabled: selected_total == 0,
                     onclick: delete_selected,
                     "Delete Selected"

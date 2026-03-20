@@ -148,7 +148,8 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                 NodeKind::Subgraph => "subgraph",
                 NodeKind::Text => "text",
             },
-            style: "position: absolute; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: inherit; border-radius: 10px; left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
+            class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px]",
+            style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
 
             onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_mouseenter.clone())),
             onmouseleave: move |_| {
@@ -198,8 +199,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
 
             div {
                 "data-testid": "node-hitbox",
-                class: "absolute opacity-0",
-                style: "inset: 0; pointer-events: none;"
+                class: "absolute opacity-0 inset-0 pointer-events-none"
             }
 
             {
