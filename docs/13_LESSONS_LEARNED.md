@@ -44,3 +44,18 @@ When running `dx build --platform web` or building for `wasm32-unknown-unknown`,
 - **Black Hat Reviewer**: Contract Parity, Functional Rust Big 6, Strict DDD
 - **Truth Serum**: AI hallucination detection, laziness detection
 - **Red Queen**: Adversarial testing (boundary values, malformed inputs)
+
+## 8. Dioxus 0.7 + Tailwind CSS v4
+- **Required Setup**: Tailwind v4 now requires explicit manual compilation when used with Dioxus 0.7. `npm init` and `npm install @tailwindcss/cli` must be run.
+- **Config**: Define `input.css` with `@import "tailwindcss"; @source "./src/**/*.{rs,html,css}";`.
+- **Injection**: Include `document::Stylesheet { href: asset!("/assets/tailwind.css") }` inside your `ThemeProvider` or root `App` component.
+- **Assets**: Update `Dioxus.toml` to explicitly point `asset_dir = "assets"`.
+- **Runtime**: Must run the Tailwind watcher (`npx @tailwindcss/cli -i ./input.css -o ./assets/tailwind.css --watch`) alongside `dx serve`.
+
+## 9. Dioxus UI & Layout Gotchas
+- **Scrollbar Overflow**: Applying `overflow-x-auto` to a `h-14` flex row without `shrink-0` inside a flex container can cause severe layout cascading issues, wiping out entire toolbars and rendering huge scrollbars on the main canvas.
+- **Heavy DOM Performance**: Dioxus 0.7 handles massive DOM trees well (rendering 2,400+ SVG components seamlessly). Do not unnecessarily build manual pagination limits if native scrolling performs perfectly.
+
+## 10. Dioxus Agent RS (Webdriver)
+- To properly debug Dioxus WASM visually via agents, use `dioxus-agent-rs`.
+- It supports a persistent `repl` mode (via `rustyline` and `shlex`) allowing rapid interactive debugging without spinning up/tearing down the chromedriver session for each command.
