@@ -14,10 +14,10 @@ pub fn persist_sidebar_open(open: bool) {
     let script = format!(
         r#"(() => {{
             try {{
-                document.cookie = \"{SIDEBAR_COOKIE_NAME}={open_value}; path=/; max-age={SIDEBAR_COOKIE_MAX_AGE_SECONDS}; samesite=lax\";
+                document.cookie = "{SIDEBAR_COOKIE_NAME}={open_value}; path=/; max-age={SIDEBAR_COOKIE_MAX_AGE_SECONDS}; samesite=lax";
             }} catch (_) {{}}
             try {{
-                localStorage.setItem(\"{SIDEBAR_LEGACY_LOCAL_STORAGE_KEY}\", \"{open_value}\");
+                localStorage.setItem("{SIDEBAR_LEGACY_LOCAL_STORAGE_KEY}", "{open_value}");
             }} catch (_) {{}}
         }})();"#
     );
