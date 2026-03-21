@@ -2,9 +2,9 @@ use std::collections::BTreeMap;
 
 use crate::icons::{icon_index, IconMeta};
 
-pub const INITIAL_PROVIDER_LIMIT: usize = 3000;
-pub const LOAD_MORE_STEP: usize = 3000;
-pub const MAX_SEARCH_RESULTS: usize = 3000;
+pub const INITIAL_PROVIDER_LIMIT: usize = 50;
+pub const LOAD_MORE_STEP: usize = 50;
+pub const MAX_SEARCH_RESULTS: usize = 150;
 pub const DEFAULT_EXPANDED_PROVIDER: &str = "aws";
 pub const DEFAULT_EXPANDED_CATEGORY: &str = "aws/analytics";
 

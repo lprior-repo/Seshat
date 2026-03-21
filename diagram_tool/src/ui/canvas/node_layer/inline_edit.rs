@@ -25,13 +25,25 @@ pub fn InlineEdit(props: InlineEditProps) -> Element {
     let mut editor_state = props.editor_state;
     let db_tx = props.db_tx;
 
+    // Programmatic focus via JS after mount: the HTML `autofocus` attribute is
+    // unreliable for dynamically-inserted elements in WASM. `use_effect` with no
+    // reactive reads runs exactly once after first render, focusing and selecting
+    // the existing label text so the user can type immediately.
+    use_effect(move || {
+        let _ = document::eval(
+            r#"(function() {
+                const el = document.querySelector('[data-testid="inline-edit-input"]');
+                if (el) { el.focus(); el.select(); }
+            })();"#,
+        );
+    });
+
     rsx! {
         input {
             "data-testid": "inline-edit-input",
             class: "{props.class}",
             value: "{edit_value}",
             style: "{style}",
-            autofocus: true,
             onmousedown: move |evt| evt.stop_propagation(),
             oninput: move |evt| edit_value.set(evt.value()),
             onblur: move |_| {

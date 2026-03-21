@@ -71,8 +71,7 @@ test("inline edit stores text on Enter @baseline", async ({ page }) => {
   await expect(inlineEdit).toBeVisible({ timeout: 3000 });
   console.log("Inline edit visible ✓");
 
-  // Focus directly (connection-dot overlaps click area, bypass with JS focus)
-  await inlineEdit.focus();
+  // InlineEdit uses use_effect to focus via JS on mount - no manual focus needed
   await page.keyboard.press('Control+a');
   await page.keyboard.type("TestLabel", { delay: 60 });
 
