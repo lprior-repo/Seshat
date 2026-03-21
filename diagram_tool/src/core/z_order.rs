@@ -39,7 +39,7 @@ fn ordered_layer_node_ids(doc: &DiagramDocument, subgraph_layer: bool) -> Vec<No
             .get(a)
             .zip(doc.document.nodes.get(b))
             .map_or(std::cmp::Ordering::Equal, |(na, nb)| {
-                (na.z_index, a.to_string()).cmp(&(nb.z_index, b.to_string()))
+                (na.z_index, a.as_str()).cmp(&(nb.z_index, b.as_str()))
             })
     });
 

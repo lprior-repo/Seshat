@@ -19,13 +19,13 @@ pub(crate) fn assign_layers(
                 m
             });
 
-    let max_layer = layer_map.values().copied().max().unwrap_or(0);
+    let max_layer = layer_map.values().copied().max().map_or(0, |x| x);
 
     (0..=max_layer)
         .map(|layer| {
             topo_order
                 .iter()
-                .filter(|&&idx| layer_map.get(&idx).copied().unwrap_or(0) == layer)
+                .filter(|&&idx| layer_map.get(&idx).copied().map_or(0, |x| x) == layer)
                 .copied()
                 .collect()
         })

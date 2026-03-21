@@ -23,12 +23,13 @@ pub struct ProviderBucket {
     pub categories: Vec<CategoryBucket>,
 }
 
+#[derive(Clone, PartialEq)]
 pub struct ProviderBucketsResult {
     pub buckets: Vec<ProviderBucket>,
     pub is_truncated: bool,
 }
 
-#[derive(Clone, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub struct LowercasedQuery<'a>(&'a str);
 
 impl<'a> LowercasedQuery<'a> {
@@ -89,32 +90,33 @@ pub fn category_key(provider: &str, category_label: &str) -> String {
     format!("{}/{}", provider.to_ascii_lowercase(), normalized)
 }
 
-pub fn bucket_icons_by_category(icons: Vec<IconMeta>) -> Vec<CategoryBucket> {
-    let grouped =
-        icons
-            .into_iter()
-            .fold(BTreeMap::<String, Vec<IconMeta>>::new(), |mut acc, icon| {
-                acc.entry(category_label(&icon)).or_default().push(icon);
-                acc
-            });
-
-    grouped
+pub fn bucket_icons_by_category(icons: &[IconMeta]) -> Vec<CategoryBucket> {
+    use itertools::Itertools;
+    icons
+        .iter()
+        .sorted_by_key(|icon| category_label(icon))
+        .chunk_by(|icon| category_label(icon))
         .into_iter()
-        .map(|(name, icons)| CategoryBucket { name, icons })
+        .map(|(name, group)| CategoryBucket {
+            name,
+            icons: group.cloned().collect(),
+        })
         .collect()
 }
 
 pub fn search_matches(index: &[IconMeta], query: LowercasedQuery<'_>) -> (usize, Vec<IconMeta>) {
-    let mut visible = Vec::with_capacity(MAX_SEARCH_RESULTS.min(100));
-    let mut count = 0;
-    for icon in index {
-        if matches_query(icon, query.clone()) {
-            if visible.len() < MAX_SEARCH_RESULTS {
-                visible.push(icon.clone());
-            }
-            count += 1;
-        }
+    let mut visible: Vec<IconMeta> = index
+        .iter()
+        .filter(|icon| matches_query(icon, query))
+        .take(MAX_SEARCH_RESULTS + 1)
+        .cloned()
+        .collect();
+
+    let count = visible.len();
+    if count > MAX_SEARCH_RESULTS {
+        visible.pop();
     }
+
     (count, visible)
 }
 
@@ -135,7 +137,7 @@ fn build_empty_bucket(
         total_count: icons.len(),
         visible_count: visible.len(),
         has_more: icons.len() > visible.len(),
-        categories: bucket_icons_by_category(visible),
+        categories: bucket_icons_by_category(&visible),
     }
 }
 
@@ -144,7 +146,10 @@ fn build_search_buckets(query: LowercasedQuery<'_>) -> ProviderBucketsResult {
     let mut grouped = BTreeMap::<String, Vec<IconMeta>>::new();
 
     for icon in limited {
-        grouped.entry(icon.provider.clone()).or_default().push(icon);
+        grouped
+            .entry(icon.provider.to_string())
+            .or_default()
+            .push(icon);
     }
 
     let buckets = grouped
@@ -153,7 +158,7 @@ fn build_search_buckets(query: LowercasedQuery<'_>) -> ProviderBucketsResult {
             total_count: icons.len(),
             visible_count: icons.len(),
             has_more: false,
-            categories: bucket_icons_by_category(icons),
+            categories: bucket_icons_by_category(&icons),
             provider,
         })
         .collect();
@@ -193,12 +198,13 @@ mod tests {
     #[test]
     fn given_empty_query_when_matches_query_then_returns_true() {
         let icon = IconMeta {
-            icon_key: String::from("aws/analytics/athena"),
-            provider: String::from("aws"),
-            category_path: vec![String::from("Analytics")],
-            file_relpath: String::from("aws/Analytics/athena.svg"),
-            display_name: String::from("Athena"),
-            search_terms: String::from("aws/analytics/athena athena aws analytics"),
+            icon_key: std::sync::Arc::from("aws/analytics/athena"),
+            provider: std::sync::Arc::from("aws"),
+            category_path: vec![std::sync::Arc::from("Analytics")],
+            file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
+            display_name: std::sync::Arc::from("Athena"),
+            search_terms: std::sync::Arc::from("aws/analytics/athena athena aws analytics"),
+            base64_data: std::sync::Arc::from(""),
         };
         assert!(matches_query(&icon, LowercasedQuery::empty()));
     }
@@ -206,12 +212,13 @@ mod tests {
     #[test]
     fn given_matching_query_when_matches_query_then_returns_true() {
         let icon = IconMeta {
-            icon_key: String::from("aws/analytics/athena"),
-            provider: String::from("aws"),
-            category_path: vec![String::from("Analytics")],
-            file_relpath: String::from("aws/Analytics/athena.svg"),
-            display_name: String::from("Athena"),
-            search_terms: String::from("aws/analytics/athena athena aws analytics"),
+            icon_key: std::sync::Arc::from("aws/analytics/athena"),
+            provider: std::sync::Arc::from("aws"),
+            category_path: vec![std::sync::Arc::from("Analytics")],
+            file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
+            display_name: std::sync::Arc::from("Athena"),
+            search_terms: std::sync::Arc::from("aws/analytics/athena athena aws analytics"),
+            base64_data: std::sync::Arc::from(""),
         };
         // The search query is expected to be already lowercased by the UI
         assert!(matches_query(
@@ -228,12 +235,13 @@ mod tests {
     #[test]
     fn given_non_matching_query_when_matches_query_then_returns_false() {
         let icon = IconMeta {
-            icon_key: String::from("aws/analytics/athena"),
-            provider: String::from("aws"),
-            category_path: vec![String::from("Analytics")],
-            file_relpath: String::from("aws/Analytics/athena.svg"),
-            display_name: String::from("Athena"),
-            search_terms: String::from("aws/analytics/athena athena aws analytics"),
+            icon_key: std::sync::Arc::from("aws/analytics/athena"),
+            provider: std::sync::Arc::from("aws"),
+            category_path: vec![std::sync::Arc::from("Analytics")],
+            file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
+            display_name: std::sync::Arc::from("Athena"),
+            search_terms: std::sync::Arc::from("aws/analytics/athena athena aws analytics"),
+            base64_data: std::sync::Arc::from(""),
         };
         assert!(!matches_query(
             &icon,

@@ -1,7 +1,5 @@
 //! Z-order operations - bring forward, send backward, bring to front, send to back
 
-use std::collections::BTreeSet;
-
 use dioxus::prelude::*;
 
 use crate::history::History;
@@ -23,12 +21,14 @@ fn apply_z_order_operation(
     op: ZOrderOp,
 ) -> bool {
     let current = doc_signal.read().clone();
-    let selected = current
+
+    // Collect into Vec instead of BTreeSet - more efficient since we don't need set operations
+    let selected: Vec<_> = current
         .editor_state
         .selected_items
         .iter()
         .filter_map(|id| diagram_models::document::NodeId::new(id.clone()).into())
-        .collect::<BTreeSet<_>>();
+        .collect();
 
     if selected.is_empty() {
         return false;

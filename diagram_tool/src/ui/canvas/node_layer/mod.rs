@@ -4,8 +4,6 @@ pub mod inline_edit;
 pub mod node_content;
 pub mod node_element;
 
-use std::collections::HashSet;
-
 use canvas_domain::interaction_reducer::InteractionMode;
 use diagram_models::document::{DiagramDocument, Node, NodeId};
 use dioxus::prelude::*;
@@ -35,9 +33,9 @@ pub fn NodeLayer(
     pending_pointer_sample: Signal<Option<(f64, f64)>>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) -> Element {
-    let doc_for_nodes = doc_signal.read().clone();
-    let s = doc_for_nodes.editor_state.clone();
-    let selected_items = s.selected_items.iter().cloned().collect::<HashSet<_>>();
+    let doc_for_nodes = doc_signal.read();
+    let s = &doc_for_nodes.editor_state;
+    let selected_items = &s.selected_items;
     let camera_x = s.camera_x.0;
     let camera_y = s.camera_y.0;
     let zoom = s.zoom.0;
@@ -48,8 +46,10 @@ pub fn NodeLayer(
     let culling_min_y = camera_y - margin_y;
     let culling_max_x = camera_x + (viewport_w / zoom) + margin_x;
     let culling_max_y = camera_y + (viewport_h / zoom) + margin_y;
+    // Clone once for rsx closure - necessary due to Dioxus deferred execution
     let editor_state_val = editor_state.read().clone();
-    let hovered_now = match editor_state_val {
+    // Extract hovered node ID with minimal clone
+    let hovered_now: Option<NodeId> = match *editor_state.read() {
         crate::ui::canvas::state::EditorState::HoveringNode(ref id) => Some(id.clone()),
         _ => None,
     };

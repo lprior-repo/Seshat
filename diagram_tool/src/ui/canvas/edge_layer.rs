@@ -16,13 +16,9 @@ pub fn EdgeLayer(
     viewport_size: Signal<(f64, f64)>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) -> Element {
-    let doc = doc_signal.read().clone();
+    let doc = doc_signal.read();
     let s = doc.editor_state.clone();
-    let selected_items = s
-        .selected_items
-        .iter()
-        .cloned()
-        .collect::<std::collections::HashSet<_>>();
+    let selected_items = &s.selected_items;
     let camera_x = s.camera_x.0;
     let camera_y = s.camera_y.0;
     let zoom = s.zoom.0;
@@ -31,11 +27,11 @@ pub fn EdgeLayer(
 
     rsx! {
         {
-            edge_rows.into_iter().map(move |(id, edge, src, tgt): (EdgeId, Edge, Node, Node)| {
+            edge_rows.map(move |(id, edge, src, tgt)| {
                 let canvas_domain::ScreenCoord(sx, sy) = to_screen_coords(canvas_domain::CanvasCoord(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0), canvas_domain::CanvasCoord(camera_x, camera_y), zoom);
                 let canvas_domain::ScreenCoord(tx, ty) = to_screen_coords(canvas_domain::CanvasCoord(tgt.x.0 + tgt.width.0 / 2.0, tgt.y.0 + tgt.height.0 / 2.0), canvas_domain::CanvasCoord(camera_x, camera_y), zoom);
-                let d = edge_path(sx, sy, tx, ty, &edge);
-                let (mid_x, mid_y) = edge_label_position(sx, sy, tx, ty, &edge);
+                let d = edge_path(sx, sy, tx, ty, edge);
+                let (mid_x, mid_y) = edge_label_position(sx, sy, tx, ty, edge);
                 let is_selected = selected_items.contains(id.as_str());
                 let stroke_color = if is_selected {
                     EDGE_SELECTED
@@ -52,7 +48,7 @@ pub fn EdgeLayer(
                     ""
                 };
                 let font_size = edge.font_size.map_or(10.0, |f| f.0) * zoom;
-                let is_editing_edge = matches!(*editor_state.read(), crate::ui::canvas::state::EditorState::EditingEdge(ref edit_id) if edit_id == &id);
+                let is_editing_edge = matches!(*editor_state.read(), crate::ui::canvas::state::EditorState::EditingEdge(ref edit_id) if edit_id == id);
                 rsx! {
                     path {
                         key: "{id:?}",
@@ -139,14 +135,14 @@ pub fn EdgeLayer(
 }
 
 #[must_use]
-pub fn get_visible_edges(
-    doc: &DiagramDocument,
+pub fn get_visible_edges<'a>(
+    doc: &'a DiagramDocument,
     camera_x: f64,
     camera_y: f64,
     zoom: f64,
     viewport_w: f64,
     viewport_h: f64,
-) -> Vec<(EdgeId, Edge, Node, Node)> {
+) -> impl Iterator<Item = (&'a EdgeId, &'a Edge, &'a Node, &'a Node)> + use<'a> {
     let margin_x = (viewport_w / zoom).max(100.0) * 0.5;
     let margin_y = (viewport_h / zoom).max(100.0) * 0.5;
     let culling_min_x = camera_x - margin_x;
@@ -154,37 +150,33 @@ pub fn get_visible_edges(
     let culling_max_x = camera_x + (viewport_w / zoom) + margin_x;
     let culling_max_y = camera_y + (viewport_h / zoom) + margin_y;
 
-    doc.document
-        .edges
-        .iter()
-        .filter_map(|(id, edge)| {
-            doc.document
-                .nodes
-                .get(&edge.source)
-                .zip(doc.document.nodes.get(&edge.target))
-                .and_then(|(src, tgt)| {
-                    let src_min_x = src.x.0;
-                    let src_min_y = src.y.0;
-                    let src_max_x = src.x.0 + src.width.0;
-                    let src_max_y = src.y.0 + src.height.0;
+    doc.document.edges.iter().filter_map(move |(id, edge)| {
+        doc.document
+            .nodes
+            .get(&edge.source)
+            .and_then(|src| doc.document.nodes.get(&edge.target).map(|tgt| (src, tgt)))
+            .and_then(|(src, tgt)| {
+                let src_min_x = src.x.0;
+                let src_min_y = src.y.0;
+                let src_max_x = src.x.0 + src.width.0;
+                let src_max_y = src.y.0 + src.height.0;
 
-                    let tgt_min_x = tgt.x.0;
-                    let tgt_min_y = tgt.y.0;
-                    let tgt_max_x = tgt.x.0 + tgt.width.0;
-                    let tgt_max_y = tgt.y.0 + tgt.height.0;
+                let tgt_min_x = tgt.x.0;
+                let tgt_min_y = tgt.y.0;
+                let tgt_max_x = tgt.x.0 + tgt.width.0;
+                let tgt_max_y = tgt.y.0 + tgt.height.0;
 
-                    let min_x = src_min_x.min(tgt_min_x);
-                    let min_y = src_min_y.min(tgt_min_y);
-                    let max_x = src_max_x.max(tgt_max_x);
-                    let max_y = src_max_y.max(tgt_max_y);
+                let min_x = src_min_x.min(tgt_min_x);
+                let min_y = src_min_y.min(tgt_min_y);
+                let max_x = src_max_x.max(tgt_max_x);
+                let max_y = src_max_y.max(tgt_max_y);
 
-                    let visible = max_x >= culling_min_x
-                        && min_x <= culling_max_x
-                        && max_y >= culling_min_y
-                        && min_y <= culling_max_y;
+                let visible = max_x >= culling_min_x
+                    && min_x <= culling_max_x
+                    && max_y >= culling_min_y
+                    && min_y <= culling_max_y;
 
-                    visible.then(|| (id.clone(), edge.clone(), src.clone(), tgt.clone()))
-                })
-        })
-        .collect()
+                visible.then_some((id, edge, src, tgt))
+            })
+    })
 }

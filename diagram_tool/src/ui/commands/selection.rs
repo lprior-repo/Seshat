@@ -50,7 +50,7 @@ pub fn apply_delete_selected(
             .document
             .nodes
             .iter()
-            .filter(|(id, _)| !selected.contains(&id.to_string()))
+            .filter(|(id, _)| !selected.contains(id.as_str()))
             .map(|(id, node)| {
                 let mut next = node.clone();
                 next.parent = reparent_if_deleted(next.parent, &deleted_node_ids);
@@ -66,7 +66,7 @@ pub fn apply_delete_selected(
             .filter(|(id, edge)| {
                 node_ids.contains(&edge.source)
                     && node_ids.contains(&edge.target)
-                    && !selected.contains(&id.to_string())
+                    && !selected.contains(id.as_str())
             })
             .map(|(id, edge)| (id.clone(), edge.clone()))
             .collect();
@@ -136,7 +136,7 @@ pub fn apply_group_selection(
 
     if result.is_ok() {
         if let Some(tx) = db_tx {
-            let ids: Vec<String> = selected_ids.iter().map(|id| id.to_string()).collect();
+            let ids: Vec<String> = selected_ids.iter().cloned().collect();
             let envelope =
                 crate::ui::dispatch::create::create_group_envelope(group_id.to_string(), ids);
             tx.send(envelope);
@@ -187,8 +187,10 @@ fn selected_node_ids(doc: &DiagramDocument) -> BTreeSet<NodeId> {
     doc.editor_state
         .selected_items
         .iter()
-        .map(|id| diagram_models::document::NodeId::new(id.clone()))
-        .filter(|id| doc.document.nodes.contains_key(id))
+        .filter_map(|id| {
+            let node_id = diagram_models::document::NodeId::new(id.clone());
+            doc.document.nodes.contains_key(&node_id).then_some(node_id)
+        })
         .collect()
 }
 
@@ -198,17 +200,13 @@ fn selected_nodes_from_selection(
 ) -> BTreeSet<NodeId> {
     selected
         .iter()
-        .map(|id| diagram_models::document::NodeId::new(id.clone()))
-        .filter(|id| nodes.contains_key(id))
+        .filter_map(|id| {
+            let node_id = diagram_models::document::NodeId::new(id.clone());
+            nodes.contains_key(&node_id).then_some(node_id)
+        })
         .collect()
 }
 
 fn reparent_if_deleted(parent: Option<NodeId>, deleted_ids: &BTreeSet<NodeId>) -> Option<NodeId> {
-    parent.and_then(|parent_id| {
-        if deleted_ids.contains(&parent_id) {
-            None
-        } else {
-            Some(parent_id)
-        }
-    })
+    parent.filter(|parent_id| !deleted_ids.contains(parent_id))
 }

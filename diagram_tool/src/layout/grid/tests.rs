@@ -5,7 +5,7 @@ use diagram_models::document::{
 };
 use im::HashMap;
 
-use super::algorithm::{accumulated_parent_delta, calculate_grid_layout};
+use super::algorithm::calculate_grid_layout;
 
 fn node(x: f64, y: f64, locked: bool, parent: Option<NodeId>) -> Node {
     Node {
@@ -89,26 +89,6 @@ fn given_nested_children_when_grid_layout_moves_root_then_descendants_follow() {
     assert!((child_after.1 - (child_before.1 + delta.1)).abs() < f64::EPSILON);
     assert!((grand_after.0 - (grand_before.0 + delta.0)).abs() < f64::EPSILON);
     assert!((grand_after.1 - (grand_before.1 + delta.1)).abs() < f64::EPSILON);
-}
-
-#[cfg(kani)]
-#[kani::proof]
-#[test]
-fn given_ancestor_chain_deltas_when_accumulated_then_sum_is_exact() {
-    let root = NodeId::new(String::from("root"));
-    let child = NodeId::new(String::from("child"));
-    let grandchild = NodeId::new(String::from("grandchild"));
-
-    let nodes = HashMap::new()
-        .update(root.clone(), node(0.0, 0.0, true, None))
-        .update(child.clone(), node(0.0, 0.0, true, Some(root.clone())))
-        .update(grandchild, node(0.0, 0.0, true, Some(child.clone())));
-    let deltas = HashMap::new()
-        .update(root, (2.0, 3.0))
-        .update(child.clone(), (5.0, 7.0));
-
-    let result = accumulated_parent_delta(&child, &deltas, &nodes);
-    assert_eq!(result, Some((7.0, 10.0)));
 }
 
 #[cfg(kani)]

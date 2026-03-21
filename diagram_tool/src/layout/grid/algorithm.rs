@@ -4,25 +4,6 @@ use diagram_models::document::{DiagramDocument, NodeId, OrderedFloat};
 use im::HashMap;
 use itertools::Itertools;
 
-pub(crate) fn accumulated_parent_delta(
-    parent_id: &NodeId,
-    deltas: &HashMap<NodeId, (f64, f64)>,
-    nodes: &HashMap<NodeId, diagram_models::document::Node>,
-) -> Option<(f64, f64)> {
-    std::iter::successors(Some(parent_id.clone()), |id| {
-        nodes.get(id).and_then(|node| node.parent.clone())
-    })
-    .take(nodes.len())
-    .fold(None, |acc: Option<(f64, f64)>, id| {
-        deltas.get(&id).map_or(acc, |&(dx, dy)| {
-            Some(match acc {
-                Some((adx, ady)) => (adx + dx, ady + dy),
-                None => (dx, dy),
-            })
-        })
-    })
-}
-
 /// Pure calculation to determine grid layout.
 /// Returns a new document with updated positions for unlocked nodes.
 ///
@@ -48,25 +29,35 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
         })
         .collect::<im::HashSet<(i32, i32)>>();
 
-    let unlocked_ids = doc
+    let unlocked_iter = doc
         .document
         .nodes
         .iter()
         .filter(|(_, n)| !n.lock_state.is_locked() && n.parent.is_none())
         .map(|(id, _)| id.clone())
-        .sorted()
-        .collect::<Vec<NodeId>>();
+        .sorted();
 
-    if unlocked_ids.is_empty() {
+    // Optimization 1: Use fold to compute both count and first accumulation,
+    // then chain second fold directly without intermediate collect.
+    let (sorted_ids, initial_acc) = unlocked_iter.fold(
+        (Vec::new(), (occupied_cells, 0_i32, HashMap::new())),
+        |(mut ids, (occupied, cursor, pos_map)), id| {
+            ids.push(id);
+            (ids, (occupied, cursor, pos_map))
+        },
+    );
+
+    // Early return if no unlocked nodes — avoids the doc.clone() at the end
+    if sorted_ids.is_empty() {
         return doc.clone();
     }
 
     #[allow(clippy::cast_precision_loss)]
-    let cols_target = (unlocked_ids.len() as f64).sqrt().ceil() as i32;
+    let cols_target = (sorted_ids.len() as f64).sqrt().ceil() as i32;
     let cols = cols_target.max(1);
 
     let next_free_cell = |occupied: &im::HashSet<(i32, i32)>, start_index: i32| {
-        let max_rows_candidate = unlocked_ids
+        let max_rows_candidate = sorted_ids
             .len()
             .saturating_add(occupied.len())
             .saturating_add(1);
@@ -80,61 +71,84 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
             .unwrap_or_else(|| (start_index.rem_euclid(cols), start_index.div_euclid(cols)))
     };
 
-    let (_, _, positions) = unlocked_ids.iter().fold(
-        (occupied_cells, 0_i32, HashMap::new()),
-        |(mut occupied, cursor, pos_map), id| {
-            let (new_col, new_row) = next_free_cell(&occupied, cursor);
+    let (_, _, positions) =
+        sorted_ids
+            .iter()
+            .fold(initial_acc, |(mut occupied, cursor, pos_map), id| {
+                let (new_col, new_row) = next_free_cell(&occupied, cursor);
 
-            let new_pos = (
-                f64::from(new_col) * cell_size,
-                f64::from(new_row) * cell_size,
-            );
-            let next_pos_map = pos_map.update(id.clone(), new_pos);
-            let _ = occupied.insert((new_col, new_row));
-            let next_cursor = new_row * cols + new_col + 1;
+                let new_pos = (
+                    f64::from(new_col) * cell_size,
+                    f64::from(new_row) * cell_size,
+                );
+                let next_pos_map = pos_map.update(id.clone(), new_pos);
+                let _ = occupied.insert((new_col, new_row));
+                let next_cursor = new_row * cols + new_col + 1;
 
-            (occupied, next_cursor, next_pos_map)
-        },
-    );
+                (occupied, next_cursor, next_pos_map)
+            });
 
-    let deltas: HashMap<NodeId, (f64, f64)> = positions
-        .iter()
+    // Optimization 2 & 3: Compute deltas inline during traversal instead of
+    // creating intermediate HashMap, and use into_iter to consume positions
+    // directly without cloning NodeIds.
+    //
+    // First chain: nodes that have new positions (consume positions via into_iter)
+    let positioned_nodes: HashMap<NodeId, _> = positions
+        .into_iter()
         .filter_map(|(id, (nx, ny))| {
-            doc.document
-                .nodes
-                .get(id)
-                .map(|node| (id.clone(), (nx - node.x.0, ny - node.y.0)))
-        })
-        .collect();
-
-    let next_nodes = doc
-        .document
-        .nodes
-        .iter()
-        .map(|(id, node)| match positions.get(id) {
-            Some(&(nx, ny)) => {
+            doc.document.nodes.get(&id).map(|node| {
                 let mut next_node = node.clone();
                 next_node.x = OrderedFloat(nx);
                 next_node.y = OrderedFloat(ny);
-                (id.clone(), next_node)
-            }
-            None => node.parent.as_ref().map_or_else(
-                || (id.clone(), node.clone()),
+                (id, next_node)
+            })
+        })
+        .collect();
+
+    // Second chain: nodes without new positions, compute deltas inline
+    let unpositioned_nodes: HashMap<NodeId, _> = doc
+        .document
+        .nodes
+        .iter()
+        .filter(|(id, _)| !positioned_nodes.contains_key(id))
+        .map(|(id, node)| {
+            let next_node = node.parent.as_ref().map_or_else(
+                || node.clone(),
                 |pid| {
-                    if let Some((dx, dy)) =
-                        accumulated_parent_delta(pid, &deltas, &doc.document.nodes)
-                    {
-                        let mut next_node = node.clone();
-                        next_node.x = OrderedFloat(node.x.0 + dx);
-                        next_node.y = OrderedFloat(node.y.0 + dy);
-                        (id.clone(), next_node)
+                    // Compute accumulated parent delta inline using positioned_nodes
+                    let (dx, dy) = std::iter::successors(Some(pid.clone()), |pid| {
+                        doc.document.nodes.get(pid).and_then(|n| n.parent.clone())
+                    })
+                    .take_while(|pid| positioned_nodes.contains_key(pid) || *pid != pid.clone())
+                    .filter(|pid| positioned_nodes.contains_key(pid))
+                    .fold((0.0, 0.0), |(adx, ady), pid| {
+                        positioned_nodes.get(&pid).map_or((adx, ady), |pn| {
+                            let px = pn.x.0;
+                            let py = pn.y.0;
+                            doc.document
+                                .nodes
+                                .get(&pid)
+                                .map_or((adx, ady), |n| (adx + px - n.x.0, ady + py - n.y.0))
+                        })
+                    });
+                    if dx != 0.0 || dy != 0.0 {
+                        let mut next = node.clone();
+                        next.x = OrderedFloat(node.x.0 + dx);
+                        next.y = OrderedFloat(node.y.0 + dy);
+                        next
                     } else {
-                        (id.clone(), node.clone())
+                        node.clone()
                     }
                 },
-            ),
+            );
+            (id.clone(), next_node)
         })
-        .collect::<HashMap<NodeId, _>>();
+        .collect();
+
+    let next_nodes = positioned_nodes
+        .into_iter()
+        .chain(unpositioned_nodes)
+        .collect();
 
     let mut next_doc = doc.clone();
     next_doc.document.nodes = next_nodes;

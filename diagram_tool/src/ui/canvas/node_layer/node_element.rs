@@ -87,11 +87,12 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
 
     let node = props.node;
     let id = props.id;
-    let id_mousedown = id.clone();
-    let id_mouseup = id.clone();
-    let id_mouseenter = id.clone();
-    let id_mouseleave = id.clone();
     let id_data_attr = id.to_string();
+    // Clone id separately for each event handler to avoid moving id multiple times
+    let id_for_enter = id.clone();
+    let id_for_leave = id.clone();
+    let id_for_down = id.clone();
+    let id_for_up = id.clone();
     let interaction_state = props.interaction_state;
     let is_selected = interaction_state.is_selected();
     let is_hovered = interaction_state.is_hovered();
@@ -151,10 +152,10 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
             class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px]",
             style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
 
-            onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_mouseenter.clone())),
+            onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_for_enter.clone())),
             onmouseleave: move |_| {
                 let should_clear = if let crate::ui::canvas::state::EditorState::HoveringNode(ref hid) = *editor_state.read() {
-                    hid == &id_mouseleave
+                    hid == &id_for_leave.clone()
                 } else { false };
                 if should_clear {
                     editor_state.set(crate::ui::canvas::state::EditorState::Idle);
@@ -167,7 +168,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                 let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                 super::handlers::handle_mousedown(
                     evt,
-                    id_mousedown.clone(),
+                    id_for_down.clone(),
                     *multi_touch_active.read(),
                     tool,
                     doc,
@@ -183,7 +184,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
             onmouseup: move |evt| {
                 super::handlers::handle_mouseup(
                     evt,
-                    id_mouseup.clone(),
+                    id_for_up.clone(),
                     doc_signal,
                     history_signal,
                     interaction_mode,

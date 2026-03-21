@@ -1,29 +1,6 @@
-use base64::{engine::general_purpose, Engine as _};
 use dioxus::prelude::*;
 
-use crate::{
-    app::DraggedIconPayload,
-    icons::{IconMeta, ICONS},
-};
-
-pub fn icon_data_url(icon: &IconMeta) -> Option<String> {
-    let file = ICONS.get_file(&icon.file_relpath)?;
-    let mime = std::path::Path::new(&icon.file_relpath)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map_or("image/png", |ext| {
-            if ext.eq_ignore_ascii_case("svg") {
-                "image/svg+xml"
-            } else {
-                "image/png"
-            }
-        });
-
-    Some(format!(
-        "data:{mime};base64,{}",
-        general_purpose::STANDARD.encode(file.contents())
-    ))
-}
+use crate::{app::DraggedIconPayload, icons::IconMeta};
 
 #[component]
 fn IconImage(src: Option<String>) -> Element {
@@ -32,7 +9,9 @@ fn IconImage(src: Option<String>) -> Element {
             img {
                 src: "{src_str}",
                 class: "w-8 h-8 object-contain pointer-events-none",
-                draggable: "false"
+                draggable: "false",
+                loading: "lazy",
+                decoding: "async"
             }
         } else {
             div {
@@ -52,15 +31,11 @@ fn IconLabel(text: String) -> Element {
     }
 }
 
-fn handle_drag(
-    icon: &IconMeta,
-    data_url: &Option<String>,
-    dragging_icon: &mut Signal<Option<DraggedIconPayload>>,
-) {
+fn handle_drag(icon: &IconMeta, dragging_icon: &mut Signal<Option<DraggedIconPayload>>) {
     dragging_icon.set(Some(DraggedIconPayload {
-        icon_key: icon.icon_key.clone(),
-        label: Some(icon.display_name.clone()),
-        image_data_url: data_url.clone(),
+        icon_key: icon.icon_key.to_string(),
+        label: Some(icon.display_name.to_string()),
+        image_data_url: Some(icon.base64_data.to_string()),
     }));
 }
 
@@ -70,7 +45,6 @@ pub fn IconTile(
     mut dragging_icon: Signal<Option<DraggedIconPayload>>,
 ) -> Element {
     let current_icon = icon();
-    let data_url_memo = use_memo(move || icon_data_url(&icon()));
 
     let category_for_title = if current_icon.category_path.is_empty() {
         String::from("General")
@@ -78,8 +52,8 @@ pub fn IconTile(
         current_icon.category_path.join(" / ")
     };
 
-    let title_display = current_icon.display_name.clone();
-    let title_key = current_icon.icon_key.clone();
+    let title_display = current_icon.display_name.to_string();
+    let title_key = current_icon.icon_key.to_string();
     let current_icon_mousedown = current_icon.clone();
     let current_icon_dragstart = current_icon.clone();
 
@@ -89,15 +63,15 @@ pub fn IconTile(
             "data-testid": "icon-item",
             title: "{title_display}\n{title_key}\n{category_for_title}",
             draggable: "true",
-            onmousedown: move |_| handle_drag(&current_icon_mousedown, &data_url_memo.read(), &mut dragging_icon),
+            onmousedown: move |_| handle_drag(&current_icon_mousedown, &mut dragging_icon),
             ondragstart: move |evt| {
                 let dt = evt.data().data_transfer();
                 let _ = dt.set_data("text/plain", &current_icon_dragstart.icon_key);
                 dt.set_effect_allowed("copy");
-                handle_drag(&current_icon_dragstart, &data_url_memo.read(), &mut dragging_icon);
+                handle_drag(&current_icon_dragstart, &mut dragging_icon);
             },
-            IconImage { src: data_url_memo.read().clone() }
-            IconLabel { text: current_icon.display_name.clone() }
+            IconImage { src: current_icon.base64_data.to_string() }
+            IconLabel { text: current_icon.display_name.to_string() }
         }
     }
 }

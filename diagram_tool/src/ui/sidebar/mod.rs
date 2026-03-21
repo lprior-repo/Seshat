@@ -32,14 +32,27 @@ use self::models::{
 #[derive(Clone, Copy, PartialEq)]
 struct SidebarState {
     search: Signal<String>,
+    debounced_search: Signal<String>,
     expanded_providers: Signal<BTreeSet<String>>,
     expanded_categories: Signal<BTreeSet<String>>,
     provider_limits: Signal<BTreeMap<String, usize>>,
 }
 
 fn use_sidebar_state() -> SidebarState {
+    let search = use_signal(String::new);
+    let mut debounced_search = use_signal(String::new);
+
+    use_resource(move || async move {
+        let current = search();
+        if !current.is_empty() {
+            gloo_timers::future::sleep(std::time::Duration::from_millis(200)).await;
+        }
+        debounced_search.set(current);
+    });
+
     SidebarState {
-        search: use_signal(String::new),
+        search,
+        debounced_search,
         expanded_providers: use_signal(|| {
             BTreeSet::from([String::from(DEFAULT_EXPANDED_PROVIDER)])
         }),
@@ -256,7 +269,7 @@ fn render_sidebar_content(
     result: models::ProviderBucketsResult,
     state: SidebarState,
 ) -> Element {
-    let query_active = !state.search.read().trim().is_empty();
+    let query_active = !state.debounced_search.read().trim().is_empty();
     let action_label = if is_mobile { "Close" } else { "Hide" }.to_string();
     rsx! {
         SidebarSheet { class: Some(String::from("flex flex-col flex-1 min-h-0 gap-2.5")),
@@ -264,7 +277,7 @@ fn render_sidebar_content(
             SearchBox { search: state.search, search_is_truncated: result.is_truncated }
             SidebarInset { class: Some(String::from("flex flex-1 min-h-0 flex-col overflow-y-auto pr-2 -mr-2")),
                 SidebarMenu {
-                    for bucket in result.buckets { ProviderAccordion { bucket, query_active, state } }
+                    for bucket in result.buckets.into_iter() { ProviderAccordion { bucket, query_active, state } }
                 }
             }
             SidebarFooter { total_components: crate::icons::icon_index().all.len() }
@@ -304,10 +317,13 @@ pub fn Sidebar() -> Element {
         return render_desktop_closed(sidebar_ui);
     }
 
-    let trimmed = state.search.read().trim().to_lowercase();
-    let lowercased =
-        models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
-    let result = build_provider_buckets(lowercased, &state.provider_limits.read());
+    let result = use_memo(move || {
+        let trimmed = state.debounced_search.read().trim().to_lowercase();
+        let lowercased =
+            models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
+        build_provider_buckets(lowercased, &state.provider_limits.read())
+    });
 
-    render_open_sidebar(sidebar_ui, ui_state.is_mobile, result, state)
+    let buckets_result = result.read().clone();
+    render_open_sidebar(sidebar_ui, ui_state.is_mobile, buckets_result, state)
 }

@@ -11,7 +11,7 @@ pub(crate) fn assign_coordinates(
     layers: &[Vec<NodeIndex>],
     settings: &DagLayoutSettings,
 ) -> std::collections::HashMap<NodeIndex, (f64, f64)> {
-    let max_layer_size = layers.iter().map(Vec::len).max().unwrap_or(1);
+    let max_layer_size = layers.iter().map(Vec::len).max().map_or(1, |x| x);
     let canvas_height = (max_layer_size as f64).mul_add(
         NODE_HEIGHT,
         max_layer_size.saturating_sub(1) as f64 * settings.node_spacing,
@@ -28,14 +28,10 @@ pub(crate) fn assign_coordinates(
             );
             let y_offset = TOP_PADDING + (canvas_height - layer_total_height) / 2.0;
 
-            nodes
-                .iter()
-                .enumerate()
-                .map(move |(pos, &idx)| {
-                    let y = (pos as f64).mul_add(NODE_HEIGHT + settings.node_spacing, y_offset);
-                    (idx, (x, y))
-                })
-                .collect::<Vec<_>>()
+            nodes.iter().enumerate().map(move |(pos, &idx)| {
+                let y = (pos as f64).mul_add(NODE_HEIGHT + settings.node_spacing, y_offset);
+                (idx, (x, y))
+            })
         })
         .collect()
 }

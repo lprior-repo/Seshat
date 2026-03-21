@@ -62,6 +62,7 @@ struct IconEntry {
     file_relpath: String,
     display_name: String,
     search_terms: String,
+    base64_data: String,
 }
 
 #[derive(serde::Serialize)]
@@ -127,6 +128,19 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
     )
     .to_ascii_lowercase();
 
+    let file_contents = fs::read(path).ok()?;
+    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("png");
+    let mime = if ext.eq_ignore_ascii_case("svg") {
+        "image/svg+xml"
+    } else {
+        "image/png"
+    };
+    use base64::{engine::general_purpose, Engine as _};
+    let base64_data = format!(
+        "data:{mime};base64,{}",
+        general_purpose::STANDARD.encode(&file_contents)
+    );
+
     Some(IconEntry {
         icon_key,
         provider,
@@ -134,6 +148,7 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
         file_relpath: relpath_str.to_string(),
         display_name,
         search_terms,
+        base64_data,
     })
 }
 
@@ -167,12 +182,13 @@ fn generate_rust_code() -> String {
 
 #[derive(Debug, Clone, PartialEq, Eq, serde::Deserialize)]
 pub struct IconMeta {
-    pub icon_key: String,
-    pub provider: String,
-    pub category_path: Vec<String>,
-    pub file_relpath: String,
-    pub display_name: String,
-    pub search_terms: String,
+    pub icon_key: std::sync::Arc<str>,
+    pub provider: std::sync::Arc<str>,
+    pub category_path: Vec<std::sync::Arc<str>>,
+    pub file_relpath: std::sync::Arc<str>,
+    pub display_name: std::sync::Arc<str>,
+    pub search_terms: std::sync::Arc<str>,
+    pub base64_data: std::sync::Arc<str>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]
@@ -200,7 +216,7 @@ impl IconIndex {
         ).expect("Failed to parse by_provider");
         let by_key: HashMap<String, IconMeta> = all
             .iter()
-            .map(|icon| (icon.icon_key.clone(), icon.clone()))
+            .map(|icon| (icon.icon_key.to_string(), icon.clone()))
             .collect();
         Self { all, by_provider, by_key }
     }
