@@ -135,14 +135,14 @@ pub fn EdgeLayer(
 }
 
 #[must_use]
-pub fn get_visible_edges<'a>(
-    doc: &'a DiagramDocument,
+pub fn get_visible_edges(
+    doc: &DiagramDocument,
     camera_x: f64,
     camera_y: f64,
     zoom: f64,
     viewport_w: f64,
     viewport_h: f64,
-) -> impl Iterator<Item = (&'a EdgeId, &'a Edge, &'a Node, &'a Node)> + use<'a> {
+) -> impl Iterator<Item = (&EdgeId, &Edge, &Node, &Node)> + use<'_> {
     let margin_x = (viewport_w / zoom).max(100.0) * 0.5;
     let margin_y = (viewport_h / zoom).max(100.0) * 0.5;
     let culling_min_x = camera_x - margin_x;

@@ -225,7 +225,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
 
             {
                 let dots_props = super::connection_dots::ConnectionDotsProps {
-                    id: id.clone(),
+                    id,
                     width,
                     height,
                     is_selected,

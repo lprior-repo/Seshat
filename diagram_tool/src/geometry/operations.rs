@@ -97,15 +97,13 @@ pub fn hit_test_rotated_rect(point: Point, rect: &Rectangle) -> bool {
 #[must_use]
 pub fn world_to_screen(world: Point, camera: Point, zoom: f64) -> Point {
     canvas_math::canvas_to_screen(world.x, world.y, camera.x, camera.y, zoom)
-        .map(|(x, y)| Point::new(x, y))
-        .unwrap_or(Point::origin())
+        .map_or(Point::origin(), |(x, y)| Point::new(x, y))
 }
 
 #[must_use]
 pub fn screen_to_world(screen: Point, camera: Point, zoom: f64) -> Point {
     canvas_math::screen_to_canvas(screen.x, screen.y, camera.x, camera.y, zoom)
-        .map(|(x, y)| Point::new(x, y))
-        .unwrap_or(Point::origin())
+        .map_or(Point::origin(), |(x, y)| Point::new(x, y))
 }
 
 #[must_use]

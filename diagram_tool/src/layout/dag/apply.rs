@@ -5,7 +5,7 @@ use im::HashMap;
 /// - If it has an entry in `new_positions` → use that (unlocked root node).
 /// - Else if it is a child → apply parent delta if parent was moved.
 /// - Else (locked root node) → leave unchanged.
-pub(crate) fn apply_position(
+pub fn apply_position(
     id: &NodeId,
     node: &Node,
     new_positions: &HashMap<NodeId, (f64, f64)>,

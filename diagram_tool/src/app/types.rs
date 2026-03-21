@@ -1,7 +1,7 @@
 use crate::history::History;
 use diagram_models::document::DiagramDocument;
 
-pub(crate) const VALIDATION_IDLE_MS: u64 = 220;
+pub const VALIDATION_IDLE_MS: u64 = 220;
 
 #[derive(Clone)]
 pub struct DiagramTab {

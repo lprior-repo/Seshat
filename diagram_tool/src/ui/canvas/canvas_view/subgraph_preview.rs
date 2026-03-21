@@ -9,7 +9,7 @@ use crate::ui::theme::{SUBGRAPH_PREVIEW_FILL, SUBGRAPH_PREVIEW_STROKE};
 use canvas_domain::interaction_reducer::InteractionMode;
 use diagram_models::document::DiagramDocument;
 
-pub(crate) fn subgraph_preview_overlay(
+pub fn subgraph_preview_overlay(
     mode: &InteractionMode,
     doc: &DiagramDocument,
     to_screen_coords: impl Fn(

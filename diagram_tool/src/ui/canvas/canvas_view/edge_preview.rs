@@ -11,7 +11,7 @@ use diagram_models::document::DiagramDocument;
 
 use super::geometry::rect_ray_intersection;
 
-pub(crate) fn edge_preview_overlay(
+pub fn edge_preview_overlay(
     mode: &InteractionMode,
     doc: &DiagramDocument,
     to_screen_coords: impl Fn(

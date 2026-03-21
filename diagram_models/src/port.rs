@@ -71,8 +71,8 @@ pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
             y: node.y.0 + half_h,
         },
         PortAnchor::Custom(offset) => Point {
-            x: node.x.0 + (node.width.0 * offset.x.0),
-            y: node.y.0 + (node.height.0 * offset.y.0),
+            x: node.width.0.mul_add(offset.x.0, node.x.0),
+            y: node.height.0.mul_add(offset.y.0, node.y.0),
         },
     }
 }

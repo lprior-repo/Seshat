@@ -10,7 +10,7 @@ pub use crate::geometry::Point;
 
 // Segment is still needed locally as it depends on Point
 #[derive(Debug, Clone, Copy, PartialEq)]
-pub(crate) struct Segment {
+pub struct Segment {
     pub start: Point,
     pub end: Point,
 }
@@ -37,12 +37,12 @@ impl Segment {
 }
 
 #[must_use]
-pub(crate) fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
+pub fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> f64 {
     Segment::new(Point::new(x1, y1), Point::new(x2, y2)).distance_to_point(Point::new(px, py))
 }
 
 #[must_use]
-pub(crate) fn rect_ray_intersection(
+pub fn rect_ray_intersection(
     cx: f64,
     cy: f64,
     w: f64,
@@ -67,7 +67,7 @@ pub(crate) fn rect_ray_intersection(
 }
 
 #[must_use]
-pub(crate) fn quadratic_control(sx: f64, sy: f64, tx: f64, ty: f64) -> (f64, f64) {
+pub fn quadratic_control(sx: f64, sy: f64, tx: f64, ty: f64) -> (f64, f64) {
     let start = Point::new(sx, sy);
     let target = Point::new(tx, ty);
     let dx = target.x - start.x;
@@ -77,7 +77,7 @@ pub(crate) fn quadratic_control(sx: f64, sy: f64, tx: f64, ty: f64) -> (f64, f64
 }
 
 #[must_use]
-pub(crate) fn interpolate_polyline_point(points: &[(f64, f64)], t: f64) -> (f64, f64) {
+pub fn interpolate_polyline_point(points: &[(f64, f64)], t: f64) -> (f64, f64) {
     if points.len() < 2 {
         return points.first().copied().unwrap_or((0.0, 0.0));
     }
@@ -113,7 +113,7 @@ pub(crate) fn interpolate_polyline_point(points: &[(f64, f64)], t: f64) -> (f64,
 }
 
 #[must_use]
-pub(crate) fn quadratic_bezier_point(
+pub fn quadratic_bezier_point(
     p0: (f64, f64),
     p1: (f64, f64),
     p2: (f64, f64),

@@ -16,7 +16,7 @@ use diagram_models::document::DiagramDocument;
 #[allow(dead_code)]
 #[allow(clippy::too_many_arguments)]
 #[allow(clippy::too_many_lines)]
-pub(crate) fn selection_handles_overlay(
+pub fn selection_handles_overlay(
     doc: &DiagramDocument,
     interaction_mode: Signal<InteractionMode>,
     doc_signal: Signal<DiagramDocument>,

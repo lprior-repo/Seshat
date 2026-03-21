@@ -6,7 +6,7 @@ use diagram_models::validation::{validate_document_data, ValidationIssue, Valida
 
 use super::types::VALIDATION_IDLE_MS;
 
-pub(crate) fn collect_validation_issues(doc: &DiagramDocument) -> Vec<ValidationIssue> {
+pub fn collect_validation_issues(doc: &DiagramDocument) -> Vec<ValidationIssue> {
     let schema_issues = validate_schema(doc)
         .err()
         .map(|e| ValidationIssue {
@@ -22,7 +22,7 @@ pub(crate) fn collect_validation_issues(doc: &DiagramDocument) -> Vec<Validation
         .collect()
 }
 
-pub(crate) fn use_validation_state(
+pub fn use_validation_state(
     doc_signal: Signal<DiagramDocument>,
     validate_trigger: Signal<u64>,
 ) -> Signal<Vec<ValidationIssue>> {

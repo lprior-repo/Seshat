@@ -9,9 +9,9 @@ use crate::ui::toast::show_conflict_toast;
 use futures_util::stream::StreamExt;
 
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub(crate) fn provide_db_event_context() -> Option<Coroutine<EventEnvelope>> {
+pub fn provide_db_event_context() -> Option<Coroutine<EventEnvelope>> {
     let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
-    let store_bridge_tx = store_bridge.clone();
+    let store_bridge_tx = store_bridge;
     let db_tx = use_coroutine(move |mut rx: UnboundedReceiver<EventEnvelope>| {
         let store_bridge = store_bridge_tx.clone();
         async move {
@@ -32,7 +32,7 @@ pub(crate) fn provide_db_event_context() -> Option<Coroutine<EventEnvelope>> {
 }
 
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub(crate) fn use_conflict_toast_effect() {
+pub fn use_conflict_toast_effect() {
     let app_state = use_context::<crate::app::AppState>();
     let toast_queue = app_state.toasts;
     let ai_conflict_state = app_state.ai_conflict;
@@ -58,7 +58,7 @@ pub(crate) fn use_conflict_toast_effect() {
 pub(crate) fn use_conflict_toast_effect() {}
 
 #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub(crate) fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
+pub fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
     let store_bridge = use_context::<std::sync::Arc<crate::store_bridge::StoreBridge>>();
     let last_sync_revision = use_signal(|| 0_i64);
     let app_state = use_context::<crate::app::AppState>();

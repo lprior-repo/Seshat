@@ -13,7 +13,7 @@ use canvas_domain::interaction_reducer::{InteractionMode, ResizeHandle};
 use canvas_domain::perf::to_screen_coords;
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
-use handlers::*;
+use handlers::{handle_double_click, handle_wheel, handle_mouse_down, handle_mouse_move, handle_mouse_up};
 
 #[component]
 pub fn RootContainer(state: CanvasState) -> Element {

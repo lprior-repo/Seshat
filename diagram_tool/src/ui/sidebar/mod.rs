@@ -172,7 +172,7 @@ fn CategoryAccordion(
                     name: category.name.clone(), count: category.icons.len(), icon_kind: get_category_icon(&category.name), expanded,
                     onclick: move |_| toggle_set(&mut expanded_categories, &category_state_key, query_active)
                 }
-                if expanded { CategoryGrid { icons: category.icons.clone(), dragging_icon: app_state.dragging_icon } }
+                if expanded { CategoryGrid { icons: category.icons, dragging_icon: app_state.dragging_icon } }
             }
         }
     }
@@ -215,7 +215,7 @@ fn ProviderAccordion(
                             CategoryAccordion { provider: provider.clone(), category, query_active, expanded_categories: state.expanded_categories }
                         }
                     }
-                    if bucket.has_more { LoadMoreButton { provider: provider.clone(), provider_limits: state.provider_limits } }
+                    if bucket.has_more { LoadMoreButton { provider: provider, provider_limits: state.provider_limits } }
                 }
             }
         }

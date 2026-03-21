@@ -7,7 +7,7 @@ use petgraph::graph::{DiGraph, NodeIndex};
 /// edges.  Returns the graph plus two maps:
 ///  - `NodeId` → `NodeIndex` (for edge insertion)
 ///  - a sorted `Vec<NodeId>` of the nodes that participate in layout
-pub(crate) fn build_graph(
+pub fn build_graph(
     doc: &DiagramDocument,
 ) -> (DiGraph<NodeId, ()>, HashMap<NodeId, NodeIndex>, Vec<NodeId>) {
     let layout_ids: Vec<NodeId> = doc

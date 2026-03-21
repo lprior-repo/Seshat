@@ -130,6 +130,6 @@ pub(crate) fn use_auto_save(doc_signal: Signal<DiagramDocument>) {
 }
 
 #[cfg(not(target_arch = "wasm32"))]
-pub(crate) fn use_auto_save(_doc_signal: Signal<DiagramDocument>) {
+pub fn use_auto_save(_doc_signal: Signal<DiagramDocument>) {
     let _ = auto_save::default_revision();
 }

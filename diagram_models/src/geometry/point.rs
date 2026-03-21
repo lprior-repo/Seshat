@@ -28,7 +28,7 @@ impl Point {
 
     /// Midpoint between this and another point
     #[must_use]
-    pub fn midpoint(self, other: Self) -> Self {
+    pub const fn midpoint(self, other: Self) -> Self {
         Self {
             x: f64::midpoint(self.x, other.x),
             y: f64::midpoint(self.y, other.y),

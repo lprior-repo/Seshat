@@ -1,6 +1,6 @@
-//! Centralized grouping module - re-exports from diagram_models
+//! Centralized grouping module - re-exports from `diagram_models`
 //!
-//! This module re-exports all grouping operations from diagram_models::grouping
+//! This module re-exports all grouping operations from `diagram_models::grouping`
 //! to maintain API compatibility with existing code.
 
 pub use diagram_models::grouping::{

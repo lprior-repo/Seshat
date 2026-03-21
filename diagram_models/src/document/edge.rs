@@ -1,6 +1,6 @@
 //! Edge-related domain types for diagram documents.
 //!
-//! Contains Edge, `EdgeStyle`, `ArrowType`, SerializedPoint, and related types.
+//! Contains Edge, `EdgeStyle`, `ArrowType`, `SerializedPoint`, and related types.
 
 use super::types::{NodeId, OrderedFloat};
 use crate::geometry::Point as CanonicalPoint;
@@ -31,7 +31,7 @@ pub enum ArrowType {
 }
 
 /// A point in 2D space for serialization boundary only.
-/// Uses OrderedFloat for serialization compatibility.
+/// Uses `OrderedFloat` for serialization compatibility.
 /// Internal code should use canonical Point from geometry module.
 #[derive(Clone, Debug, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
@@ -51,12 +51,12 @@ impl From<CanonicalPoint> for SerializedPoint {
 
 impl From<SerializedPoint> for CanonicalPoint {
     fn from(sp: SerializedPoint) -> Self {
-        CanonicalPoint::new(sp.x.0, sp.y.0)
+        Self::new(sp.x.0, sp.y.0)
     }
 }
 
-/// Deprecated: Use SerializedPoint for serialization boundary.
-/// For internal geometric operations, use crate::geometry::Point.
+/// Deprecated: Use `SerializedPoint` for serialization boundary.
+/// For internal geometric operations, use `crate::geometry::Point`.
 #[deprecated(
     since = "1.0.0",
     note = "Use SerializedPoint for serialization or Point from geometry module"

@@ -2,7 +2,7 @@ use diagram_models::document::NodeId;
 use petgraph::graph::{DiGraph, NodeIndex};
 
 /// Barycentre of `node` neighbours found in `ref_pos`.
-pub(crate) fn barycentre(
+pub fn barycentre(
     node: NodeIndex,
     ref_pos: &std::collections::HashMap<NodeIndex, f64>,
     graph: &DiGraph<NodeId, ()>,
@@ -21,7 +21,7 @@ pub(crate) fn barycentre(
 }
 
 /// 4-sweep barycentric crossing minimisation.
-pub(crate) fn barycenter_sweep(
+pub fn barycenter_sweep(
     layers: Vec<Vec<NodeIndex>>,
     graph: &DiGraph<NodeId, ()>,
 ) -> Vec<Vec<NodeIndex>> {

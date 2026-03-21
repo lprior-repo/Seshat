@@ -11,5 +11,5 @@ pub mod node;
 #[cfg(test)]
 pub mod tests;
 
-pub(crate) use edge::*;
+pub use edge::*;
 pub use math::*;

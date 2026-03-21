@@ -2,7 +2,7 @@ use diagram_models::document::NodeId;
 use petgraph::graph::{DiGraph, NodeIndex};
 
 /// Longest-path layer assignment.  Returns layers as `Vec<Vec<NodeIndex>>`.
-pub(crate) fn assign_layers(
+pub fn assign_layers(
     topo_order: &[NodeIndex],
     graph: &DiGraph<NodeId, ()>,
 ) -> Vec<Vec<NodeIndex>> {

@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 #[must_use]
-pub(crate) const fn edge_marker_ref(selected: bool) -> &'static str {
+pub const fn edge_marker_ref(selected: bool) -> &'static str {
     if selected {
         "url(#arrowhead-selected)"
     } else {

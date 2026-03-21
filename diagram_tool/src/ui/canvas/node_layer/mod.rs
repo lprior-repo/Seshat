@@ -92,7 +92,7 @@ pub fn NodeLayer(
                 };
 
                 let props = NodeElementProps {
-                    id: id.clone(),
+                    id,
                     node,
                     interaction_state,
                     doc_signal,

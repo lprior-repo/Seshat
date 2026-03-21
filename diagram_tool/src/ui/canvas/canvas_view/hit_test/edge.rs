@@ -2,7 +2,7 @@ use crate::ui::canvas::canvas_view::edge::{edge_geometry, EdgeGeometry};
 use crate::ui::canvas::canvas_view::geometry::{dist_to_segment, quadratic_bezier_point};
 use diagram_models::document::{DiagramDocument, EdgeId};
 
-pub(crate) fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<EdgeId> {
+pub fn find_edge_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<EdgeId> {
     // Screen-consistent hit radius: 17.0 screen pixels scaled to world coordinates
     // This ensures hit testing behaves consistently regardless of zoom level
     let zoom = doc.editor_state.zoom.0;

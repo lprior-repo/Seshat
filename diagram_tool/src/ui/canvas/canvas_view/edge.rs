@@ -8,7 +8,7 @@ use diagram_models::document::{ArrowType, Edge, SerializedPoint};
 use std::fmt::Write as _;
 
 #[must_use]
-pub(crate) fn edge_path(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> String {
+pub fn edge_path(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> String {
     match edge_geometry(sx, sy, tx, ty, edge) {
         EdgeGeometry::Quadratic { control: (cx, cy) } => {
             format!("M {sx} {sy} Q {cx} {cy} {tx} {ty}")
@@ -18,7 +18,7 @@ pub(crate) fn edge_path(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> Stri
 }
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub(crate) enum EdgePathSemantics {
+pub enum EdgePathSemantics {
     Default,
     Straight,
     Curved,
@@ -26,11 +26,11 @@ pub(crate) enum EdgePathSemantics {
     Sharp,
 }
 
-pub(crate) const fn edge_path_semantics(edge: &Edge) -> EdgePathSemantics {
+pub const fn edge_path_semantics(edge: &Edge) -> EdgePathSemantics {
     semantics_from_arrow(edge.arrow_type)
 }
 
-pub(crate) const fn semantics_from_arrow(arrow_type: ArrowType) -> EdgePathSemantics {
+pub const fn semantics_from_arrow(arrow_type: ArrowType) -> EdgePathSemantics {
     match arrow_type {
         ArrowType::Default => EdgePathSemantics::Default,
         ArrowType::Straight => EdgePathSemantics::Straight,
@@ -40,12 +40,12 @@ pub(crate) const fn semantics_from_arrow(arrow_type: ArrowType) -> EdgePathSeman
     }
 }
 
-pub(crate) enum EdgeGeometry {
+pub enum EdgeGeometry {
     Quadratic { control: (f64, f64) },
     Polyline(Vec<(f64, f64)>),
 }
 
-pub(crate) fn edge_geometry(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> EdgeGeometry {
+pub fn edge_geometry(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> EdgeGeometry {
     let semantics = edge_path_semantics(edge);
     if edge.bend_points.is_empty() && semantics == EdgePathSemantics::Curved {
         EdgeGeometry::Quadratic {
@@ -63,7 +63,7 @@ pub(crate) fn edge_geometry(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> 
     }
 }
 
-pub(crate) fn routed_polyline_points(
+pub fn routed_polyline_points(
     sx: f64,
     sy: f64,
     tx: f64,
@@ -98,7 +98,7 @@ pub(crate) fn routed_polyline_points(
     }
 }
 
-pub(crate) fn polyline_path(points: &[(f64, f64)]) -> String {
+pub fn polyline_path(points: &[(f64, f64)]) -> String {
     if let Some(((sx, sy), rest)) = points.split_first() {
         rest.iter().fold(format!("M {sx} {sy}"), |mut acc, (x, y)| {
             let _ = write!(acc, " L {x} {y}");
@@ -110,7 +110,7 @@ pub(crate) fn polyline_path(points: &[(f64, f64)]) -> String {
 }
 
 #[must_use]
-pub(crate) fn edge_label_position(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> (f64, f64) {
+pub fn edge_label_position(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> (f64, f64) {
     let t = edge.label_offset_t.0.clamp(0.0, 1.0);
     match edge_geometry(sx, sy, tx, ty, edge) {
         EdgeGeometry::Quadratic { control: (cx, cy) } => {

@@ -7,7 +7,7 @@ pub const LEFT_PADDING: f64 = 120.0;
 pub const TOP_PADDING: f64 = 80.0;
 
 /// Assign (x, y) coordinates from the layered, ordered structure.
-pub(crate) fn assign_coordinates(
+pub fn assign_coordinates(
     layers: &[Vec<NodeIndex>],
     settings: &DagLayoutSettings,
 ) -> std::collections::HashMap<NodeIndex, (f64, f64)> {

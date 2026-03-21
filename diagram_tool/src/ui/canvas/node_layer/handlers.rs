@@ -196,7 +196,7 @@ pub fn handle_mousedown(
     } else if is_primary {
         if tool == ToolMode::Edge {
             Some(CanvasEvent::EdgeDrawingStarted {
-                from_node: id.clone(),
+                from_node: id,
                 current_pos: CanvasCoord(pos.0, pos.1),
             })
         } else {

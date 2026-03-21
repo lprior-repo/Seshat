@@ -14,7 +14,7 @@ pub enum LabelTargetType {
     Edge,
 }
 
-pub fn dispatch_update_label(
+pub const fn dispatch_update_label(
     _tx: &Option<Coroutine<EventEnvelope>>,
     _target_id: &str,
     _target_type: LabelTargetType,
@@ -27,6 +27,7 @@ pub fn dispatch_update_label(
 pub struct ResizeBounds;
 impl ResizeBounds {
     #[allow(clippy::too_many_arguments)]
+    #[must_use] 
     pub fn new(
         _id: NodeId,
         _ox: f64,
@@ -42,7 +43,7 @@ impl ResizeBounds {
     }
 }
 
-pub fn dispatch_node_resize(
+pub const fn dispatch_node_resize(
     _tx: &Option<Coroutine<EventEnvelope>>,
     _bounds: ResizeBounds,
 ) -> Result<(), DispatchError> {

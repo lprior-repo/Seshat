@@ -9,7 +9,7 @@ use crate::ui::theme::{SELECTION_RECT_FILL, SELECTION_RECT_STROKE};
 use canvas_domain::interaction_reducer::InteractionMode;
 use diagram_models::document::DiagramDocument;
 
-pub(crate) fn rubber_band_overlay(
+pub fn rubber_band_overlay(
     mode: &InteractionMode,
     doc: &DiagramDocument,
     to_screen_coords: impl Fn(

@@ -20,7 +20,6 @@ pub fn render_text(svg: &mut String, x: f64, y: f64, label: &str) {
     let escaped_label = xml_escape(label);
     let _ = write!(
         svg,
-        "<text x='{}' y='{}' text-anchor='middle' font-family='sans-serif' font-size='10'>{}</text>",
-        x, y, escaped_label
+        "<text x='{x}' y='{y}' text-anchor='middle' font-family='sans-serif' font-size='10'>{escaped_label}</text>"
     );
 }

@@ -49,13 +49,13 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                 }
             }
         } else {
-            let id_edit_text = props.id.clone();
+            let id_edit_text = props.id;
             rsx! {
                 span {
                     "data-testid": "node-label",
                     style: "font-size: {font_px}px; color: {TEXT_MAIN};",
                     ondoubleclick: {
-                        let edit_label = node.label.clone();
+                        let edit_label = node.label;
                         move |evt| {
                             evt.stop_propagation();
                             editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_text.clone()));
@@ -89,14 +89,14 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                 }
             } else {
                 {
-                    let id_edit_subgraph = props.id.clone();
+                    let id_edit_subgraph = props.id;
                     rsx! {
                         span {
                             "data-testid": "node-label",
                             class: "absolute top-[8px] left-[10px]",
                             style: "font-size:{font_px}px; color:{TEXT_MUTED};",
                             ondoubleclick: {
-                                let edit_label = node.label.clone();
+                                let edit_label = node.label;
                                 move |evt| {
                                     evt.stop_propagation();
                                     editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_subgraph.clone()));
@@ -123,7 +123,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
 
             if props.zoom >= 0.3 {
                 {
-                    node_image.clone().map_or_else(
+                    node_image.map_or_else(
                         || {
                             rsx! {
                                 span {
@@ -160,14 +160,14 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                 }
             } else if props.zoom >= 0.3 {
                 {
-                    let id_edit_node = props.id.clone();
+                    let id_edit_node = props.id;
                     rsx! {
                         span {
                             "data-testid": "node-label",
                             class: "absolute left-0 right-0 bottom-[-18px] text-center",
                             style: "font-size:{font_px}px; color:{TEXT_MAIN};",
                             ondoubleclick: {
-                                let edit_label = node.label.clone();
+                                let edit_label = node.label;
                                 move |evt| {
                                     evt.stop_propagation();
                                     editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_node.clone()));
