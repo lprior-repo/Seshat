@@ -2,8 +2,8 @@
 
 set -euo pipefail
 
-ROOT="diagram_tool/src/models"
-CANONICAL="diagram_tool/src/models/projection/types.rs"
+ROOT="diagram_models/src"
+CANONICAL="diagram_models/src/projection/types.rs"
 
 echo "Checking canonical projection type definitions..."
 

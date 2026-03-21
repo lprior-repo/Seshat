@@ -70,7 +70,18 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
         rsx! {
             div {
                 "data-testid": "subgraph-header",
-                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] pointer-events-none border-b border-[var(--border)] bg-[color-mix(in_oklch,var(--node-bg-subgraph)_80%,transparent)]",
+                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] border-b border-[var(--border)] bg-[color-mix(in_oklch,var(--node-bg-subgraph)_80%,transparent)]",
+                ondoubleclick: {
+                    let edit_label = node.label.clone();
+                    let id_edit_subgraph = props.id.clone();
+                    let mut editor_state = props.editor_state;
+                    let mut edit_value = props.edit_value;
+                    move |evt| {
+                        evt.stop_propagation();
+                        editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_subgraph.clone()));
+                        edit_value.set(edit_label.clone());
+                    }
+                },
                 span {
                     "data-testid": "subgraph-header-text",
                     class: "text-[11px] font-medium uppercase tracking-[0.04em] text-[var(--text-muted)] pointer-events-none",
@@ -86,26 +97,6 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                     history_signal: props.history_signal,
                     editor_state: props.editor_state,
                     db_tx: props.db_tx,
-                }
-            } else {
-                {
-                    let id_edit_subgraph = props.id;
-                    rsx! {
-                        span {
-                            "data-testid": "node-label",
-                            class: "absolute top-[8px] left-[10px]",
-                            style: "font-size:{font_px}px; color:{TEXT_MUTED};",
-                            ondoubleclick: {
-                                let edit_label = node.label;
-                                move |evt| {
-                                    evt.stop_propagation();
-                                    editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_subgraph.clone()));
-                                    edit_value.set(edit_label.clone());
-                                }
-                            },
-                            "{node.label}"
-                        }
-                    }
                 }
             }
         }

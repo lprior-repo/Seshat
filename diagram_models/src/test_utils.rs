@@ -188,6 +188,7 @@ pub struct EdgeBuilder {
     label: String,
     thickness: f64,
     directed: bool,
+    metadata: HashMap<String, serde_json::Value>,
 }
 
 impl EdgeBuilder {
@@ -199,6 +200,7 @@ impl EdgeBuilder {
             label: String::new(),
             thickness: 1.0,
             directed: true,
+            metadata: HashMap::new(),
         }
     }
 
@@ -220,6 +222,12 @@ impl EdgeBuilder {
         self
     }
 
+    /// Add metadata entry.
+    pub fn with_metadata(mut self, key: impl Into<String>, value: serde_json::Value) -> Self {
+        self.metadata.insert(key.into(), value);
+        self
+    }
+
     /// Build the edge.
     pub fn build(self) -> Edge {
         Edge {
@@ -234,10 +242,11 @@ impl EdgeBuilder {
             directed: self.directed,
             bend_points: im::Vector::new(),
             tags: im::Vector::new(),
-            metadata: HashMap::new(),
+            metadata: self.metadata,
             font_size: None,
             source_port: None,
             target_port: None,
+            //
         }
     }
 }

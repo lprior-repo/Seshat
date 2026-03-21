@@ -120,15 +120,15 @@ pub struct Edge {
 #[cfg(test)]
 mod tests {
     use super::super::types::{NodeId, OrderedFloat};
-    use super::{ArrowType, Edge, SerializedPoint};
+    use super::{ArrowType, Edge, EdgeStyle, SerializedPoint};
 
     fn create_test_edge(source: &str, target: &str) -> Edge {
         Edge {
             source: NodeId::new(source.to_string()),
             target: NodeId::new(target.to_string()),
             label: String::new(),
-            style: Default::default(),
-            arrow_type: Default::default(),
+            style: EdgeStyle::default(),
+            arrow_type: ArrowType::default(),
             label_offset_t: OrderedFloat(0.5),
             color: None,
             thickness: OrderedFloat(1.5),

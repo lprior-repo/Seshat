@@ -2,19 +2,19 @@ use std::collections::BTreeMap;
 
 use crate::icons::{icon_index, IconMeta};
 
-pub const INITIAL_PROVIDER_LIMIT: usize = 50;
-pub const LOAD_MORE_STEP: usize = 50;
+pub const INITIAL_PROVIDER_LIMIT: usize = 25;
+pub const LOAD_MORE_STEP: usize = 25;
 pub const MAX_SEARCH_RESULTS: usize = 150;
 pub const DEFAULT_EXPANDED_PROVIDER: &str = "aws";
 pub const DEFAULT_EXPANDED_CATEGORY: &str = "aws/analytics";
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct CategoryBucket {
     pub name: String,
     pub icons: Vec<IconMeta>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ProviderBucket {
     pub provider: String,
     pub total_count: usize,
@@ -23,7 +23,7 @@ pub struct ProviderBucket {
     pub categories: Vec<CategoryBucket>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct ProviderBucketsResult {
     pub buckets: Vec<ProviderBucket>,
     pub is_truncated: bool,
@@ -120,25 +120,46 @@ pub fn search_matches(index: &[IconMeta], query: LowercasedQuery<'_>) -> (usize,
     (count, visible)
 }
 
-fn build_empty_bucket(
-    provider: &String,
-    provider_limits: &BTreeMap<String, usize>,
-    index: &crate::icons::IconIndex,
-) -> ProviderBucket {
-    let icons = index.icons_by_provider(provider);
-    let limit = provider_limits
-        .get(provider)
-        .copied()
-        .unwrap_or(INITIAL_PROVIDER_LIMIT);
-    let visible: Vec<IconMeta> = icons.iter().take(limit).map(|&i| i.clone()).collect();
+#[derive(thiserror::Error, Debug, PartialEq)]
+pub enum Error {
+    #[error("provider not found")]
+    ProviderNotFound,
+    #[error("invalid limit: {0}")]
+    InvalidLimit(usize),
+    #[error("malformed registry")]
+    MalformedRegistry,
+}
 
-    ProviderBucket {
-        provider: provider.clone(),
-        total_count: icons.len(),
-        visible_count: visible.len(),
-        has_more: icons.len() > visible.len(),
-        categories: bucket_icons_by_category(&visible),
+pub fn build_provider_bucket(
+    provider: &str,
+    limit: usize,
+    index: &crate::icons::IconIndex,
+) -> Result<ProviderBucket, Error> {
+    if limit == 0 || !limit.is_multiple_of(LOAD_MORE_STEP) {
+        return Err(Error::InvalidLimit(limit));
     }
+
+    if !index.by_provider.contains_key(provider) {
+        return Err(Error::ProviderNotFound);
+    }
+
+    let icons = index.icons_by_provider(provider);
+    let total_count = icons.len();
+    let visible: Vec<IconMeta> = icons.into_iter().take(limit).cloned().collect();
+    let visible_count = visible.len();
+
+    let categories = bucket_icons_by_category(&visible)
+        .into_iter()
+        .filter(|c| !c.icons.is_empty())
+        .collect();
+
+    Ok(ProviderBucket {
+        provider: provider.to_string(),
+        total_count,
+        visible_count,
+        has_more: total_count > visible_count,
+        categories,
+    })
 }
 
 fn build_search_buckets(query: LowercasedQuery<'_>) -> ProviderBucketsResult {
@@ -178,7 +199,13 @@ pub fn build_provider_buckets(
         let buckets = index
             .by_provider
             .keys()
-            .map(|provider| build_empty_bucket(provider, provider_limits, index))
+            .filter_map(|provider| {
+                let limit = provider_limits
+                    .get(provider)
+                    .copied()
+                    .unwrap_or(INITIAL_PROVIDER_LIMIT);
+                build_provider_bucket(provider, limit, index).ok()
+            })
             .collect();
         ProviderBucketsResult {
             buckets,
@@ -251,5 +278,112 @@ mod tests {
             &icon,
             LowercasedQuery::new("azure").unwrap()
         ));
+    }
+
+    fn create_test_index(categories: &[(&str, usize)]) -> crate::icons::IconIndex {
+        let mut all = Vec::new();
+        let mut by_provider = std::collections::BTreeMap::new();
+        let mut by_key = std::collections::HashMap::new();
+        let provider_name = "test_provider";
+        let mut provider_keys = Vec::new();
+
+        for (cat_name, count) in categories {
+            for i in 0..*count {
+                let icon_key = format!("{}/{}/{}", provider_name, cat_name, i);
+                provider_keys.push(icon_key.clone());
+
+                let icon = IconMeta {
+                    icon_key: std::sync::Arc::from(icon_key.as_str()),
+                    provider: std::sync::Arc::from(provider_name),
+                    category_path: if cat_name.is_empty() {
+                        vec![]
+                    } else {
+                        vec![std::sync::Arc::from(*cat_name)]
+                    },
+                    file_relpath: std::sync::Arc::from(""),
+                    display_name: std::sync::Arc::from(""),
+                    search_terms: std::sync::Arc::from(""),
+                    base64_data: std::sync::Arc::from(""),
+                };
+                all.push(icon.clone());
+                by_key.insert(icon_key, icon);
+            }
+        }
+        by_provider.insert(provider_name.to_string(), provider_keys);
+
+        crate::icons::IconIndex {
+            all,
+            by_provider,
+            by_key,
+        }
+    }
+
+    #[test]
+    fn test_rejects_request_when_provider_not_in_registry() {
+        let index = create_test_index(&[]);
+        let result = build_provider_bucket("nonexistent", 25, &index);
+        assert_eq!(result, Err(Error::ProviderNotFound));
+    }
+
+    #[test]
+    fn test_rejects_request_when_limit_is_zero() {
+        let index = create_test_index(&[]);
+        let result = build_provider_bucket("aws", 0, &index);
+        assert_eq!(result, Err(Error::InvalidLimit(0)));
+    }
+
+    #[test]
+    fn test_rejects_request_when_limit_is_not_multiple_of_25() {
+        let index = create_test_index(&[]);
+        let result = build_provider_bucket("aws", 33, &index);
+        assert_eq!(result, Err(Error::InvalidLimit(33)));
+    }
+
+    #[test]
+    fn test_slicing_across_multiple_smaller_categories() {
+        let index = create_test_index(&[("A", 10), ("B", 10), ("C", 10)]);
+        let bucket = build_provider_bucket("test_provider", 25, &index).unwrap();
+
+        assert_eq!(bucket.categories.len(), 3);
+        assert_eq!(bucket.categories[0].name, "A");
+        assert_eq!(bucket.categories[0].icons.len(), 10);
+        assert_eq!(bucket.categories[1].name, "B");
+        assert_eq!(bucket.categories[1].icons.len(), 10);
+        assert_eq!(bucket.categories[2].name, "C");
+        assert_eq!(bucket.categories[2].icons.len(), 5);
+        assert_eq!(bucket.visible_count, 25);
+        assert_eq!(bucket.total_count, 30);
+        assert!(bucket.has_more);
+    }
+
+    #[test]
+    fn test_slicing_exactly_on_category_boundary() {
+        let index = create_test_index(&[("X", 25), ("Y", 25)]);
+        let bucket = build_provider_bucket("test_provider", 25, &index).unwrap();
+
+        assert_eq!(bucket.categories.len(), 1);
+        assert_eq!(bucket.categories[0].name, "X");
+        assert_eq!(bucket.categories[0].icons.len(), 25);
+        assert_eq!(bucket.visible_count, 25);
+    }
+
+    #[test]
+    fn test_empty_categories_are_omitted_from_bucket_entirely() {
+        let index = create_test_index(&[("Empty", 0), ("Data", 30)]);
+        let bucket = build_provider_bucket("test_provider", 25, &index).unwrap();
+
+        assert_eq!(bucket.categories.len(), 1);
+        assert_eq!(bucket.categories[0].name, "Data");
+        assert_eq!(bucket.categories[0].icons.len(), 25);
+    }
+
+    #[test]
+    fn test_mid_category_slicing() {
+        let index = create_test_index(&[("Mega", 100)]);
+        let bucket = build_provider_bucket("test_provider", 25, &index).unwrap();
+
+        assert_eq!(bucket.categories.len(), 1);
+        assert_eq!(bucket.categories[0].name, "Mega");
+        assert_eq!(bucket.categories[0].icons.len(), 25);
     }
 }

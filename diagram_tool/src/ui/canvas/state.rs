@@ -17,7 +17,130 @@ pub enum EditorState {
     Idle,
     HoveringNode(NodeId),
     EditingNode(NodeId),
+    HoveringEdge(EdgeId),
     EditingEdge(EdgeId),
+}
+
+#[derive(Clone, PartialEq, Debug)]
+pub enum EditorEvent {
+    HoverNode(NodeId),
+    HoverEdge(EdgeId),
+    EditNode(NodeId),
+    EditEdge(EdgeId),
+    ClearHover,
+    Escape,
+}
+
+#[derive(thiserror::Error, Debug, PartialEq)]
+pub enum EditorError {
+    #[error("Element {0} not found")]
+    ElementNotFound(String),
+    #[error("Invalid transition from {from:?} with event {to_event:?}")]
+    InvalidTransition {
+        from: EditorState,
+        to_event: EditorEvent,
+    },
+    #[error("Inconsistent state")]
+    InconsistentState,
+}
+
+#[allow(clippy::needless_pass_by_value)]
+pub fn calculate_transition(
+    current: &EditorState,
+    event: EditorEvent,
+    doc: &DiagramDocument,
+) -> Result<EditorState, EditorError> {
+    match event {
+        EditorEvent::Escape => Ok(EditorState::Idle),
+        EditorEvent::ClearHover => match current {
+            EditorState::HoveringNode(_) | EditorState::HoveringEdge(_) | EditorState::Idle => {
+                Ok(EditorState::Idle)
+            }
+            _ => Err(EditorError::InvalidTransition {
+                from: current.clone(),
+                to_event: event,
+            }),
+        },
+        EditorEvent::HoverNode(ref id) => {
+            if !doc.document.nodes.contains_key(id) {
+                return Err(EditorError::ElementNotFound(id.to_string()));
+            }
+            match current {
+                EditorState::HoveringNode(current_id) if current_id == id => Ok(current.clone()),
+                EditorState::Idle | EditorState::HoveringNode(_) | EditorState::HoveringEdge(_) => {
+                    Ok(EditorState::HoveringNode(id.clone()))
+                }
+                _ => Err(EditorError::InvalidTransition {
+                    from: current.clone(),
+                    to_event: event.clone(),
+                }),
+            }
+        }
+        EditorEvent::HoverEdge(ref id) => {
+            if !doc.document.edges.contains_key(id) {
+                return Err(EditorError::ElementNotFound(id.to_string()));
+            }
+            match current {
+                EditorState::HoveringEdge(current_id) if current_id == id => Ok(current.clone()),
+                EditorState::Idle | EditorState::HoveringNode(_) | EditorState::HoveringEdge(_) => {
+                    Ok(EditorState::HoveringEdge(id.clone()))
+                }
+                _ => Err(EditorError::InvalidTransition {
+                    from: current.clone(),
+                    to_event: event.clone(),
+                }),
+            }
+        }
+        EditorEvent::EditNode(ref id) => {
+            if !doc.document.nodes.contains_key(id) {
+                return Err(EditorError::ElementNotFound(id.to_string()));
+            }
+            match current {
+                EditorState::HoveringNode(hover_id) if hover_id == id => {
+                    Ok(EditorState::EditingNode(id.clone()))
+                }
+                EditorState::EditingNode(edit_id) if edit_id == id => Ok(current.clone()),
+                EditorState::EditingNode(_) => Ok(EditorState::EditingNode(id.clone())),
+                _ => Err(EditorError::InvalidTransition {
+                    from: current.clone(),
+                    to_event: event.clone(),
+                }),
+            }
+        }
+        EditorEvent::EditEdge(ref id) => {
+            if !doc.document.edges.contains_key(id) {
+                return Err(EditorError::ElementNotFound(id.to_string()));
+            }
+            match current {
+                EditorState::HoveringEdge(hover_id) if hover_id == id => {
+                    Ok(EditorState::EditingEdge(id.clone()))
+                }
+                EditorState::EditingEdge(edit_id) if edit_id == id => Ok(current.clone()),
+                EditorState::EditingEdge(_) => Ok(EditorState::EditingEdge(id.clone())),
+                _ => Err(EditorError::InvalidTransition {
+                    from: current.clone(),
+                    to_event: event.clone(),
+                }),
+            }
+        }
+    }
+}
+
+pub fn apply_transition(
+    canvas_state: &mut CanvasState,
+    next_state: EditorState,
+) -> Result<(), EditorError> {
+    if next_state == EditorState::Idle {
+        canvas_state.edit_value.set(String::new());
+    }
+
+    canvas_state.editor_state.set(next_state.clone());
+
+    if next_state == EditorState::Idle && !canvas_state.edit_value.read().is_empty() {
+        return Err(EditorError::InconsistentState);
+    }
+
+    Ok(())
 }
 
 #[derive(Clone, PartialEq)]
@@ -146,5 +269,190 @@ pub fn use_canvas_state() -> CanvasState {
         canvas_origin,
         ordered_node_cache,
         db_tx,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use diagram_models::document::{DiagramDocument, DocumentData, Node, NodeKind};
+    use indexmap::IndexMap;
+    use proptest::prelude::*;
+    use uuid::Uuid;
+
+    struct FsmDriver {
+        doc: DiagramDocument,
+        state: EditorState,
+    }
+
+    impl FsmDriver {
+        fn new() -> Self {
+            let mut nodes = IndexMap::new();
+            let mut edges = IndexMap::new();
+            nodes.insert(
+                "node_a".to_string(),
+                Node {
+                    id: "node_a".to_string(),
+                    kind: NodeKind::Task,
+                    label: "A".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 100.0,
+                    height: 100.0,
+                    color: None,
+                    is_group: false,
+                    parent_id: None,
+                },
+            );
+            nodes.insert(
+                "node_b".to_string(),
+                Node {
+                    id: "node_b".to_string(),
+                    kind: NodeKind::Task,
+                    label: "B".to_string(),
+                    x: 0.0,
+                    y: 0.0,
+                    width: 100.0,
+                    height: 100.0,
+                    color: None,
+                    is_group: false,
+                    parent_id: None,
+                },
+            );
+            edges.insert(
+                "edge_1".to_string(),
+                diagram_models::document::Edge {
+                    id: "edge_1".to_string(),
+                    source: "node_a".to_string(),
+                    target: "node_b".to_string(),
+                    label: None,
+                    style: EdgeStyle::Solid,
+                    color: None,
+                    thickness: 1.0,
+                    arrow_type: ArrowType::Normal,
+                    control_points: vec![],
+                },
+            );
+            Self {
+                doc: DiagramDocument {
+                    version: 1,
+                    revision: diagram_models::document::Revision::INITIAL,
+                    document: DocumentData { nodes, edges },
+                    editor_state: diagram_models::document::EditorState::default(),
+                },
+                state: EditorState::Idle,
+            }
+        }
+
+        fn given_idle_canvas(mut self) -> Self {
+            self.state = EditorState::Idle;
+            self
+        }
+
+        fn given_hovering_node(mut self, id: &str) -> Self {
+            self.state = EditorState::HoveringNode(id.to_string());
+            self
+        }
+
+        fn given_editing_node(mut self, id: &str) -> Self {
+            self.state = EditorState::EditingNode(id.to_string());
+            self
+        }
+
+        fn apply(mut self, event: EditorEvent) -> Result<Self, EditorError> {
+            self.state = calculate_transition(&self.state, event, &self.doc)?;
+            Ok(self)
+        }
+
+        fn when_mouse_enters_node(self, id: &str) -> Result<Self, EditorError> {
+            self.apply(EditorEvent::HoverNode(id.to_string()))
+        }
+
+        fn when_mouse_clicks_node(self, id: &str) -> Result<Self, EditorError> {
+            self.apply(EditorEvent::EditNode(id.to_string()))
+        }
+
+        fn when_escape_pressed(self) -> Result<Self, EditorError> {
+            self.apply(EditorEvent::Escape)
+        }
+
+        fn then_state_is_hovering(self, id: &str) -> Self {
+            assert_eq!(self.state, EditorState::HoveringNode(id.to_string()));
+            self
+        }
+
+        fn then_state_is_editing(self, id: &str) -> Self {
+            assert_eq!(self.state, EditorState::EditingNode(id.to_string()));
+            self
+        }
+
+        fn then_state_is_idle(self) -> Self {
+            assert_eq!(self.state, EditorState::Idle);
+            self
+        }
+    }
+
+    #[test]
+    fn test_transitions_to_hovering_when_mouse_enters_node() {
+        let driver = FsmDriver::new().given_idle_canvas();
+        driver
+            .when_mouse_enters_node("node_a")
+            .unwrap()
+            .then_state_is_hovering("node_a");
+    }
+
+    #[test]
+    fn test_transitions_to_editing_when_node_clicked() {
+        let driver = FsmDriver::new().given_hovering_node("node_a");
+        driver
+            .when_mouse_clicks_node("node_a")
+            .unwrap()
+            .then_state_is_editing("node_a");
+    }
+
+    #[test]
+    fn test_commits_edit_and_returns_to_idle_on_escape() {
+        let driver = FsmDriver::new().given_editing_node("node_a");
+        driver.when_escape_pressed().unwrap().then_state_is_idle();
+    }
+
+    #[test]
+    fn test_P2_violation_returns_invalid_transition() {
+        let driver = FsmDriver::new().given_editing_node("node_a");
+        let result = driver.apply(EditorEvent::EditEdge("edge_1".to_string()));
+        assert!(matches!(result, Err(EditorError::InvalidTransition { .. })));
+    }
+
+    #[test]
+    fn test_P1_violation_returns_element_not_found() {
+        let driver = FsmDriver::new().given_idle_canvas();
+        let result = driver.when_mouse_enters_node("non_existent_node");
+        assert_eq!(
+            result.unwrap_err(),
+            EditorError::ElementNotFound("non_existent_node".to_string())
+        );
+    }
+
+    proptest! {
+        #[test]
+        fn proptest_arbitrary_event_sequences_never_panic(events in prop::collection::vec(any_event(), 0..100)) {
+            let mut driver = FsmDriver::new();
+            for event in events {
+                let _ = driver.apply(event);
+            }
+        }
+    }
+
+    fn any_event() -> impl Strategy<Value = EditorEvent> {
+        prop_oneof![
+            Just(EditorEvent::Escape),
+            Just(EditorEvent::ClearHover),
+            Just(EditorEvent::HoverNode("node_a".to_string())),
+            Just(EditorEvent::HoverNode("invalid".to_string())),
+            Just(EditorEvent::EditNode("node_a".to_string())),
+            Just(EditorEvent::EditNode("node_b".to_string())),
+            Just(EditorEvent::HoverEdge("edge_1".to_string())),
+            Just(EditorEvent::EditEdge("edge_1".to_string())),
+        ]
     }
 }

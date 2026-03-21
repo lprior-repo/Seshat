@@ -8,9 +8,9 @@ use crate::geometry::{Point, Rectangle, AABB};
 use ahash::AHashMap;
 use im::{HashMap, HashSet};
 
-/// Spatial index grid using ahash::AHashMap for WASM performance.
-/// AHashMap uses a fixed seed so lookups work correctly.
-/// This avoids the overhead of im::HashMap's persistent data structure.
+/// Spatial index grid using `ahash::AHashMap` for WASM performance.
+/// `AHashMap` uses a fixed seed so lookups work correctly.
+/// This avoids the overhead of `im::HashMap`'s persistent data structure.
 type SpatialGrid = AHashMap<(i32, i32), Vec<NodeId>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -110,7 +110,7 @@ fn contains_aabb(a: &AABB, b: &AABB) -> bool {
 }
 
 /// Performs a point query against the spatial index.
-/// Returns the node ID with the highest z_index that contains the point, if any.
+/// Returns the node ID with the highest `z_index` that contains the point, if any.
 ///
 /// This is optimized for hit testing - instead of scanning all nodes (O(n)),
 /// it only checks nodes in the grid cell containing the point (O(1) average case).

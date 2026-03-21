@@ -7,6 +7,7 @@ pub mod nudge;
 #[cfg(test)]
 mod nudge_tests;
 pub mod routing;
+pub mod scale;
 pub mod transform;
 pub mod z_order;
 #[cfg(test)]

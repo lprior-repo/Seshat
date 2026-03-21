@@ -7,6 +7,7 @@ use im::HashMap;
 use serde::{Deserialize, Serialize};
 
 pub mod edge;
+pub mod edge_direction;
 pub mod editor;
 pub mod error;
 pub mod node;
