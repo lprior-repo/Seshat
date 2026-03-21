@@ -136,7 +136,7 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
     } else {
         "image/png"
     };
-    
+
     let base64_data = format!(
         "data:{mime};base64,{}",
         general_purpose::STANDARD.encode(&file_contents)

@@ -38,7 +38,10 @@ fn test_returns_error_when_source_node_missing() {
         EdgeId::new("e1".to_string()),
     )
     .unwrap_err();
-    assert_eq!(err, RoutingError::SourceNotFound("s1".to_string()));
+    assert_eq!(
+        err,
+        RoutingError::SourceNotFound(NodeId::new("s1".to_string()))
+    );
 }
 
 #[test]
@@ -201,7 +204,10 @@ fn test_routing_returns_error_when_source_node_missing() {
 
     let edge = create_edge_obj("n1", "n2");
     let err = compute_straight_line_route(&doc, &edge).unwrap_err();
-    assert_eq!(err, RoutingError::SourceNotFound("n1".to_string()));
+    assert_eq!(
+        err,
+        RoutingError::SourceNotFound(NodeId::new("n1".to_string()))
+    );
 }
 
 #[test]
@@ -212,5 +218,8 @@ fn test_routing_returns_error_when_target_node_missing() {
 
     let edge = create_edge_obj("n1", "n2");
     let err = compute_straight_line_route(&doc, &edge).unwrap_err();
-    assert_eq!(err, RoutingError::TargetNotFound("n2".to_string()));
+    assert_eq!(
+        err,
+        RoutingError::TargetNotFound(NodeId::new("n2".to_string()))
+    );
 }

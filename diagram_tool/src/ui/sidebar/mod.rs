@@ -14,16 +14,14 @@ use dioxus::prelude::*;
 use crate::ui::{
     mobile::{close_sidebar, open_sidebar},
     sidebar_primitives::{
-        Sidebar as SidebarPanel, SidebarCollapsible, SidebarHeader, SidebarInset,
-        SidebarMenu, SidebarOverlay, SidebarProvider, SidebarRail, SidebarSheet, SidebarSide,
-        SidebarTrigger, SidebarVariant,
+        Sidebar as SidebarPanel, SidebarCollapsible, SidebarHeader, SidebarInset, SidebarMenu,
+        SidebarOverlay, SidebarProvider, SidebarRail, SidebarSheet, SidebarSide, SidebarTrigger,
+        SidebarVariant,
     },
 };
 
 use self::components::{ProviderAccordion, SearchBox, SidebarFooter};
-use self::models::{
-    build_provider_buckets, DEFAULT_EXPANDED_CATEGORY, DEFAULT_EXPANDED_PROVIDER,
-};
+use self::models::{build_provider_buckets, DEFAULT_EXPANDED_CATEGORY, DEFAULT_EXPANDED_PROVIDER};
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct SidebarState {
@@ -38,12 +36,14 @@ fn use_sidebar_state() -> SidebarState {
     let search = use_signal(String::new);
     let mut debounced_search = use_signal(String::new);
 
-    use_resource(move || async move {
+    use_resource(move || {
         let current = search();
-        if !current.is_empty() {
-            gloo_timers::future::sleep(std::time::Duration::from_millis(200)).await;
+        async move {
+            if !current.is_empty() {
+                gloo_timers::future::sleep(std::time::Duration::from_millis(200)).await;
+            }
+            debounced_search.set(current);
         }
-        debounced_search.set(current);
     });
 
     SidebarState {
@@ -144,6 +144,13 @@ pub fn Sidebar() -> Element {
     let app_state = use_context::<crate::app::AppState>();
     let sidebar_ui = app_state.sidebar;
 
+    let result = use_memo(move || {
+        let trimmed = state.debounced_search.read().trim().to_lowercase();
+        let lowercased =
+            models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
+        build_provider_buckets(lowercased, &state.provider_limits.read())
+    });
+
     let ui_state = *sidebar_ui.read();
     if ui_state.is_mobile && !ui_state.open_mobile {
         return render_mobile_closed(sidebar_ui);
@@ -151,13 +158,6 @@ pub fn Sidebar() -> Element {
     if !ui_state.is_mobile && !ui_state.open {
         return render_desktop_closed(sidebar_ui);
     }
-
-    let result = use_memo(move || {
-        let trimmed = state.debounced_search.read().trim().to_lowercase();
-        let lowercased =
-            models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
-        build_provider_buckets(lowercased, &state.provider_limits.read())
-    });
 
     let buckets_result = result.read().clone();
     render_open_sidebar(sidebar_ui, ui_state.is_mobile, buckets_result, state)

@@ -19,6 +19,7 @@ pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
     let doc_signal = app_state.document;
     let history_signal = app_state.history;
     let clipboard_signal = app_state.clipboard;
+    let toast_api = crate::ui::toast::ToastApi::from_signal(app_state.toasts);
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -42,6 +43,7 @@ pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
                     key === 'y' ||
                     key === 'a' ||
                     key === 'c' ||
+                    key === 'x' ||
                     key === 'v' ||
                     key === 'd' ||
                     key === 'g'
@@ -80,11 +82,38 @@ pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
                             apply_select_all(doc_signal);
                         }
                         (_, "c") => {
-                            let _ = apply_copy_selection(doc_signal, clipboard_signal);
+                            if apply_copy_selection(doc_signal, clipboard_signal) {
+                                let _ = toast_api.toast(crate::ui::toast::ToastOptions::new(
+                                    crate::ui::toast::ToastIntent::Success,
+                                    "Copied to clipboard",
+                                ));
+                            }
+                        }
+                        (_, "x") => {
+                            if apply_copy_selection(doc_signal, clipboard_signal) {
+                                if crate::ui::commands::apply_delete_selected(
+                                    doc_signal,
+                                    history_signal,
+                                ) {
+                                    let _ = toast_api.toast(crate::ui::toast::ToastOptions::new(
+                                        crate::ui::toast::ToastIntent::Success,
+                                        "Cut to clipboard",
+                                    ));
+                                } else {
+                                    let _ = toast_api.toast(crate::ui::toast::ToastOptions::new(
+                                        crate::ui::toast::ToastIntent::Warning,
+                                        "Copied to clipboard, but failed to delete selection",
+                                    ));
+                                }
+                            }
                         }
                         (_, "v") => {
-                            let _ =
-                                apply_paste_selection(doc_signal, clipboard_signal, history_signal);
+                            if apply_paste_selection(doc_signal, clipboard_signal, history_signal) {
+                                let _ = toast_api.toast(crate::ui::toast::ToastOptions::new(
+                                    crate::ui::toast::ToastIntent::Success,
+                                    "Pasted from clipboard",
+                                ));
+                            }
                         }
                         (_, "d") => {
                             let _ = apply_duplicate_selection(

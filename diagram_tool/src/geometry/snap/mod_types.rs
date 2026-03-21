@@ -33,12 +33,12 @@ pub enum SnapError {
     InvalidGridSize(f64),
     #[error("invalid threshold: {0} (must be >= 0)")]
     InvalidThreshold(f64),
-    #[error("invalid node list: {0}")]
-    InvalidNodeList(String),
-    #[error("invalid alignment anchor: {0}")]
-    InvalidAlignmentAnchor(String),
-    #[error("invalid resize handle: {0}")]
-    InvalidResizeHandle(String),
+    #[error("invalid node list")]
+    InvalidNodeList,
+    #[error("invalid alignment anchor")]
+    InvalidAlignmentAnchor,
+    #[error("invalid resize handle")]
+    InvalidResizeHandle,
     #[error("insufficient nodes for distribution (need >= 3, got {0})")]
     InsufficientNodesForDistribution(usize),
     #[error("NaN or Infinity in input coordinates")]

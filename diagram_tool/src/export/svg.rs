@@ -12,7 +12,7 @@ pub mod grid;
 #[path = "svg_builder/nodes.rs"]
 pub mod nodes;
 #[cfg(test)]
-#[path = "svg_builder/nodes_tests.rs"]
+#[path = "svg_builder/nodes_tests/mod.rs"]
 pub mod nodes_tests;
 #[path = "svg_builder/styles.rs"]
 pub mod styles;

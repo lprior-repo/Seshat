@@ -1,4 +1,5 @@
 use crate::geometry::primitives::{Point, AABB};
+use diagram_models::document::types::{EdgeId, NodeId};
 
 /// Unified routing errors covering both geometric pathfinding and graph topology.
 #[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
@@ -12,17 +13,17 @@ pub enum RoutingError {
     EndpointInsideObstacle,
     // Graph topology errors
     #[error("Source node {0} not found")]
-    SourceNotFound(String),
+    SourceNotFound(NodeId),
     #[error("Target node {0} not found")]
-    TargetNotFound(String),
+    TargetNotFound(NodeId),
     #[error("Cannot create self-loop on node {0}")]
-    SelfLoop(String),
+    SelfLoop(NodeId),
     #[error("Adding this edge creates a cycle")]
     CycleDetected,
     #[error("Invalid coordinates on node {0}")]
-    InvalidNodeCoordinates(String),
+    InvalidNodeCoordinates(NodeId),
     #[error("Duplicate edge {0}")]
-    DuplicateEdge(String),
+    DuplicateEdge(EdgeId),
 }
 
 #[derive(Debug, Clone, PartialEq)]

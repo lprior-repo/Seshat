@@ -76,10 +76,10 @@ fn validate_edge_endpoints(
     target: &NodeId,
 ) -> Result<(), RoutingError> {
     if !doc.document.nodes.contains_key(source) {
-        return Err(RoutingError::SourceNotFound(source.to_string()));
+        return Err(RoutingError::SourceNotFound(source.clone()));
     }
     if !doc.document.nodes.contains_key(target) {
-        return Err(RoutingError::TargetNotFound(target.to_string()));
+        return Err(RoutingError::TargetNotFound(target.clone()));
     }
     Ok(())
 }
@@ -151,13 +151,13 @@ pub fn compute_straight_line_route(
         .document
         .nodes
         .get(&edge.source)
-        .ok_or_else(|| RoutingError::SourceNotFound(edge.source.to_string()))?;
+        .ok_or_else(|| RoutingError::SourceNotFound(edge.source.clone()))?;
 
     let target_node = doc
         .document
         .nodes
         .get(&edge.target)
-        .ok_or_else(|| RoutingError::TargetNotFound(edge.target.to_string()))?;
+        .ok_or_else(|| RoutingError::TargetNotFound(edge.target.clone()))?;
 
     let source_port = edge.source_port.as_ref().unwrap_or(&PortAnchor::Center);
     let target_port = edge.target_port.as_ref().unwrap_or(&PortAnchor::Center);

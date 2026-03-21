@@ -10,3 +10,11 @@ Refactored `diagram_tool/src/viewport/operations.rs`. Reduced from 327 lines to 
 Refactored `diagram_tool/src/export/svg_builder/edges.rs` to strictly < 300 lines (currently ~150). Applied EXTREMELY DRY constraints to the test suite, extracting 14 identical boilerplate setups into a single parameterized `verify_node(...)` helper that returns `Result<(), TestCaseError>`. Eliminated all clippy warnings including `unwrap_used` by employing `?` in tests. Applied Scott Wlaschin DDD principles by keeping the logic type-driven.
 
 Refactored `diagram_tool/src/cli.rs` which was ~290 lines. Created a new module `diagram_tool/src/cli/commands.rs` strictly to hold the `Commands` enum, argument parsing boundaries, and execution mapping. Applied DDD by encapsulating the command `execute` behavior and `name` generation directly on the `Commands` type itself. `cli.rs` is now highly DRY, acts purely as an imperative orchestration shell with fewer than 50 lines, and relies on strict type transitions. Compiles cleanly with no clippy warnings.
+
+Refactored `diagram_tool/src/layout/dag_tests.rs` (892 lines) which was extracted into a module `diagram_tool/src/layout/dag_tests/` and split into `layout_tests.rs`, `hierarchy_tests.rs`, and `proptests.rs`.
+
+Refactored `diagram_tool/src/layout/grid/tests.rs` (497 lines) which was extracted into a module `diagram_tool/src/layout/grid/tests/` and split into `unit.rs` and `proptests.rs`.
+
+Refactored `diagram_tool/src/export/svg_builder/nodes_tests.rs` (692 lines) which was extracted into a module `diagram_tool/src/export/svg_builder/nodes_tests/` and split into `bounds_tests.rs` and `generate_tests.rs`.
+
+All functional codebase files in `diagram_tool/src/layout/` and `diagram_tool/src/export/` were checked and found to be well under the 300-line limit and adhere to Scott Wlaschin DDD principles (no primitive obsession, explicit workflows, valid boundary parsing).

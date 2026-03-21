@@ -67,7 +67,7 @@ pub fn App() -> Element {
                 Toolbar {}
                 Toaster {}
                 div {
-                    class: "flex flex-1 relative min-w-0",
+                    class: "flex flex-1 relative min-w-0 min-h-0",
                     Sidebar {}
                     Canvas {}
                 }

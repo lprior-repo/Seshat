@@ -18,13 +18,13 @@ pub fn SearchBox(mut search: Signal<String>, search_is_truncated: bool) -> Eleme
     rsx! {
         div {
             class: "relative mb-4",
-            crate::ui::icons::Icon { kind: crate::ui::icons::IconKind::Search, size: 16, color: Some("var(--text-muted)") }
             div {
-                class: "absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground",
+                class: "pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground",
                 crate::ui::icons::Icon { kind: crate::ui::icons::IconKind::Search, size: 14, color: None }
             }
             input {
-                placeholder: "Search icons...", value: "{search}",
+                placeholder: "Search icons...",
+                value: "{search}",
                 class: "pl-8 pr-2 py-1.5 w-full rounded-md border border-[var(--border-subtle)] bg-[oklch(0.13_0.005_260)] text-foreground text-[13px] outline-none focus:border-[var(--accent)] transition-colors",
                 oninput: move |evt| search.set(evt.value())
             }
