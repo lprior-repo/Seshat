@@ -25,7 +25,7 @@ pub fn hit_test(
                 .document
                 .nodes
                 .get(id)
-                .is_some_and(crate::document::Node::is_visible)
+                .is_some_and(super::super::document::node::Node::is_visible)
         })
         .map(ElementId::Node);
 

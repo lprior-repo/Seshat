@@ -1,11 +1,13 @@
 use crate::history::History;
-use crate::ui::canvas::canvas_view::{edge_label_position, edge_marker_ref, edge_path};
+use crate::ui::canvas::canvas_view::markers::EdgeMarkers;
+use crate::ui::canvas::canvas_view::{edge_label_position, edge_path};
 use crate::ui::theme::{EDGE_DEFAULT, EDGE_SELECTED};
 use canvas_domain::interaction_reducer::commit_inline_edit;
 use canvas_domain::perf::to_screen_coords;
 use diagram_models::document::{DiagramDocument, Edge, EdgeId, EdgeStyle, Node};
 use dioxus::html::input_data::keyboard_types::Key;
 use dioxus::prelude::*;
+use serde_json::Value;
 
 #[component]
 pub fn EdgeLayer(
@@ -39,7 +41,11 @@ pub fn EdgeLayer(
                     EDGE_DEFAULT
                 };
                 let stroke_width = if is_selected { 2.5 } else { 1.5 };
-                let marker = edge_marker_ref(is_selected);
+                let is_bidirectional = edge
+                    .metadata
+                    .get("bidirectional")
+                    .is_some_and(|v| v == &Value::Bool(true));
+                let markers = EdgeMarkers::for_edge(edge.directed, is_bidirectional, is_selected);
                 let dash = if edge.style == EdgeStyle::Dashed {
                     "8,4"
                 } else if edge.style == EdgeStyle::Dotted {
@@ -59,7 +65,8 @@ pub fn EdgeLayer(
                         stroke: "{stroke_color}",
                         stroke_width: "{stroke_width}",
                         stroke_dasharray: "{dash}",
-                        marker_end: "{marker}",
+                        marker_end: "{markers.marker_end}",
+                        marker_start: markers.marker_start.as_deref().unwrap_or(""),
                     }
                     if is_editing_edge {
                         foreignObject {

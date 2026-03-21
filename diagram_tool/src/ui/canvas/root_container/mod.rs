@@ -125,6 +125,25 @@ pub fn RootContainer(state: CanvasState) -> Element {
                         orient: "auto",
                         polygon { points: "0 0, 10 3.5, 0 7", fill: "{EDGE_SELECTED}", opacity: "0.5" }
                     }
+                    // Reverse arrow for bidirectional edges (points left)
+                    marker {
+                        id: "arrowhead-start",
+                        marker_width: "10",
+                        marker_height: "7",
+                        ref_x: "1",
+                        ref_y: "3.5",
+                        orient: "auto",
+                        polygon { points: "10 0, 0 3.5, 10 7", fill: "{EDGE_DEFAULT}" }
+                    }
+                    marker {
+                        id: "arrowhead-start-selected",
+                        marker_width: "10",
+                        marker_height: "7",
+                        ref_x: "1",
+                        ref_y: "3.5",
+                        orient: "auto",
+                        polygon { points: "10 0, 0 3.5, 10 7", fill: "{EDGE_SELECTED}" }
+                    }
                 }
 
                 GridLayer { doc_signal: state.doc_signal, viewport_size: state.viewport_size }

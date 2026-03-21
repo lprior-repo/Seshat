@@ -10,7 +10,8 @@ mod persistence_compat;
 use crate::app::AppState;
 use crate::mutation::error::MutationError;
 use crate::ui::commands::{
-    apply_delete_selected, apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset,
+    apply_delete_selected, apply_redo, apply_toggle_edge_direction, apply_undo, apply_zoom_in,
+    apply_zoom_out, apply_zoom_reset,
 };
 use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
@@ -280,10 +281,16 @@ pub fn Toolbar() -> Element {
                     icon: Some(IconKind::Minus), // Assuming we have Minus or Line icon
                     text: "Solid"
                 }
-                LabelButton {
+                IconButton {
                     test_id: "style-arrow",
-                    icon: Some(IconKind::ArrowRight), // Assuming we have ArrowRight
-                    text: "Default"
+                    onclick: move |_| {
+                        let _ = apply_toggle_edge_direction(doc_signal, history_signal);
+                    },
+                    icon: IconKind::ArrowRight,
+                    color: None,
+                    disabled: None,
+                    active: None,
+                    active_bg: None,
                 }
             }
 
