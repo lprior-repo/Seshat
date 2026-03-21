@@ -109,6 +109,7 @@ pub mod history;
 pub mod hooks;
 pub mod icons;
 pub mod layout;
+pub mod models;
 pub mod mutation;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store;
