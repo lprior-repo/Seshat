@@ -9,6 +9,7 @@ use im::HashMap;
 use super::super::queries::safe_zoom;
 
 #[allow(clippy::too_many_arguments)]
+#[allow(clippy::similar_names)]
 pub fn handle_resizing(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,

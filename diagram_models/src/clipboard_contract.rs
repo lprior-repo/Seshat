@@ -61,6 +61,11 @@ pub struct PasteResult {
     pub new_selection: HashSet<String>,
 }
 
+/// Copies the selection to clipboard.
+///
+/// # Errors
+///
+/// Returns `Error` if the selection is empty or a node is not found.
 pub fn copy(selection: &Selection, doc: &DiagramDocument) -> Result<ClipboardData, Error> {
     if selection.nodes.is_empty() {
         return Err(Error::EmptySelection);
@@ -101,6 +106,11 @@ pub fn copy(selection: &Selection, doc: &DiagramDocument) -> Result<ClipboardDat
     })
 }
 
+/// Cuts the selection to clipboard.
+///
+/// # Errors
+///
+/// Returns `Error` if copy fails.
 pub fn cut(selection: &Selection, doc: &mut DiagramDocument) -> Result<ClipboardData, Error> {
     let clipboard = copy(selection, doc)?;
 
@@ -112,6 +122,12 @@ pub fn cut(selection: &Selection, doc: &mut DiagramDocument) -> Result<Clipboard
     Ok(clipboard)
 }
 
+/// Calculates the paste result from clipboard.
+///
+/// # Errors
+///
+/// Returns `Error` if clipboard is empty, corrupt, or invalid references exist.
+#[allow(clippy::too_many_lines)]
 pub fn calculate_paste(
     clipboard: &ClipboardData,
     doc: &DiagramDocument,

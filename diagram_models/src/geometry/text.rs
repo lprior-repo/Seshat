@@ -25,6 +25,7 @@ impl Text {
 
     #[must_use]
     pub fn bounds(&self) -> AABB {
+        #[allow(clippy::cast_precision_loss)]
         let char_count = self.content.0.chars().count() as f64;
         let width = self.font_size * 0.6 * char_count;
         let height = self.font_size;
@@ -97,7 +98,9 @@ impl ExtendedText {
 
     #[must_use]
     pub fn bounds(&self) -> AABB {
+        #[allow(clippy::cast_precision_loss)]
         let emoji_count = self.count_emoji() as f64;
+        #[allow(clippy::cast_precision_loss)]
         let regular_count = self.grapheme_count() as f64 - emoji_count;
         let width =
             (regular_count * self.font_size).mul_add(0.6, emoji_count * self.font_size * 1.2);

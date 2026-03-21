@@ -1,6 +1,7 @@
 #![deny(clippy::unwrap_used)]
 #![deny(clippy::expect_used)]
 #![deny(clippy::panic)]
+#![allow(clippy::volatile_composites)]
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 

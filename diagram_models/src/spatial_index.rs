@@ -4,8 +4,14 @@
 #![forbid(unsafe_code)]
 
 use crate::document::{Node, NodeId};
-use crate::geometry::{Rectangle, AABB};
+use crate::geometry::{Point, Rectangle, AABB};
+use ahash::AHashMap;
 use im::{HashMap, HashSet};
+
+/// Spatial index grid using ahash::AHashMap for WASM performance.
+/// AHashMap uses a fixed seed so lookups work correctly.
+/// This avoids the overhead of im::HashMap's persistent data structure.
+type SpatialGrid = AHashMap<(i32, i32), Vec<NodeId>>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum MarqueeMode {
@@ -14,14 +20,17 @@ pub enum MarqueeMode {
 }
 
 pub struct SpatialIndex {
-    grid: HashMap<(i32, i32), Vec<NodeId>>,
+    grid: SpatialGrid,
     cell_size: f64,
 }
 
 #[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn build_spatial_index(nodes: &HashMap<NodeId, Node>) -> SpatialIndex {
     let cell_size = 100.0;
-    let grid = nodes.iter().fold(HashMap::new(), |acc, (id, node)| {
+    let mut grid: SpatialGrid = AHashMap::with_capacity(nodes.len());
+
+    for (id, node) in nodes.iter() {
         let aabb = get_node_aabb(node);
 
         let start_x = (aabb.min_x / cell_size).floor() as i32;
@@ -29,24 +38,26 @@ pub fn build_spatial_index(nodes: &HashMap<NodeId, Node>) -> SpatialIndex {
         let end_x = (aabb.max_x / cell_size).floor() as i32;
         let end_y = (aabb.max_y / cell_size).floor() as i32;
 
-        (start_x..=end_x).fold(acc, |acc, x| {
-            (start_y..=end_y).fold(acc, |acc: HashMap<(i32, i32), Vec<NodeId>>, y| {
-                let mut cell: Vec<NodeId> = acc.get(&(x, y)).cloned().unwrap_or_default();
-                cell.push(id.clone());
-                acc.update((x, y), cell)
-            })
-        })
-    });
+        for x in start_x..=end_x {
+            for y in start_y..=end_y {
+                // Use entry API to avoid repeated lookups
+                match grid.entry((x, y)) {
+                    std::collections::hash_map::Entry::Vacant(entry) => {
+                        entry.insert(vec![id.clone()]);
+                    }
+                    std::collections::hash_map::Entry::Occupied(mut entry) => {
+                        entry.get_mut().push(id.clone());
+                    }
+                }
+            }
+        }
+    }
 
     SpatialIndex { grid, cell_size }
 }
 
 fn get_node_aabb(node: &Node) -> AABB {
-    let rotation = node
-        .metadata
-        .get("rotation")
-        .and_then(serde_json::Value::as_f64)
-        .unwrap_or(0.0);
+    let rotation = node.rotation();
 
     Rectangle::new(node.x.0, node.y.0, node.width.0, node.height.0)
         .with_rotation(rotation)
@@ -75,6 +86,7 @@ pub fn query_spatial_index(
 }
 
 #[must_use]
+#[allow(clippy::cast_possible_truncation)]
 pub fn gather_candidates(index: &SpatialIndex, marquee: &AABB) -> HashSet<NodeId> {
     let start_x = (marquee.min_x / index.cell_size).floor() as i32;
     let start_y = (marquee.min_y / index.cell_size).floor() as i32;
@@ -95,6 +107,63 @@ fn intersects_aabb(a: &AABB, b: &AABB) -> bool {
 
 fn contains_aabb(a: &AABB, b: &AABB) -> bool {
     b.min_x >= a.min_x && b.max_x <= a.max_x && b.min_y >= a.min_y && b.max_y <= a.max_y
+}
+
+/// Performs a point query against the spatial index.
+/// Returns the node ID with the highest z_index that contains the point, if any.
+///
+/// This is optimized for hit testing - instead of scanning all nodes (O(n)),
+/// it only checks nodes in the grid cell containing the point (O(1) average case).
+#[must_use]
+#[allow(clippy::cast_possible_truncation)]
+pub fn point_query(
+    index: &SpatialIndex,
+    nodes: &HashMap<NodeId, Node>,
+    point: &Point,
+) -> Option<NodeId> {
+    let cell_x = (point.x / index.cell_size).floor() as i32;
+    let cell_y = (point.y / index.cell_size).floor() as i32;
+    let cell_key = (cell_x, cell_y);
+
+    index.grid.get(&cell_key).and_then(|cell_nodes| {
+        // Find the node with highest z_index that contains the point
+        cell_nodes
+            .iter()
+            .filter_map(|id| {
+                nodes.get(id).and_then(|node| {
+                    // Check if point is inside this node's bounds
+                    let nx = node.x.0;
+                    let ny = node.y.0;
+                    let nw = node.width.0;
+                    let nh = node.height.0;
+
+                    // Fast bounds check first
+                    if point.x < nx || point.x > nx + nw || point.y < ny || point.y > ny + nh {
+                        return None;
+                    }
+
+                    // For nodes with rotation, we need the full AABB check
+                    let rotation = node.rotation();
+
+                    if rotation == 0.0 {
+                        // Fast path: no rotation, bounds check was sufficient
+                        Some((node.z_index, id.clone()))
+                    } else {
+                        // Full rotated AABB check
+                        let node_aabb = get_node_aabb(node);
+                        let point_aabb = AABB::new(point.x, point.y, point.x, point.y);
+                        if intersects_aabb(&point_aabb, &node_aabb) {
+                            Some((node.z_index, id.clone()))
+                        } else {
+                            None
+                        }
+                    }
+                })
+            })
+            // Sort by z_index descending and take the top one
+            .max_by_key(|(z_index, _)| *z_index)
+            .map(|(_, id)| id)
+    })
 }
 
 #[cfg(test)]

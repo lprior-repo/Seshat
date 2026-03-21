@@ -181,7 +181,6 @@ pub fn unparent_node_ext(
         node.y =
             crate::document::OrderedFloat::new(world_y).map_err(|_| Error::InvalidTransform)?;
         canvas.nodes = canvas.nodes.update(child_id, node);
-        Ok(())
     } else {
         let updated_node = canvas
             .nodes
@@ -191,6 +190,6 @@ pub fn unparent_node_ext(
             .ok_or_else(|| Error::NodeNotFound(child_id.clone()))?;
 
         canvas.nodes = canvas.nodes.update(child_id, updated_node);
-        Ok(())
     }
+    Ok(())
 }

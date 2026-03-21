@@ -15,6 +15,11 @@ use diagram_models::history::History;
 
 use super::types::CommitError;
 
+/// Commits an inline edit for a node or edge.
+///
+/// # Errors
+///
+/// Returns `CommitError` if the target is not found or dispatch fails.
 pub fn commit_inline_edit(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
@@ -27,9 +32,9 @@ pub fn commit_inline_edit(
         let changed = commit_node_edit(
             &mut doc_signal,
             &mut history_signal,
-            node_id,
+            &node_id,
             &edit_value,
-            &db_tx,
+            db_tx.as_ref(),
         )?;
         return Ok(changed);
     }
@@ -38,9 +43,9 @@ pub fn commit_inline_edit(
         let changed = commit_edge_edit(
             &mut doc_signal,
             &mut history_signal,
-            edge_id,
+            &edge_id,
             &edit_value,
-            &db_tx,
+            db_tx.as_ref(),
         )?;
         return Ok(changed);
     }
@@ -51,14 +56,14 @@ pub fn commit_inline_edit(
 fn commit_node_edit(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
-    node_id: NodeId,
+    node_id: &NodeId,
     edit_value: &Signal<String>,
-    db_tx: &Option<Coroutine<EventEnvelope>>,
+    db_tx: Option<&Coroutine<EventEnvelope>>,
 ) -> Result<bool, CommitError> {
     let new_label = edit_value.read().clone();
-    let current_label = current_node_label(doc_signal, &node_id);
+    let current_label = current_node_label(doc_signal, node_id);
 
-    ensure_node_exists(doc_signal, &node_id)?;
+    ensure_node_exists(doc_signal, node_id)?;
 
     if current_label == new_label {
         return Ok(false);
@@ -71,7 +76,7 @@ fn commit_node_edit(
         &current_label,
         &new_label,
     );
-    apply_node_label_change(doc_signal, history_signal, &node_id, &new_label);
+    apply_node_label_change(doc_signal, history_signal, node_id, &new_label);
     Ok(true)
 }
 
@@ -97,7 +102,7 @@ fn ensure_node_exists(
 }
 
 fn dispatch_label_to_db(
-    db_tx: &Option<Coroutine<EventEnvelope>>,
+    db_tx: Option<&Coroutine<EventEnvelope>>,
     target_id: &str,
     target_type: LabelTargetType,
     old_label: &str,
@@ -157,14 +162,14 @@ fn build_updated_doc(
 fn commit_edge_edit(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
-    edge_id: EdgeId,
+    edge_id: &EdgeId,
     edit_value: &Signal<String>,
-    db_tx: &Option<Coroutine<EventEnvelope>>,
+    db_tx: Option<&Coroutine<EventEnvelope>>,
 ) -> Result<bool, CommitError> {
     let new_label = edit_value.read().clone();
-    let current_label = current_edge_label(doc_signal, &edge_id);
+    let current_label = current_edge_label(doc_signal, edge_id);
 
-    ensure_edge_exists(doc_signal, &edge_id)?;
+    ensure_edge_exists(doc_signal, edge_id)?;
 
     if current_label == new_label {
         return Ok(false);
@@ -177,7 +182,7 @@ fn commit_edge_edit(
         &current_label,
         &new_label,
     );
-    apply_edge_label_change(doc_signal, history_signal, &edge_id, &new_label);
+    apply_edge_label_change(doc_signal, history_signal, edge_id, &new_label);
     Ok(true)
 }
 

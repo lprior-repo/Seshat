@@ -10,6 +10,10 @@ use std::collections::BTreeSet;
 pub use validation::{validate_coordinates, validate_selection, GroupingError, ValidatedSelection};
 
 /// Action: Group selected items in a `DiagramDocument`
+///
+/// # Errors
+///
+/// Returns `GroupingError` if grouping fails.
 pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(), GroupingError> {
     // Parse/Validate at boundary
     let selected_ids: im::HashSet<NodeId> = doc
@@ -60,6 +64,10 @@ pub fn group_selection(doc: &mut DiagramDocument, group_id: &NodeId) -> Result<(
 }
 
 /// Action: Ungroup selected subgraphs in a `DiagramDocument`
+///
+/// # Errors
+///
+/// Returns `GroupingError` if ungrouping fails.
 pub fn ungroup_selection(doc: &mut DiagramDocument) -> Result<(), GroupingError> {
     let selected_items = doc.editor_state.selected_items.clone();
     let target_subgraphs: BTreeSet<NodeId> = selected_items

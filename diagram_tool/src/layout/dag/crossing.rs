@@ -2,9 +2,9 @@ use diagram_models::document::NodeId;
 use petgraph::graph::{DiGraph, NodeIndex};
 
 /// Barycentre of `node` neighbours found in `ref_pos`.
-pub fn barycentre(
+pub fn barycentre<S: ::std::hash::BuildHasher>(
     node: NodeIndex,
-    ref_pos: &std::collections::HashMap<NodeIndex, f64>,
+    ref_pos: &std::collections::HashMap<NodeIndex, f64, S>,
     graph: &DiGraph<NodeId, ()>,
     dir: petgraph::Direction,
 ) -> f64 {

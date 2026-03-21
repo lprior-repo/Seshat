@@ -194,6 +194,7 @@ impl DiagramDocument {
         mode: crate::spatial_index::MarqueeMode,
     ) -> Result<(), DocumentError> {
         use crate::geometry::AABB;
+        use crate::selection::bounds::{get_node_rotation, rotated_node_bounds};
         use crate::spatial_index::build_spatial_index;
 
         let index = build_spatial_index(&self.document.nodes);
@@ -216,53 +217,11 @@ impl DiagramDocument {
                 .document
                 .nodes
                 .get(&id)
-                .ok_or(DocumentError::NodeNotFound(id.clone()))?;
+                .ok_or_else(|| DocumentError::NodeNotFound(id.clone()))?;
 
-            let nx = node.x.0;
-            let ny = node.y.0;
-            let nw = node.width.0;
-            let nh = node.height.0;
-
-            let rotation = node
-                .metadata
-                .get("rotation")
-                .and_then(serde_json::Value::as_f64)
-                .unwrap_or(0.0);
-
-            let (min_x, min_y, max_x, max_y) = if rotation == 0.0 {
-                (nx, ny, nx + nw, ny + nh)
-            } else {
-                let cx = nx + nw / 2.0;
-                let cy = ny + nh / 2.0;
-                let cos_r = rotation.cos();
-                let sin_r = rotation.sin();
-
-                let rotate = |px: f64, py: f64| -> (f64, f64) {
-                    let dx = px - cx;
-                    let dy = py - cy;
-                    (cx + dx * cos_r - dy * sin_r, cy + dx * sin_r + dy * cos_r)
-                };
-
-                let corners = [
-                    rotate(nx, ny),
-                    rotate(nx + nw, ny),
-                    rotate(nx, ny + nh),
-                    rotate(nx + nw, ny + nh),
-                ];
-
-                let mut node_min_x = f64::INFINITY;
-                let mut node_min_y = f64::INFINITY;
-                let mut node_max_x = f64::NEG_INFINITY;
-                let mut node_max_y = f64::NEG_INFINITY;
-
-                for &(px, py) in &corners {
-                    node_min_x = node_min_x.min(px);
-                    node_min_y = node_min_y.min(py);
-                    node_max_x = node_max_x.max(px);
-                    node_max_y = node_max_y.max(py);
-                }
-                (node_min_x, node_min_y, node_max_x, node_max_y)
-            };
+            let rotation = get_node_rotation(node);
+            let (min_x, min_y, max_x, max_y) =
+                rotated_node_bounds(node.x.0, node.y.0, node.width.0, node.height.0, rotation);
 
             let is_selected = match mode {
                 crate::spatial_index::MarqueeMode::Contain => {

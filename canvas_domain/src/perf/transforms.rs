@@ -5,18 +5,18 @@ pub const VIEWPORT_EPSILON: f64 = 0.5;
 
 #[must_use]
 pub fn to_canvas_coords(client: ScreenCoord, camera: CanvasCoord, zoom: f64) -> CanvasCoord {
-    screen_to_canvas(client, camera, zoom).unwrap_or(CanvasCoord(
-        client.x() + camera.x(),
-        client.y() + camera.y(),
-    ))
+    screen_to_canvas(client, camera, zoom)
+        .unwrap_or_else(|| CanvasCoord(client.x() + camera.x(), client.y() + camera.y()))
 }
 
 #[must_use]
 pub fn to_screen_coords(world: CanvasCoord, camera: CanvasCoord, zoom: f64) -> ScreenCoord {
-    canvas_to_screen(world, camera, zoom).unwrap_or(ScreenCoord(
-        (world.x() - camera.x()) * zoom,
-        (world.y() - camera.y()) * zoom,
-    ))
+    canvas_to_screen(world, camera, zoom).unwrap_or_else(|| {
+        ScreenCoord(
+            (world.x() - camera.x()) * zoom,
+            (world.y() - camera.y()) * zoom,
+        )
+    })
 }
 
 #[must_use]

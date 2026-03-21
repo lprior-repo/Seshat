@@ -3,6 +3,7 @@ pub mod handlers;
 pub mod inline_edit;
 pub mod node_content;
 pub mod node_element;
+pub mod state;
 
 use canvas_domain::interaction_reducer::InteractionMode;
 use diagram_models::document::{DiagramDocument, Node, NodeId};
@@ -46,14 +47,17 @@ pub fn NodeLayer(
     let culling_min_y = camera_y - margin_y;
     let culling_max_x = camera_x + (viewport_w / zoom) + margin_x;
     let culling_max_y = camera_y + (viewport_h / zoom) + margin_y;
+    // Single read of editor_state - extract both values we need
+    let editor_state_read = editor_state.read();
     // Clone once for rsx closure - necessary due to Dioxus deferred execution
-    let editor_state_val = editor_state.read().clone();
+    let editor_state_val = editor_state_read.clone();
     // Extract hovered node ID with minimal clone
-    let hovered_now: Option<NodeId> = match *editor_state.read() {
+    let hovered_now: Option<NodeId> = match *editor_state_read {
         crate::ui::canvas::state::EditorState::HoveringNode(ref id) => Some(id.clone()),
         _ => None,
     };
 
+    #[allow(clippy::needless_collect)]
     let node_rows = ordered_node_cache
         .read()
         .iter()

@@ -19,6 +19,11 @@ pub struct NormalizedOffset {
 }
 
 impl NormalizedOffset {
+    /// Creates a new `NormalizedOffset`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `PortError` if coordinates are invalid.
     pub fn new(x: OrderedFloat, y: OrderedFloat) -> Result<Self, PortError> {
         let x_val = x.0;
         let y_val = y.0;

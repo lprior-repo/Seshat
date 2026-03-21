@@ -8,6 +8,11 @@ fn is_element_visible(metadata: &im::HashMap<String, serde_json::Value>) -> bool
         != Some("hidden")
 }
 
+/// Selects an element.
+///
+/// # Errors
+///
+/// Returns `SelectionError` if element is not found, locked, hidden, or alt-selection fails.
 pub fn select_element(
     state: &mut im::HashSet<String>,
     document: &DiagramDocument,

@@ -16,7 +16,7 @@ fn test_mul031_move_preserves_relative_positions() {
     ])
     .unwrap();
 
-    let res = move_selection(&mut doc, selection, Vector2D { x: 5.0, y: 5.0 });
+    let res = move_selection(&mut doc, &selection, Vector2D { x: 5.0, y: 5.0 });
     assert_eq!(res, Ok(()));
 
     let node_a = doc
@@ -60,7 +60,7 @@ fn test_mul032_resize_scales_items_proportionally() {
         width: 100.0,
         height: 100.0,
     };
-    let res = resize_selection(&mut doc, selection, new_bounds);
+    let res = resize_selection(&mut doc, &selection, new_bounds);
     assert_eq!(res, Ok(()));
 
     let node_a = doc
@@ -93,7 +93,7 @@ fn test_mul033_delete_removes_all_selected_items() {
     ])
     .unwrap();
 
-    let res = delete_selection(&mut doc, selection);
+    let res = delete_selection(&mut doc, &selection);
     assert_eq!(res, Ok(()));
 
     assert!(!doc
@@ -117,7 +117,7 @@ fn test_mul034_copy_paste_duplicates_selection_with_offset() {
     ])
     .unwrap();
 
-    let clipboard = copy_selection(&doc, selection).unwrap();
+    let clipboard = copy_selection(&doc, &selection).unwrap();
     assert_eq!(clipboard.nodes.len(), 2);
 
     let pasted_ids = paste_selection(&mut doc, &clipboard, Vector2D { x: 10.0, y: 10.0 }).unwrap();
@@ -157,10 +157,10 @@ fn test_p2_violation_returns_item_locked_error() {
     ])
     .unwrap();
 
-    let res = delete_selection(&mut doc, selection.clone());
+    let res = delete_selection(&mut doc, &selection);
     assert_eq!(res, Err(Error::ItemLocked));
 
-    let res = move_selection(&mut doc, selection, Vector2D { x: 5.0, y: 5.0 });
+    let res = move_selection(&mut doc, &selection, Vector2D { x: 5.0, y: 5.0 });
     assert_eq!(res, Err(Error::ItemLocked));
 }
 
@@ -180,6 +180,6 @@ fn test_p3_violation_returns_invalid_hierarchy_error() {
     ])
     .unwrap();
 
-    let res = move_selection(&mut doc, selection, Vector2D { x: 5.0, y: 5.0 });
+    let res = move_selection(&mut doc, &selection, Vector2D { x: 5.0, y: 5.0 });
     assert_eq!(res, Err(Error::InvalidHierarchy));
 }

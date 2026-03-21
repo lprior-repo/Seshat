@@ -25,6 +25,11 @@ pub enum GroupingError {
 pub struct ValidatedSelection(HashSet<NodeId>);
 
 impl ValidatedSelection {
+    /// Try to create a new validated selection.
+    ///
+    /// # Errors
+    ///
+    /// Returns `GroupingError` if selection is invalid.
     pub fn try_new(
         nodes: &HashMap<NodeId, Node>,
         selected_ids: &HashSet<NodeId>,
@@ -59,6 +64,11 @@ impl ValidatedSelection {
     }
 }
 
+/// Validates the selection.
+///
+/// # Errors
+///
+/// Returns `GroupingError` if selection is invalid.
 pub fn validate_selection(
     nodes: &HashMap<NodeId, Node>,
     selected: &HashSet<String>,

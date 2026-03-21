@@ -1,6 +1,6 @@
 use diagram_models::document::{DiagramDocument, NodeId};
 
-#[must_use] 
+#[must_use]
 pub fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
     doc.editor_state
         .selected_items
@@ -17,7 +17,7 @@ pub fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
         .collect()
 }
 
-#[must_use] 
+#[must_use]
 pub fn selection_bounds(doc: &DiagramDocument) -> Option<(f64, f64, f64, f64)> {
     let ids = selected_node_ids(doc);
     if ids.is_empty() {

@@ -1,3 +1,4 @@
+use base64::{engine::general_purpose, Engine as _};
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -135,7 +136,7 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
     } else {
         "image/png"
     };
-    use base64::{engine::general_purpose, Engine as _};
+    
     let base64_data = format!(
         "data:{mime};base64,{}",
         general_purpose::STANDARD.encode(&file_contents)

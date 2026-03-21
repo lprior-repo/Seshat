@@ -131,6 +131,7 @@ fn create_scaled_node(
     })
 }
 
+#[allow(clippy::unnecessary_wraps)]
 fn apply_node_updates(
     subgraph: &mut Subgraph,
     updates: Vec<(NodeId, Node)>,

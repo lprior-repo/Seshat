@@ -1,41 +1,33 @@
 use crate::document::DiagramDocument;
 use crate::geometry::Point;
 use crate::selection::types::{ElementId, SelectionError};
+use crate::spatial_index::{build_spatial_index, point_query};
 
-fn is_element_visible(metadata: &im::HashMap<String, serde_json::Value>) -> bool {
-    metadata
-        .get("visibility")
-        .and_then(serde_json::Value::as_str)
-        != Some("hidden")
-}
-
+/// Performs a hit test at the given point.
+///
+/// Uses spatial indexing for O(log n) average case instead of scanning all nodes.
+///
+/// # Errors
+///
+/// Currently infallible but returns Result for signature compatibility.
 pub fn hit_test(
     point: &Point,
     document: &DiagramDocument,
 ) -> Result<Option<ElementId>, SelectionError> {
-    use itertools::Itertools;
+    // Build spatial index once for the document
+    let index = build_spatial_index(&document.document.nodes);
 
-    let px = point.x;
-    let py = point.y;
-
-    let hit = document
-        .document
-        .nodes
-        .iter()
-        .sorted_by_key(|(_, n)| -n.z_index)
-        .find(|(_, n)| {
-            if !is_element_visible(&n.metadata) {
-                return false;
-            }
-
-            let nx = n.x.0;
-            let ny = n.y.0;
-            let nw = n.width.0;
-            let nh = n.height.0;
-
-            px >= nx && px <= nx + nw && py >= ny && py <= ny + nh
+    // Use point query to find topmost node at this position
+    let hit = point_query(&index, &document.document.nodes, point)
+        .filter(|id| {
+            // Check visibility - node is guaranteed to exist since point_query returned it
+            document
+                .document
+                .nodes
+                .get(id)
+                .is_some_and(|node| node.is_visible())
         })
-        .map(|(id, _)| ElementId::Node(id.clone()));
+        .map(ElementId::Node);
 
     Ok(hit)
 }

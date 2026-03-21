@@ -45,7 +45,7 @@ pub fn find_lca(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> Op
         let all_same = chains.iter().all(|c| c.get(i) == current_val);
         if all_same {
             if let Some(val) = current_val {
-                lca = val.clone();
+                lca.clone_from(val);
             }
             i += 1;
         } else {
@@ -131,6 +131,10 @@ pub fn create_subgraph_node(
 }
 
 /// Compute padded bounding box for the group
+///
+/// # Errors
+///
+/// Returns `GroupingError` if selection is empty or coordinates are invalid.
 pub fn compute_padded_bounds(
     nodes: &HashMap<NodeId, Node>,
     selected: &HashSet<NodeId>,

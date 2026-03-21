@@ -27,6 +27,7 @@ dirs            = "5.0"
 regex-lite      = "0.1"
 futures-util    = "0.3.32"
 tower           = { version = "0.5.3", features = ["util"] }
+ahash           = "0.8"
 
 [dev-dependencies]
 proptest = "1.10.0"

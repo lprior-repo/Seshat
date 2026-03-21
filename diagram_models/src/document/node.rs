@@ -72,6 +72,7 @@ mod lock_state_serde {
     use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
     /// Serializes `LockState` to JSON as "locked": bool
+    #[allow(clippy::trivially_copy_pass_by_ref)]
     pub fn serialize<S>(lock_state: &LockState, serializer: S) -> Result<S::Ok, S::Error>
     where
         S: Serializer,
@@ -81,6 +82,7 @@ mod lock_state_serde {
     }
 
     /// Deserializes from JSON - accepts "locked": bool (legacy format)
+    #[allow(clippy::unnecessary_wraps)]
     pub fn deserialize<'de, D>(deserializer: D) -> Result<LockState, D::Error>
     where
         D: Deserializer<'de>,
@@ -88,8 +90,7 @@ mod lock_state_serde {
         let result: Result<bool, _> = Deserialize::deserialize(deserializer);
         match result {
             Ok(true) => Ok(LockState::Locked),
-            Ok(false) => Ok(LockState::Unlocked),
-            Err(_) => Ok(LockState::Unlocked), // Default if missing/invalid
+            Ok(false) | Err(_) => Ok(LockState::Unlocked),
         }
     }
 }
@@ -179,6 +180,26 @@ impl Node {
         }
 
         Ok((world_x, world_y))
+    }
+
+    /// Returns the rotation in radians from metadata, or 0.0 if not set.
+    #[inline]
+    #[must_use]
+    pub fn rotation(&self) -> f64 {
+        self.metadata
+            .get("rotation")
+            .and_then(serde_json::Value::as_f64)
+            .unwrap_or(0.0)
+    }
+
+    /// Returns true if the node is visible (not hidden).
+    #[inline]
+    #[must_use]
+    pub fn is_visible(&self) -> bool {
+        self.metadata
+            .get("visibility")
+            .and_then(serde_json::Value::as_str)
+            != Some("hidden")
     }
 }
 

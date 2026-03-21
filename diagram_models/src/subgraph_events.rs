@@ -138,7 +138,7 @@ fn detect_cycle(
 
 /// Helper: Update a node's parent reference in the state.
 fn update_node_parent(
-    nodes: HashMap<NodeId, Node>,
+    nodes: &HashMap<NodeId, Node>,
     node_id: &NodeId,
     new_parent: Option<NodeId>,
 ) -> Result<HashMap<NodeId, Node>, Error> {
@@ -154,7 +154,7 @@ fn update_node_parent(
 
 /// Helper: Apply bounds to a subgraph node.
 fn apply_bounds_to_subgraph(
-    nodes: HashMap<NodeId, Node>,
+    nodes: &HashMap<NodeId, Node>,
     subgraph_id: &NodeId,
     bounds: Rect,
 ) -> Result<HashMap<NodeId, Node>, Error> {
@@ -172,6 +172,10 @@ fn apply_bounds_to_subgraph(
 }
 
 /// SUB-021: Adds a node to a subgraph, updating parent reference and recalculating bounds.
+///
+/// # Errors
+///
+/// Returns `Error` if the node or subgraph is not found, or a cycle is detected.
 pub fn add_node_to_subgraph(
     child_id: &NodeId,
     subgraph_id: &NodeId,
@@ -180,10 +184,10 @@ pub fn add_node_to_subgraph(
     let _ = get_subgraph(state, subgraph_id)?;
     let _ = get_node(state, child_id)?;
     detect_cycle(child_id, subgraph_id, state)?;
-    let nodes = update_node_parent(state.nodes.clone(), child_id, Some(subgraph_id.clone()))?;
+    let nodes = update_node_parent(&state.nodes, child_id, Some(subgraph_id.clone()))?;
     state.nodes = nodes;
     let bounds = calculate_subgraph_bounds(subgraph_id, state)?;
-    let nodes = apply_bounds_to_subgraph(state.nodes.clone(), subgraph_id, bounds)?;
+    let nodes = apply_bounds_to_subgraph(&state.nodes, subgraph_id, bounds)?;
     state.nodes = nodes;
     update_z_index_ordering(subgraph_id, state)
 }
@@ -198,13 +202,13 @@ pub fn remove_node_from_subgraph(child_id: &NodeId, state: &mut DiagramState) ->
     let old_parent = node.parent.clone();
 
     // Clear the parent reference
-    let nodes = update_node_parent(state.nodes.clone(), child_id, None)?;
+    let nodes = update_node_parent(&state.nodes, child_id, None)?;
     state.nodes = nodes;
 
     // Recalculate bounds of the former parent if it exists
     if let Some(subgraph_id) = old_parent.filter(|id| state.has_node(id)) {
         let bounds = calculate_subgraph_bounds(&subgraph_id, state)?;
-        let nodes = apply_bounds_to_subgraph(state.nodes.clone(), &subgraph_id, bounds)?;
+        let nodes = apply_bounds_to_subgraph(&state.nodes, &subgraph_id, bounds)?;
         state.nodes = nodes;
     }
 
@@ -212,6 +216,10 @@ pub fn remove_node_from_subgraph(child_id: &NodeId, state: &mut DiagramState) ->
 }
 
 /// SUB-023: Batch add nodes to a subgraph, updating parent references and recalculating bounds exactly once.
+///
+/// # Errors
+///
+/// Returns `Error` if any node or subgraph is not found, or a cycle is detected.
 pub fn batch_add_nodes_to_subgraph(
     child_ids: &[NodeId],
     subgraph_id: &NodeId,
@@ -226,15 +234,19 @@ pub fn batch_add_nodes_to_subgraph(
         detect_cycle(cid, subgraph_id, state)
     })?;
     let nodes = child_ids.iter().try_fold(state.nodes.clone(), |acc, cid| {
-        update_node_parent(acc, cid, Some(subgraph_id.clone()))
+        update_node_parent(&acc, cid, Some(subgraph_id.clone()))
     })?;
     state.nodes = nodes;
     let bounds = calculate_subgraph_bounds(subgraph_id, state)?;
-    state.nodes = apply_bounds_to_subgraph(state.nodes.clone(), subgraph_id, bounds)?;
+    state.nodes = apply_bounds_to_subgraph(&state.nodes, subgraph_id, bounds)?;
     update_z_index_ordering(subgraph_id, state)
 }
 
 /// SUB-024: Remove all nodes from a subgraph, leaving an empty container.
+///
+/// # Errors
+///
+/// Returns `Error` if the subgraph is not found.
 pub fn remove_all_nodes_from_subgraph(
     subgraph_id: &NodeId,
     state: &mut DiagramState,
@@ -249,10 +261,10 @@ pub fn remove_all_nodes_from_subgraph(
     let nodes = children
         .iter()
         .try_fold(state.nodes.clone(), |acc, child_id| {
-            update_node_parent(acc, child_id, None)
+            update_node_parent(&acc, child_id, None)
         })?;
     state.nodes = nodes;
     let bounds = calculate_subgraph_bounds(subgraph_id, state)?;
-    state.nodes = apply_bounds_to_subgraph(state.nodes.clone(), subgraph_id, bounds)?;
+    state.nodes = apply_bounds_to_subgraph(&state.nodes, subgraph_id, bounds)?;
     Ok(())
 }

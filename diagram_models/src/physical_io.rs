@@ -42,6 +42,11 @@ pub enum Error {
     RecursionLimitExceeded,
 }
 
+/// Saves a document to a file.
+///
+/// # Errors
+///
+/// Returns `Error` if saving fails.
 pub fn save_document(path: &Path, doc: &DiagramDocument) -> Result<(), Error> {
     validate_document_floats(doc)?;
 
@@ -125,6 +130,11 @@ fn check_depth(value: &Value, depth: usize) -> Result<(), Error> {
     Ok(())
 }
 
+/// Loads a document from a file.
+///
+/// # Errors
+///
+/// Returns `Error` if loading fails.
 pub fn load_document(path: &Path) -> Result<DiagramDocument, Error> {
     let file = File::open(path)?;
     let mut reader = BufReader::new(file);

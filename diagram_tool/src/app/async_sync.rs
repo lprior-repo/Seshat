@@ -63,7 +63,6 @@ pub fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
     let last_sync_revision = use_signal(|| 0_i64);
     let app_state = use_context::<crate::app::AppState>();
     let pending_ai_ops = app_state.pending_ai_ops;
-    let _ai_conflict_state = app_state.ai_conflict;
 
     use_future(move || {
         let store_bridge = store_bridge.clone();

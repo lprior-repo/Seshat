@@ -14,8 +14,13 @@ pub enum LabelTargetType {
     Edge,
 }
 
+/// Dispatches a label update to the DB.
+///
+/// # Errors
+///
+/// Returns `DispatchError` if dispatching fails.
 pub const fn dispatch_update_label(
-    _tx: &Option<Coroutine<EventEnvelope>>,
+    _tx: Option<&Coroutine<EventEnvelope>>,
     _target_id: &str,
     _target_type: LabelTargetType,
     _old_label: &str,
@@ -27,7 +32,7 @@ pub const fn dispatch_update_label(
 pub struct ResizeBounds;
 impl ResizeBounds {
     #[allow(clippy::too_many_arguments)]
-    #[must_use] 
+    #[must_use]
     pub fn new(
         _id: NodeId,
         _ox: f64,
@@ -43,13 +48,23 @@ impl ResizeBounds {
     }
 }
 
+/// Dispatches a node resize to the DB.
+///
+/// # Errors
+///
+/// Returns `DispatchError` if dispatching fails.
 pub const fn dispatch_node_resize(
-    _tx: &Option<Coroutine<EventEnvelope>>,
+    _tx: Option<&Coroutine<EventEnvelope>>,
     _bounds: ResizeBounds,
 ) -> Result<(), DispatchError> {
     Ok(())
 }
 
+/// Mutates the document and pushes to history.
+///
+/// # Errors
+///
+/// Returns the error from the provided closure `F`.
 pub fn mutate_doc_with_history<F, E>(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,

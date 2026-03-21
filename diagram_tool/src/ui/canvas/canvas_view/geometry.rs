@@ -21,17 +21,21 @@ impl Segment {
         Self { start, end }
     }
 
+    #[allow(clippy::similar_names)]
     #[must_use]
     pub fn distance_to_point(self, p: Point) -> f64 {
-        let a = p.x - self.start.x;
-        let b = p.y - self.start.y;
-        let c = self.end.x - self.start.x;
-        let d = self.end.y - self.start.y;
-        let dot = a.mul_add(c, b * d);
-        let len_sq = c.mul_add(c, d * d);
+        let dx_pt = p.x - self.start.x;
+        let dy_pt = p.y - self.start.y;
+        let dx_seg = self.end.x - self.start.x;
+        let dy_seg = self.end.y - self.start.y;
+        let dot = dx_pt.mul_add(dx_seg, dy_pt * dy_seg);
+        let len_sq = dx_seg.mul_add(dx_seg, dy_seg * dy_seg);
         let mut param = if len_sq == 0.0 { -1.0 } else { dot / len_sq };
         param = param.clamp(0.0, 1.0);
-        let closest = Point::new(self.start.x + (param * c), self.start.y + (param * d));
+        let closest = Point::new(
+            self.start.x + (param * dx_seg),
+            self.start.y + (param * dy_seg),
+        );
         p.distance_to(closest)
     }
 }
@@ -42,14 +46,7 @@ pub fn dist_to_segment(px: f64, py: f64, x1: f64, y1: f64, x2: f64, y2: f64) -> 
 }
 
 #[must_use]
-pub fn rect_ray_intersection(
-    cx: f64,
-    cy: f64,
-    w: f64,
-    h: f64,
-    tx: f64,
-    ty: f64,
-) -> (f64, f64) {
+pub fn rect_ray_intersection(cx: f64, cy: f64, w: f64, h: f64, tx: f64, ty: f64) -> (f64, f64) {
     let dx = tx - cx;
     let dy = ty - cy;
     if dx.abs() < f64::EPSILON && dy.abs() < f64::EPSILON {

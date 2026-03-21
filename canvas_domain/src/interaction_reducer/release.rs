@@ -54,7 +54,7 @@ pub fn finalize_motion_release(
                             node.width.0,
                             node.height.0,
                         );
-                        let _ = dispatch_node_resize(db_tx, bounds);
+                        let _ = dispatch_node_resize(db_tx.as_ref(), bounds);
                     }
                 }
             }

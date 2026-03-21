@@ -18,7 +18,7 @@ canvas_math     = { path = "../canvas_math" }
 dioxus          = { version = "0.7" }
 
 # Serialization + Patching
-serde           = { version = "1.0", features = ["derive"] }
+serde           = { version = "1.0", features = ["derive", "rc"] }
 serde_json      = "1.0"
 
 # IDs
@@ -62,7 +62,7 @@ sync-db = []
 async-db = []
 
 [build-dependencies]
-serde = { version = "1.0", features = ["derive"] }
+serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
 base64 = "0.22"
 

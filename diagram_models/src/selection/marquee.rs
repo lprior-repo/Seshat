@@ -4,6 +4,13 @@ use crate::selection::types::{Rect, SelectionError};
 use crate::spatial_index::build_spatial_index;
 use im::HashSet;
 
+use super::bounds::{get_node_rotation, rotated_node_bounds};
+
+/// Computes selection based on a marquee rectangle.
+///
+/// # Errors
+///
+/// Returns `SelectionError` if marquee bounds are invalid or a node is not found.
 pub fn compute_marquee_selection(
     doc: &DiagramDocument,
     marquee: Rect,
@@ -24,12 +31,13 @@ pub fn compute_marquee_selection(
     let m_right = marquee.x + marquee.width;
     let m_bottom = marquee.y + marquee.height;
 
-    let mut parents = HashSet::new();
-    for node in doc.document.nodes.values() {
-        if let Some(parent_id) = &node.parent {
-            parents.insert(parent_id.clone());
-        }
-    }
+    // Build parent set once using iterator pattern
+    let parents: std::collections::HashSet<NodeId> = doc
+        .document
+        .nodes
+        .values()
+        .filter_map(|node| node.parent.clone())
+        .collect();
 
     let candidates = crate::spatial_index::gather_candidates(&index, &marquee_aabb);
 
@@ -39,59 +47,10 @@ pub fn compute_marquee_selection(
             .nodes
             .get(&id)
             .ok_or(SelectionError::NodeNotFound)?;
-        let nx = node.x.0;
-        let ny = node.y.0;
-        let nw = node.width.0;
-        let nh = node.height.0;
 
-        let rotation = node
-            .metadata
-            .get("rotation")
-            .and_then(serde_json::Value::as_f64)
-            .unwrap_or(0.0);
-
-        let (min_x, min_y, max_x, max_y) = if rotation == 0.0 {
-            (nx, ny, nx + nw, ny + nh)
-        } else {
-            let cx = nx + nw / 2.0;
-            let cy = ny + nh / 2.0;
-            let cos_r = rotation.cos();
-            let sin_r = rotation.sin();
-
-            let rotate = |px: f64, py: f64| -> (f64, f64) {
-                let dx = px - cx;
-                let dy = py - cy;
-                (cx + dx * cos_r - dy * sin_r, cy + dx * sin_r + dy * cos_r)
-            };
-
-            let corners = [
-                rotate(nx, ny),
-                rotate(nx + nw, ny),
-                rotate(nx, ny + nh),
-                rotate(nx + nw, ny + nh),
-            ];
-
-            let mut node_min_x = f64::INFINITY;
-            let mut node_min_y = f64::INFINITY;
-            let mut node_max_x = f64::NEG_INFINITY;
-            let mut node_max_y = f64::NEG_INFINITY;
-
-            for &(px, py) in &corners {
-                if px < node_min_x {
-                    node_min_x = px;
-                }
-                if py < node_min_y {
-                    node_min_y = py;
-                }
-                if px > node_max_x {
-                    node_max_x = px;
-                }
-                if py > node_max_y {
-                    node_max_y = py;
-                }
-            }
-            (node_min_x, node_min_y, node_max_x, node_max_y)
-        };
+        let rotation = get_node_rotation(node);
+        let (min_x, min_y, max_x, max_y) =
+            rotated_node_bounds(node.x.0, node.y.0, node.width.0, node.height.0, rotation);
 
         let is_parent = parents.contains(&id) || node.kind == crate::document::NodeKind::Subgraph;
 

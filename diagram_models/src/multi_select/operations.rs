@@ -7,9 +7,14 @@ use super::helpers::{
 };
 use super::types::{ClipboardData, Error, NonEmptyVec, Rect, Vector2D};
 
+/// Moves the selection by the given delta.
+///
+/// # Errors
+///
+/// Returns `Error` if items are locked, hierarchy is invalid, or a node is not found.
 pub fn move_selection(
     doc: &mut DiagramDocument,
-    selection: NonEmptyVec<NodeId>,
+    selection: &NonEmptyVec<NodeId>,
     delta: Vector2D,
 ) -> Result<(), Error> {
     let selection_slice = selection.as_slice();
@@ -31,9 +36,14 @@ pub fn move_selection(
     Ok(())
 }
 
+/// Resizes the selection.
+///
+/// # Errors
+///
+/// Returns `Error` if items are locked, hierarchy is invalid, or bounds computation fails.
 pub fn resize_selection(
     doc: &mut DiagramDocument,
-    selection: NonEmptyVec<NodeId>,
+    selection: &NonEmptyVec<NodeId>,
     new_bounds: Rect,
 ) -> Result<(), Error> {
     let selection_slice = selection.as_slice();
@@ -52,9 +62,14 @@ pub fn resize_selection(
     Ok(())
 }
 
+/// Deletes the selection.
+///
+/// # Errors
+///
+/// Returns `Error` if items are locked, a node is not found, or postcondition is violated.
 pub fn delete_selection(
     doc: &mut DiagramDocument,
-    selection: NonEmptyVec<NodeId>,
+    selection: &NonEmptyVec<NodeId>,
 ) -> Result<(), Error> {
     let selection_slice = selection.as_slice();
     check_locked_items(doc, selection_slice)?;
@@ -72,9 +87,14 @@ pub fn delete_selection(
     verify_all_removed(doc, selection_slice)
 }
 
+/// Copies the selection.
+///
+/// # Errors
+///
+/// Returns `Error` if a node is not found.
 pub fn copy_selection(
     doc: &DiagramDocument,
-    selection: NonEmptyVec<NodeId>,
+    selection: &NonEmptyVec<NodeId>,
 ) -> Result<ClipboardData, Error> {
     let selection_slice = selection.as_slice();
     let mut copied_nodes = Vec::new();
@@ -89,6 +109,11 @@ pub fn copy_selection(
     })
 }
 
+/// Pastes the selection.
+///
+/// # Errors
+///
+/// Returns `Error` on invalid offset.
 pub fn paste_selection(
     doc: &mut DiagramDocument,
     clipboard: &ClipboardData,
@@ -112,6 +137,11 @@ pub fn paste_selection(
     Ok(new_ids)
 }
 
+/// Computes the centroid of the selection.
+///
+/// # Errors
+///
+/// Returns `Error` if bounding box computation fails.
 pub fn compute_selection_centroid(
     doc: &DiagramDocument,
     selection: &[NodeId],
@@ -124,9 +154,14 @@ pub fn compute_selection_centroid(
     })
 }
 
+/// Scales the selection around its centroid.
+///
+/// # Errors
+///
+/// Returns `Error` if scaling fails.
 pub fn scale_selection_around_centroid(
     doc: &mut DiagramDocument,
-    selection: NonEmptyVec<NodeId>,
+    selection: &NonEmptyVec<NodeId>,
     scale_factor: f64,
 ) -> Result<(), Error> {
     validate_scale_factor(scale_factor)?;

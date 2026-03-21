@@ -21,6 +21,11 @@ pub enum Error {
 pub struct NonEmptyVec<T>(Vec<T>);
 
 impl<T> NonEmptyVec<T> {
+    /// Tries to create a `NonEmptyVec`.
+    ///
+    /// # Errors
+    ///
+    /// Returns `Error::EmptySelection` if the vector is empty.
     pub fn try_from(vec: Vec<T>) -> Result<Self, Error> {
         if vec.is_empty() {
             Err(Error::EmptySelection)

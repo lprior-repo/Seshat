@@ -17,11 +17,11 @@ pub fn EdgeLayer(
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) -> Element {
     let doc = doc_signal.read();
-    let s = doc.editor_state.clone();
-    let selected_items = &s.selected_items;
-    let camera_x = s.camera_x.0;
-    let camera_y = s.camera_y.0;
-    let zoom = s.zoom.0;
+    // Avoid cloning entire EditorState - read fields directly via reference
+    let selected_items = &doc.editor_state.selected_items;
+    let camera_x = doc.editor_state.camera_x.0;
+    let camera_y = doc.editor_state.camera_y.0;
+    let zoom = doc.editor_state.zoom.0;
     let (viewport_w, viewport_h) = *viewport_size.read();
     let edge_rows = get_visible_edges(&doc, camera_x, camera_y, zoom, viewport_w, viewport_h);
 

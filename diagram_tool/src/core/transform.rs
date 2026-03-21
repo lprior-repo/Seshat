@@ -62,7 +62,7 @@ impl NodeExtent {
 }
 
 fn recompute_container_bounds(doc: &mut DiagramDocument, moved_node_ids: &[NodeId]) {
-    let containers: Vec<NodeId> = moved_node_ids
+    let containers = moved_node_ids
         .iter()
         .filter_map(|id| doc.document.nodes.get(id))
         .filter_map(|node| node.parent.as_ref())
@@ -73,35 +73,32 @@ fn recompute_container_bounds(doc: &mut DiagramDocument, moved_node_ids: &[NodeI
                 .is_some_and(|p| p.kind == NodeKind::Subgraph)
         })
         .unique()
-        .cloned()
-        .collect();
+        .cloned();
 
-    doc.document.nodes = containers
-        .into_iter()
-        .fold(doc.document.nodes.clone(), |nodes, cid| {
-            let children_bounds: Vec<_> = nodes
-                .iter()
-                .filter(|(_, n)| n.parent.as_ref() == Some(&cid))
-                .map(|(_, n)| (n.x.0, n.y.0, n.width.0, n.height.0))
-                .collect();
+    doc.document.nodes = containers.fold(doc.document.nodes.clone(), |nodes, cid| {
+        let children_bounds: Vec<_> = nodes
+            .iter()
+            .filter(|(_, n)| n.parent.as_ref() == Some(&cid))
+            .map(|(_, n)| (n.x.0, n.y.0, n.width.0, n.height.0))
+            .collect();
 
-            compute_subgraph_bounds(children_bounds)
-                .and_then(|(x, y, w, h)| {
-                    nodes.get(&cid).map(|container| {
-                        nodes.update(
-                            cid.clone(),
-                            Node {
-                                x: OrderedFloat::new_unchecked(x - 24.0),
-                                y: OrderedFloat::new_unchecked(y - 24.0),
-                                width: OrderedFloat::new_unchecked(w + 48.0),
-                                height: OrderedFloat::new_unchecked(h + 48.0),
-                                ..container.clone()
-                            },
-                        )
-                    })
+        compute_subgraph_bounds(children_bounds)
+            .and_then(|(x, y, w, h)| {
+                nodes.get(&cid).map(|container| {
+                    nodes.update(
+                        cid.clone(),
+                        Node {
+                            x: OrderedFloat::new_unchecked(x - 24.0),
+                            y: OrderedFloat::new_unchecked(y - 24.0),
+                            width: OrderedFloat::new_unchecked(w + 48.0),
+                            height: OrderedFloat::new_unchecked(h + 48.0),
+                            ..container.clone()
+                        },
+                    )
                 })
-                .unwrap_or(nodes)
-        });
+            })
+            .unwrap_or(nodes)
+    });
 }
 
 fn apply_transform(

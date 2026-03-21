@@ -2,10 +2,7 @@ use diagram_models::document::NodeId;
 use petgraph::graph::{DiGraph, NodeIndex};
 
 /// Longest-path layer assignment.  Returns layers as `Vec<Vec<NodeIndex>>`.
-pub fn assign_layers(
-    topo_order: &[NodeIndex],
-    graph: &DiGraph<NodeId, ()>,
-) -> Vec<Vec<NodeIndex>> {
+pub fn assign_layers(topo_order: &[NodeIndex], graph: &DiGraph<NodeId, ()>) -> Vec<Vec<NodeIndex>> {
     let layer_map: std::collections::HashMap<NodeIndex, usize> =
         topo_order
             .iter()

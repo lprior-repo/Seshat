@@ -14,11 +14,11 @@ pub use diagram_models::geometry::Point;
 pub struct ScreenCoord(pub f64, pub f64);
 
 impl ScreenCoord {
-    #[must_use] 
+    #[must_use]
     pub const fn x(&self) -> f64 {
         self.0
     }
-    #[must_use] 
+    #[must_use]
     pub const fn y(&self) -> f64 {
         self.1
     }
@@ -41,11 +41,11 @@ impl From<ScreenCoord> for Point {
 pub struct CanvasCoord(pub f64, pub f64);
 
 impl CanvasCoord {
-    #[must_use] 
+    #[must_use]
     pub const fn x(&self) -> f64 {
         self.0
     }
-    #[must_use] 
+    #[must_use]
     pub const fn y(&self) -> f64 {
         self.1
     }
