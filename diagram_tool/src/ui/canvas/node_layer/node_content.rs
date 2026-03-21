@@ -3,7 +3,7 @@ use dioxus::prelude::*;
 
 use crate::history::History;
 use crate::ui::canvas::document_ops::{fit_icon_side, node_image_data_url};
-use crate::ui::theme::{TEXT_MAIN, TEXT_MUTED};
+use crate::ui::theme::TEXT_MAIN;
 
 use super::inline_edit::InlineEdit;
 use super::node_element::NodeInteractionState;
@@ -72,14 +72,13 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
                 "data-testid": "subgraph-header",
                 class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] border-b border-[var(--border)] bg-[color-mix(in_oklch,var(--node-bg-subgraph)_80%,transparent)]",
                 ondoubleclick: {
-                    let edit_label = node.label.clone();
                     let id_edit_subgraph = props.id.clone();
                     let mut editor_state = props.editor_state;
                     let mut edit_value = props.edit_value;
                     move |evt| {
                         evt.stop_propagation();
                         editor_state.set(crate::ui::canvas::state::EditorState::EditingNode(id_edit_subgraph.clone()));
-                        edit_value.set(edit_label.clone());
+                        edit_value.set(node.label.clone());
                     }
                 },
                 span {

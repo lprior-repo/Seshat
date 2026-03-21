@@ -166,3 +166,17 @@ Refactored `diagram_tool/tests/phase1_rusqlite_removal.rs` (which was 378 lines)
 - Resolved type compilation errors by strictly enforcing NewTypes (e.g. replacing bare strings with `NodeId::new(...)` in `DomainOp::NodeAdd`), ensuring illegal states are unrepresentable.
 - Applied `#[cfg_attr(kani, kani::proof)]` to tests correctly so they compile as functional tokio integration tests when Kani is absent, preventing dead code.
 - Both files are well under the 300 line limit, compile perfectly with 0 warnings, and pass all 8 test cases.
+
+---
+
+# UI Canvas State Module Refactor
+
+Refactored `diagram_tool/src/ui/canvas/state.rs` (which was 485 lines) adhering strictly to "Code is a Liability" and Scott Wlaschin DDD principles.
+
+## Actions Taken
+- Split the monolithic `state.rs` into a cohesive directory module `state/`.
+- Created `state/editor_fsm.rs` (121 lines): Contains the pure state machine types (`EditorState`, `EditorEvent`, `EditorError`) and the pure transition function (`calculate_transition`). This is the functional core - no side effects.
+- Created `state/canvas_state.rs` (169 lines): Contains `CanvasState` struct and `use_canvas_state()` hook - the imperative shell that manages Dioxus signals.
+- Created `state/mod.rs` (226 lines): Re-exports the public API and contains comprehensive tests including property-based tests via `proptest`.
+- Moved `apply_transition` to `canvas_state.rs` since it performs signal mutations (side effects) and belongs in the imperative shell, not the pure state machine.
+- All files are strictly under the 300 line limit. The codebase compiles cleanly with zero clippy warnings, and all 6 tests pass.

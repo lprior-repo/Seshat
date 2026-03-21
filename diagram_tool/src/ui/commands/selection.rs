@@ -210,7 +210,7 @@ pub fn apply_toggle_edge_direction(
     let selection: NonEmptyVec<String> = match NonEmptyVec::try_from(
         selected_edge_ids
             .iter()
-            .map(|id| id.to_string())
+            .map(std::string::ToString::to_string)
             .collect::<Vec<_>>(),
     ) {
         Ok(sel) => sel,

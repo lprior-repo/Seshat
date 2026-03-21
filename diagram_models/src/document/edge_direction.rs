@@ -22,7 +22,7 @@ pub enum Direction {
 }
 
 #[must_use]
-pub fn determine_next_direction(current: Direction) -> Direction {
+pub const fn determine_next_direction(current: Direction) -> Direction {
     match current {
         Direction::OneWay => Direction::ZeroWay,
         Direction::ZeroWay => Direction::TwoWay,
@@ -30,6 +30,9 @@ pub fn determine_next_direction(current: Direction) -> Direction {
     }
 }
 
+/// Determines the current direction of an edge.
+/// # Errors
+/// Returns `Error::InvariantViolated` if an undirected edge has bidirectional metadata.
 pub fn determine_current_direction(edge: &Edge) -> Result<Direction, Error> {
     let bidirectional = edge.metadata.get("bidirectional");
     let is_bidirectional = match bidirectional {
@@ -47,6 +50,9 @@ pub fn determine_current_direction(edge: &Edge) -> Result<Direction, Error> {
     }
 }
 
+/// Verifies edge invariants are satisfied.
+/// # Errors
+/// Returns `Error::InvariantViolated` if an undirected edge has bidirectional metadata.
 pub fn verify_invariants(edge: &Edge) -> Result<(), Error> {
     let bidirectional = edge.metadata.get("bidirectional");
     let is_bidirectional = match bidirectional {
@@ -84,6 +90,11 @@ fn apply_direction(edge: &Edge, new_direction: Direction) -> Edge {
     new_edge
 }
 
+/// Toggles the direction of edges in the selection.
+/// # Errors
+/// Returns `Error::InvariantViolated` if selection is empty.
+/// Returns `Error::EdgeNotFound` if any edge in selection does not exist.
+/// Returns `Error::InvariantViolated` if an undirected edge has bidirectional metadata.
 pub fn toggle_edge_directions(
     doc: &mut DiagramDocument,
     selection: &NonEmptyVec<String>,
@@ -102,16 +113,20 @@ pub fn toggle_edge_directions(
 
     // P1: All edges must exist
     unique_ids.iter().try_for_each(|id| {
-        if !doc.document.edges.contains_key(id) {
-            Err(Error::EdgeNotFound(id.as_str().to_string()))
-        } else {
+        if doc.document.edges.contains_key(id) {
             Ok(())
+        } else {
+            Err(Error::EdgeNotFound(id.as_str().to_string()))
         }
     })?;
 
     // Invariant check: Determine direction enforces I2 and I3 logic implicitly
     unique_ids.iter().try_for_each(|id| {
-        let edge = doc.document.edges.get(id).expect("Existence checked");
+        let edge = doc
+            .document
+            .edges
+            .get(id)
+            .ok_or_else(|| Error::EdgeNotFound(id.to_string()))?;
         determine_current_direction(edge).map(|_| ())
     })?;
 
@@ -120,14 +135,16 @@ pub fn toggle_edge_directions(
         .document
         .edges
         .get(&primary_edge_id)
-        .expect("Existence checked");
+        .ok_or_else(|| Error::EdgeNotFound(primary_edge_id.to_string()))?;
     let current_dir = determine_current_direction(primary_edge)?;
     let target_dir = determine_next_direction(current_dir);
 
     let new_edges = unique_ids
         .iter()
         .try_fold(doc.document.edges.clone(), |acc_edges, id| {
-            let edge = acc_edges.get(id).expect("Existence checked");
+            let edge = acc_edges
+                .get(id)
+                .ok_or_else(|| Error::EdgeNotFound(id.to_string()))?;
             let updated_edge = apply_direction(edge, target_dir);
             Ok::<_, Error>(acc_edges.update(id.clone(), updated_edge))
         })?;
@@ -137,6 +154,9 @@ pub fn toggle_edge_directions(
     Ok(())
 }
 
+/// Verifies that an edge is in the undirected (0-way) state.
+/// # Errors
+/// Returns `Error::PostconditionViolated` if edge is directed or has bidirectional metadata.
 pub fn verify_0_way_postcondition(edge: &Edge) -> Result<(), Error> {
     if edge.directed {
         return Err(Error::PostconditionViolated("Expected undirected".into()));
@@ -147,6 +167,9 @@ pub fn verify_0_way_postcondition(edge: &Edge) -> Result<(), Error> {
     Ok(())
 }
 
+/// Verifies that an edge is in the directed (1-way) state.
+/// # Errors
+/// Returns `Error::PostconditionViolated` if edge is undirected or has bidirectional metadata.
 pub fn verify_1_way_postcondition(edge: &Edge) -> Result<(), Error> {
     if !edge.directed {
         return Err(Error::PostconditionViolated(
@@ -161,6 +184,9 @@ pub fn verify_1_way_postcondition(edge: &Edge) -> Result<(), Error> {
     Ok(())
 }
 
+/// Verifies that an edge is in the bidirectional (2-way) state.
+/// # Errors
+/// Returns `Error::PostconditionViolated` if edge is not directed and bidirectional.
 pub fn verify_2_way_postcondition(edge: &Edge) -> Result<(), Error> {
     if !edge.directed {
         return Err(Error::PostconditionViolated(
@@ -180,6 +206,9 @@ pub fn verify_2_way_postcondition(edge: &Edge) -> Result<(), Error> {
     Ok(())
 }
 
+/// Verifies that malformed metadata was removed from an edge.
+/// # Errors
+/// Returns `Error::PostconditionViolated` if malformed metadata is still present.
 pub fn verify_sanitized_metadata(edge: &Edge) -> Result<(), Error> {
     if edge.metadata.contains_key("bidirectional") {
         return Err(Error::PostconditionViolated(
@@ -189,6 +218,9 @@ pub fn verify_sanitized_metadata(edge: &Edge) -> Result<(), Error> {
     Ok(())
 }
 
+/// Verifies that all edges in selection are uniformly aligned.
+/// # Errors
+/// Returns `Error::PostconditionViolated` if edges are not uniformly aligned.
 pub fn verify_selection_postcondition(edges: &[Edge]) -> Result<(), Error> {
     if edges.is_empty() {
         return Ok(());
@@ -196,17 +228,20 @@ pub fn verify_selection_postcondition(edges: &[Edge]) -> Result<(), Error> {
     let first_dir = determine_current_direction(&edges[0])?;
     edges.iter().try_for_each(|edge| {
         let dir = determine_current_direction(edge)?;
-        if dir != first_dir {
+        if dir == first_dir {
+            Ok(())
+        } else {
             Err(Error::PostconditionViolated(
                 "Edges not uniformly aligned".into(),
             ))
-        } else {
-            Ok(())
         }
     })?;
     Ok(())
 }
 
+/// Verifies that unselected edges remain unaltered between two document versions.
+/// # Errors
+/// Returns `Error::PostconditionViolated` if an unselected edge was removed or modified.
 pub fn verify_unselected_edges_unaltered(
     doc1: &DiagramDocument,
     doc2: &DiagramDocument,
@@ -218,12 +253,11 @@ pub fn verify_unselected_edges_unaltered(
     for (id, edge1) in &doc1.document.edges {
         if !selected_ids.contains(id.as_str()) {
             let edge2 = doc2.document.edges.get(id).ok_or_else(|| {
-                Error::PostconditionViolated(format!("Unselected edge {} removed", id))
+                Error::PostconditionViolated(format!("Unselected edge {id} removed"))
             })?;
             if edge1 != edge2 {
                 return Err(Error::PostconditionViolated(format!(
-                    "Unselected edge {} was modified",
-                    id
+                    "Unselected edge {id} was modified"
                 )));
             }
         }
