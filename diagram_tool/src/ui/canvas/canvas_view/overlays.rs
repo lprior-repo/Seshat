@@ -128,23 +128,26 @@ pub(crate) fn edge_preview_overlay(
     if let InteractionMode::DrawingEdge {
         from_node,
         current_pos,
+        start_port,
     } = mode
     {
         doc.document.nodes.get(from_node).map_or_else(
             || rsx! {},
             |src| {
-                let scx = src.x.0 + src.width.0 / 2.0;
-                let scy = src.y.0 + src.height.0 / 2.0;
-                let (edge_x, edge_y) = rect_ray_intersection(
-                    scx,
-                    scy,
-                    src.width.0,
-                    src.height.0,
-                    current_pos.0,
-                    current_pos.1,
+                let start_pt = start_port.as_ref().map_or_else(
+                    || {
+                        let scx = src.x.0 + src.width.0 / 2.0;
+                        let scy = src.y.0 + src.height.0 / 2.0;
+                        let (ex, ey) = rect_ray_intersection(
+                            scx, scy, src.width.0, src.height.0,
+                            current_pos.0, current_pos.1,
+                        );
+                        diagram_models::geometry::Point::new(ex, ey)
+                    },
+                    |p| diagram_models::port::compute_port_absolute_position(src, p)
                 );
 
-                let ScreenCoord(sx, sy) = to_screen_coords(canvas_domain::CanvasCoord(edge_x, edge_y), canvas_domain::CanvasCoord(s.camera_x.0, s.camera_y.0), s.zoom.0);
+                let ScreenCoord(sx, sy) = to_screen_coords(canvas_domain::CanvasCoord(start_pt.x, start_pt.y), canvas_domain::CanvasCoord(s.camera_x.0, s.camera_y.0), s.zoom.0);
                 let ScreenCoord(tx, ty) = to_screen_coords(canvas_domain::CanvasCoord(current_pos.0, current_pos.1), canvas_domain::CanvasCoord(s.camera_x.0, s.camera_y.0), s.zoom.0);
                 rsx! {
                     line {

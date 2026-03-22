@@ -246,6 +246,7 @@ proptest! {
         let mode = InteractionMode::DrawingEdge {
             from_node: NodeId::new(from_node),
             current_pos: (pos_x, pos_y),
+            start_port: None,
         };
         let _ = mode;
         prop_assert!(true);
@@ -593,6 +594,7 @@ proptest! {
                 3 => InteractionMode::DrawingEdge {
                     from_node: NodeId::new(String::from("n")),
                     current_pos: (0.0, 0.0),
+                    start_port: None,
                 },
                 4 => InteractionMode::DrawingSubgraph { start: (0.0, 0.0), current: (1.0, 1.0) },
                 5 => InteractionMode::ResizingSelection {

@@ -33,6 +33,7 @@ pub enum InteractionMode {
     DrawingEdge {
         from_node: NodeId,
         current_pos: (f64, f64),
+        start_port: Option<diagram_models::port::PortAnchor>,
     },
     DrawingSubgraph {
         start: (f64, f64),

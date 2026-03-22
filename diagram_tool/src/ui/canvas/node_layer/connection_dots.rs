@@ -63,9 +63,20 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
                             canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
                             doc.editor_state.zoom.0
                         );
+                        let start_port = doc.document.nodes.get(&current_id).and_then(|src| {
+                            let dx = if src.width.0 > 0.0 { (mouse_pos.0 - src.x.0) / src.width.0 } else { 0.5 };
+                            let dy = if src.height.0 > 0.0 { (mouse_pos.1 - src.y.0) / src.height.0 } else { 0.5 };
+                            diagram_models::port::NormalizedOffset::new(
+                                diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
+                                diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
+                            )
+                            .ok()
+                            .map(diagram_models::port::PortAnchor::Custom)
+                        });
                         interaction_mode.set(InteractionMode::DrawingEdge {
                             from_node: current_id.clone(),
                             current_pos: (mouse_pos.0, mouse_pos.1),
+                            start_port,
                         });
                     }
                 },

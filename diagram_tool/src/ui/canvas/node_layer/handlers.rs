@@ -51,9 +51,29 @@ pub fn handle_mousedown(
 
     let event = if is_primary {
         if tool == ToolMode::Edge {
+            let doc_now = doc_signal.read().clone();
+            let start_port = doc_now.document.nodes.get(&id).and_then(|src| {
+                let dx = if src.width.0 > 0.0 {
+                    (pos.0 - src.x.0) / src.width.0
+                } else {
+                    0.5
+                };
+                let dy = if src.height.0 > 0.0 {
+                    (pos.1 - src.y.0) / src.height.0
+                } else {
+                    0.5
+                };
+                diagram_models::port::NormalizedOffset::new(
+                    diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
+                    diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
+                )
+                .ok()
+                .map(diagram_models::port::PortAnchor::Custom)
+            });
             Some(CanvasEvent::EdgeDrawingStarted {
                 from_node: id,
                 current_pos: CanvasCoord(pos.0, pos.1),
+                start_port,
             })
         } else {
             Some(CanvasEvent::NodeSelected {
@@ -112,7 +132,11 @@ pub fn handle_mouseup(
     let mode = interaction_mode.read().clone();
 
     let event = match mode {
-        InteractionMode::DrawingEdge { from_node, .. } => {
+        InteractionMode::DrawingEdge {
+            from_node,
+            start_port,
+            ..
+        } => {
             let doc_now = doc_signal.read().clone();
             let coords = evt.data.coordinates().client();
             let origin = sync_canvas_origin().unwrap_or(canvas_origin);
@@ -126,6 +150,26 @@ pub fn handle_mouseup(
                 ),
                 doc_now.editor_state.zoom.0,
             );
+
+            let end_port = doc_now.document.nodes.get(&id).and_then(|tgt| {
+                let dx = if tgt.width.0 > 0.0 {
+                    (pos.0 - tgt.x.0) / tgt.width.0
+                } else {
+                    0.5
+                };
+                let dy = if tgt.height.0 > 0.0 {
+                    (pos.1 - tgt.y.0) / tgt.height.0
+                } else {
+                    0.5
+                };
+                diagram_models::port::NormalizedOffset::new(
+                    diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
+                    diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
+                )
+                .ok()
+                .map(diagram_models::port::PortAnchor::Custom)
+            });
+
             Some(CanvasEvent::EdgeDrawingFinished {
                 from_node,
                 to_node: id,
@@ -133,6 +177,8 @@ pub fn handle_mouseup(
                 continue_drawing: *tool_signal.read() == ToolMode::Edge,
                 edge_style: edge_style_default,
                 arrow_type: arrow_type_default,
+                start_port,
+                end_port,
             })
         }
         InteractionMode::DraggingSelection { .. } | InteractionMode::ResizingSelection { .. } => {

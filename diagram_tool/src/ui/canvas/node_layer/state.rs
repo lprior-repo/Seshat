@@ -22,6 +22,7 @@ pub enum CanvasEvent {
     EdgeDrawingStarted {
         from_node: NodeId,
         current_pos: CanvasCoord,
+        start_port: Option<diagram_models::port::PortAnchor>,
     },
     EdgeDrawingFinished {
         from_node: NodeId,
@@ -30,6 +31,8 @@ pub enum CanvasEvent {
         continue_drawing: bool,
         edge_style: EdgeStyle,
         arrow_type: ArrowType,
+        start_port: Option<diagram_models::port::PortAnchor>,
+        end_port: Option<diagram_models::port::PortAnchor>,
     },
     PanStarted {
         last_pos: ScreenCoord,
@@ -86,11 +89,13 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
         CanvasEvent::EdgeDrawingStarted {
             from_node,
             current_pos,
+            start_port,
         } => {
             if !matches!(state.interaction_mode, InteractionMode::DrawingEdge { .. }) {
                 state.interaction_mode = InteractionMode::DrawingEdge {
                     from_node,
                     current_pos: (current_pos.0, current_pos.1),
+                    start_port,
                 };
             }
             Ok(state)
@@ -108,6 +113,8 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
             continue_drawing,
             edge_style,
             arrow_type,
+            start_port,
+            end_port,
         } => {
             if from_node != to_node {
                 let candidate_edge = Edge {
@@ -124,8 +131,8 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
                     tags: im::Vector::new(),
                     metadata: HashMap::new(),
                     font_size: None,
-                    source_port: None,
-                    target_port: None,
+                    source_port: start_port,
+                    target_port: end_port,
                 };
                 if edge_preserves_dag(&state.document, &candidate_edge) {
                     state.document.document.edges = state
@@ -142,6 +149,7 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
                 state.interaction_mode = InteractionMode::DrawingEdge {
                     from_node: to_node,
                     current_pos: (current_pos.0, current_pos.1),
+                    start_port: end_port,
                 };
             } else {
                 state.interaction_mode = InteractionMode::Select;
@@ -261,6 +269,7 @@ mod tests {
             CanvasEvent::EdgeDrawingStarted {
                 from_node: NodeId::new("node1".to_string()),
                 current_pos: CanvasCoord(10.0, 10.0),
+                start_port: None,
             },
         )?;
 
@@ -268,6 +277,7 @@ mod tests {
             InteractionMode::DrawingEdge {
                 from_node,
                 current_pos,
+                ..
             } => {
                 assert_eq!(from_node.as_str(), "node1");
                 assert_eq!(current_pos, (10.0, 10.0));
@@ -307,6 +317,7 @@ mod tests {
             interaction_mode: InteractionMode::DrawingEdge {
                 from_node: NodeId::new("node1".to_string()),
                 current_pos: (0.0, 0.0),
+                start_port: None,
             },
         };
 
@@ -319,6 +330,8 @@ mod tests {
                 continue_drawing: false,
                 edge_style: EdgeStyle::Solid,
                 arrow_type: ArrowType::Default,
+                start_port: None,
+                end_port: None,
             },
         )?;
 
@@ -348,6 +361,7 @@ mod tests {
             interaction_mode: InteractionMode::DrawingEdge {
                 from_node: NodeId::new("node1".to_string()),
                 current_pos: (0.0, 0.0),
+                start_port: None,
             },
         };
 
@@ -360,6 +374,8 @@ mod tests {
                 continue_drawing: false,
                 edge_style: EdgeStyle::Solid,
                 arrow_type: ArrowType::Default,
+                start_port: None,
+                end_port: None,
             },
         );
 

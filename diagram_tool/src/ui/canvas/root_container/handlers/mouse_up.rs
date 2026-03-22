@@ -39,7 +39,11 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
     let toast = crate::ui::toast::use_toast();
 
     interaction_mode.with_mut(|mode| match mode {
-        InteractionMode::DrawingEdge { from_node, .. } => {
+        InteractionMode::DrawingEdge {
+            from_node,
+            start_port,
+            ..
+        } => {
             let coords = evt.data.coordinates().client();
             let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
             let local_x = coords.x - origin.0;
@@ -56,6 +60,28 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
             let target = find_node_at(&doc, pos.0, pos.1);
             if let Some(target_id) = target.clone() {
                 if &target_id != from_node {
+                    let end_port = doc.document.nodes.get(&target_id).and_then(|tgt| {
+                        let dx = if tgt.width.0 > 0.0 {
+                            (pos.0 - tgt.x.0) / tgt.width.0
+                        } else {
+                            0.5
+                        };
+                        let dy = if tgt.height.0 > 0.0 {
+                            (pos.1 - tgt.y.0) / tgt.height.0
+                        } else {
+                            0.5
+                        };
+                        diagram_models::port::NormalizedOffset::new(
+                            diagram_models::document::OrderedFloat::new_unchecked(
+                                dx.clamp(0.0, 1.0),
+                            ),
+                            diagram_models::document::OrderedFloat::new_unchecked(
+                                dy.clamp(0.0, 1.0),
+                            ),
+                        )
+                        .ok()
+                        .map(diagram_models::port::PortAnchor::Custom)
+                    });
                     let candidate_edge = diagram_models::document::Edge {
                         source: from_node.clone(),
                         target: target_id,
@@ -70,8 +96,8 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
                         tags: im::Vector::new(),
                         metadata: HashMap::new(),
                         font_size: None,
-                        source_port: None,
-                        target_port: None,
+                        source_port: *start_port,
+                        target_port: end_port,
                     };
 
                     if !edge_preserves_dag(&doc, &candidate_edge) {
@@ -85,6 +111,7 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
                                 *mode = InteractionMode::DrawingEdge {
                                     from_node: target_id,
                                     current_pos: (pos.0, pos.1),
+                                    start_port: end_port,
                                 };
                             } else {
                                 *mode = InteractionMode::Select;
@@ -109,9 +136,32 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
             }
             if *tool_signal.read() == ToolMode::Edge {
                 if let Some(target_id) = target {
+                    let end_port = doc.document.nodes.get(&target_id).and_then(|tgt| {
+                        let dx = if tgt.width.0 > 0.0 {
+                            (pos.0 - tgt.x.0) / tgt.width.0
+                        } else {
+                            0.5
+                        };
+                        let dy = if tgt.height.0 > 0.0 {
+                            (pos.1 - tgt.y.0) / tgt.height.0
+                        } else {
+                            0.5
+                        };
+                        diagram_models::port::NormalizedOffset::new(
+                            diagram_models::document::OrderedFloat::new_unchecked(
+                                dx.clamp(0.0, 1.0),
+                            ),
+                            diagram_models::document::OrderedFloat::new_unchecked(
+                                dy.clamp(0.0, 1.0),
+                            ),
+                        )
+                        .ok()
+                        .map(diagram_models::port::PortAnchor::Custom)
+                    });
                     *mode = InteractionMode::DrawingEdge {
                         from_node: target_id,
                         current_pos: (pos.0, pos.1),
+                        start_port: end_port,
                     };
                 } else {
                     *mode = InteractionMode::Select;

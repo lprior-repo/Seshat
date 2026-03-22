@@ -30,8 +30,16 @@ pub fn EdgeLayer(
     rsx! {
         {
             edge_rows.map(move |(id, edge, src, tgt)| {
-                let canvas_domain::ScreenCoord(sx, sy) = to_screen_coords(canvas_domain::CanvasCoord(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0), canvas_domain::CanvasCoord(camera_x, camera_y), zoom);
-                let canvas_domain::ScreenCoord(tx, ty) = to_screen_coords(canvas_domain::CanvasCoord(tgt.x.0 + tgt.width.0 / 2.0, tgt.y.0 + tgt.height.0 / 2.0), canvas_domain::CanvasCoord(camera_x, camera_y), zoom);
+                let src_pt = edge.source_port.as_ref().map_or_else(
+                    || diagram_models::geometry::Point::new(src.x.0 + src.width.0 / 2.0, src.y.0 + src.height.0 / 2.0),
+                    |p| diagram_models::port::compute_port_absolute_position(src, p)
+                );
+                let tgt_pt = edge.target_port.as_ref().map_or_else(
+                    || diagram_models::geometry::Point::new(tgt.x.0 + tgt.width.0 / 2.0, tgt.y.0 + tgt.height.0 / 2.0),
+                    |p| diagram_models::port::compute_port_absolute_position(tgt, p)
+                );
+                let canvas_domain::ScreenCoord(sx, sy) = to_screen_coords(canvas_domain::CanvasCoord(src_pt.x, src_pt.y), canvas_domain::CanvasCoord(camera_x, camera_y), zoom);
+                let canvas_domain::ScreenCoord(tx, ty) = to_screen_coords(canvas_domain::CanvasCoord(tgt_pt.x, tgt_pt.y), canvas_domain::CanvasCoord(camera_x, camera_y), zoom);
                 let d = edge_path(sx, sy, tx, ty, edge);
                 let (mid_x, mid_y) = edge_label_position(sx, sy, tx, ty, edge);
                 let is_selected = selected_items.contains(id.as_str());

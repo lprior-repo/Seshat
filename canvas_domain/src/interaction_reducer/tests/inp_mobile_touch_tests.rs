@@ -102,6 +102,7 @@ fn given_panning_mode_when_compared_to_drawing_modes_then_modes_differ() {
     let drawing_edge = InteractionMode::DrawingEdge {
         from_node: NodeId::new("test".to_string()),
         current_pos: (50.0, 50.0),
+        start_port: None,
     };
 
     let drawing_subgraph = InteractionMode::DrawingSubgraph {
@@ -177,6 +178,7 @@ fn given_all_interaction_modes_when_panning_is_active_then_only_panning_matches(
         InteractionMode::DrawingEdge {
             from_node: NodeId::new("x".to_string()),
             current_pos: (42.0, 24.0),
+            start_port: None,
         },
         InteractionMode::DrawingSubgraph {
             start: (0.0, 0.0),
