@@ -1,6 +1,5 @@
 #![allow(unused)]
 
-
 #[cfg(test)]
 mod tests {
     use crate::core::transform::{
@@ -33,8 +32,6 @@ mod tests {
         }
     }
 
-    
-    
     #[test]
     fn test_align_left_snaps_all_nodes_to_min_x() {
         let mut doc = DiagramDocument::default();
@@ -62,8 +59,6 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n2).unwrap().x.0, 100.0);
     }
 
-    
-    
     #[test]
     fn test_locked_element_cannot_be_moved() {
         let mut doc = DiagramDocument::default();
@@ -92,8 +87,6 @@ mod tests {
         assert_eq!(err, TransformError::LockedNode(n1));
     }
 
-    
-    
     #[test]
     fn test_distribute_handles_overlapping_nodes() {
         let mut doc = DiagramDocument::default();
@@ -130,10 +123,8 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n3).unwrap().x.0, 200.0); // 100 + 50 (width) + 50 (spacing)
     }
 
-    
-    
     #[test]
-    fn test_MUL_006_translate_single_node_updates_coordinates() {
+    fn test_mul_006_translate_single_node_updates_coordinates() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         doc.document
@@ -150,10 +141,8 @@ mod tests {
         assert_eq!(node.y.0, 20.0);
     }
 
-    
-    
     #[test]
-    fn test_MUL_007_translate_multiple_nodes_updates_all_coordinates() {
+    fn test_mul_007_translate_multiple_nodes_updates_all_coordinates() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         let n2 = NodeId::new("2".to_string());
@@ -178,10 +167,8 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n2).unwrap().y.0, -5.0);
     }
 
-    
-    
     #[test]
-    fn test_MUL_008_translate_empty_selection_returns_error() {
+    fn test_mul_008_translate_empty_selection_returns_error() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         doc.document
@@ -193,10 +180,8 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n1).unwrap().x.0, 100.0);
     }
 
-    
-    
     #[test]
-    fn test_MUL_009_translate_with_locked_node_returns_error_and_does_not_translate() {
+    fn test_mul_009_translate_with_locked_node_returns_error_and_does_not_translate() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         let n2 = NodeId::new("2".to_string());
@@ -222,8 +207,6 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n2).unwrap().x.0, 200.0);
     }
 
-    
-    
     #[test]
     fn test_translate_by_zero_delta_succeeds_without_modifying_coordinates() {
         let mut doc = DiagramDocument::default();
@@ -241,8 +224,6 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n1).unwrap().y.0, 0.0);
     }
 
-    
-    
     #[test]
     fn test_translate_negative_delta_moves_nodes_up_and_left() {
         let mut doc = DiagramDocument::default();
@@ -260,8 +241,6 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n1).unwrap().y.0, -20.0);
     }
 
-    
-    
     #[test]
     fn test_precondition_selection_not_empty() {
         let mut doc = DiagramDocument::default();
@@ -269,8 +248,6 @@ mod tests {
         assert_eq!(err, TransformError::EmptySelection);
     }
 
-    
-    
     #[test]
     fn test_precondition_no_locked_nodes() {
         let mut doc = DiagramDocument::default();
@@ -286,8 +263,6 @@ mod tests {
         assert_eq!(err, TransformError::LockedNode(n1));
     }
 
-    
-    
     #[test]
     fn test_postcondition_unselected_nodes_unmodified() {
         let mut doc = DiagramDocument::default();
@@ -313,8 +288,6 @@ mod tests {
         assert_eq!(doc.document.nodes.get(&n2).unwrap().y.0, 0.0);
     }
 
-    
-    
     #[test]
     fn test_postcondition_ancestor_containers_recomputed() {
         let mut doc = DiagramDocument::default();
@@ -355,8 +328,6 @@ mod tests {
         assert_eq!(container.height.0, 148.0);
     }
 
-    
-    
     #[test]
     fn test_invariant_node_count_remains_unchanged() {
         let mut doc = DiagramDocument::default();
@@ -375,8 +346,6 @@ mod tests {
         assert_eq!(count_before, count_after);
     }
 
-    
-    
     #[test]
     fn test_invariant_selection_remains_unchanged() {
         let mut doc = DiagramDocument::default();
@@ -395,19 +364,15 @@ mod tests {
         assert_eq!(selection_before, selection_after);
     }
 
-    
-    
     #[test]
-    fn test_P1_violation_empty_selection_returns_empty_selection_error() {
+    fn test_p1_violation_empty_selection_returns_empty_selection_error() {
         let mut doc = DiagramDocument::default();
         let err = translate_selection(&mut doc, 10.0, 10.0).unwrap_err();
         assert_eq!(err, TransformError::EmptySelection);
     }
 
-    
-    
     #[test]
-    fn test_P2_violation_locked_node_returns_locked_node_error() {
+    fn test_p2_violation_locked_node_returns_locked_node_error() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         let n2 = NodeId::new("2".to_string());
@@ -431,10 +396,8 @@ mod tests {
         assert_eq!(err, TransformError::LockedNode(n1));
     }
 
-    
-    
     #[test]
-    fn test_P3_violation_nan_delta_returns_invalid_delta_error() {
+    fn test_p3_violation_nan_delta_returns_invalid_delta_error() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
         doc.document
@@ -448,8 +411,6 @@ mod tests {
         assert_eq!(err, TransformError::InvalidDelta);
     }
 
-    
-    
     #[test]
     fn test_scenario_1_group_translate_with_container_bounds_update() {
         let mut doc = DiagramDocument::default();

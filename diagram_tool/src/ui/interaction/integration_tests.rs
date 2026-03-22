@@ -1,7 +1,8 @@
+use crate::ui::grid::snap_point;
 use crate::ui::grid::GridSize;
 use crate::ui::interaction::{
     drag_original_positions, dragged_positions_with_snap, has_drag_threshold, node_ids_in_rect,
-    selection_mode_from_drag, snap_point, toggle_selection, with_auto_selected_edges,
+    selection_mode_from_drag, toggle_selection, with_auto_selected_edges,
 };
 use diagram_models::document::{
     ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, EditorState, LockState,
@@ -156,7 +157,7 @@ fn test_integration_marquee_selection_to_drag_and_drop() {
     let snapped_bp = snap_point(
         (bp_original.0 + 100.0, bp_original.1 + 100.0),
         doc.editor_state.snap_to_grid,
-        20.0,
+        grid_size,
     );
     assert!((snapped_bp.0 - 200.0).abs() < f64::EPSILON);
     assert!((snapped_bp.1 - 160.0).abs() < f64::EPSILON); // wait, (150 + 100) / 20 * 20 = ???

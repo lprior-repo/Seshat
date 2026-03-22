@@ -185,14 +185,14 @@ mod tests {
     }
 
     #[test]
-    fn test_P2_violation_returns_invalid_transition() {
+    fn test_p2_violation_returns_invalid_transition() {
         let mut driver = FsmDriver::new().given_editing_node("node_a");
         let result = driver.apply(EditorEvent::EditEdge(EdgeId::new("edge_1".to_string())));
         assert!(matches!(result, Err(EditorError::InvalidTransition { .. })));
     }
 
     #[test]
-    fn test_P1_violation_returns_element_not_found() {
+    fn test_p1_violation_returns_element_not_found() {
         let mut driver = FsmDriver::new().given_idle_canvas();
         let result = driver.when_mouse_enters_node("non_existent_node");
         assert_eq!(
