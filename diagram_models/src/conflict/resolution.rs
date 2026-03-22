@@ -128,3 +128,7 @@ pub fn record_conflict_rejection(
     }
     state.cleanup_expired();
 }
+
+#[cfg(test)]
+#[path = "resolution_tests.rs"]
+mod tests;

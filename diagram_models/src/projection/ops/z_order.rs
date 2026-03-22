@@ -208,3 +208,7 @@ pub fn apply_z_order_op(
         ))),
     }
 }
+
+#[cfg(test)]
+#[path = "z_order_tests.rs"]
+mod tests;

@@ -215,3 +215,7 @@ pub fn create_empty_subgraph(_id: NodeId, position: Point) -> Result<crate::docu
 
     Ok(node)
 }
+
+#[cfg(test)]
+#[path = "types_tests.rs"]
+mod tests;

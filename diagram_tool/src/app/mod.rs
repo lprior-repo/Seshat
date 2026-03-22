@@ -11,6 +11,9 @@ mod state;
 mod types;
 mod validation;
 
+#[cfg(test)]
+mod tests;
+
 pub use state::AppState;
 pub use types::DraggedIconPayload;
 

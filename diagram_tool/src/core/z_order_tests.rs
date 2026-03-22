@@ -1,5 +1,6 @@
-#![cfg(test)]
-use diagram_models::document::{LockState, Node, NodeKind, OrderedFloat};
+use crate::core::z_order::*;
+use diagram_models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
+use std::collections::BTreeSet;
 
 fn make_node(label: &str) -> Node {
     Node {
@@ -23,8 +24,6 @@ fn make_node(label: &str) -> Node {
     }
 }
 
-#[cfg(kani)]
-#[kani::proof]
 #[test]
 fn given_selected_middle_node_when_bring_to_front_then_relative_order_preserved() {
     let mut ids = vec![
@@ -47,8 +46,6 @@ fn given_selected_middle_node_when_bring_to_front_then_relative_order_preserved(
     );
 }
 
-#[cfg(kani)]
-#[kani::proof]
 #[test]
 fn given_selected_middle_node_when_send_to_back_then_relative_order_preserved() {
     let mut ids = vec![
@@ -71,8 +68,6 @@ fn given_selected_middle_node_when_send_to_back_then_relative_order_preserved() 
     );
 }
 
-#[cfg(kani)]
-#[kani::proof]
 #[test]
 fn test_bring_forward() {
     let mut doc = DiagramDocument::default();
@@ -98,8 +93,6 @@ fn test_bring_forward() {
     assert_eq!(doc.document.nodes.get(&id_b).unwrap().z_index, 2);
 }
 
-#[cfg(kani)]
-#[kani::proof]
 #[test]
 fn test_send_backward() {
     let mut doc = DiagramDocument::default();
@@ -125,8 +118,6 @@ fn test_send_backward() {
     assert_eq!(doc.document.nodes.get(&id_c).unwrap().z_index, 2);
 }
 
-#[cfg(kani)]
-#[kani::proof]
 #[test]
 fn test_bring_to_front() {
     let mut doc = DiagramDocument::default();
@@ -152,8 +143,6 @@ fn test_bring_to_front() {
     assert_eq!(doc.document.nodes.get(&id_a).unwrap().z_index, 2);
 }
 
-#[cfg(kani)]
-#[kani::proof]
 #[test]
 fn test_send_to_back() {
     let mut doc = DiagramDocument::default();

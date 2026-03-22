@@ -182,3 +182,7 @@ fn parse_node_style(s: &str) -> Result<NodeStyle, ContractError> {
         ))),
     }
 }
+
+#[cfg(test)]
+#[path = "node_ops_tests.rs"]
+mod tests;

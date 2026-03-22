@@ -214,3 +214,7 @@ pub fn verify_edge_tolerance(state: &DiagramProjection) -> Result<(), ReplayErro
 
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "edge_ops_tests.rs"]
+mod tests;

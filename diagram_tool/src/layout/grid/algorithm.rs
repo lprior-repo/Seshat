@@ -154,3 +154,7 @@ pub fn calculate_grid_layout(doc: &DiagramDocument, cell_size: f64) -> DiagramDo
     next_doc.document.nodes = next_nodes;
     next_doc
 }
+
+#[cfg(test)]
+#[path = "algorithm_tests.rs"]
+mod tests;

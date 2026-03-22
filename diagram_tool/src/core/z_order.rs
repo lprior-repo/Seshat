@@ -152,3 +152,7 @@ pub fn bring_to_front(doc: &mut DiagramDocument) -> bool {
 pub fn send_to_back(doc: &mut DiagramDocument) -> bool {
     apply_z_order_operation(doc, ZOrderOp::SendToBack)
 }
+
+#[cfg(test)]
+#[path = "z_order_tests.rs"]
+mod tests;

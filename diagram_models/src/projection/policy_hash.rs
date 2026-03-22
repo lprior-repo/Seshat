@@ -248,3 +248,7 @@ fn hash_edge_metadata(
     }
     Ok(())
 }
+
+#[cfg(test)]
+#[path = "policy_hash_tests.rs"]
+mod tests;

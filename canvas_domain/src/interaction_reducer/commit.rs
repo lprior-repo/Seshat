@@ -236,3 +236,7 @@ fn apply_edge_label_change(
 
     mutate_doc_with_history(doc_signal, history_signal, |_| Ok::<_, ()>(new_doc)).ok();
 }
+
+#[cfg(test)]
+#[path = "commit_tests.rs"]
+mod tests;

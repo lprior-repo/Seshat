@@ -70,3 +70,7 @@ pub fn apply_policy_op(
     // If we get here, the operation is valid
     Ok(new_state)
 }
+
+#[cfg(test)]
+#[path = "policy_tests.rs"]
+mod tests;
