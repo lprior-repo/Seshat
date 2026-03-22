@@ -31,3 +31,6 @@ pub use zoom::{apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom
 pub use zorder::{
     apply_bring_forward, apply_bring_to_front, apply_send_backward, apply_send_to_back, ZOrderOp,
 };
+
+#[cfg(test)]
+mod tests_selection;

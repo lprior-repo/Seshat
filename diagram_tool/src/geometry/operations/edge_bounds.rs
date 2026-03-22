@@ -137,6 +137,9 @@ pub fn edge_bounds(
     validate_point(&source)?;
     validate_point(&target)?;
     validate_thickness(thickness)?;
+    for point in bend_points {
+        validate_point(point)?;
+    }
 
     // Build the path points: source -> bend_points -> target
     let mut all_points = vec![source];
@@ -144,12 +147,7 @@ pub fn edge_bounds(
     all_points.push(target);
 
     // Calculate bounds for each segment
-    let mut bounds = AABB::new(
-        f64::INFINITY,
-        f64::INFINITY,
-        f64::NEG_INFINITY,
-        f64::NEG_INFINITY,
-    );
+    let mut bounds: Option<AABB> = None;
 
     for window in all_points.windows(2) {
         let segment_bounds = match arrow_type {
@@ -166,18 +164,34 @@ pub fn edge_bounds(
                 line_bounds(window[0], window[1], thickness)
             }
         };
-        bounds = bounds.union(&segment_bounds);
+
+        if let Some(b) = bounds {
+            bounds = Some(b.union(&segment_bounds));
+        } else {
+            bounds = Some(segment_bounds);
+        }
     }
+
+    let mut bounds = bounds.unwrap_or_else(|| AABB::new(0.0, 0.0, 0.0, 0.0));
 
     // Add arrowhead extension for directed edges
     // Arrowhead extends backward from target
     let arrowhead_size = thickness * 4.0;
-    bounds = AABB::new(
-        bounds.min_x,
-        bounds.min_y,
-        bounds.max_x + arrowhead_size,
-        bounds.max_y,
-    );
+
+    let new_max_x = bounds.max_x + arrowhead_size;
+    let new_min_x = bounds.min_x;
+    let new_min_y = bounds.min_y;
+    let new_max_y = bounds.max_y;
+
+    if !new_min_x.is_finite()
+        || !new_min_y.is_finite()
+        || !new_max_x.is_finite()
+        || !new_max_y.is_finite()
+    {
+        return Err(EdgeBoundsError::InvalidNodePosition);
+    }
+
+    bounds = AABB::new(new_min_x, new_min_y, new_max_x, new_max_y);
 
     Ok(bounds)
 }

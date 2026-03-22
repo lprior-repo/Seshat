@@ -100,5 +100,12 @@ pub fn compute_subgraph_bounds(
         return None;
     }
 
-    Some((min_x, min_y, max_x - min_x, max_y - min_y))
+    let final_width = max_x - min_x;
+    let final_height = max_y - min_y;
+
+    if !final_width.is_finite() || !final_height.is_finite() {
+        return None;
+    }
+
+    Some((min_x, min_y, final_width, final_height))
 }
