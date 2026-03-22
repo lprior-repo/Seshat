@@ -7,6 +7,10 @@ pub mod scale;
 pub mod wheel;
 
 #[cfg(test)]
+mod pointer_drag_tests;
+#[cfg(test)]
+mod pointer_resize_tests;
+#[cfg(test)]
 mod tests;
 
 pub use pointer::*;

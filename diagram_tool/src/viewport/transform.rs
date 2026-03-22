@@ -126,6 +126,7 @@ pub fn center_camera_for_content(
 
 #[cfg(test)]
 mod tests {
+    use super::*;
 
     const TOLERANCE: f64 = 1e-9;
 
@@ -254,5 +255,65 @@ mod tests {
 
         let result = world_to_screen(100.0, 100.0, 0.0, 0.0, f64::EPSILON * 2.0);
         assert!((result.x - (100.0 * f64::EPSILON * 2.0)).abs() < TOLERANCE);
+    }
+
+    use super::*;
+    use crate::geometry::AABB;
+    use proptest::prelude::*;
+
+    proptest! {
+        #[test]
+        fn test_fuzz_screen_to_world(
+            sx in prop::num::f64::ANY,
+            sy in prop::num::f64::ANY,
+            cx in prop::num::f64::ANY,
+            cy in prop::num::f64::ANY,
+            zoom in prop::num::f64::ANY
+        ) {
+            let _ = screen_to_world(sx, sy, cx, cy, zoom);
+        }
+
+        #[test]
+        fn test_fuzz_world_to_screen(
+            wx in prop::num::f64::ANY,
+            wy in prop::num::f64::ANY,
+            cx in prop::num::f64::ANY,
+            cy in prop::num::f64::ANY,
+            zoom in prop::num::f64::ANY
+        ) {
+            let _ = world_to_screen(wx, wy, cx, cy, zoom);
+        }
+
+        #[test]
+        fn test_fuzz_fit_scale(
+            min_x in prop::num::f64::ANY,
+            min_y in prop::num::f64::ANY,
+            max_x in prop::num::f64::ANY,
+            max_y in prop::num::f64::ANY,
+            vw in prop::num::f64::ANY,
+            vh in prop::num::f64::ANY,
+            padding in prop::num::f64::ANY
+        ) {
+            let (min_x, max_x) = if min_x.is_nan() || max_x.is_nan() { (0.0, 0.0) } else { (min_x.min(max_x), min_x.max(max_x)) };
+            let (min_y, max_y) = if min_y.is_nan() || max_y.is_nan() { (0.0, 0.0) } else { (min_y.min(max_y), min_y.max(max_y)) };
+            let aabb = AABB::new(min_x, min_y, max_x, max_y);
+            let _ = fit_scale(&aabb, vw, vh, padding);
+        }
+
+        #[test]
+        fn test_fuzz_center_camera_for_content(
+            min_x in prop::num::f64::ANY,
+            min_y in prop::num::f64::ANY,
+            max_x in prop::num::f64::ANY,
+            max_y in prop::num::f64::ANY,
+            scale in prop::num::f64::ANY,
+            vw in prop::num::f64::ANY,
+            vh in prop::num::f64::ANY
+        ) {
+            let (min_x, max_x) = if min_x.is_nan() || max_x.is_nan() { (0.0, 0.0) } else { (min_x.min(max_x), min_x.max(max_x)) };
+            let (min_y, max_y) = if min_y.is_nan() || max_y.is_nan() { (0.0, 0.0) } else { (min_y.min(max_y), min_y.max(max_y)) };
+            let aabb = AABB::new(min_x, min_y, max_x, max_y);
+            let _ = center_camera_for_content(&aabb, scale, vw, vh);
+        }
     }
 }

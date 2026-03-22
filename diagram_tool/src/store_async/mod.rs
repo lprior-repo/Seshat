@@ -17,6 +17,11 @@ pub mod parse;
 pub mod revision;
 pub mod types;
 
+#[cfg(test)]
+pub mod fetch_tests;
+#[cfg(test)]
+pub mod parse_tests;
+
 // Re-export for backward compatibility
 pub use append::{
     append_batch_async, append_event_async, append_idempotent_async, classify_duplicate_async,

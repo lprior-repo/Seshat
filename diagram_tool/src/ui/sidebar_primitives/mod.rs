@@ -17,3 +17,6 @@ pub use menu::*;
 pub use provider::*;
 pub use trigger::*;
 pub use types::*;
+
+#[cfg(test)]
+mod tests;
