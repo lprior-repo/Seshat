@@ -147,6 +147,7 @@ fn apply_node_updates(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::document::node::{LockState, NodeKind};
     use crate::document::types::OrderedFloat;

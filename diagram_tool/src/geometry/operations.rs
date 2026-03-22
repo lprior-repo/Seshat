@@ -119,6 +119,7 @@ pub fn selection_center(points: &[Point]) -> Point {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::geometry::primitives::{Point, Rectangle};
     use std::f64;
@@ -176,8 +177,16 @@ mod tests {
         let rect = Rectangle::new(10.0, 10.0, 20.0, 20.0);
         let center = rect.aabb().center();
         assert!(hit_test_rect(center, &rect, 0.0));
-        assert!(hit_test_rect(Point::new(rect.aabb().max_x + 1.0, center.y), &rect, 2.0)); // within margin
-        assert!(!hit_test_rect(Point::new(rect.aabb().max_x + 3.0, center.y), &rect, 2.0)); // outside margin
+        assert!(hit_test_rect(
+            Point::new(rect.aabb().max_x + 1.0, center.y),
+            &rect,
+            2.0
+        )); // within margin
+        assert!(!hit_test_rect(
+            Point::new(rect.aabb().max_x + 3.0, center.y),
+            &rect,
+            2.0
+        )); // outside margin
     }
 
     #[test]
@@ -185,7 +194,7 @@ mod tests {
         let mut rect = Rectangle::new(10.0, 10.0, 20.0, 20.0);
         let center = rect.aabb().center();
         assert!(hit_test_rotated_rect(center, &rect));
-        
+
         rect.rotation = std::f64::consts::PI / 4.0; // 45 degrees
         assert!(hit_test_rotated_rect(center, &rect));
     }
@@ -210,7 +219,7 @@ mod tests {
         let center = selection_center(&points);
         assert_eq!(center.x, 5.0);
         assert_eq!(center.y, 5.0);
-        
+
         let empty: Vec<Point> = vec![];
         let center_empty = selection_center(&empty);
         assert_eq!(center_empty.x, 0.0);

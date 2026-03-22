@@ -77,6 +77,7 @@ pub fn evaluate_selection(
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used)]
     use super::*;
     use crate::document::{LockState, Node, OrderedFloat};
     use im::HashMap;
