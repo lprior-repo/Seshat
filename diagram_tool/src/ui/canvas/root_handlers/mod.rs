@@ -6,9 +6,9 @@ pub mod resize;
 pub mod touch;
 
 #[cfg(test)]
-pub mod middle_pan_test;
-#[cfg(test)]
 pub mod keyboard_test;
+#[cfg(test)]
+pub mod middle_pan_test;
 
 pub use drop::handle_drop;
 pub use keyboard::use_keyboard_handler;

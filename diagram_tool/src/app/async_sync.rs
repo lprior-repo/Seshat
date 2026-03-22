@@ -143,8 +143,8 @@ mod tests {
         #[cfg(any(not(feature = "async-db"), target_arch = "wasm32"))]
         {
             // For the stub implementation:
-            // Since use_context_provider panics without Dioxus context, 
-            // we skip explicit invocation here to prevent runtime panics, 
+            // Since use_context_provider panics without Dioxus context,
+            // we skip explicit invocation here to prevent runtime panics,
             // but assert the types resolve.
             assert!(true);
         }

@@ -105,14 +105,11 @@ pub fn process_keyboard_event(
                     match mode {
                         InteractionMode::DraggingSelection { .. }
                         | InteractionMode::ResizingSelection { .. } => {
-                            let db_tx = db_tx.clone();
+                            let db_tx = *db_tx;
                             let mut doc_clone = doc_signal.read().clone();
                             interaction_mode.with_mut(|mode_mut| {
-                                let did_change = finalize_motion_release(
-                                    mode_mut,
-                                    &mut doc_clone,
-                                    &db_tx,
-                                );
+                                let did_change =
+                                    finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
                                 if did_change {
                                     doc_signal.set(doc_clone);
                                 }
@@ -136,13 +133,7 @@ pub fn process_keyboard_event(
                     _ => (step, 0.0),
                 };
                 let push_undo = !*nudge_batch_active.read();
-                let nudged = apply_nudge_selection(
-                    *doc_signal,
-                    *history_signal,
-                    dx,
-                    dy,
-                    push_undo,
-                );
+                let nudged = apply_nudge_selection(*doc_signal, *history_signal, dx, dy, push_undo);
                 if nudged {
                     nudge_batch_active.set(true);
                 }

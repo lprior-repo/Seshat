@@ -229,7 +229,7 @@ mod tests {
 
             rsx! { div {} }
         }
-        
+
         let mut vdom = VirtualDom::new(TestComponent);
         vdom.rebuild_in_place();
     }
@@ -243,7 +243,10 @@ mod tests {
                 open: true,
                 open_mobile: false,
             });
-            let panels = Signal::new(PanelVisibility { sidebar: true, ..Default::default() });
+            let panels = Signal::new(PanelVisibility {
+                sidebar: true,
+                ..Default::default()
+            });
 
             toggle_sidebar(sidebar_ui, panels);
             assert!(sidebar_ui.read().open_mobile);
@@ -253,7 +256,7 @@ mod tests {
 
             rsx! { div {} }
         }
-        
+
         let mut vdom = VirtualDom::new(TestComponent);
         vdom.rebuild_in_place();
     }

@@ -1,6 +1,6 @@
 use diagram_models::document::{
-    DiagramDocument, DocumentData, Edge, EdgeId, LockState, Node,
-    NodeId, OrderedFloat, Revision, EditorState, NodeKind,
+    DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, Node, NodeId, NodeKind,
+    OrderedFloat, Revision,
 };
 use im::HashMap;
 use uuid::Uuid;

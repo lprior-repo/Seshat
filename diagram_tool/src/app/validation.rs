@@ -100,9 +100,7 @@ pub fn use_validation_state(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diagram_models::document::{
-        NodeId, EdgeId, Node, Edge, NodeKind, LockState, OrderedFloat
-    };
+    use diagram_models::document::{Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat};
     use diagram_models::validation::ValidationCode;
     use im::{HashMap, Vector};
 
@@ -151,9 +149,17 @@ mod tests {
     #[test]
     fn test_validation_happy_path() {
         let mut doc = DiagramDocument::default();
-        doc.document.nodes.insert(NodeId::new("n1".to_string()), create_test_node(0.0, 0.0, 100.0, 100.0));
-        doc.document.nodes.insert(NodeId::new("n2".to_string()), create_test_node(200.0, 0.0, 100.0, 100.0));
-        doc.document.edges.insert(EdgeId::new("e1".to_string()), create_test_edge("n1", "n2"));
+        doc.document.nodes.insert(
+            NodeId::new("n1".to_string()),
+            create_test_node(0.0, 0.0, 100.0, 100.0),
+        );
+        doc.document.nodes.insert(
+            NodeId::new("n2".to_string()),
+            create_test_node(200.0, 0.0, 100.0, 100.0),
+        );
+        doc.document
+            .edges
+            .insert(EdgeId::new("e1".to_string()), create_test_edge("n1", "n2"));
 
         let issues = collect_validation_issues(&doc);
         assert!(issues.is_empty(), "Expected no issues, got: {:?}", issues);
@@ -163,20 +169,35 @@ mod tests {
     fn test_validation_invalid_numeric() {
         let mut doc = DiagramDocument::default();
         let bad_node = create_test_node(0.0, 0.0, -10.0, 100.0);
-        doc.document.nodes.insert(NodeId::new("bad".to_string()), bad_node);
+        doc.document
+            .nodes
+            .insert(NodeId::new("bad".to_string()), bad_node);
 
         let issues = collect_validation_issues(&doc);
-        assert!(issues.iter().any(|i| i.code == ValidationCode::INVALID_NUMERIC || i.code == ValidationCode::SCHEMA));
+        assert!(
+            issues
+                .iter()
+                .any(|i| i.code == ValidationCode::INVALID_NUMERIC
+                    || i.code == ValidationCode::SCHEMA)
+        );
     }
 
     #[test]
     fn test_validation_dangling_edge() {
         let mut doc = DiagramDocument::default();
-        doc.document.nodes.insert(NodeId::new("n1".to_string()), create_test_node(0.0, 0.0, 100.0, 100.0));
-        doc.document.edges.insert(EdgeId::new("e1".to_string()), create_test_edge("n1", "missing"));
+        doc.document.nodes.insert(
+            NodeId::new("n1".to_string()),
+            create_test_node(0.0, 0.0, 100.0, 100.0),
+        );
+        doc.document.edges.insert(
+            EdgeId::new("e1".to_string()),
+            create_test_edge("n1", "missing"),
+        );
 
         let issues = collect_validation_issues(&doc);
-        assert!(issues.iter().any(|i| i.code == ValidationCode::EDGE_DANGLING));
+        assert!(issues
+            .iter()
+            .any(|i| i.code == ValidationCode::EDGE_DANGLING));
     }
 
     #[test]
@@ -184,19 +205,33 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let mut child = create_test_node(0.0, 0.0, 100.0, 100.0);
         child.parent = Some(NodeId::new("missing_parent".to_string()));
-        doc.document.nodes.insert(NodeId::new("child".to_string()), child);
+        doc.document
+            .nodes
+            .insert(NodeId::new("child".to_string()), child);
 
         let issues = collect_validation_issues(&doc);
-        assert!(issues.iter().any(|i| i.code == ValidationCode::INVALID_PARENT));
+        assert!(issues
+            .iter()
+            .any(|i| i.code == ValidationCode::INVALID_PARENT));
     }
 
     #[test]
     fn test_validation_cycle() {
         let mut doc = DiagramDocument::default();
-        doc.document.nodes.insert(NodeId::new("n1".to_string()), create_test_node(0.0, 0.0, 100.0, 100.0));
-        doc.document.nodes.insert(NodeId::new("n2".to_string()), create_test_node(200.0, 0.0, 100.0, 100.0));
-        doc.document.edges.insert(EdgeId::new("e1".to_string()), create_test_edge("n1", "n2"));
-        doc.document.edges.insert(EdgeId::new("e2".to_string()), create_test_edge("n2", "n1"));
+        doc.document.nodes.insert(
+            NodeId::new("n1".to_string()),
+            create_test_node(0.0, 0.0, 100.0, 100.0),
+        );
+        doc.document.nodes.insert(
+            NodeId::new("n2".to_string()),
+            create_test_node(200.0, 0.0, 100.0, 100.0),
+        );
+        doc.document
+            .edges
+            .insert(EdgeId::new("e1".to_string()), create_test_edge("n1", "n2"));
+        doc.document
+            .edges
+            .insert(EdgeId::new("e2".to_string()), create_test_edge("n2", "n1"));
 
         let issues = collect_validation_issues(&doc);
         assert!(issues.iter().any(|i| i.code == ValidationCode::DAG_CYCLE));

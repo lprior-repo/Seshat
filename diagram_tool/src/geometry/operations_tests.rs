@@ -204,10 +204,10 @@ mod proptests {
                 3 => EdgeArrowType::Step,
                 _ => EdgeArrowType::Straight,
             };
-            
+
             let bend_points: Vec<Point> = bend_points_x.iter().zip(bend_points_y.iter())
                 .map(|(&x, &y)| Point::new(x, y)).collect();
-            
+
             // Function should not panic
             let _ = edge_bounds(
                 Point::new(s_x, s_y),
@@ -217,7 +217,7 @@ mod proptests {
                 &bend_points
             );
         }
-        
+
         #[test]
         fn test_edge_bounds_valid_range(
             s_x in -10000.0..10000.0f64,
@@ -236,10 +236,10 @@ mod proptests {
                 3 => EdgeArrowType::Step,
                 _ => EdgeArrowType::Straight,
             };
-            
+
             let bend_points: Vec<Point> = bend_points_x.iter().zip(bend_points_y.iter())
                 .map(|(&x, &y)| Point::new(x, y)).collect();
-            
+
             let result = edge_bounds(
                 Point::new(s_x, s_y),
                 Point::new(t_x, t_y),
@@ -247,7 +247,7 @@ mod proptests {
                 thickness,
                 &bend_points
             );
-            
+
             assert!(result.is_ok());
             let bounds = result.unwrap();
             assert!(bounds.min_x.is_finite());

@@ -178,8 +178,8 @@ pub fn SidebarFooter(total_components: usize) -> Element {
 #[allow(clippy::unwrap_used)]
 mod tests {
     use super::*;
-    use dioxus::prelude::*;
     use crate::icons::IconMeta;
+    use dioxus::prelude::*;
 
     #[test]
     fn test_search_box_rendering() {

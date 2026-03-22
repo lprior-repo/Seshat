@@ -8,13 +8,13 @@ use tempfile::TempDir;
 async fn test_fetch_events_happy_path() {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test.db");
-    
+
     let bootstrap = bootstrap_async_store(&db_path).await.unwrap();
     let pool = &bootstrap.pool;
 
     // Insert some valid events
     sqlx::query(
-        "INSERT INTO events (operation_id, revision, timestamp, payload) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, timestamp, payload) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind("op1")
     .bind(1)
@@ -25,7 +25,7 @@ async fn test_fetch_events_happy_path() {
     .unwrap();
 
     sqlx::query(
-        "INSERT INTO events (operation_id, revision, timestamp, payload) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, timestamp, payload) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind("op2")
     .bind(2)
@@ -52,13 +52,13 @@ async fn test_fetch_events_happy_path() {
 async fn test_fetch_events_invalid_timestamp() {
     let temp_dir = TempDir::new().unwrap();
     let db_path = temp_dir.path().join("test_invalid_ts.db");
-    
+
     let bootstrap = bootstrap_async_store(&db_path).await.unwrap();
     let pool = &bootstrap.pool;
 
     // Insert an event with an invalid timestamp string
     sqlx::query(
-        "INSERT INTO events (operation_id, revision, timestamp, payload) VALUES (?1, ?2, ?3, ?4)"
+        "INSERT INTO events (operation_id, revision, timestamp, payload) VALUES (?1, ?2, ?3, ?4)",
     )
     .bind("op_invalid")
     .bind(1)
@@ -70,12 +70,12 @@ async fn test_fetch_events_invalid_timestamp() {
 
     let result = fetch_all_events(pool).await;
     assert!(result.is_err());
-    
+
     let err = result.unwrap_err();
     match err {
         crate::store_async::AsyncStoreError::Serialization(msg) => {
             assert_eq!(msg, "Invalid timestamp format");
-        },
+        }
         _ => panic!("Expected Serialization error"),
     }
 }
