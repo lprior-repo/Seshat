@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use crate::store_async::{
     parse::{
         envelope_batch_to_bounded_batch, envelope_to_valid_event, parse_bounded_batch,
@@ -25,15 +34,16 @@ fn create_valid_envelope() -> EventEnvelope {
 }
 
 #[test]
-fn test_parse_valid_event_success() {
+fn test_parse_valid_event_success() -> Result<(), Box<dyn std::error::Error>> {
     let op_id = "valid-id".to_string();
     let timestamp = 1600000000;
     let payload = r#"{"test":true}"#.to_string();
 
-    let event = parse_valid_event(op_id.clone(), timestamp, payload.clone()).unwrap();
+    let event = parse_valid_event(op_id.clone(), timestamp, payload.clone())?;
     assert_eq!(event.op_id.as_str(), "valid-id");
     assert_eq!(event.timestamp.get(), 1600000000);
     assert_eq!(event.payload.as_str(), r#"{"test":true}"#);
+    Ok(())
 }
 
 #[test]
@@ -53,17 +63,18 @@ fn test_parse_valid_event_invalid_timestamp() {
 }
 
 #[test]
-fn test_envelope_to_valid_event_success() {
+fn test_envelope_to_valid_event_success() -> Result<(), Box<dyn std::error::Error>> {
     let envelope = create_valid_envelope();
-    let valid_event = envelope_to_valid_event(&envelope).unwrap();
+    let valid_event = envelope_to_valid_event(&envelope)?;
 
     assert_eq!(valid_event.op_id.as_str(), "test-op-123");
     assert_eq!(valid_event.timestamp.get(), 1600000000);
 
     // Check that it serialized correctly
-    let deserialized: EventEnvelope = serde_json::from_str(valid_event.payload.as_str()).unwrap();
+    let deserialized: EventEnvelope = serde_json::from_str(valid_event.payload.as_str())?;
     assert_eq!(deserialized.op_id, "test-op-123");
     assert_eq!(deserialized.author.id, "author-1");
+    Ok(())
 }
 
 #[test]
@@ -76,12 +87,13 @@ fn test_envelope_to_valid_event_invalid_timestamp() {
 }
 
 #[test]
-fn test_parse_revision() {
-    let rev = parse_revision(5).unwrap();
+fn test_parse_revision() -> Result<(), Box<dyn std::error::Error>> {
+    let rev = parse_revision(5)?;
     assert_eq!(rev.get(), 5);
 
     let result = parse_revision(-1);
     assert!(matches!(result, Err(AsyncStoreError::ValidationFailed(_))));
+    Ok(())
 }
 
 #[test]

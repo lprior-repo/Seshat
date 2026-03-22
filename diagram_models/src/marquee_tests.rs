@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use crate::document::{DiagramDocument, DocumentError, NodeId, ValidRect};
 use crate::spatial_index::MarqueeMode;
 use crate::test_utils::{setup_doc_with_nodes, test_node};

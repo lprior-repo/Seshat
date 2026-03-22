@@ -83,6 +83,7 @@ pub fn compute_port_absolute_position(node: &Node, port: &PortAnchor) -> Point {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use crate::document::{DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind};

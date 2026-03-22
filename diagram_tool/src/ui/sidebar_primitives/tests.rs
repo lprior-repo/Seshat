@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 #[cfg(test)]
 mod tests {
     use crate::ui::mobile::SidebarUiState;
@@ -187,13 +196,15 @@ mod tests {
                 None
             }
 
-            let actual = find_expanded(&self.root, target_provider)
-                .unwrap_or_else(|| panic!("Group '{}' not found", target_provider));
-            assert_eq!(
-                actual, expected,
-                "Group '{}' expansion state mismatch",
-                target_provider
-            );
+            let actual = find_expanded(&self.root, target_provider);
+            assert!(actual.is_some(), "Group '{}' not found", target_provider);
+            if let Some(actual) = actual {
+                assert_eq!(
+                    actual, expected,
+                    "Group '{}' expansion state mismatch",
+                    target_provider
+                );
+            }
             self
         }
 

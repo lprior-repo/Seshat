@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use super::super::{InteractionMode, ResizeHandle};
 use diagram_models::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
 use im::HashMap;

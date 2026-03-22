@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 //! Test Infrastructure Tests (bd-369)
 //!
 //! This module tests the test harness itself, ensuring:

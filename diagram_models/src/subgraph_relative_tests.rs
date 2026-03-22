@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use super::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
 use super::subgraph::reparenting::{set_node_parent_ext, unparent_node_ext};
 use im::HashMap;

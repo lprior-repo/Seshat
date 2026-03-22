@@ -1,3 +1,13 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use super::*;
 use crate::test_utils::builders::edge::EdgeBuilder;
 use crate::test_utils::builders::node::NodeBuilder;
@@ -155,7 +165,7 @@ fn test_edge_preserves_dag() {
 
 #[test]
 fn test_subgraph_release_bounds() {
-    let grid = GridSize::new(20.0).unwrap();
+    let grid = GridSize::new(20.0).expect("Valid grid size");
 
     // Valid snap
     let bounds = subgraph_release_bounds((0.0, 0.0), (50.0, 50.0), true, grid);

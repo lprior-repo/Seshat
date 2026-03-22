@@ -127,7 +127,7 @@ pub fn apply_group_selection(
     let history = history_signal.read().clone();
     *history_signal.write() = history.push(doc_signal.read().clone());
 
-    let (result, selected_ids) = doc_signal.with_mut(|doc| {
+    let (result, selected_ids): (Result<(), _>, im::HashSet<String>) = doc_signal.with_mut(|doc| {
         let selected = doc.editor_state.selected_items.clone();
         let res = crate::core::grouping::group_selection(doc, &group_id);
         if res.is_ok() {
@@ -159,7 +159,7 @@ pub fn apply_ungroup_selection(
     let history = history_signal.read().clone();
     *history_signal.write() = history.push(doc_signal.read().clone());
 
-    let (result, target_ids) = doc_signal.with_mut(|doc| {
+    let (result, target_ids): (Result<(), _>, Vec<String>) = doc_signal.with_mut(|doc| {
         let targets: Vec<String> = doc.editor_state.selected_items.iter().cloned().collect();
         let res = crate::core::grouping::ungroup_selection(doc);
         if res.is_ok() {

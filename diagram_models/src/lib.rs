@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(warnings))]
 //! Models module for diagram data structures
 //!
 //! Provides domain models for nodes, edges, documents, and related structures.

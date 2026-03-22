@@ -213,7 +213,7 @@ mod tests {
     }
 
     #[test]
-    fn test_node_selected_additive() {
+    fn test_node_selected_additive() -> Result<(), CanvasError> {
         let mut doc = create_test_doc();
         doc.editor_state.selected_items.insert("node1".to_string());
 
@@ -230,8 +230,7 @@ mod tests {
                 canvas_pos: CanvasCoord(0.0, 0.0),
                 client_pos: ScreenCoord(0.0, 0.0),
             },
-        )
-        .unwrap();
+        )?;
 
         assert!(result
             .document
@@ -247,10 +246,11 @@ mod tests {
             result.interaction_mode,
             InteractionMode::DraggingSelection { .. }
         ));
+        Ok(())
     }
 
     #[test]
-    fn test_edge_drawing_started() {
+    fn test_edge_drawing_started() -> Result<(), CanvasError> {
         let state = CanvasState {
             document: create_test_doc(),
             interaction_mode: InteractionMode::Select,
@@ -262,8 +262,7 @@ mod tests {
                 from_node: NodeId::new("node1".to_string()),
                 current_pos: CanvasCoord(10.0, 10.0),
             },
-        )
-        .unwrap();
+        )?;
 
         match result.interaction_mode {
             InteractionMode::DrawingEdge {
@@ -273,12 +272,13 @@ mod tests {
                 assert_eq!(from_node.as_str(), "node1");
                 assert_eq!(current_pos, (10.0, 10.0));
             }
-            _ => panic!("Expected DrawingEdge mode"),
+            _ => assert!(false, "Expected DrawingEdge mode"),
         }
+        Ok(())
     }
 
     #[test]
-    fn test_pan_started() {
+    fn test_pan_started() -> Result<(), CanvasError> {
         let state = CanvasState {
             document: create_test_doc(),
             interaction_mode: InteractionMode::Select,
@@ -289,19 +289,19 @@ mod tests {
             CanvasEvent::PanStarted {
                 last_pos: ScreenCoord(100.0, 200.0),
             },
-        )
-        .unwrap();
+        )?;
 
         match result.interaction_mode {
             InteractionMode::Panning { last_pos } => {
                 assert_eq!(last_pos, (100.0, 200.0));
             }
-            _ => panic!("Expected Panning mode"),
+            _ => assert!(false, "Expected Panning mode"),
         }
+        Ok(())
     }
 
     #[test]
-    fn test_edge_drawing_finished() {
+    fn test_edge_drawing_finished() -> Result<(), CanvasError> {
         let state = CanvasState {
             document: create_test_doc(),
             interaction_mode: InteractionMode::DrawingEdge {
@@ -320,14 +320,15 @@ mod tests {
                 edge_style: EdgeStyle::Solid,
                 arrow_type: ArrowType::Default,
             },
-        )
-        .unwrap();
+        )?;
 
         assert_eq!(result.document.document.edges.len(), 1);
         assert!(matches!(result.interaction_mode, InteractionMode::Select));
-        let edge = result.document.document.edges.values().next().unwrap();
-        assert_eq!(edge.source.as_str(), "node1");
-        assert_eq!(edge.target.as_str(), "node2");
+        if let Some(edge) = result.document.document.edges.values().next() {
+            assert_eq!(edge.source.as_str(), "node1");
+            assert_eq!(edge.target.as_str(), "node2");
+        }
+        Ok(())
     }
 
     #[test]
@@ -362,6 +363,9 @@ mod tests {
             },
         );
 
-        assert_eq!(result.unwrap_err(), CanvasError::CircularConnectionRejected);
+        assert!(matches!(
+            result,
+            Err(CanvasError::CircularConnectionRejected)
+        ));
     }
 }

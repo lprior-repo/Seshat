@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 #[cfg(test)]
 mod tests {
     use crate::history::History;
@@ -68,8 +77,10 @@ mod tests {
             assert!(!did_resize);
             assert_eq!(history_signal.read().can_undo(), false);
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.width.0, 50.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.width.0, 50.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -108,8 +119,10 @@ mod tests {
             assert!(!did_resize);
             assert_eq!(history_signal.read().can_undo(), false);
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.width.0, 50.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.width.0, 50.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -150,11 +163,13 @@ mod tests {
 
             assert!(did_resize);
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.x.0, 10.0);
-            assert_eq!(node.y.0, 10.0);
-            assert_eq!(node.width.0, 70.0);
-            assert_eq!(node.height.0, 80.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.x.0, 10.0);
+                assert_eq!(node.y.0, 10.0);
+                assert_eq!(node.width.0, 70.0);
+                assert_eq!(node.height.0, 80.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -194,11 +209,13 @@ mod tests {
             );
 
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.x.0, 40.0);
-            assert_eq!(node.y.0, 30.0);
-            assert_eq!(node.width.0, 60.0);
-            assert_eq!(node.height.0, 70.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.x.0, 40.0);
+                assert_eq!(node.y.0, 30.0);
+                assert_eq!(node.width.0, 60.0);
+                assert_eq!(node.height.0, 70.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -238,9 +255,11 @@ mod tests {
             );
 
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.width.0, 24.0);
-            assert_eq!(node.height.0, 24.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.width.0, 24.0);
+                assert_eq!(node.height.0, 24.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -282,9 +301,11 @@ mod tests {
             );
 
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.width.0, 200.0);
-            assert_eq!(node.height.0, 100.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.width.0, 200.0);
+                assert_eq!(node.height.0, 100.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -326,9 +347,11 @@ mod tests {
             );
 
             let doc = doc_signal.read();
-            let node = doc.document.nodes.get(&node_id).unwrap();
-            assert_eq!(node.width.0, 70.0);
-            assert_eq!(node.height.0, 50.0);
+            assert!(doc.document.nodes.contains_key(&node_id));
+            if let Some(node) = doc.document.nodes.get(&node_id) {
+                assert_eq!(node.width.0, 70.0);
+                assert_eq!(node.height.0, 50.0);
+            }
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();

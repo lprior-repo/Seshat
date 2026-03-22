@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 //! Tests for geometry operations.
 //!
 //! This module contains unit tests for the operations functions.
@@ -248,14 +257,15 @@ mod proptests {
                 &bend_points
             );
 
-            assert!(result.is_ok());
-            let bounds = result.unwrap();
-            assert!(bounds.min_x.is_finite());
-            assert!(bounds.min_y.is_finite());
-            assert!(bounds.max_x.is_finite());
-            assert!(bounds.max_y.is_finite());
-            assert!(bounds.min_x <= bounds.max_x);
-            assert!(bounds.min_y <= bounds.max_y);
+            prop_assert!(result.is_ok());
+            if let Ok(bounds) = result {
+                prop_assert!(bounds.min_x.is_finite());
+                prop_assert!(bounds.min_y.is_finite());
+                prop_assert!(bounds.max_x.is_finite());
+                prop_assert!(bounds.max_y.is_finite());
+                prop_assert!(bounds.min_x <= bounds.max_x);
+                prop_assert!(bounds.min_y <= bounds.max_y);
+            }
         }
     }
 }

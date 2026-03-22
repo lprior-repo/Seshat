@@ -1,4 +1,12 @@
-#![allow(dead_code, unused_imports)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 //! Tests for `TerminalShape` serialization and bijective mapping.
 //! Contract: EDG-032 to EDG-035 - Arrowhead styles
 //!

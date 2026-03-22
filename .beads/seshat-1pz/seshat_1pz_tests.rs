@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::panic, clippy::module_inception, clippy::let_unit_value, clippy::redundant_pattern_matching, unused_variables, unused_imports)]
 // Test Implementation for seshat-1pz: PRAGMA synchronous=NORMAL
 // 
 // These tests verify that the async SQLite store correctly configures

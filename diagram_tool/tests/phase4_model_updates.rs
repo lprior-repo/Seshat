@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 #![allow(clippy::let_underscore_future)]
 //! Phase 4 Tests: Model updates for rusqlite → sqlx migration
 //! Strictly < 300 lines, EXTREMELY DRY, Code is a Liability.
@@ -122,7 +123,7 @@ async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
     }
     let all = fetch_all_events(&pool).await?;
     assert_eq!(all.len(), 105);
-    assert_eq!(all.last().unwrap().revision, 105);
+    assert_eq!(all.last().map(|e| e.revision), Some(105));
 
     Ok(())
 }
@@ -246,7 +247,8 @@ async fn test_batch_append_with_edges() -> Result<(), AsyncStoreError> {
     ];
 
     for env in envelopes {
-        let valid = envelope_to_valid_event(&env).unwrap();
+        let valid = envelope_to_valid_event(&env)
+            .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
         append_event_async(&pool, valid, None).await?;
     }
 
@@ -254,19 +256,20 @@ async fn test_batch_append_with_edges() -> Result<(), AsyncStoreError> {
     let parsed: Vec<_> = records
         .into_iter()
         .enumerate()
-        .map(|(i, r)| {
-            let env = diagram_models::envelope::parse_event_envelope(&r.payload).unwrap();
-            ProjectionEventRecord {
+        .filter_map(|(i, r)| {
+            let env = diagram_models::envelope::parse_event_envelope(&r.payload).ok()?;
+            Some(ProjectionEventRecord {
                 op_id: r.op_id,
                 revision: i as u64,
                 operation: env.operation,
                 author: env.author,
                 timestamp: r.timestamp,
-            }
+            })
         })
         .collect();
 
-    let proj = replay_events_from(DiagramProjection::empty(), &parsed).unwrap();
+    let proj = replay_events_from(DiagramProjection::empty(), &parsed)
+        .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;
     assert_eq!(proj.revision, 3);
     assert_eq!(proj.nodes.len(), 2);
     assert_eq!(proj.edges.len(), 1);

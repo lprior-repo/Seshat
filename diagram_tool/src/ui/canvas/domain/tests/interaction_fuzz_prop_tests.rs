@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use super::super::test_utils::interaction_dsl::CanvasTestDsl;
 use super::super::test_utils::parse_helpers::{all_events, pt, vec};
 use crate::ui::canvas::domain::{

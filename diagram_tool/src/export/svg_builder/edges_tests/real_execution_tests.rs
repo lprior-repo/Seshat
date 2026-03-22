@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use crate::export::svg::generate_svg_string;
 use diagram_models::document::{
     ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, EditorState, LockState,

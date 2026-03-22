@@ -204,6 +204,7 @@ impl Node {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::super::types::OrderedFloat;
     use super::{LockState, Node, NodeKind};

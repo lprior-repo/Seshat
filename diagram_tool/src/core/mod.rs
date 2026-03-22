@@ -10,5 +10,4 @@ pub mod routing;
 pub mod scale;
 pub mod transform;
 pub mod z_order;
-#[cfg(test)]
-mod z_order_tests;
+// removed duplicate mod

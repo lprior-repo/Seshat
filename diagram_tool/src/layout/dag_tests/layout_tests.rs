@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::panic, clippy::module_inception, clippy::let_unit_value, clippy::redundant_pattern_matching, unused_variables, unused_imports)]
 use crate::layout::dag::apply::apply_position;
 use crate::layout::dag::crossing::{barycenter_sweep, barycentre};
 use crate::layout::dag::positioning::{assign_coordinates, NODE_HEIGHT, NODE_WIDTH};

@@ -1,4 +1,12 @@
-#![allow(dead_code, unused_imports)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 //! Tests for SEL-006 (Hover), SEL-007 (Resize Handles), SEL-008 (Touch Hit Area), and SEL-009 (Drag Threshold)
 //!
 //! These tests verify the selection interaction behaviors:

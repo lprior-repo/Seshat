@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(warnings))]
 //! Diagram Tool Library
 //!
 //! This module exposes the library components for use in integration tests.

@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::panic, clippy::module_inception, clippy::let_unit_value, clippy::redundant_pattern_matching, unused_variables, unused_imports)]
 //! Import/Export/Persistence Tests (IO-001 to IO-015)
 //!
 //! This module contains comprehensive tests for JSON import/export

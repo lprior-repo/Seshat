@@ -1,3 +1,4 @@
+#![cfg_attr(test, allow(warnings))]
 #![forbid(unsafe_code)]
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 

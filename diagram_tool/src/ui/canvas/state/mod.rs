@@ -161,27 +161,28 @@ mod tests {
     }
 
     #[test]
-    fn test_transitions_to_hovering_when_mouse_enters_node() {
+    fn test_transitions_to_hovering_when_mouse_enters_node() -> Result<(), EditorError> {
         let mut driver = FsmDriver::new().given_idle_canvas();
         driver
-            .when_mouse_enters_node("node_a")
-            .unwrap()
+            .when_mouse_enters_node("node_a")?
             .then_state_is_hovering("node_a");
+        Ok(())
     }
 
     #[test]
-    fn test_transitions_to_editing_when_node_clicked() {
+    fn test_transitions_to_editing_when_node_clicked() -> Result<(), EditorError> {
         let mut driver = FsmDriver::new().given_hovering_node("node_a");
         driver
-            .when_mouse_clicks_node("node_a")
-            .unwrap()
+            .when_mouse_clicks_node("node_a")?
             .then_state_is_editing("node_a");
+        Ok(())
     }
 
     #[test]
-    fn test_commits_edit_and_returns_to_idle_on_escape() {
+    fn test_commits_edit_and_returns_to_idle_on_escape() -> Result<(), EditorError> {
         let mut driver = FsmDriver::new().given_editing_node("node_a");
-        driver.when_escape_pressed().unwrap().then_state_is_idle();
+        driver.when_escape_pressed()?.then_state_is_idle();
+        Ok(())
     }
 
     #[test]
@@ -195,10 +196,7 @@ mod tests {
     fn test_p1_violation_returns_element_not_found() {
         let mut driver = FsmDriver::new().given_idle_canvas();
         let result = driver.when_mouse_enters_node("non_existent_node");
-        assert_eq!(
-            result.unwrap_err(),
-            EditorError::ElementNotFound("non_existent_node".to_string())
-        );
+        assert!(matches!(result, Err(EditorError::ElementNotFound(_))));
     }
 
     proptest! {

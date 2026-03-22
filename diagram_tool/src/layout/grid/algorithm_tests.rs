@@ -1,3 +1,12 @@
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 #[cfg(test)]
 mod tests {
     use crate::layout::grid::algorithm::calculate_grid_layout;
@@ -40,7 +49,7 @@ mod tests {
     }
 
     #[test]
-    fn given_only_locked_nodes_when_calculate_grid_then_returns_unchanged() {
+    fn given_only_locked_nodes_when_calculate_grid_then_returns_unchanged() -> Result<(), String> {
         let mut doc = DiagramDocument::default();
         doc.document.nodes.insert(
             NodeId::new("n1".to_string()),
@@ -52,15 +61,16 @@ mod tests {
                 .document
                 .nodes
                 .get(&NodeId::new("n1".to_string()))
-                .unwrap()
+                .ok_or("Node not found")?
                 .x
                 .0,
             0.0
         );
+        Ok(())
     }
 
     #[test]
-    fn given_unlocked_nodes_when_calculate_grid_then_positions_in_grid() {
+    fn given_unlocked_nodes_when_calculate_grid_then_positions_in_grid() -> Result<(), String> {
         let mut doc = DiagramDocument::default();
         doc.document.nodes.insert(
             NodeId::new("n1".to_string()),
@@ -82,17 +92,17 @@ mod tests {
             .document
             .nodes
             .get(&NodeId::new("n1".to_string()))
-            .unwrap();
+            .ok_or("n1 not found")?;
         let n2 = result
             .document
             .nodes
             .get(&NodeId::new("n2".to_string()))
-            .unwrap();
+            .ok_or("n2 not found")?;
         let n3 = result
             .document
             .nodes
             .get(&NodeId::new("n3".to_string()))
-            .unwrap();
+            .ok_or("n3 not found")?;
 
         // Check that they are snapped to 100.0 increments
         assert_eq!(n1.x.0 % 100.0, 0.0);
@@ -101,10 +111,13 @@ mod tests {
         assert_eq!(n2.y.0 % 100.0, 0.0);
         assert_eq!(n3.x.0 % 100.0, 0.0);
         assert_eq!(n3.y.0 % 100.0, 0.0);
+
+        Ok(())
     }
 
     #[test]
-    fn given_locked_nodes_occupying_cells_when_calculate_grid_then_unlocked_nodes_avoid_them() {
+    fn given_locked_nodes_occupying_cells_when_calculate_grid_then_unlocked_nodes_avoid_them(
+    ) -> Result<(), String> {
         let mut doc = DiagramDocument::default();
         // Occupies 0,0
         doc.document.nodes.insert(
@@ -123,13 +136,16 @@ mod tests {
             .document
             .nodes
             .get(&NodeId::new("unlocked".to_string()))
-            .unwrap();
+            .ok_or("unlocked not found")?;
         // Should not be at 0,0
         assert!(unlocked.x.0 != 0.0 || unlocked.y.0 != 0.0);
+
+        Ok(())
     }
 
     #[test]
-    fn given_nodes_with_parents_when_calculate_grid_then_maintains_relative_offsets() {
+    fn given_nodes_with_parents_when_calculate_grid_then_maintains_relative_offsets(
+    ) -> Result<(), String> {
         let mut doc = DiagramDocument::default();
         let parent_id = NodeId::new("parent".to_string());
         let child_id = NodeId::new("child".to_string());
@@ -144,8 +160,16 @@ mod tests {
 
         let result = calculate_grid_layout(&doc, 100.0);
 
-        let parent = result.document.nodes.get(&parent_id).unwrap();
-        let child = result.document.nodes.get(&child_id).unwrap();
+        let parent = result
+            .document
+            .nodes
+            .get(&parent_id)
+            .ok_or("parent not found")?;
+        let child = result
+            .document
+            .nodes
+            .get(&child_id)
+            .ok_or("child not found")?;
 
         // Parent moved to a grid intersection (e.g. 0,0)
         let parent_dx = parent.x.0 - 10.0;
@@ -154,6 +178,8 @@ mod tests {
         // Child should have moved by the same delta
         assert_eq!(child.x.0, 20.0 + parent_dx);
         assert_eq!(child.y.0, 20.0 + parent_dy);
+
+        Ok(())
     }
 
     #[test]

@@ -1,4 +1,12 @@
-#![allow(dead_code, unused_imports)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use crate::document::{
     DiagramDocument, DocumentData, EditorState, LockState, Node, NodeId, NodeKind, OrderedFloat,
 };

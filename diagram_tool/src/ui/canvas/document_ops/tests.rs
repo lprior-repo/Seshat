@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::panic, clippy::module_inception, clippy::let_unit_value, clippy::redundant_pattern_matching, unused_variables, unused_imports)]
 use im::HashMap;
 
 use super::{apply_rubber_band_release, fit_icon_side, subgraph_release_bounds};

@@ -1,4 +1,3 @@
-use crate::ui::theme::GRID_DOT;
 use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
 
@@ -13,7 +12,7 @@ pub fn GridLayer(
     let pattern_step = (s.grid_size.0.max(8.0) * s.zoom.0).max(4.0);
     let pattern_x = (-s.camera_x.0 * s.zoom.0).rem_euclid(pattern_step);
     let pattern_y = (-s.camera_y.0 * s.zoom.0).rem_euclid(pattern_step);
-    let dot_r = if s.zoom.0 >= 0.75 { 1.0 } else { 0.8 };
+    let dot_r = 1.5 * s.zoom.0; // Scale radius with zoom
 
     if s.show_grid && s.zoom.0 >= 0.3 {
         rsx! {
@@ -29,9 +28,16 @@ pub fn GridLayer(
                         cx: "{pattern_step / 2.0}",
                         cy: "{pattern_step / 2.0}",
                         r: "{dot_r}",
-                        fill: "{GRID_DOT}",
+                        fill: "#444444",
                     }
                 }
+            }
+            rect {
+                x: "0",
+                y: "0",
+                width: "{vw.max(1.0)}",
+                height: "{vh.max(1.0)}",
+                fill: "#111111",
             }
             rect {
                 x: "0",
@@ -42,6 +48,14 @@ pub fn GridLayer(
             }
         }
     } else {
-        rsx! {}
+        rsx! {
+            rect {
+                x: "0",
+                y: "0",
+                width: "{vw.max(1.0)}",
+                height: "{vh.max(1.0)}",
+                fill: "#111111",
+            }
+        }
     }
 }

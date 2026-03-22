@@ -1,3 +1,4 @@
+#![allow(clippy::unwrap_used, clippy::panic, clippy::module_inception, clippy::let_unit_value, clippy::redundant_pattern_matching, unused_variables, unused_imports)]
 //! DiagramDocument Serialization Tests (IO-001 to IO-003)
 //!
 //! This module contains tests for JSON string serialization of DiagramDocument.
