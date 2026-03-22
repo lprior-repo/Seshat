@@ -6,6 +6,9 @@ pub mod helpers;
 pub mod send;
 pub mod validators;
 
+#[cfg(test)]
+pub mod create_tests;
+
 pub use errors::{DispatchError, DispatchResult};
 pub use validators::{edge_preserves_dag, validate_coordinates, validate_dimensions};
 

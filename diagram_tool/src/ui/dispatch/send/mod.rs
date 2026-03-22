@@ -6,6 +6,11 @@ pub mod node;
 pub mod style;
 pub mod zorder;
 
+#[cfg(test)]
+pub mod edge_tests;
+#[cfg(test)]
+pub mod node_tests;
+
 pub use edge::{
     dispatch_edge_connect, dispatch_edge_disconnect, handle_edge_drawing_complete,
     validate_edge_connect_preconditions,

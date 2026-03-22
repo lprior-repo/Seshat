@@ -197,3 +197,64 @@ pub fn use_sidebar_mobile_bridge(
         });
     });
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+
+    #[test]
+    fn test_sidebar_state_default() {
+        let state = SidebarUiState::default();
+        assert!(!state.is_mobile);
+        assert!(state.open);
+        assert!(!state.open_mobile);
+    }
+
+    #[test]
+    fn test_open_sidebar() {
+        #[component]
+        fn TestComponent() -> Element {
+            let sidebar_ui = Signal::new(SidebarUiState {
+                is_mobile: true,
+                open: true,
+                open_mobile: false,
+            });
+
+            open_sidebar(sidebar_ui);
+            assert!(sidebar_ui.read().open_mobile);
+
+            close_sidebar(sidebar_ui);
+            assert!(!sidebar_ui.read().open_mobile);
+
+            rsx! { div {} }
+        }
+        
+        let mut vdom = VirtualDom::new(TestComponent);
+        vdom.rebuild_in_place();
+    }
+
+    #[test]
+    fn test_toggle_sidebar() {
+        #[component]
+        fn TestComponent() -> Element {
+            let sidebar_ui = Signal::new(SidebarUiState {
+                is_mobile: true,
+                open: true,
+                open_mobile: false,
+            });
+            let panels = Signal::new(PanelVisibility { sidebar: true, ..Default::default() });
+
+            toggle_sidebar(sidebar_ui, panels);
+            assert!(sidebar_ui.read().open_mobile);
+
+            toggle_sidebar(sidebar_ui, panels);
+            assert!(!sidebar_ui.read().open_mobile);
+
+            rsx! { div {} }
+        }
+        
+        let mut vdom = VirtualDom::new(TestComponent);
+        vdom.rebuild_in_place();
+    }
+}

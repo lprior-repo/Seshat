@@ -7,6 +7,9 @@ pub mod auto_save;
 mod persistence;
 mod persistence_compat;
 
+#[cfg(test)]
+mod tests;
+
 use crate::app::AppState;
 use crate::mutation::error::MutationError;
 use crate::ui::commands::{

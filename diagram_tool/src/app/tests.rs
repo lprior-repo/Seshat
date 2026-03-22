@@ -82,4 +82,15 @@ mod tests {
             "Document with valid node should not have validation issues"
         );
     }
+
+    #[test]
+    fn test_app_component_wiring() {
+        use crate::app::App;
+        use dioxus::prelude::*;
+
+        // Ensure App component renders without panics, confirming top-level context wiring
+        let mut vdom = VirtualDom::new(App);
+        // We only do an initial build to ensure providers don't panic
+        vdom.rebuild_in_place();
+    }
 }

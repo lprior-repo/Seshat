@@ -75,3 +75,34 @@ pub fn IconTile(
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+
+    #[test]
+    fn test_icon_tile_rendering() {
+        let mut vdom = VirtualDom::new(|| {
+            let icon = use_signal(|| IconMeta {
+                icon_key: std::sync::Arc::from("aws/analytics/athena"),
+                provider: std::sync::Arc::from("aws"),
+                category_path: vec![std::sync::Arc::from("Analytics")],
+                file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
+                display_name: std::sync::Arc::from("Athena"),
+                search_terms: std::sync::Arc::from("athena aws analytics"),
+                base64_data: std::sync::Arc::from("data:image/svg+xml;base64,123"),
+            });
+            let dragging_icon = use_signal(|| None);
+            rsx! {
+                IconTile { icon, dragging_icon }
+            }
+        });
+        vdom.rebuild_in_place();
+        let html = dioxus_ssr::render(&vdom);
+        assert!(html.contains("Athena"));
+        assert!(html.contains("data:image/svg+xml;base64,123"));
+        assert!(html.contains("data-testid=\"icon-item\""));
+    }
+}

@@ -49,3 +49,25 @@ impl AppState {
         })
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+
+    #[test]
+    fn test_app_state_provide() {
+        #[component]
+        fn TestComponent() -> Element {
+            let state = AppState::provide();
+            assert_eq!(state.tool_mode.read().clone(), ToolMode::Select);
+            assert_eq!(state.edge_style.read().clone(), EdgeStyle::Solid);
+            assert_eq!(state.arrow_type.read().clone(), ArrowType::Default);
+            assert_eq!(state.sidebar.read().open, true);
+            rsx! { div {} }
+        }
+
+        let mut vdom = VirtualDom::new(TestComponent);
+        vdom.rebuild_in_place(); // Should not panic, meaning signals are provided correctly
+    }
+}

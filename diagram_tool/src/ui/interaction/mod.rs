@@ -14,6 +14,9 @@ pub use types::*;
 mod tests;
 
 #[cfg(test)]
+mod integration_tests;
+
+#[cfg(test)]
 mod proptests;
 
 #[cfg(test)]

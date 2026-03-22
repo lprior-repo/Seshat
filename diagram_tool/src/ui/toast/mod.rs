@@ -5,6 +5,9 @@
 pub mod data;
 pub mod render;
 pub mod state;
+
+#[cfg(test)]
+mod tests;
 use crate::ui::theme::{ERROR, SUCCESS, WARNING};
 pub use data::ToastQueue;
 use dioxus::prelude::*;

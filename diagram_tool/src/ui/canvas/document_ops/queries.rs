@@ -246,3 +246,7 @@ mod tests {
         assert!(result <= 11.68);
     }
 }
+
+#[cfg(test)]
+#[path = "queries_tests.rs"]
+mod queries_tests;

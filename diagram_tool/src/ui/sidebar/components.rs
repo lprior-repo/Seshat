@@ -173,3 +173,58 @@ pub fn SidebarFooter(total_components: usize) -> Element {
         }
     }
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use dioxus::prelude::*;
+    use crate::icons::IconMeta;
+
+    #[test]
+    fn test_search_box_rendering() {
+        let mut vdom = VirtualDom::new(|| {
+            let search = use_signal(|| String::from("database"));
+            rsx! {
+                SearchBox { search, search_is_truncated: true }
+            }
+        });
+        vdom.rebuild_in_place();
+        let html = dioxus_ssr::render(&vdom);
+        assert!(html.contains("Showing first"));
+        assert!(html.contains("database"));
+    }
+
+    #[test]
+    fn test_category_button_rendering() {
+        let mut vdom = VirtualDom::new(|| {
+            rsx! {
+                CategoryButton {
+                    name: String::from("Analytics"),
+                    count: 42,
+                    icon_kind: crate::ui::icons::IconKind::Database,
+                    expanded: true,
+                    onclick: |_| {}
+                }
+            }
+        });
+        vdom.rebuild_in_place();
+        let html = dioxus_ssr::render(&vdom);
+        assert!(html.contains("Analytics"));
+        assert!(html.contains("42"));
+    }
+
+    #[test]
+    fn test_sidebar_footer_rendering() {
+        let mut vdom = VirtualDom::new(|| {
+            rsx! {
+                SidebarFooter {
+                    total_components: 1337
+                }
+            }
+        });
+        vdom.rebuild_in_place();
+        let html = dioxus_ssr::render(&vdom);
+        assert!(html.contains("1337 components available"));
+    }
+}

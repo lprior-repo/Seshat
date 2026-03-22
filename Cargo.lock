@@ -1307,6 +1307,7 @@ dependencies = [
  "clap",
  "diagram_models",
  "dioxus",
+ "dioxus-ssr",
  "dirs 5.0.1",
  "fs2",
  "futures-channel",

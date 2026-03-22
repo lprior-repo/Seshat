@@ -15,3 +15,6 @@ pub use markers::*;
 pub use rubber_band::*;
 pub use subgraph_preview::*;
 pub use touch::*;
+
+#[cfg(test)]
+mod dom_tests;
