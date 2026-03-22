@@ -5,6 +5,9 @@
 
 #[path = "svg_builder/edges.rs"]
 pub mod edges;
+#[cfg(test)]
+#[path = "svg_builder/edges_tests/mod.rs"]
+pub mod edges_tests;
 #[path = "svg_builder/fonts.rs"]
 pub mod fonts;
 #[path = "svg_builder/grid.rs"]
