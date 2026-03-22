@@ -43,6 +43,7 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
     rsx! {
         for (dot_x, dot_y) in dot_specs {
             div {
+                key: "{dot_x}-{dot_y}",
                 style: "position: absolute; width: 20px; height: 20px; border-radius: 999px; background: transparent; cursor: crosshair; left: {dot_x - 10.0}px; top: {dot_y - 10.0}px;",
                 "data-testid": "connection-dot",
                 onmousedown: {

@@ -19,6 +19,7 @@ use crate::ui::commands::{
 use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
 use crate::ui::theme::ACCENT;
+use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -48,6 +49,7 @@ fn IconButton(
     icon: IconKind,
     color: Option<&'static str>,
     active_bg: Option<&'static str>,
+    title: Option<&'static str>,
 ) -> Element {
     let is_active = active.unwrap_or(false);
     let is_disabled = disabled.unwrap_or(false);
@@ -72,11 +74,13 @@ fn IconButton(
     } else {
         "cursor-pointer"
     };
+    let tooltip = title.unwrap_or("");
 
     rsx! {
         button {
             "data-testid": test_id,
             class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 text-foreground transition-colors",
+            title: "{tooltip}",
             onclick: move |evt| {
                 if !is_disabled {
                     onclick.call(evt);
@@ -94,6 +98,7 @@ fn TextButton(
     onclick: EventHandler<MouseEvent>,
     disabled: Option<bool>,
     text: &'static str,
+    title: Option<&'static str>,
 ) -> Element {
     let is_active = active.unwrap_or(false);
     let is_disabled = disabled.unwrap_or(false);
@@ -122,11 +127,13 @@ fn TextButton(
     } else {
         "cursor-pointer"
     };
+    let tooltip = title.unwrap_or("");
 
     rsx! {
         button {
             "data-testid": test_id,
             class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 {fill} text-[18px] font-medium font-mono transition-colors",
+            title: "{tooltip}",
             onclick: move |evt| {
                 if !is_disabled {
                     onclick.call(evt);
@@ -154,6 +161,7 @@ fn LabelButton(test_id: &'static str, icon: Option<IconKind>, text: &'static str
 #[component]
 pub fn Toolbar() -> Element {
     let app_state = use_context::<AppState>();
+    let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
     let mut doc_signal = app_state.document;
     let history_signal = app_state.history;
     let mut tool_signal = app_state.tool_mode;
@@ -186,31 +194,36 @@ pub fn Toolbar() -> Element {
                     test_id: "tool-select",
                     active: *tool_signal.read() == ToolMode::Select,
                     onclick: move |_| tool_signal.set(ToolMode::Select),
-                    icon: IconKind::Select
+                    icon: IconKind::Select,
+                    title: "Select (V)"
                 }
                 IconButton {
                     test_id: "tool-pan",
                     active: *tool_signal.read() == ToolMode::Pan,
                     onclick: move |_| tool_signal.set(ToolMode::Pan),
-                    icon: IconKind::Pan
+                    icon: IconKind::Pan,
+                    title: "Pan (H)"
                 }
                 IconButton {
                     test_id: "tool-edge",
                     active: *tool_signal.read() == ToolMode::Edge,
                     onclick: move |_| tool_signal.set(ToolMode::Edge),
-                    icon: IconKind::Edge
+                    icon: IconKind::Edge,
+                    title: "Edge (L)"
                 }
                 IconButton {
                     test_id: "tool-subgraph",
                     active: *tool_signal.read() == ToolMode::Subgraph,
                     onclick: move |_| tool_signal.set(ToolMode::Subgraph),
-                    icon: IconKind::Subgraph
+                    icon: IconKind::Subgraph,
+                    title: "Subgraph (R)"
                 }
                 TextButton {
                     test_id: "tool-text",
                     active: *tool_signal.read() == ToolMode::Text,
                     onclick: move |_| tool_signal.set(ToolMode::Text),
-                    text: "T"
+                    text: "T",
+                    title: "Text (T)"
                 }
                 IconButton {
                     test_id: "tool-grid",
@@ -220,7 +233,8 @@ pub fn Toolbar() -> Element {
                         let mut d = doc_signal.write();
                         d.editor_state.show_grid = !d.editor_state.show_grid;
                     },
-                    icon: IconKind::Grid
+                    icon: IconKind::Grid,
+                    title: "Toggle Grid"
                 }
 
                 Divider {}
@@ -231,14 +245,16 @@ pub fn Toolbar() -> Element {
                     disabled: undo_disabled,
                     onclick: move |_| { apply_undo(doc_signal, history_signal); },
                     icon: IconKind::Undo,
-                    color: None
+                    color: None,
+                    title: "Undo"
                 }
                 IconButton {
                     test_id: "toolbar-redo",
                     disabled: redo_disabled,
                     onclick: move |_| { apply_redo(doc_signal, history_signal); },
                     icon: IconKind::Redo,
-                    color: None
+                    color: None,
+                    title: "Redo"
                 }
 
                 Divider {}
@@ -248,7 +264,8 @@ pub fn Toolbar() -> Element {
                     test_id: "zoom-in",
                     onclick: move |_| { let _ = apply_zoom_in(doc_signal, history_signal, *viewport_size_signal.read()); },
                     icon: IconKind::ZoomIn,
-                    color: None
+                    color: None,
+                    title: "Zoom In"
                 }
                 div {
                     "data-testid": "zoom-reset",
@@ -262,7 +279,8 @@ pub fn Toolbar() -> Element {
                     test_id: "zoom-out",
                     onclick: move |_| { let _ = apply_zoom_out(doc_signal, history_signal, *viewport_size_signal.read()); },
                     icon: IconKind::ZoomOut,
-                    color: None
+                    color: None,
+                    title: "Zoom Out"
                 }
 
                 Divider {}
@@ -271,9 +289,25 @@ pub fn Toolbar() -> Element {
                 IconButton {
                     test_id: "toolbar-delete",
                     disabled: stats.selected_count == 0,
-                    onclick: move |_| { let _ = apply_delete_selected(doc_signal, history_signal); },
+                    onclick: move |_| {
+                        let selected_nodes: Vec<String> = {
+                            let doc = doc_signal.read();
+                            canvas_domain::selection_geometry::selected_node_ids(&doc)
+                                .into_iter()
+                                .map(|id| id.to_string())
+                                .collect()
+                        };
+                        let dispatch_result = crate::ui::dispatch::dispatch_node_delete_batch(&db_tx, &selected_nodes);
+                        match dispatch_result {
+                            Ok(_) => crate::ui::commands::apply_clear_selection(doc_signal),
+                            Err(_) => {
+                                let _ = apply_delete_selected(doc_signal, history_signal);
+                            }
+                        }
+                    },
                     icon: IconKind::Trash,
-                    color: Some("#ef4444")
+                    color: Some("#ef4444"),
+                    title: "Delete"
                 }
 
                 Divider {}
@@ -310,7 +344,8 @@ pub fn Toolbar() -> Element {
                                 doc_signal, tool_signal, edge_style_signal, arrow_type_signal, toasts
                             );
                         },
-                        icon: IconKind::Upload // Map export to Upload icon (arrow pointing up from bracket)
+                        icon: IconKind::Upload, // Map export to Upload icon (arrow pointing up from bracket)
+                        title: "Export"
                     }
                     IconButton {
                         test_id: "toolbar-import",
@@ -319,7 +354,8 @@ pub fn Toolbar() -> Element {
                                 doc_signal, history_signal, tool_signal, edge_style_signal, arrow_type_signal, toasts
                             );
                         },
-                        icon: IconKind::Download // Map import to Download icon (arrow pointing down to bracket)
+                        icon: IconKind::Download, // Map import to Download icon (arrow pointing down to bracket)
+                        title: "Import"
                     }
                 }
 

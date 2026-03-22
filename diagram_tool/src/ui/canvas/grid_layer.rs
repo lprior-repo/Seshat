@@ -26,8 +26,8 @@ pub fn GridLayer(
                     width: "{pattern_step}",
                     height: "{pattern_step}",
                     circle {
-                        cx: "0",
-                        cy: "0",
+                        cx: "{pattern_step / 2.0}",
+                        cy: "{pattern_step / 2.0}",
                         r: "{dot_r}",
                         fill: "{GRID_DOT}",
                     }

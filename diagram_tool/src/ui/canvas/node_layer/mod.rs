@@ -95,6 +95,7 @@ pub fn NodeLayer(
                     NodeInteractionState::Normal
                 };
 
+                let key_id = id.clone();
                 let props = NodeElementProps {
                     id,
                     node,
@@ -120,7 +121,7 @@ pub fn NodeLayer(
                 };
 
                 rsx! {
-                    NodeElement { ..props }
+                    NodeElement { key: "{key_id:?}", ..props }
                 }
             })
         }

@@ -16,6 +16,11 @@ pub fn handle_mouse_move(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
     let local_x = coords.x - origin.0;
     let local_y = coords.y - origin.1;
 
+    // Avoid dirtying the interaction_mode signal if we don't need to mutate it
+    if let InteractionMode::Select = *interaction_mode.read() {
+        return;
+    }
+
     interaction_mode.with_mut(|mode| match mode {
         InteractionMode::DrawingEdge { current_pos, .. } => {
             let doc = doc_signal.read();
