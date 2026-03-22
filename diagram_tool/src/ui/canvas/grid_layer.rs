@@ -10,8 +10,8 @@ pub fn GridLayer(
     let s = &doc.editor_state;
     let (vw, vh) = *viewport_size.read();
     let pattern_step = (s.grid_size.0.max(8.0) * s.zoom.0).max(4.0);
-    let pattern_x = (-s.camera_x.0 * s.zoom.0).rem_euclid(pattern_step);
-    let pattern_y = (-s.camera_y.0 * s.zoom.0).rem_euclid(pattern_step);
+    let pattern_x = (-s.camera_x.0 * s.zoom.0 - pattern_step / 2.0).rem_euclid(pattern_step);
+    let pattern_y = (-s.camera_y.0 * s.zoom.0 - pattern_step / 2.0).rem_euclid(pattern_step);
     let dot_r = 1.5 * s.zoom.0; // Scale radius with zoom
 
     if s.show_grid && s.zoom.0 >= 0.3 {
