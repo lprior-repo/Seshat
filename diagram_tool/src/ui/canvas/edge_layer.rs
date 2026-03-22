@@ -56,47 +56,31 @@ pub fn EdgeLayer(
                 let font_size = edge.font_size.map_or(10.0, |f| f.0) * zoom;
                 let is_editing_edge = matches!(*editor_state.read(), crate::ui::canvas::state::EditorState::EditingEdge(ref edit_id) if edit_id == id);
                 rsx! {
-                    path {
+                    g {
                         key: "{id:?}",
-                        "data-node-kind": "edge",
-                        "data-testid": "edge-{id}",
-                        d: "{d}",
-                        fill: "none",
-                        stroke: "{stroke_color}",
-                        stroke_width: "{stroke_width}",
-                        stroke_dasharray: "{dash}",
-                        marker_end: "{markers.marker_end}",
-                        marker_start: markers.marker_start.as_deref().unwrap_or(""),
-                    }
-                    if is_editing_edge {
-                        foreignObject {
-                            x: "{mid_x - 50.0}",
-                            y: "{mid_y - 12.0}",
-                            width: "100",
-                            height: "24",
-                            input {
-                                value: "{edit_value}",
-                                class: "pointer-events-auto px-[6px] py-[2px] rounded border border-solid border-[var(--accent)] bg-[var(--bg-base)] text-[var(--text-main)] w-[100px] h-[22px] text-[11px]",
-                                onmousedown: move |evt| evt.stop_propagation(),
-                                oninput: move |evt| edit_value.set(evt.value()),
-                                onblur: move |_| {
-                                    let (node_target, edge_target) = match *editor_state.read() {
-                                        crate::ui::canvas::state::EditorState::EditingNode(ref id) => (Some(id.clone()), None),
-                                        crate::ui::canvas::state::EditorState::EditingEdge(ref id) => (None, Some(id.clone())),
-                                        _ => (None, None),
-                                    };
-                                    commit_inline_edit(
-                                        doc_signal,
-                                        history_signal,
-                                        node_target,
-                                        edge_target,
-                                        edit_value,
-                                        db_tx,
-                                    )
-                                    .ok();
-                                },
-                                onkeydown: move |evt| {
-                                    if evt.key() == Key::Enter {
+                        path {
+                            "data-node-kind": "edge",
+                            "data-testid": "edge-{id}",
+                            d: "{d}",
+                            fill: "none",
+                            stroke: "{stroke_color}",
+                            stroke_width: "{stroke_width}",
+                            stroke_dasharray: "{dash}",
+                            marker_end: "{markers.marker_end}",
+                            marker_start: markers.marker_start.as_deref().unwrap_or(""),
+                        }
+                        if is_editing_edge {
+                            foreignObject {
+                                x: "{mid_x - 50.0}",
+                                y: "{mid_y - 12.0}",
+                                width: "100",
+                                height: "24",
+                                input {
+                                    value: "{edit_value}",
+                                    class: "pointer-events-auto px-[6px] py-[2px] rounded border border-solid border-[var(--accent)] bg-[var(--bg-base)] text-[var(--text-main)] w-[100px] h-[22px] text-[11px]",
+                                    onmousedown: move |evt| evt.stop_propagation(),
+                                    oninput: move |evt| edit_value.set(evt.value()),
+                                    onblur: move |_| {
                                         let (node_target, edge_target) = match *editor_state.read() {
                                             crate::ui::canvas::state::EditorState::EditingNode(ref id) => (Some(id.clone()), None),
                                             crate::ui::canvas::state::EditorState::EditingEdge(ref id) => (None, Some(id.clone())),
@@ -111,28 +95,46 @@ pub fn EdgeLayer(
                                             db_tx,
                                         )
                                         .ok();
-                                    } else if evt.key() == Key::Escape {
-                                        editor_state.set(crate::ui::canvas::state::EditorState::Idle);
+                                    },
+                                    onkeydown: move |evt| {
+                                        if evt.key() == Key::Enter {
+                                            let (node_target, edge_target) = match *editor_state.read() {
+                                                crate::ui::canvas::state::EditorState::EditingNode(ref id) => (Some(id.clone()), None),
+                                                crate::ui::canvas::state::EditorState::EditingEdge(ref id) => (None, Some(id.clone())),
+                                                _ => (None, None),
+                                            };
+                                            commit_inline_edit(
+                                                doc_signal,
+                                                history_signal,
+                                                node_target,
+                                                edge_target,
+                                                edit_value,
+                                                db_tx,
+                                            )
+                                            .ok();
+                                        } else if evt.key() == Key::Escape {
+                                            editor_state.set(crate::ui::canvas::state::EditorState::Idle);
+                                        }
                                     }
                                 }
                             }
-                        }
-                    } else if !edge.label.is_empty() && zoom >= 0.3 {
-                        text {
-                            x: "{mid_x}",
-                            y: "{mid_y - 6.0}",
-                            text_anchor: "middle",
-                            class: "fill-[var(--text-muted)]",
-                            style: "font-size:{font_size}px;",
-                            "{edge.label}"
-                        }
-                    } else if is_selected && zoom >= 0.3 {
-                        text {
-                            x: "{mid_x}",
-                            y: "{mid_y - 6.0}",
-                            text_anchor: "middle",
-                            class: "fill-[var(--text-muted)] opacity-60 text-[9px]",
-                            "label"
+                        } else if !edge.label.is_empty() && zoom >= 0.3 {
+                            text {
+                                x: "{mid_x}",
+                                y: "{mid_y - 6.0}",
+                                text_anchor: "middle",
+                                class: "fill-[var(--text-muted)]",
+                                style: "font-size:{font_size}px;",
+                                "{edge.label}"
+                            }
+                        } else if is_selected && zoom >= 0.3 {
+                            text {
+                                x: "{mid_x}",
+                                y: "{mid_y - 6.0}",
+                                text_anchor: "middle",
+                                class: "fill-[var(--text-muted)] opacity-60 text-[9px]",
+                                "label"
+                            }
                         }
                     }
                 }

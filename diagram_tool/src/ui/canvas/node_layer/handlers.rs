@@ -22,15 +22,22 @@ pub fn handle_mousedown(
     canvas_origin: (f64, f64),
     mut interaction_mode: Signal<InteractionMode>,
     mut doc_signal: Signal<DiagramDocument>,
-    mut space_pan_active: Signal<bool>,
+    _space_pan_active: Signal<bool>,
     space_pressed: bool,
 ) {
     if multi_touch_active {
         return;
     }
-    evt.stop_propagation();
+
     let is_middle = evt.data.trigger_button() == Some(MouseButton::Auxiliary);
     let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
+
+    if space_pressed || is_middle || is_right || tool == ToolMode::Pan {
+        // Let panning events bubble up to the root container
+        return;
+    }
+
+    evt.stop_propagation();
     let is_primary = evt.data.trigger_button() == Some(MouseButton::Primary);
     let coords = evt.data.coordinates().client();
     let origin = sync_canvas_origin().unwrap_or(canvas_origin);
@@ -42,12 +49,7 @@ pub fn handle_mousedown(
         doc.editor_state.zoom.0,
     );
 
-    let event = if space_pressed || is_middle || is_right || tool == ToolMode::Pan {
-        space_pan_active.set(space_pressed && !is_middle && !is_right && tool != ToolMode::Pan);
-        Some(CanvasEvent::PanStarted {
-            last_pos: ScreenCoord(local_x, local_y),
-        })
-    } else if is_primary {
+    let event = if is_primary {
         if tool == ToolMode::Edge {
             Some(CanvasEvent::EdgeDrawingStarted {
                 from_node: id,
@@ -92,6 +94,13 @@ pub fn handle_mouseup(
     canvas_origin: (f64, f64),
     toast: crate::ui::toast::ToastApi,
 ) {
+    let mode = interaction_mode.read().clone();
+
+    // Let panning release events bubble up to the root container
+    if matches!(mode, InteractionMode::Panning { .. }) {
+        return;
+    }
+
     evt.stop_propagation();
     flush_pending_pointer_update(
         doc_signal,

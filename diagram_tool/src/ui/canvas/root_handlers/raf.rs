@@ -5,6 +5,7 @@ use crate::ui::canvas::document_ops::{
 use canvas_domain::interaction_reducer::InteractionMode;
 use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
+use std::time::Duration;
 
 pub fn use_raf_handler(
     doc_signal: Signal<DiagramDocument>,
@@ -14,44 +15,26 @@ pub fn use_raf_handler(
     pending_wheel_sample: Signal<Option<WheelSample>>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) {
-    use_effect(move || {
-        let mut eval = document::eval(
-            r"
-                if (window.__seshat_canvas_pointer_raf_cleanup) {
-                    window.__seshat_canvas_pointer_raf_cleanup();
-                }
-
-                let rafId = 0;
-                const onFrame = () => {
-                    dioxus.send({ type: 'raf' });
-                    rafId = window.requestAnimationFrame(onFrame);
-                };
-
-                rafId = window.requestAnimationFrame(onFrame);
-                window.__seshat_canvas_pointer_raf_cleanup = () => {
-                    if (rafId !== 0) {
-                        window.cancelAnimationFrame(rafId);
-                    }
-                };
-            ",
-        );
-
-        let db_tx = db_tx;
+    use_hook(move || {
         spawn(async move {
-            while let Ok(json) = eval.recv::<serde_json::Value>().await {
-                if json["type"].as_str() == Some("raf") {
-                    if pending_pointer_sample.read().is_some() {
-                        flush_pending_pointer_update(
-                            doc_signal,
-                            history_signal,
-                            interaction_mode,
-                            pending_pointer_sample,
-                            db_tx,
-                        );
-                    }
-                    if pending_wheel_sample.read().is_some() {
-                        flush_pending_wheel_update(doc_signal, pending_wheel_sample);
-                    }
+            loop {
+                #[cfg(target_arch = "wasm32")]
+                gloo_timers::future::sleep(Duration::from_millis(16)).await;
+
+                #[cfg(not(target_arch = "wasm32"))]
+                tokio::time::sleep(Duration::from_millis(16)).await;
+
+                if pending_pointer_sample.read().is_some() {
+                    flush_pending_pointer_update(
+                        doc_signal,
+                        history_signal,
+                        interaction_mode,
+                        pending_pointer_sample,
+                        db_tx,
+                    );
+                }
+                if pending_wheel_sample.read().is_some() {
+                    flush_pending_wheel_update(doc_signal, pending_wheel_sample);
                 }
             }
         });
