@@ -64,3 +64,5 @@ pub mod mul_005_rotate_undoredo;
 pub mod property_based_tests;
 pub mod property_based_tests_for_mul;
 pub mod routing_tests;
+pub mod path_tests;
+pub mod transforms_tests;
