@@ -17,6 +17,7 @@ fn given_app_state_when_rendering_toolbar_then_nodes_and_edges_counts_are_displa
     #[component]
     fn App() -> Element {
         let mut state = AppState::provide();
+        provide_context(None::<Coroutine<diagram_models::envelope::EventEnvelope>>);
         {
             let mut stats = state.toolbar_stats.write();
             stats.node_count = 5;
@@ -55,6 +56,7 @@ fn given_app_state_with_tool_mode_when_rendering_toolbar_then_tool_is_active() {
     #[component]
     fn App() -> Element {
         let mut state = AppState::provide();
+        provide_context(None::<Coroutine<diagram_models::envelope::EventEnvelope>>);
         *state.tool_mode.write() = ToolMode::Pan;
 
         rsx! {
