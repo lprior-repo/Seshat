@@ -5,6 +5,11 @@ pub mod raf;
 pub mod resize;
 pub mod touch;
 
+#[cfg(test)]
+pub mod middle_pan_test;
+#[cfg(test)]
+pub mod keyboard_test;
+
 pub use drop::handle_drop;
 pub use keyboard::use_keyboard_handler;
 pub use middle_pan::use_middle_pan_handler;

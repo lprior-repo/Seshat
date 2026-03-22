@@ -33,4 +33,17 @@ pub use zorder::{
 };
 
 #[cfg(test)]
+pub mod tests_dsl;
+
+#[cfg(test)]
+mod tests_alignment;
+#[cfg(test)]
+mod tests_clipboard;
+#[cfg(test)]
+mod tests_distribution;
+#[cfg(test)]
 mod tests_selection;
+#[cfg(test)]
+mod tests_zoom;
+#[cfg(test)]
+mod tests_zorder;
