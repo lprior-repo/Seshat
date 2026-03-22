@@ -157,4 +157,53 @@ mod tests {
         // Scale: min(760/500, 560/400) = min(1.52, 1.4) = 1.4
         assert!((zoom - 1.4).abs() < 0.01);
     }
+
+    #[test]
+    fn given_viewport_when_applying_reset_then_sets_to_default_values() {
+        let mut viewport = ViewportState::new(800.0, 600.0);
+        viewport.set_camera(100.0, 200.0);
+        viewport.set_zoom(2.0);
+
+        let result = apply_reset(&mut viewport);
+
+        assert!(result);
+        assert!((viewport.camera_x()).abs() < f64::EPSILON);
+        assert!((viewport.camera_y()).abs() < f64::EPSILON);
+        assert!((viewport.zoom() - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn given_valid_and_invalid_zooms_when_checking_validity_then_returns_correct_results() {
+        assert!(is_valid_zoom(1.0));
+        assert!(is_valid_zoom(0.1));
+        assert!(is_valid_zoom(4.0));
+        assert!(!is_valid_zoom(0.0));
+        assert!(!is_valid_zoom(-1.0));
+        assert!(!is_valid_zoom(0.05));
+        assert!(!is_valid_zoom(5.0));
+        assert!(!is_valid_zoom(f64::NAN));
+        assert!(!is_valid_zoom(f64::INFINITY));
+    }
+
+    #[test]
+    fn given_zoom_values_when_clamping_then_respects_bounds() {
+        assert!((clamp_zoom(1.0) - 1.0).abs() < f64::EPSILON);
+        assert!((clamp_zoom(0.05) - 0.1).abs() < f64::EPSILON);
+        assert!((clamp_zoom(10.0) - 4.0).abs() < f64::EPSILON);
+        assert!((clamp_zoom(f64::NAN) - 1.0).abs() < f64::EPSILON);
+        assert!((clamp_zoom(0.0) - 1.0).abs() < f64::EPSILON);
+    }
+
+    #[test]
+    fn given_content_when_calculating_fit_zoom_then_returns_correct_scale() {
+        let content = AABB::new(0.0, 0.0, 500.0, 400.0);
+        let zoom = calculate_fit_zoom(&content, 800.0, 600.0, 20.0);
+        assert!((zoom - 1.4).abs() < 0.01);
+    }
+
+    #[test]
+    fn given_zoom_when_zooming_in_and_out_then_applies_factors() {
+        assert!((next_zoom_in(1.0) - ZOOM_IN_FACTOR).abs() < f64::EPSILON);
+        assert!((next_zoom_out(1.0) - ZOOM_OUT_FACTOR).abs() < f64::EPSILON);
+    }
 }

@@ -152,3 +152,63 @@ impl ExtendedText {
         )
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_text_new() {
+        let text = Text::new(10.0, 20.0, "hello", 16.0);
+        assert_eq!(text.x, 10.0);
+        assert_eq!(text.y, 20.0);
+        assert_eq!(text.content.0, "hello");
+        assert_eq!(text.font_size, 16.0);
+    }
+
+    #[test]
+    fn test_text_bounds() {
+        let text = Text::new(10.0, 20.0, "hello", 10.0);
+        let bounds = text.bounds();
+        // 5 chars * 10.0 * 0.6 = 30.0 width
+        assert_eq!(bounds.min_x, 10.0);
+        assert_eq!(bounds.min_y, 20.0);
+        assert_eq!(bounds.max_x, 40.0); // 10.0 + 30.0
+        assert_eq!(bounds.max_y, 30.0); // 20.0 + 10.0
+    }
+
+    #[test]
+    fn test_extended_text_new_and_with_direction() {
+        let t1 = ExtendedText::new(10.0, 20.0, "hello", 16.0);
+        assert_eq!(t1.direction, TextDirection::LeftToRight);
+        let t2 = t1.with_direction(TextDirection::RightToLeft);
+        assert_eq!(t2.direction, TextDirection::RightToLeft);
+    }
+
+    #[test]
+    fn test_extended_text_bounds_ltr() {
+        let t1 = ExtendedText::new(10.0, 20.0, "hello", 10.0);
+        let bounds = t1.bounds();
+        assert_eq!(bounds.min_x, 10.0);
+        assert_eq!(bounds.max_x, 40.0);
+    }
+
+    #[test]
+    fn test_extended_text_bounds_rtl() {
+        let t1 =
+            ExtendedText::new(10.0, 20.0, "hello", 10.0).with_direction(TextDirection::RightToLeft);
+        let bounds = t1.bounds();
+        assert_eq!(bounds.min_x, -20.0); // 10.0 - 30.0
+        assert_eq!(bounds.max_x, 10.0);
+    }
+
+    #[test]
+    fn test_extended_text_emoji_counting() {
+        let t1 = ExtendedText::new(0.0, 0.0, "he😃llo", 10.0);
+        let bounds = t1.bounds();
+        // 5 regular chars = 5 * 10 * 0.6 = 30
+        // 1 emoji = 1 * 10 * 1.2 = 12
+        // total width = 42
+        assert_eq!(bounds.max_x, 42.0);
+    }
+}

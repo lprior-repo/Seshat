@@ -161,3 +161,122 @@ pub fn commit_transform(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::{LockState, Node, NodeKind};
+
+    fn create_test_node(x: f64, y: f64, width: f64, height: f64) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: "test".to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(width),
+            height: OrderedFloat(height),
+            font_size: None,
+            font_weight: None,
+            lock_state: LockState::Unlocked,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    #[test]
+    fn test_non_empty_selection() {
+        let empty = NonEmptySelection::try_new(vec![]);
+        assert_eq!(empty.unwrap_err(), Error::EmptySelection);
+
+        let valid = NonEmptySelection::try_new(vec![NodeId::new("n1".to_string())]);
+        assert!(valid.is_ok());
+        assert_eq!(valid.unwrap().items().len(), 1);
+    }
+
+    #[test]
+    fn test_valid_transform() {
+        let invalid = ValidTransform::try_new(f64::NAN, 0.0, 1.0, 1.0, 0.0);
+        assert_eq!(invalid.unwrap_err(), Error::InvalidTransform);
+
+        let zero_scale = ValidTransform::try_new(0.0, 0.0, 0.0, 1.0, 0.0);
+        assert_eq!(zero_scale.unwrap_err(), Error::InvalidTransform);
+
+        let valid = ValidTransform::try_new(10.0, 20.0, 2.0, 2.0, std::f64::consts::PI);
+        assert!(valid.is_ok());
+        let valid = valid.unwrap();
+        assert_eq!(valid.dx, 10.0);
+        assert_eq!(valid.dy, 20.0);
+        assert_eq!(valid.scale_x, 2.0);
+        assert_eq!(valid.scale_y, 2.0);
+        assert_eq!(valid.rotation, std::f64::consts::PI);
+    }
+
+    #[test]
+    fn test_commit_transform_item_not_found() {
+        let mut doc = DiagramDocument::default();
+        let selection = NonEmptySelection::try_new(vec![NodeId::new("n1".to_string())]).unwrap();
+        let transform = ValidTransform::try_new(10.0, 10.0, 1.0, 1.0, 0.0).unwrap();
+
+        let result = commit_transform(&selection, &transform, &mut doc);
+        assert_eq!(
+            result,
+            Err(Error::ItemNotFound(NodeId::new("n1".to_string())))
+        );
+    }
+
+    #[test]
+    fn test_commit_transform_success() {
+        let mut doc = DiagramDocument::default();
+        let n1_id = NodeId::new("n1".to_string());
+        doc.document
+            .nodes
+            .insert(n1_id.clone(), create_test_node(10.0, 10.0, 20.0, 20.0));
+
+        let selection = NonEmptySelection::try_new(vec![n1_id.clone()]).unwrap();
+        let transform = ValidTransform::try_new(5.0, 5.0, 2.0, 2.0, 0.0).unwrap();
+
+        let initial_version = doc.version;
+        let initial_revision = doc.revision.clone();
+
+        let result = commit_transform(&selection, &transform, &mut doc);
+        assert!(result.is_ok());
+
+        let updated = doc.document.nodes.get(&n1_id).unwrap();
+        assert_eq!(updated.x, OrderedFloat(25.0)); // 10*2 + 5 = 25.0
+        assert_eq!(updated.y, OrderedFloat(25.0));
+        assert_eq!(updated.width, OrderedFloat(40.0)); // 20*2 = 40.0
+        assert_eq!(updated.height, OrderedFloat(40.0));
+
+        assert_eq!(doc.version, initial_version + 1);
+        assert!(doc.revision != initial_revision);
+    }
+
+    #[test]
+    fn test_commit_transform_with_rotation() {
+        let mut doc = DiagramDocument::default();
+        let n1_id = NodeId::new("n1".to_string());
+        doc.document
+            .nodes
+            .insert(n1_id.clone(), create_test_node(10.0, 10.0, 20.0, 20.0));
+
+        let selection = NonEmptySelection::try_new(vec![n1_id.clone()]).unwrap();
+        let transform = ValidTransform::try_new(0.0, 0.0, 1.0, 1.0, 1.5).unwrap();
+
+        let result = commit_transform(&selection, &transform, &mut doc);
+        assert!(result.is_ok());
+
+        let updated = doc.document.nodes.get(&n1_id).unwrap();
+        let rot = updated
+            .metadata
+            .get("rotation")
+            .and_then(serde_json::Value::as_f64)
+            .unwrap();
+        assert_eq!(rot, 1.5);
+    }
+}

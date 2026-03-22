@@ -144,3 +144,143 @@ fn apply_node_updates(
 
     Ok(())
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::node::{LockState, NodeKind};
+    use crate::document::types::OrderedFloat;
+    use im::HashMap;
+
+    fn test_node() -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: "test".to_string(),
+            font_size: None,
+            font_weight: None,
+            x: OrderedFloat(0.0),
+            y: OrderedFloat(0.0),
+            width: OrderedFloat(10.0),
+            height: OrderedFloat(10.0),
+            lock_state: LockState::Unlocked,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    fn test_subgraph() -> Subgraph {
+        Subgraph {
+            nodes: HashMap::new(),
+            edges: HashMap::new(),
+        }
+    }
+
+    #[test]
+    fn test_scale_group_empty_selection() {
+        let mut subgraph = test_subgraph();
+        let scale = PositiveScale::try_new(OrderedFloat(2.0)).unwrap();
+        let result = scale_group(&mut subgraph, &[], scale, Point::origin());
+        assert_eq!(result, Err(GroupTransformError::EmptySelection));
+    }
+
+    #[test]
+    fn test_scale_group_node_not_found() {
+        let mut subgraph = test_subgraph();
+        let scale = PositiveScale::try_new(OrderedFloat(2.0)).unwrap();
+        let id = NodeId::new("missing".to_string());
+        let result = scale_group(&mut subgraph, &[id.clone()], scale, Point::origin());
+        assert_eq!(result, Err(GroupTransformError::NodeNotFound(id)));
+    }
+
+    #[test]
+    fn test_scale_group_locked_node() {
+        let mut subgraph = test_subgraph();
+        let scale = PositiveScale::try_new(OrderedFloat(2.0)).unwrap();
+        let id = NodeId::new("n1".to_string());
+        let mut node = test_node();
+        node.lock_state = LockState::Locked;
+        subgraph.nodes = subgraph.nodes.update(id.clone(), node);
+
+        let result = scale_group(&mut subgraph, &[id.clone()], scale, Point::origin());
+        assert_eq!(result, Err(GroupTransformError::NodeLocked(id)));
+    }
+
+    #[test]
+    fn test_scale_group_success() {
+        let mut subgraph = test_subgraph();
+        let scale = PositiveScale::try_new(OrderedFloat(2.0)).unwrap();
+        let id1 = NodeId::new("n1".to_string());
+        let mut node1 = test_node();
+        node1.x = OrderedFloat(10.0);
+        node1.y = OrderedFloat(10.0);
+        node1.width = OrderedFloat(20.0);
+        node1.height = OrderedFloat(20.0);
+
+        subgraph.nodes = subgraph.nodes.update(id1.clone(), node1);
+
+        let anchor = Point::origin();
+        let result = scale_group(&mut subgraph, &[id1.clone()], scale, anchor);
+        assert_eq!(result, Ok(()));
+
+        let updated = subgraph.nodes.get(&id1).unwrap();
+        assert_eq!(updated.x, OrderedFloat(20.0));
+        assert_eq!(updated.y, OrderedFloat(20.0));
+        assert_eq!(updated.width, OrderedFloat(40.0));
+        assert_eq!(updated.height, OrderedFloat(40.0));
+    }
+
+    #[test]
+    fn test_scale_group_out_of_bounds() {
+        let mut subgraph = test_subgraph();
+        let scale = PositiveScale::try_new(OrderedFloat(100.0)).unwrap(); // large scale
+        let id1 = NodeId::new("n1".to_string());
+        let mut node1 = test_node();
+        node1.x = OrderedFloat(MAX_COORDINATE - 10.0); // Will push it over
+
+        subgraph.nodes = subgraph.nodes.update(id1.clone(), node1);
+
+        let anchor = Point::origin();
+        let result = scale_group(&mut subgraph, &[id1], scale, anchor);
+        assert_eq!(result, Err(GroupTransformError::OutOfBounds));
+    }
+
+    #[test]
+    fn test_validate_scaled_dimensions() {
+        assert_eq!(validate_scaled_dimensions(0.0, 0.0, 10.0, 10.0), Ok(()));
+        assert_eq!(
+            validate_scaled_dimensions(f64::NAN, 0.0, 10.0, 10.0),
+            Err(GroupTransformError::OutOfBounds)
+        );
+        assert_eq!(
+            validate_scaled_dimensions(0.0, f64::INFINITY, 10.0, 10.0),
+            Err(GroupTransformError::OutOfBounds)
+        );
+        assert_eq!(
+            validate_scaled_dimensions(MAX_COORDINATE + 1.0, 0.0, 10.0, 10.0),
+            Err(GroupTransformError::OutOfBounds)
+        );
+        assert_eq!(
+            validate_scaled_dimensions(0.0, 0.0, MAX_COORDINATE + 1.0, 10.0),
+            Err(GroupTransformError::OutOfBounds)
+        );
+    }
+
+    #[test]
+    fn test_compute_scaled_dimensions_clamps_to_min() {
+        let node = test_node(); // width=10, height=10
+        let scale = 0.01; // Results in 0.1, should clamp to MIN_DIMENSION (1.0)
+        let anchor = Point::origin();
+
+        let (x, y, w, h) = compute_scaled_dimensions(&node, scale, anchor).unwrap();
+        assert_eq!(w, MIN_DIMENSION);
+        assert_eq!(h, MIN_DIMENSION);
+        assert_eq!(x, 0.0);
+        assert_eq!(y, 0.0);
+    }
+}

@@ -58,3 +58,165 @@ fn dispatch_domain_op(
         _ => Err(ContractError::UnknownOpType(op_field.to_string())),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_domain_op_invalid_json() {
+        let result = parse_domain_op("not json");
+        assert!(matches!(result, Err(ContractError::InvalidJson(_))));
+    }
+
+    #[test]
+    fn test_parse_domain_op_missing_op() {
+        let result = parse_domain_op(r#"{"id": "n1"}"#);
+        assert!(matches!(result, Err(ContractError::MissingField("op"))));
+    }
+
+    #[test]
+    fn test_parse_domain_op_unknown_op() {
+        let result = parse_domain_op(r#"{"op": "unknown_action"}"#);
+        assert!(matches!(result, Err(ContractError::UnknownOpType(op)) if op == "unknown_action"));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_node_add() {
+        let valid_node_add = r#"{"op": "node_add", "id": "n1", "x": 10.0, "y": 20.0, "width": 100.0, "height": 50.0, "label": "test"}"#;
+        let result = parse_domain_op(valid_node_add);
+        assert!(matches!(result, Ok(DomainOp::NodeAdd { .. })));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_node_move() {
+        let valid_node_move = r#"{"op": "node_move", "id": "n1", "x": 10.0, "y": 20.0}"#;
+        assert!(matches!(
+            parse_domain_op(valid_node_move),
+            Ok(DomainOp::NodeMove { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_node_delete() {
+        let valid = r#"{"op": "node_delete", "id": "n1"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::NodeDelete { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_node_restore() {
+        let valid = r#"{"op": "node_restore", "id": "n1"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::NodeRestore { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_node_resize() {
+        let valid = r#"{"op": "node_resize", "id": "n1", "original_x": 0.0, "original_y": 0.0, "original_width": 10.0, "original_height": 10.0, "x": 10.0, "y": 20.0, "width": 100.0, "height": 50.0}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::NodeResize { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_update_label() {
+        let valid = r#"{"op": "update_label", "target_id": "n1", "target_type": "node", "old_label": "a", "new_label": "b"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::UpdateLabel { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_update_node_style() {
+        let valid = r#"{"op": "update_node_style", "id": "n1", "style": "box"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::UpdateNodeStyle { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_edge_connect() {
+        let valid = r#"{"op": "edge_connect", "id": "e1", "source": "n1", "target": "n2"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::EdgeConnect { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_edge_disconnect() {
+        let valid = r#"{"op": "edge_disconnect", "id": "e1"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::EdgeDisconnect { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_update_edge_style() {
+        let valid = r#"{"op": "update_edge_style", "id": "e1", "style": "solid"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::UpdateEdgeStyle { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_bring_forward() {
+        let valid = r#"{"op": "bring_forward", "ids": ["n1"]}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::BringForward { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_send_backward() {
+        let valid = r#"{"op": "send_backward", "ids": ["n1"]}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::SendBackward { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_bring_to_front() {
+        let valid = r#"{"op": "bring_to_front", "ids": ["n1"]}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::BringToFront { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_send_to_back() {
+        let valid = r#"{"op": "send_to_back", "ids": ["n1"]}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::SendToBack { .. })
+        ));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_group() {
+        let valid = r#"{"op": "group", "id": "g1", "ids": ["n1"]}"#;
+        assert!(matches!(parse_domain_op(valid), Ok(DomainOp::Group { .. })));
+    }
+
+    #[test]
+    fn test_dispatch_domain_op_ungroup() {
+        let valid = r#"{"op": "ungroup", "id": "g1"}"#;
+        assert!(matches!(
+            parse_domain_op(valid),
+            Ok(DomainOp::Ungroup { .. })
+        ));
+    }
+}

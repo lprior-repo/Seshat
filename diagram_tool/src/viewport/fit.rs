@@ -95,3 +95,63 @@ impl ViewportFit for ViewportState {
         self.set_camera(-fit.offset_x / fit.scale, -fit.offset_y / fit.scale);
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_fit_to_content_invalid_padding() {
+        let viewport = ViewportState::new(800.0, 600.0);
+        let content = AABB::new(0.0, 0.0, 100.0, 100.0);
+        assert_eq!(
+            viewport.fit_to_content(&content, -10.0),
+            Err(ViewportError::InvalidPadding(-10.0))
+        );
+    }
+
+    #[test]
+    fn test_fit_to_content_invalid_content_bounds() {
+        let viewport = ViewportState::new(800.0, 600.0);
+        let content = AABB::new(0.0, 0.0, 0.0, 0.0); // width 0, height 0
+        assert_eq!(
+            viewport.fit_to_content(&content, 10.0),
+            Err(ViewportError::InvalidContentBounds)
+        );
+    }
+
+    #[test]
+    fn test_fit_to_content_coordinate_overflow() {
+        let viewport = ViewportState::new(800.0, 600.0);
+        let content = AABB::new(0.0, 0.0, MAX_SAFE_COORDINATE + 1.0, 100.0);
+        assert_eq!(
+            viewport.fit_to_content(&content, 10.0),
+            Err(ViewportError::CoordinateOverflow)
+        );
+    }
+
+    #[test]
+    fn test_fit_to_content_success() {
+        let viewport = ViewportState::new(800.0, 600.0);
+        let content = AABB::new(0.0, 0.0, 400.0, 300.0);
+
+        let fit = viewport.fit_to_content(&content, 0.0).unwrap();
+        assert_eq!(fit.scale, 2.0); // 800/400 = 2, 600/300 = 2
+        assert_eq!(fit.offset_x, 0.0); // 800/2 - 200*2 = 0
+        assert_eq!(fit.offset_y, 0.0); // 600/2 - 150*2 = 0
+    }
+
+    #[test]
+    fn test_apply_fit() {
+        let mut viewport = ViewportState::new(800.0, 600.0);
+        let fit = FitTransform {
+            scale: 2.0,
+            offset_x: -100.0,
+            offset_y: -200.0,
+        };
+        viewport.apply_fit(fit);
+        assert_eq!(viewport.zoom(), 2.0);
+        assert_eq!(viewport.camera_x(), 50.0); // -(-100)/2
+        assert_eq!(viewport.camera_y(), 100.0); // -(-200)/2
+    }
+}

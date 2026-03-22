@@ -134,3 +134,123 @@ pub fn apply_group_op(
         ))),
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::{LockState, NodeKind};
+
+    fn test_node(x: f64, y: f64, w: f64, h: f64, kind: NodeKind) -> Node {
+        Node {
+            kind,
+            icon: String::new(),
+            label: "test".to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(w),
+            height: OrderedFloat(h),
+            font_size: None,
+            font_weight: None,
+            lock_state: LockState::Unlocked,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    #[test]
+    fn test_apply_group_success() {
+        let mut state = DiagramProjection::default();
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+
+        state
+            .nodes
+            .insert(n1.clone(), test_node(0.0, 0.0, 10.0, 10.0, NodeKind::Node));
+        state
+            .nodes
+            .insert(n2.clone(), test_node(20.0, 0.0, 10.0, 10.0, NodeKind::Node));
+
+        let g1 = NodeId::new("g1".to_string());
+        let result = apply_group(state, &g1, &[n1.clone(), n2.clone()]).unwrap();
+
+        assert!(result.nodes.contains_key(&g1));
+        let g_node = result.nodes.get(&g1).unwrap();
+        assert_eq!(g_node.kind, NodeKind::Subgraph);
+
+        assert_eq!(result.nodes.get(&n1).unwrap().parent, Some(g1.clone()));
+        assert_eq!(result.nodes.get(&n2).unwrap().parent, Some(g1.clone()));
+    }
+
+    #[test]
+    fn test_apply_group_invalid_selection() {
+        let state = DiagramProjection::default();
+        let g1 = NodeId::new("g1".to_string());
+        let result = apply_group(state, &g1, &[]);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_apply_ungroup_success() {
+        let mut state = DiagramProjection::default();
+        let g1 = NodeId::new("g1".to_string());
+        let n1 = NodeId::new("n1".to_string());
+
+        let mut child = test_node(10.0, 10.0, 10.0, 10.0, NodeKind::Node);
+        child.parent = Some(g1.clone());
+
+        state.nodes.insert(
+            g1.clone(),
+            test_node(0.0, 0.0, 100.0, 100.0, NodeKind::Subgraph),
+        );
+        state.nodes.insert(n1.clone(), child);
+
+        let result = apply_ungroup(state, &g1).unwrap();
+
+        assert!(!result.nodes.contains_key(&g1));
+        assert_eq!(result.nodes.get(&n1).unwrap().parent, None);
+    }
+
+    #[test]
+    fn test_apply_ungroup_not_found() {
+        let state = DiagramProjection::default();
+        let result = apply_ungroup(state, &NodeId::new("missing".to_string()));
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_apply_ungroup_not_subgraph() {
+        let mut state = DiagramProjection::default();
+        let n1 = NodeId::new("n1".to_string());
+        state
+            .nodes
+            .insert(n1.clone(), test_node(0.0, 0.0, 10.0, 10.0, NodeKind::Node));
+
+        let result = apply_ungroup(state, &n1);
+        assert!(result.is_err());
+    }
+
+    #[test]
+    fn test_apply_group_op_dispatch() {
+        let state = DiagramProjection::default();
+        let g1 = NodeId::new("g1".to_string());
+        let op_group = DomainOp::Group {
+            id: g1.clone(),
+            ids: vec![],
+        };
+        let result = apply_group_op(state.clone(), &op_group);
+        assert!(result.is_err()); // empty selection err
+
+        let op_ungroup = DomainOp::Ungroup { id: g1.clone() };
+        let result_ungroup = apply_group_op(state.clone(), &op_ungroup);
+        assert!(result_ungroup.is_err()); // missing node err
+
+        let op_invalid = DomainOp::NodeDelete { id: g1.clone() };
+        let result_invalid = apply_group_op(state, &op_invalid);
+        assert!(result_invalid.is_err());
+    }
+}
