@@ -103,6 +103,24 @@ tasks:
     script: |
       cd diagram_tool && dx build --platform web --release
 
+  bundle-web-optimized:
+    script: |
+      cd diagram_tool && dx bundle --release --base-path /Seshat/
+      if ! command -v wasm-opt &> /dev/null; then
+        echo "wasm-opt not found, downloading..."
+        wget https://github.com/WebAssembly/binaryen/releases/download/version_117/binaryen-version_117-x86_64-linux.tar.gz -O /tmp/binaryen.tar.gz
+        tar -xzf /tmp/binaryen.tar.gz -C /tmp
+        WASM_OPT="/tmp/binaryen-version_117/bin/wasm-opt"
+      else
+        WASM_OPT="wasm-opt"
+      fi
+      for file in dist/public/assets/*.wasm; do
+        $WASM_OPT -Oz "$file" -o "$file"
+        brotli -c -q 11 "$file" > "$file.br"
+      done
+    options:
+      cache: false
+
   build-web-dev:
     script: |
       dx build --platform web
