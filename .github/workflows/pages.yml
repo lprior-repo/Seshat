@@ -51,6 +51,14 @@ jobs:
         working-directory: diagram_tool
         run: dx bundle --release --base-path /Seshat/
 
+      - name: Optimize WASM
+        run: |
+          wget https://github.com/WebAssembly/binaryen/releases/download/version_117/binaryen-version_117-x86_64-linux.tar.gz
+          tar -xzf binaryen-version_117-x86_64-linux.tar.gz
+          for file in diagram_tool/dist/public/assets/*.wasm; do
+            ./binaryen-version_117/bin/wasm-opt -Oz "$file" -o "$file"
+          done
+
       - name: Setup Pages
         uses: actions/configure-pages@v5
 

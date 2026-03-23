@@ -3,9 +3,11 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+#[cfg(not(target_arch = "wasm32"))]
 use include_dir::{include_dir, Dir};
 
-pub const ICONS: Dir = include_dir!("$CARGO_MANIFEST_DIR/resources");
+#[cfg(not(target_arch = "wasm32"))]
+pub const ICONS: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets/resources");
 
 #[allow(clippy::unwrap_used)]
 #[allow(clippy::expect_used)]
@@ -25,5 +27,5 @@ pub fn icon_index() -> &'static IconIndex {
 #[allow(dead_code)]
 #[must_use]
 pub fn icon_src(icon: &IconMeta) -> String {
-    format!("/resources/{}", icon.file_relpath)
+    format!("resources/{}", icon.file_relpath)
 }

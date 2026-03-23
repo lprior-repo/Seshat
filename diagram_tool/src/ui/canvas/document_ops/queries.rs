@@ -1,6 +1,5 @@
 //(clippy::cast_precision_loss)]
 
-use base64::{engine::general_purpose, Engine as _};
 use diagram_models::{
     dag::validate_dag,
     document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind},
@@ -10,7 +9,7 @@ use uuid::Uuid;
 
 use crate::{
     geometry::hit_test_margin,
-    icons::{icon_index, ICONS},
+    icons::icon_index,
     ui::canvas::canvas_view::SCREEN_HIT_MARGIN,
     ui::grid::{snap_value, GridSize},
 };
@@ -91,22 +90,29 @@ pub fn fallback_icon_label(icon_key: &str) -> String {
 }
 
 pub fn data_url_for_relpath(file_relpath: &str) -> Option<String> {
-    let file = ICONS.get_file(file_relpath)?;
-    let mime = std::path::Path::new(file_relpath)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map_or("image/png", |ext| {
-            if ext.eq_ignore_ascii_case("svg") {
-                "image/svg+xml"
-            } else {
-                "image/png"
-            }
-        });
+    #[cfg(not(target_arch = "wasm32"))]
+    {
+        use base64::{engine::general_purpose, Engine as _};
+        let file = crate::icons::ICONS.get_file(file_relpath)?;
+        let mime = std::path::Path::new(file_relpath)
+            .extension()
+            .and_then(|ext| ext.to_str())
+            .map_or("image/png", |ext| {
+                if ext.eq_ignore_ascii_case("svg") {
+                    "image/svg+xml"
+                } else {
+                    "image/png"
+                }
+            });
 
-    Some(format!(
-        "data:{mime};base64,{}",
-        general_purpose::STANDARD.encode(file.contents())
-    ))
+        return Some(format!(
+            "data:{mime};base64,{}",
+            general_purpose::STANDARD.encode(file.contents())
+        ));
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    Some(format!("resources/{}", file_relpath))
 }
 
 pub fn icon_data_url(icon_key: &str) -> Option<String> {

@@ -231,7 +231,6 @@ mod tests {
             file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
             display_name: std::sync::Arc::from("Athena"),
             search_terms: std::sync::Arc::from("aws/analytics/athena athena aws analytics"),
-            base64_data: std::sync::Arc::from(""),
         };
         assert!(matches_query(&icon, LowercasedQuery::empty()));
     }
@@ -245,7 +244,6 @@ mod tests {
             file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
             display_name: std::sync::Arc::from("Athena"),
             search_terms: std::sync::Arc::from("aws/analytics/athena athena aws analytics"),
-            base64_data: std::sync::Arc::from(""),
         };
         // The search query is expected to be already lowercased by the UI
         assert!(matches_query(
@@ -268,7 +266,6 @@ mod tests {
             file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
             display_name: std::sync::Arc::from("Athena"),
             search_terms: std::sync::Arc::from("aws/analytics/athena athena aws analytics"),
-            base64_data: std::sync::Arc::from(""),
         };
         assert!(!matches_query(
             &icon,
@@ -303,7 +300,6 @@ mod tests {
                     file_relpath: std::sync::Arc::from(""),
                     display_name: std::sync::Arc::from(""),
                     search_terms: std::sync::Arc::from(""),
-                    base64_data: std::sync::Arc::from(""),
                 };
                 all.push(icon.clone());
                 by_key.insert(icon_key, icon);
