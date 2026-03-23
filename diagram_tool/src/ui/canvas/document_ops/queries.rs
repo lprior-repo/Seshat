@@ -112,7 +112,16 @@ pub fn data_url_for_relpath(file_relpath: &str) -> Option<String> {
     }
 
     #[cfg(target_arch = "wasm32")]
-    Some(format!("resources/{}", file_relpath))
+    {
+        let base_path = option_env!("DIOXUS_ROUTER_BASE").unwrap_or("");
+        if base_path.is_empty() {
+            Some(format!("resources/{}", file_relpath))
+        } else if base_path.ends_with('/') {
+            Some(format!("{base_path}resources/{}", file_relpath))
+        } else {
+            Some(format!("{base_path}/resources/{}", file_relpath))
+        }
+    }
 }
 
 pub fn icon_data_url(icon_key: &str) -> Option<String> {

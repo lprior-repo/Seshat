@@ -36,10 +36,17 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
         #[cfg(target_arch = "wasm32")]
         {
             if let Some(meta) = crate::icons::icon_index().by_key.get(&node.icon) {
+                let base_path = option_env!("DIOXUS_ROUTER_BASE").unwrap_or("");
+                let src = if base_path.is_empty() {
+                    format!("resources/{}", meta.file_relpath)
+                } else if base_path.ends_with('/') {
+                    format!("{base_path}resources/{}", meta.file_relpath)
+                } else {
+                    format!("{base_path}/resources/{}", meta.file_relpath)
+                };
                 let _ = write!(
                     svg,
-                    "<image href='resources/{}' width='{icon_size}' height='{icon_size}' x='{ix}' y='{iy}' />",
-                    meta.file_relpath
+                    "<image href='{src}' width='{icon_size}' height='{icon_size}' x='{ix}' y='{iy}' />"
                 );
             }
         }

@@ -27,5 +27,12 @@ pub fn icon_index() -> &'static IconIndex {
 #[allow(dead_code)]
 #[must_use]
 pub fn icon_src(icon: &IconMeta) -> String {
-    format!("resources/{}", icon.file_relpath)
+    let base_path = option_env!("DIOXUS_ROUTER_BASE").unwrap_or("");
+    if base_path.is_empty() {
+        format!("resources/{}", icon.file_relpath)
+    } else if base_path.ends_with('/') {
+        format!("{base_path}resources/{}", icon.file_relpath)
+    } else {
+        format!("{base_path}/resources/{}", icon.file_relpath)
+    }
 }
