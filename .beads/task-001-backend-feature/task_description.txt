@@ -1,3 +1,0 @@
-Implement backend module feature 1
-
-This is a placeholder task from the initial @fix_plan.md which contained generic items. The task needs to be refined through the contract synthesis phase to understand what actual backend feature should be implemented.
