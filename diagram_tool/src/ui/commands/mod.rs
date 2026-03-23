@@ -24,8 +24,9 @@ pub use clipboard::{
 };
 pub use distribution::{apply_distribute_selection, DistributionAxis};
 pub use selection::{
-    apply_clear_selection, apply_delete_selected, apply_group_selection, apply_nudge_selection,
-    apply_select_all, apply_toggle_edge_direction, apply_ungroup_selection,
+    apply_arrow_type_to_selection, apply_clear_selection, apply_delete_selected,
+    apply_group_selection, apply_nudge_selection, apply_select_all, apply_toggle_edge_direction,
+    apply_ungroup_selection,
 };
 pub use zoom::{apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset};
 pub use zorder::{

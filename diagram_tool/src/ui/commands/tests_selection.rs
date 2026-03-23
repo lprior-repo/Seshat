@@ -369,4 +369,152 @@ mod tests {
         });
         let _ = vdom.rebuild_in_place();
     }
+
+    #[test]
+    fn given_selected_edges_when_arrow_type_applied_then_style_is_updated_and_history_preserved() {
+        let mut vdom = VirtualDom::new(|| {
+            let doc = SelectionTestDsl::new()
+                .with_node("n1", false)
+                .with_node("n2", false)
+                .with_edge("e1", "n1", "n2")
+                .with_selection(&["e1"])
+                .build();
+
+            let doc_signal = Signal::new(doc);
+            let history_signal = Signal::new(History::new());
+
+            let initial_rev = doc_signal.read().revision;
+
+            // Should modify edge
+            let result = apply_arrow_type_to_selection(
+                doc_signal,
+                history_signal,
+                diagram_models::document::ArrowType::Curved,
+            );
+            assert!(result);
+
+            let doc_read = doc_signal.read();
+            assert!(doc_read.revision.value() > initial_rev.value());
+            let edge = doc_read
+                .document
+                .edges
+                .get(&EdgeId::new("e1".to_string()))
+                .unwrap();
+            assert_eq!(edge.arrow_type, diagram_models::document::ArrowType::Curved);
+
+            // Try to apply same type again, should not mutate or change history
+            let result2 = apply_arrow_type_to_selection(
+                doc_signal,
+                history_signal,
+                diagram_models::document::ArrowType::Curved,
+            );
+            assert!(!result2);
+            let doc_read2 = doc_signal.read();
+            assert_eq!(doc_read2.revision, doc_read.revision);
+
+            rsx! { div {} }
+        });
+        let _ = vdom.rebuild_in_place();
+    }
+
+    #[test]
+    fn given_only_nodes_selected_when_arrow_type_applied_then_returns_false_and_history_unchanged()
+    {
+        let mut vdom = VirtualDom::new(|| {
+            let doc = SelectionTestDsl::new()
+                .with_node("n1", false)
+                .with_node("n2", false)
+                .with_selection(&["n1", "n2"])
+                .build();
+
+            let doc_signal = Signal::new(doc);
+            let history_signal = Signal::new(History::new());
+
+            let initial_rev = doc_signal.read().revision;
+
+            let result = apply_arrow_type_to_selection(
+                doc_signal,
+                history_signal,
+                diagram_models::document::ArrowType::Curved,
+            );
+            assert!(!result);
+
+            let doc_read = doc_signal.read();
+            assert_eq!(doc_read.revision, initial_rev);
+
+            // Verify history is empty
+            let history = history_signal.read();
+            assert!(!history.can_undo());
+
+            rsx! { div {} }
+        });
+        let _ = vdom.rebuild_in_place();
+    }
+
+    #[test]
+    fn adversarial_collision_id_node_and_edge() {
+        let mut vdom = VirtualDom::new(|| {
+            let doc = SelectionTestDsl::new()
+                .with_node("collision", false)
+                .with_node("n2", false)
+                .with_edge("collision", "collision", "n2")
+                .with_selection(&["collision"])
+                .build();
+
+            let doc_signal = Signal::new(doc);
+            let history_signal = Signal::new(History::new());
+
+            let result = apply_arrow_type_to_selection(
+                doc_signal,
+                history_signal,
+                diagram_models::document::ArrowType::Curved,
+            );
+
+            // The code correctly handles the collision by prioritizing the node,
+            // skipping the edge mutation, and thus returning false.
+            assert!(!result);
+
+            rsx! { div {} }
+        });
+        let _ = vdom.rebuild_in_place();
+    }
+
+    #[test]
+    fn adversarial_performance_unnecessary_clone() {
+        let mut vdom = VirtualDom::new(|| {
+            let doc = SelectionTestDsl::new()
+                .with_node("n1", false)
+                .with_node("n2", false)
+                .with_edge("e1", "n1", "n2")
+                .with_selection(&["e1"])
+                .build();
+            let mut doc_cloned = doc.clone();
+            let edge_id = EdgeId::new("e1".to_string());
+            // Pre-apply the arrow type so it already matches
+            doc_cloned
+                .document
+                .edges
+                .get_mut(&edge_id)
+                .unwrap()
+                .arrow_type = diagram_models::document::ArrowType::Curved;
+
+            let doc_signal = Signal::new(doc_cloned);
+            let history_signal = Signal::new(History::new());
+
+            let result = apply_arrow_type_to_selection(
+                doc_signal,
+                history_signal,
+                diagram_models::document::ArrowType::Curved,
+            );
+
+            // It shouldn't change anything
+            assert!(!result);
+
+            // But internally, the code cloned the entire document before checking if changes were needed!
+            // We can't easily assert the clone happened without mocks, but it's a known defect.
+
+            rsx! { div {} }
+        });
+        let _ = vdom.rebuild_in_place();
+    }
 }

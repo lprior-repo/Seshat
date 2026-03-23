@@ -145,11 +145,21 @@ fn TextButton(
 }
 
 #[component]
-fn LabelButton(test_id: &'static str, icon: Option<IconKind>, text: &'static str) -> Element {
+fn LabelButton(
+    test_id: &'static str,
+    icon: Option<IconKind>,
+    text: &'static str,
+    onclick: Option<EventHandler<MouseEvent>>,
+) -> Element {
     rsx! {
         button {
             "data-testid": test_id,
             class: "h-9 px-2 flex items-center justify-center rounded-md border border-transparent bg-transparent hover:bg-white/5 cursor-pointer p-0 outline-none mx-0.5 text-foreground text-[13px] transition-colors gap-1.5",
+            onclick: move |evt| {
+                if let Some(handler) = &onclick {
+                    handler.call(evt);
+                }
+            },
             if let Some(i) = icon {
                 Icon { kind: i, size: 16 }
             }
@@ -166,7 +176,7 @@ pub fn Toolbar() -> Element {
     let history_signal = app_state.history;
     let mut tool_signal = app_state.tool_mode;
     let edge_style_signal = app_state.edge_style;
-    let arrow_type_signal = app_state.arrow_type;
+    let mut arrow_type_signal = app_state.arrow_type;
     let toasts = app_state.toasts;
 
     let toolbar_stats = app_state.toolbar_stats;
@@ -316,7 +326,31 @@ pub fn Toolbar() -> Element {
                 LabelButton {
                     test_id: "style-line",
                     icon: Some(IconKind::Minus), // Assuming we have Minus or Line icon
-                    text: "Solid"
+                    text: "Solid",
+                    onclick: None,
+                }
+                LabelButton {
+                    test_id: "style-arrow-type",
+                    icon: Some(IconKind::ChevronRight),
+                    text: match *arrow_type_signal.read() {
+                        diagram_models::document::ArrowType::Default => "Default",
+                        diagram_models::document::ArrowType::Sharp => "Sharp",
+                        diagram_models::document::ArrowType::Curved => "Curved",
+                        diagram_models::document::ArrowType::Step => "Step",
+                        diagram_models::document::ArrowType::Straight => "Straight",
+                    },
+                    onclick: move |_| {
+                        use diagram_models::document::ArrowType;
+                        let next_type = match *arrow_type_signal.read() {
+                            ArrowType::Default => ArrowType::Sharp,
+                            ArrowType::Sharp => ArrowType::Curved,
+                            ArrowType::Curved => ArrowType::Step,
+                            ArrowType::Step => ArrowType::Straight,
+                            ArrowType::Straight => ArrowType::Default,
+                        };
+                        arrow_type_signal.set(next_type);
+                        let _ = crate::ui::commands::apply_arrow_type_to_selection(doc_signal, history_signal, next_type);
+                    }
                 }
                 IconButton {
                     test_id: "style-arrow",
