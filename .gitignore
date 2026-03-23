@@ -2,6 +2,8 @@
 /target/
 /diagram_tool/target/
 **/target/
+**/dist/
+dist/
 
 # Moon cache
 .moon/cache/
