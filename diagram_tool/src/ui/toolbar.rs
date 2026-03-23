@@ -374,8 +374,10 @@ pub fn Toolbar() -> Element {
                     IconButton {
                         test_id: "toolbar-export",
                         onclick: move |_| {
-                            persistence::save_workspace(
-                                doc_signal, tool_signal, edge_style_signal, arrow_type_signal, toasts
+                            let _ = crate::ui::toast::ToastApi::from_signal(toasts).show(
+                                crate::ui::toast::ToastIntent::Info,
+                                "Coming Soon",
+                                Some("Save and export functionality is not implemented yet.".to_string())
                             );
                         },
                         icon: IconKind::Upload, // Map export to Upload icon (arrow pointing up from bracket)
@@ -384,8 +386,10 @@ pub fn Toolbar() -> Element {
                     IconButton {
                         test_id: "toolbar-import",
                         onclick: move |_| {
-                            persistence::open_workspace(
-                                doc_signal, history_signal, tool_signal, edge_style_signal, arrow_type_signal, toasts
+                            let _ = crate::ui::toast::ToastApi::from_signal(toasts).show(
+                                crate::ui::toast::ToastIntent::Info,
+                                "Coming Soon",
+                                Some("Load and import functionality is not implemented yet.".to_string())
                             );
                         },
                         icon: IconKind::Download, // Map import to Download icon (arrow pointing down to bracket)
