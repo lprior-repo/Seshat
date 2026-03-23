@@ -3,11 +3,9 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-#[cfg(not(target_arch = "wasm32"))]
 use include_dir::{include_dir, Dir};
 
-#[cfg(not(target_arch = "wasm32"))]
-pub const ICONS: Dir = include_dir!("$CARGO_MANIFEST_DIR/assets/resources");
+pub const ICONS: Dir = include_dir!("$CARGO_MANIFEST_DIR/resources");
 
 #[allow(clippy::unwrap_used)]
 #[allow(clippy::expect_used)]
@@ -27,12 +25,5 @@ pub fn icon_index() -> &'static IconIndex {
 #[allow(dead_code)]
 #[must_use]
 pub fn icon_src(icon: &IconMeta) -> String {
-    let base_path = option_env!("DIOXUS_ROUTER_BASE").unwrap_or("");
-    if base_path.is_empty() {
-        format!("resources/{}", icon.file_relpath)
-    } else if base_path.ends_with('/') {
-        format!("{base_path}resources/{}", icon.file_relpath)
-    } else {
-        format!("{base_path}/resources/{}", icon.file_relpath)
-    }
+    format!("/resources/{}", icon.file_relpath)
 }
