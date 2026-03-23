@@ -26,7 +26,7 @@ pub const fn edge_marker_start_ref(selected: bool) -> &'static str {
 }
 
 /// Marker references for rendering an edge.
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, PartialEq)]
 pub struct EdgeMarkers {
     pub marker_end: String,
     pub marker_start: Option<String>,

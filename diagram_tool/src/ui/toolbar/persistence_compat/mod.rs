@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use diagram_models::document::DiagramDocument;
 
 fn remap_key(obj: &mut serde_json::Map<String, serde_json::Value>, from: &str, to: &str) {

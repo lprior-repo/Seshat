@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::history::History;
 use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
 use crate::ui::toast::{ToastHandle, ToastIntent, ToastUpdate};

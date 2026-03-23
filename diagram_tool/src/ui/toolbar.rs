@@ -31,6 +31,54 @@ pub struct ToolbarStats {
     pub revision: u64,
 }
 
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Default)]
+pub enum ButtonState {
+    #[default]
+    Default,
+    Active,
+    Disabled,
+}
+
+#[derive(Clone, PartialEq, Default)]
+pub enum ButtonVariant {
+    #[default]
+    Standard,
+    Tool {
+        title: &'static str,
+    },
+    Destructive {
+        title: &'static str,
+    },
+    GridToggle {
+        title: &'static str,
+    },
+}
+
+impl ButtonVariant {
+    fn title(&self) -> &'static str {
+        match self {
+            Self::Standard => "",
+            Self::Tool { title } => title,
+            Self::Destructive { title } => title,
+            Self::GridToggle { title } => title,
+        }
+    }
+
+    fn fill_color(&self) -> Option<&'static str> {
+        match self {
+            Self::Destructive { .. } => Some("#ef4444"),
+            _ => None,
+        }
+    }
+
+    fn active_bg_class(&self) -> &'static str {
+        match self {
+            Self::GridToggle { .. } => "bg-[oklch(0.4_0.1_160)]",
+            _ => "bg-[var(--accent-soft)]",
+        }
+    }
+}
+
 #[component]
 fn Divider() -> Element {
     rsx! {
@@ -40,106 +88,98 @@ fn Divider() -> Element {
     }
 }
 
+#[derive(Clone, PartialEq, Props)]
+pub struct IconButtonProps {
+    pub test_id: &'static str,
+    pub state: ButtonState,
+    pub onclick: EventHandler<MouseEvent>,
+    pub icon: IconKind,
+    #[props(default)]
+    pub variant: ButtonVariant,
+}
+
 #[component]
-fn IconButton(
-    test_id: &'static str,
-    active: Option<bool>,
-    onclick: EventHandler<MouseEvent>,
-    disabled: Option<bool>,
-    icon: IconKind,
-    color: Option<&'static str>,
-    active_bg: Option<&'static str>,
-    title: Option<&'static str>,
-) -> Element {
-    let is_active = active.unwrap_or(false);
-    let is_disabled = disabled.unwrap_or(false);
-    let bg = if is_active {
-        active_bg.unwrap_or("bg-[var(--accent-soft)]")
-    } else {
-        "bg-transparent hover:bg-white/5"
+fn IconButton(props: IconButtonProps) -> Element {
+    let bg = match props.state {
+        ButtonState::Active => props.variant.active_bg_class(),
+        _ => "bg-transparent hover:bg-white/5",
     };
-    let border = if is_active {
-        "border-[var(--accent)]"
-    } else {
-        "border-transparent"
+    let border = match props.state {
+        ButtonState::Active => "border-[var(--accent)]",
+        _ => "border-transparent",
     };
-    let fill = if is_active { Some(ACCENT) } else { color };
-    let opacity = if is_disabled {
-        "opacity-40"
-    } else {
-        "opacity-100"
+    let fill = match props.state {
+        ButtonState::Active => Some(ACCENT),
+        _ => props.variant.fill_color(),
     };
-    let cursor = if is_disabled {
-        "cursor-not-allowed"
-    } else {
-        "cursor-pointer"
+    let opacity = match props.state {
+        ButtonState::Disabled => "opacity-40",
+        _ => "opacity-100",
     };
-    let tooltip = title.unwrap_or("");
+    let cursor = match props.state {
+        ButtonState::Disabled => "cursor-not-allowed",
+        _ => "cursor-pointer",
+    };
+    let tooltip = props.variant.title();
 
     rsx! {
         button {
-            "data-testid": test_id,
+            "data-testid": props.test_id,
             class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 text-foreground transition-colors",
             title: "{tooltip}",
             onclick: move |evt| {
-                if !is_disabled {
-                    onclick.call(evt);
+                if props.state != ButtonState::Disabled {
+                    props.onclick.call(evt);
                 }
             },
-            Icon { kind: icon, color: fill, size: 20 }
+            Icon { kind: props.icon, color: fill, size: 20 }
         }
     }
 }
 
+#[derive(Clone, PartialEq, Props)]
+pub struct TextButtonProps {
+    pub test_id: &'static str,
+    pub state: ButtonState,
+    pub onclick: EventHandler<MouseEvent>,
+    pub text: &'static str,
+    pub title: &'static str,
+}
+
 #[component]
-fn TextButton(
-    test_id: &'static str,
-    active: Option<bool>,
-    onclick: EventHandler<MouseEvent>,
-    disabled: Option<bool>,
-    text: &'static str,
-    title: Option<&'static str>,
-) -> Element {
-    let is_active = active.unwrap_or(false);
-    let is_disabled = disabled.unwrap_or(false);
-    let bg = if is_active {
-        "bg-[var(--accent-soft)]"
-    } else {
-        "bg-transparent hover:bg-white/5"
+fn TextButton(props: TextButtonProps) -> Element {
+    let bg = match props.state {
+        ButtonState::Active => "bg-[var(--accent-soft)]",
+        _ => "bg-transparent hover:bg-white/5",
     };
-    let border = if is_active {
-        "border-[var(--accent)]"
-    } else {
-        "border-transparent"
+    let border = match props.state {
+        ButtonState::Active => "border-[var(--accent)]",
+        _ => "border-transparent",
     };
-    let fill = if is_active {
-        "text-[var(--accent)]"
-    } else {
-        "text-foreground"
+    let fill = match props.state {
+        ButtonState::Active => "text-[var(--accent)]",
+        _ => "text-foreground",
     };
-    let opacity = if is_disabled {
-        "opacity-40"
-    } else {
-        "opacity-100"
+    let opacity = match props.state {
+        ButtonState::Disabled => "opacity-40",
+        _ => "opacity-100",
     };
-    let cursor = if is_disabled {
-        "cursor-not-allowed"
-    } else {
-        "cursor-pointer"
+    let cursor = match props.state {
+        ButtonState::Disabled => "cursor-not-allowed",
+        _ => "cursor-pointer",
     };
-    let tooltip = title.unwrap_or("");
 
     rsx! {
         button {
-            "data-testid": test_id,
+            "data-testid": props.test_id,
             class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 {fill} text-[18px] font-medium font-mono transition-colors",
-            title: "{tooltip}",
+            title: "{props.title}",
             onclick: move |evt| {
-                if !is_disabled {
-                    onclick.call(evt);
+                if props.state != ButtonState::Disabled {
+                    props.onclick.call(evt);
                 }
             },
-            "{text}"
+            "{props.text}"
         }
     }
 }
@@ -175,7 +215,6 @@ pub fn Toolbar() -> Element {
     let mut doc_signal = app_state.document;
     let history_signal = app_state.history;
     let mut tool_signal = app_state.tool_mode;
-    let edge_style_signal = app_state.edge_style;
     let mut arrow_type_signal = app_state.arrow_type;
     let toasts = app_state.toasts;
 
@@ -202,49 +241,48 @@ pub fn Toolbar() -> Element {
                 // Tools
                 IconButton {
                     test_id: "tool-select",
-                    active: *tool_signal.read() == ToolMode::Select,
+                    state: if *tool_signal.read() == ToolMode::Select { ButtonState::Active } else { ButtonState::Default },
                     onclick: move |_| tool_signal.set(ToolMode::Select),
                     icon: IconKind::Select,
-                    title: "Select (V)"
+                    variant: ButtonVariant::Tool { title: "Select (V)" }
                 }
                 IconButton {
                     test_id: "tool-pan",
-                    active: *tool_signal.read() == ToolMode::Pan,
+                    state: if *tool_signal.read() == ToolMode::Pan { ButtonState::Active } else { ButtonState::Default },
                     onclick: move |_| tool_signal.set(ToolMode::Pan),
                     icon: IconKind::Pan,
-                    title: "Pan (H)"
+                    variant: ButtonVariant::Tool { title: "Pan (H)" }
                 }
                 IconButton {
                     test_id: "tool-edge",
-                    active: *tool_signal.read() == ToolMode::Edge,
+                    state: if *tool_signal.read() == ToolMode::Edge { ButtonState::Active } else { ButtonState::Default },
                     onclick: move |_| tool_signal.set(ToolMode::Edge),
                     icon: IconKind::Edge,
-                    title: "Edge (L)"
+                    variant: ButtonVariant::Tool { title: "Edge (L)" }
                 }
                 IconButton {
                     test_id: "tool-subgraph",
-                    active: *tool_signal.read() == ToolMode::Subgraph,
+                    state: if *tool_signal.read() == ToolMode::Subgraph { ButtonState::Active } else { ButtonState::Default },
                     onclick: move |_| tool_signal.set(ToolMode::Subgraph),
                     icon: IconKind::Subgraph,
-                    title: "Subgraph (R)"
+                    variant: ButtonVariant::Tool { title: "Subgraph (R)" }
                 }
                 TextButton {
                     test_id: "tool-text",
-                    active: *tool_signal.read() == ToolMode::Text,
+                    state: if *tool_signal.read() == ToolMode::Text { ButtonState::Active } else { ButtonState::Default },
                     onclick: move |_| tool_signal.set(ToolMode::Text),
                     text: "T",
                     title: "Text (T)"
                 }
                 IconButton {
                     test_id: "tool-grid",
-                    active: show_grid,
-                    active_bg: "bg-[oklch(0.4_0.1_160)]", // Darker green highlight for grid
+                    state: if show_grid { ButtonState::Active } else { ButtonState::Default },
                     onclick: move |_| {
                         let mut d = doc_signal.write();
                         d.editor_state.show_grid = !d.editor_state.show_grid;
                     },
                     icon: IconKind::Grid,
-                    title: "Toggle Grid"
+                    variant: ButtonVariant::GridToggle { title: "Toggle Grid" }
                 }
 
                 Divider {}
@@ -252,19 +290,17 @@ pub fn Toolbar() -> Element {
                 // History
                 IconButton {
                     test_id: "toolbar-undo",
-                    disabled: undo_disabled,
+                    state: if undo_disabled { ButtonState::Disabled } else { ButtonState::Default },
                     onclick: move |_| { apply_undo(doc_signal, history_signal); },
                     icon: IconKind::Undo,
-                    color: None,
-                    title: "Undo"
+                    variant: ButtonVariant::Tool { title: "Undo" }
                 }
                 IconButton {
                     test_id: "toolbar-redo",
-                    disabled: redo_disabled,
+                    state: if redo_disabled { ButtonState::Disabled } else { ButtonState::Default },
                     onclick: move |_| { apply_redo(doc_signal, history_signal); },
                     icon: IconKind::Redo,
-                    color: None,
-                    title: "Redo"
+                    variant: ButtonVariant::Tool { title: "Redo" }
                 }
 
                 Divider {}
@@ -272,10 +308,10 @@ pub fn Toolbar() -> Element {
                 // Zoom
                 IconButton {
                     test_id: "zoom-in",
+                    state: ButtonState::Default,
                     onclick: move |_| { let _ = apply_zoom_in(doc_signal, history_signal, *viewport_size_signal.read()); },
                     icon: IconKind::ZoomIn,
-                    color: None,
-                    title: "Zoom In"
+                    variant: ButtonVariant::Tool { title: "Zoom In" }
                 }
                 div {
                     "data-testid": "zoom-reset",
@@ -287,10 +323,10 @@ pub fn Toolbar() -> Element {
                 }
                 IconButton {
                     test_id: "zoom-out",
+                    state: ButtonState::Default,
                     onclick: move |_| { let _ = apply_zoom_out(doc_signal, history_signal, *viewport_size_signal.read()); },
                     icon: IconKind::ZoomOut,
-                    color: None,
-                    title: "Zoom Out"
+                    variant: ButtonVariant::Tool { title: "Zoom Out" }
                 }
 
                 Divider {}
@@ -298,7 +334,7 @@ pub fn Toolbar() -> Element {
                 // Delete
                 IconButton {
                     test_id: "toolbar-delete",
-                    disabled: stats.selected_count == 0,
+                    state: if stats.selected_count == 0 { ButtonState::Disabled } else { ButtonState::Default },
                     onclick: move |_| {
                         let selected_nodes: Vec<String> = {
                             let doc = doc_signal.read();
@@ -316,8 +352,7 @@ pub fn Toolbar() -> Element {
                         }
                     },
                     icon: IconKind::Trash,
-                    color: Some("#ef4444"),
-                    title: "Delete"
+                    variant: ButtonVariant::Destructive { title: "Delete" }
                 }
 
                 Divider {}
@@ -354,14 +389,12 @@ pub fn Toolbar() -> Element {
                 }
                 IconButton {
                     test_id: "style-arrow",
+                    state: ButtonState::Default,
                     onclick: move |_| {
                         let _ = apply_toggle_edge_direction(doc_signal, history_signal);
                     },
                     icon: IconKind::ArrowRight,
-                    color: None,
-                    disabled: None,
-                    active: None,
-                    active_bg: None,
+                    variant: ButtonVariant::Standard
                 }
             }
 
@@ -373,6 +406,7 @@ pub fn Toolbar() -> Element {
                     class: "flex items-center",
                     IconButton {
                         test_id: "toolbar-export",
+                        state: ButtonState::Default,
                         onclick: move |_| {
                             let _ = crate::ui::toast::ToastApi::from_signal(toasts).show(
                                 crate::ui::toast::ToastIntent::Info,
@@ -381,10 +415,11 @@ pub fn Toolbar() -> Element {
                             );
                         },
                         icon: IconKind::Upload, // Map export to Upload icon (arrow pointing up from bracket)
-                        title: "Export"
+                        variant: ButtonVariant::Tool { title: "Export" }
                     }
                     IconButton {
                         test_id: "toolbar-import",
+                        state: ButtonState::Default,
                         onclick: move |_| {
                             let _ = crate::ui::toast::ToastApi::from_signal(toasts).show(
                                 crate::ui::toast::ToastIntent::Info,
@@ -393,7 +428,7 @@ pub fn Toolbar() -> Element {
                             );
                         },
                         icon: IconKind::Download, // Map import to Download icon (arrow pointing down to bracket)
-                        title: "Import"
+                        variant: ButtonVariant::Tool { title: "Import" }
                     }
                 }
 

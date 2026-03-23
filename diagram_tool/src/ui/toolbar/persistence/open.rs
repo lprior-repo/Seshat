@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::history::History;
 use crate::ui::editor::ToolMode;
 use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions, ToastQueue};

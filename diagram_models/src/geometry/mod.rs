@@ -7,7 +7,7 @@ mod text;
 
 pub use aabb::AABB;
 pub use image::Image;
-pub use point::Point;
+pub use point::{FinitePoint, Point};
 pub use rectangle::Rectangle;
 pub use shape::StrokedShape;
 pub use text::{ExtendedText, Text, TextContent, TextDirection};

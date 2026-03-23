@@ -63,6 +63,40 @@ pub fn flush_pending_pointer_update(
         InteractionMode::Panning { last_pos } => {
             handle_panning(&mut doc_signal, client_x, client_y, last_pos);
         }
+        InteractionMode::DraggingBendPoint {
+            edge_id,
+            bend_index,
+        } => {
+            let doc = doc_signal.read().clone();
+            let raw = canvas_domain::perf::to_canvas_coords(
+                canvas_domain::ScreenCoord(client_x, client_y),
+                canvas_domain::CanvasCoord(
+                    doc.editor_state.camera_x.0,
+                    doc.editor_state.camera_y.0,
+                ),
+                doc.editor_state.zoom.0,
+            );
+            let snapped = crate::ui::grid::snap_point(
+                (raw.0, raw.1),
+                doc.editor_state.snap_to_grid,
+                doc.editor_state.grid_size,
+            );
+
+            if let Some(snapped_point) =
+                diagram_models::geometry::FinitePoint::new(snapped.0, snapped.1)
+            {
+                if let Ok(new_doc) =
+                    diagram_models::document::routing_interactions::handle_bend_point_drag(
+                        &doc,
+                        edge_id,
+                        diagram_models::document::routing_interactions::BendPointIndex(*bend_index),
+                        snapped_point,
+                    )
+                {
+                    doc_signal.set(new_doc);
+                }
+            }
+        }
         InteractionMode::Select
         | InteractionMode::RubberBand { .. }
         | InteractionMode::DrawingEdge { .. }

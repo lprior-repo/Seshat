@@ -11,6 +11,8 @@ pub mod edge_direction;
 pub mod editor;
 pub mod error;
 pub mod node;
+pub mod routing;
+pub mod routing_interactions;
 pub mod types;
 
 // Re-export for convenience
@@ -185,6 +187,31 @@ impl DiagramDocument {
         Ok(())
     }
 
+    fn build_marquee_aabb(bounds: &ValidRect) -> crate::geometry::AABB {
+        crate::geometry::AABB::new(
+            bounds.x,
+            bounds.y,
+            bounds.x + bounds.width,
+            bounds.y + bounds.height,
+        )
+    }
+
+    fn gather_selected_marquee(
+        &self,
+        bounds: &ValidRect,
+        mode: crate::spatial_index::MarqueeMode,
+        m_aabb: &crate::geometry::AABB,
+    ) -> Result<im::HashSet<String>, DocumentError> {
+        let index = crate::spatial_index::build_spatial_index(&self.document.nodes);
+        let mut selected = im::HashSet::new();
+        for id in crate::spatial_index::gather_candidates(&index, m_aabb) {
+            if self.is_node_selected_by_marquee(&id, bounds, mode)? {
+                selected.insert(id.to_string());
+            }
+        }
+        Ok(selected)
+    }
+
     /// Select nodes within a marquee rectangle.
     ///
     /// # Errors
@@ -194,52 +221,47 @@ impl DiagramDocument {
         bounds: ValidRect,
         mode: crate::spatial_index::MarqueeMode,
     ) -> Result<(), DocumentError> {
-        use crate::geometry::AABB;
-        use crate::selection::bounds::{get_node_rotation, rotated_node_bounds};
-        use crate::spatial_index::build_spatial_index;
+        let m_aabb = Self::build_marquee_aabb(&bounds);
+        self.editor_state.selected_items = self.gather_selected_marquee(&bounds, mode, &m_aabb)?;
+        Ok(())
+    }
 
-        let index = build_spatial_index(&self.document.nodes);
-        let marquee_aabb = AABB::new(
-            bounds.x,
-            bounds.y,
-            bounds.x + bounds.width,
-            bounds.y + bounds.height,
+    fn is_node_selected_by_marquee(
+        &self,
+        id: &NodeId,
+        bounds: &ValidRect,
+        mode: crate::spatial_index::MarqueeMode,
+    ) -> Result<bool, DocumentError> {
+        let node = self
+            .document
+            .nodes
+            .get(id)
+            .ok_or_else(|| DocumentError::NodeNotFound(id.clone()))?;
+        let bounds_rect = crate::selection::bounds::rotated_node_bounds(
+            node.x.0,
+            node.y.0,
+            node.width.0,
+            node.height.0,
+            crate::selection::bounds::get_node_rotation(node),
         );
+        Ok(Self::marquee_mode_matches(bounds_rect, bounds, mode))
+    }
 
-        let m_right = bounds.x + bounds.width;
-        let m_bottom = bounds.y + bounds.height;
-
-        // Gather candidate nodes from spatial index
-        let candidates = crate::spatial_index::gather_candidates(&index, &marquee_aabb);
-
-        let mut selected = im::HashSet::new();
-        for id in candidates {
-            let node = self
-                .document
-                .nodes
-                .get(&id)
-                .ok_or_else(|| DocumentError::NodeNotFound(id.clone()))?;
-
-            let rotation = get_node_rotation(node);
-            let (min_x, min_y, max_x, max_y) =
-                rotated_node_bounds(node.x.0, node.y.0, node.width.0, node.height.0, rotation);
-
-            let is_selected = match mode {
-                crate::spatial_index::MarqueeMode::Contain => {
-                    min_x >= bounds.x && max_x <= m_right && min_y >= bounds.y && max_y <= m_bottom
-                }
-                crate::spatial_index::MarqueeMode::Intersect => {
-                    !(min_x > m_right || max_x < bounds.x || min_y > m_bottom || max_y < bounds.y)
-                }
-            };
-
-            if is_selected {
-                selected.insert(id.to_string());
+    fn marquee_mode_matches(
+        node_bounds: (f64, f64, f64, f64),
+        marquee: &ValidRect,
+        mode: crate::spatial_index::MarqueeMode,
+    ) -> bool {
+        let (min_x, min_y, max_x, max_y) = node_bounds;
+        let (m_r, m_b) = (marquee.x + marquee.width, marquee.y + marquee.height);
+        match mode {
+            crate::spatial_index::MarqueeMode::Contain => {
+                min_x >= marquee.x && max_x <= m_r && min_y >= marquee.y && max_y <= m_b
+            }
+            crate::spatial_index::MarqueeMode::Intersect => {
+                !(min_x > m_r || max_x < marquee.x || min_y > m_b || max_y < marquee.y)
             }
         }
-
-        self.editor_state.selected_items = selected;
-        Ok(())
     }
 }
 

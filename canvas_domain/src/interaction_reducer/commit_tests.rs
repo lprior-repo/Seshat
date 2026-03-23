@@ -9,7 +9,7 @@
 )]
 #[cfg(test)]
 mod tests {
-    use crate::interaction_reducer::commit::{commit_inline_edit, CommitError};
+    use crate::interaction_reducer::commit::{commit_inline_edit, CommitError, LabelEditError};
     use diagram_models::document::{
         DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat,
     };
@@ -75,7 +75,10 @@ mod tests {
                 None,
             );
 
-            assert!(matches!(result, Err(CommitError::TargetNotFound)));
+            assert!(matches!(
+                result,
+                Err(CommitError::LabelEdit(LabelEditError::TargetNotFound))
+            ));
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -97,7 +100,10 @@ mod tests {
                 None,
             );
 
-            assert!(matches!(result, Err(CommitError::TargetNotFound)));
+            assert!(matches!(
+                result,
+                Err(CommitError::LabelEdit(LabelEditError::TargetNotFound))
+            ));
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -210,7 +216,10 @@ mod tests {
 
             let result = commit_inline_edit(doc, history, None, Some(e1.clone()), edit_value, None);
 
-            assert!(matches!(result, Err(CommitError::ValidationError)));
+            assert!(matches!(
+                result,
+                Err(CommitError::LabelEdit(LabelEditError::ValidationError))
+            ));
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();

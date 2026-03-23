@@ -53,7 +53,8 @@ pub fn handle_mouse_move(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
         }
         InteractionMode::DraggingSelection { .. }
         | InteractionMode::ResizingSelection { .. }
-        | InteractionMode::Panning { .. } => {
+        | InteractionMode::Panning { .. }
+        | InteractionMode::DraggingBendPoint { .. } => {
             pending_pointer_sample.set(Some((local_x, local_y)));
         }
         InteractionMode::Select => {}

@@ -28,6 +28,19 @@ fn create_test_node(id: &str) -> Node {
     }
 }
 
+/// Adversarial test for edge label validation.
+///
+/// Per the contract (defects.md), safe whitespace control characters are allowed:
+/// - `\n` (newline)
+/// - `\r` (carriage return)
+/// - `\t` (tab)
+///
+/// The following should be rejected:
+/// - Null bytes
+/// - Other control characters
+/// - Strings exceeding MAX_LABEL_LENGTH (4096 chars)
+/// - Zero-width spaces (visual spoofing)
+/// - Bi-directional overrides (visual spoofing)
 #[test]
 fn adversarial_edge_labels() {
     let mut state = DiagramProjection::default();
@@ -44,39 +57,65 @@ fn adversarial_edge_labels() {
     let edge_id = EdgeId::new("e1".to_string());
 
     let massive_string = "A".repeat(100_000);
-    let labels_to_test = vec![
-        ("null byte", "\0"),
+
+    // Cases that should be ACCEPTED (safe whitespace)
+    let accepted_labels = vec![
         ("newline", "line1\nline2"),
         ("carriage return", "line1\rline2"),
+        ("tab", "col1\tcol2"),
+    ];
+
+    // Cases that should be REJECTED
+    let rejected_labels = vec![
+        ("null byte", "\0"),
         ("massive string", massive_string.as_str()),
         ("control chars", "\x01\x02\x03"),
         ("zero width space", "\u{200B}"),
         ("bidi override", "\u{202E}RLO"),
     ];
 
-    let mut failed_cases = Vec::new();
+    let mut accepted_unexpectedly = Vec::new();
+    let mut rejected_unexpectedly = Vec::new();
 
-    for (name, label) in labels_to_test {
+    // Verify accepted labels work
+    for (name, label) in &accepted_labels {
         let result = apply_update_edge_label(state.clone(), "e1", label);
         match result {
             Ok(new_state) => {
                 let e = new_state.edges.get(&edge_id).unwrap();
-                println!(
-                    "Accepted {name}: length={}, contains null={}",
-                    e.label.len(),
-                    e.label.contains('\0')
-                );
-                failed_cases.push(name);
+                println!("Correctly accepted {name}: length={}", e.label.len());
             }
             Err(e) => {
-                println!("Rejected {name}: {e:?}");
+                println!("Unexpectedly rejected {name}: {e:?}");
+                rejected_unexpectedly.push(*name);
+            }
+        }
+    }
+
+    // Verify rejected labels fail
+    for (name, label) in &rejected_labels {
+        let result = apply_update_edge_label(state.clone(), "e1", label);
+        match result {
+            Ok(new_state) => {
+                let e = new_state.edges.get(&edge_id).unwrap();
+                println!("Unexpectedly accepted {name}: length={}", e.label.len());
+                accepted_unexpectedly.push(*name);
+            }
+            Err(e) => {
+                println!("Correctly rejected {name}: {e:?}");
             }
         }
     }
 
     assert!(
-        failed_cases.is_empty(),
-        "Validation missing for cases: {:?}",
-        failed_cases
+        rejected_unexpectedly.is_empty(),
+        "Labels should have been accepted but were rejected: {:?}",
+        rejected_unexpectedly
+    );
+
+    assert!(
+        accepted_unexpectedly.is_empty(),
+        "Labels should have been rejected but were accepted: {:?}",
+        accepted_unexpectedly
     );
 }

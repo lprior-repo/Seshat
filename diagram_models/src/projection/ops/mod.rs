@@ -2,9 +2,6 @@
 //!
 //! This module re-exports all operation modules for convenient access.
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
 pub mod edge_ops;
 pub mod group_ops;
 pub mod node_bounds;

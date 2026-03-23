@@ -3,15 +3,13 @@
 //! This module provides functions for applying edge-related operations
 //! to a diagram projection.
 
-#![allow(dead_code)]
-#![allow(unused_imports)]
-
 use im::HashMap;
 use std::collections::HashSet;
 
 use crate::document::{ArrowType, Edge, EdgeId, EdgeStyle, NodeId, OrderedFloat};
 use crate::envelope::DomainOp;
 use crate::projection::types::{DiagramProjection, ReplayError};
+use crate::validation::is_valid_label;
 
 /// Create a default edge with standard settings
 pub fn create_default_edge(source: NodeId, target: NodeId) -> Edge {
@@ -57,6 +55,11 @@ pub fn apply_update_edge_label(
     id: &str,
     label: &str,
 ) -> Result<DiagramProjection, ReplayError> {
+    if !is_valid_label(label) {
+        return Err(ReplayError::InvariantViolation(
+            "invalid edge label: failed validation".to_string(),
+        ));
+    }
     update_edge(state, id, |e| e.label = label.to_owned())
 }
 

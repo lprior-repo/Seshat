@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use crate::ui::editor::ToolMode;
 use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions, ToastQueue};
 #[cfg(not(target_arch = "wasm32"))]

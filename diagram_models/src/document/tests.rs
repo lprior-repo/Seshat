@@ -1,6 +1,4 @@
 #![allow(
-    clippy::unwrap_used,
-    clippy::panic,
     clippy::module_inception,
     clippy::let_unit_value,
     clippy::redundant_pattern_matching,
@@ -108,7 +106,7 @@ fn invalid_edge_missing_target() {
 }
 
 #[test]
-fn edge_deletion_isolated() {
+fn edge_deletion_isolated() -> Result<(), DocumentError> {
     let mut doc = DiagramDocument::default();
     doc.document
         .nodes
@@ -118,17 +116,18 @@ fn edge_deletion_isolated() {
         .insert(NodeId::new("N2".into()), create_test_node("N2"));
 
     let edge = create_test_edge("N1", "N2");
-    doc.add_edge(EdgeId::new("E1".into()), edge).unwrap();
+    doc.add_edge(EdgeId::new("E1".into()), edge)?;
 
     let result = doc.remove_edge(&EdgeId::new("E1".into()));
     assert!(result.is_ok());
     assert!(!doc.document.edges.contains_key(&EdgeId::new("E1".into())));
     assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into())));
     assert!(doc.document.nodes.contains_key(&NodeId::new("N2".into())));
+    Ok(())
 }
 
 #[test]
-fn node_deletion_cascades_edges() {
+fn node_deletion_cascades_edges() -> Result<(), DocumentError> {
     let mut doc = DiagramDocument::default();
     doc.document
         .nodes
@@ -140,10 +139,8 @@ fn node_deletion_cascades_edges() {
         .nodes
         .insert(NodeId::new("N3".into()), create_test_node("N3"));
 
-    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
-        .unwrap();
-    doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N2", "N3"))
-        .unwrap();
+    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))?;
+    doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N2", "N3"))?;
 
     let result = doc.remove_node(&NodeId::new("N2".into()));
     assert!(result.is_ok());
@@ -152,10 +149,11 @@ fn node_deletion_cascades_edges() {
     assert!(!doc.document.edges.contains_key(&EdgeId::new("E2".into())));
     assert!(doc.document.nodes.contains_key(&NodeId::new("N1".into())));
     assert!(doc.document.nodes.contains_key(&NodeId::new("N3".into())));
+    Ok(())
 }
 
 #[test]
-fn returns_error_when_creating_edge_with_duplicate_id() {
+fn returns_error_when_creating_edge_with_duplicate_id() -> Result<(), DocumentError> {
     let mut doc = DiagramDocument::default();
     doc.document
         .nodes
@@ -164,13 +162,13 @@ fn returns_error_when_creating_edge_with_duplicate_id() {
         .nodes
         .insert(NodeId::new("N2".into()), create_test_node("N2"));
 
-    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
-        .unwrap();
+    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))?;
     let result = doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"));
     assert_eq!(
         result,
         Err(DocumentError::EdgeAlreadyExists(EdgeId::new("E1".into())))
     );
+    Ok(())
 }
 
 #[test]
@@ -184,7 +182,7 @@ fn returns_error_when_deleting_missing_edge() {
 }
 
 #[test]
-fn cascading_deletion_handles_multiple_edges_on_same_node() {
+fn cascading_deletion_handles_multiple_edges_on_same_node() -> Result<(), DocumentError> {
     let mut doc = DiagramDocument::default();
     doc.document
         .nodes
@@ -193,33 +191,31 @@ fn cascading_deletion_handles_multiple_edges_on_same_node() {
         .nodes
         .insert(NodeId::new("N2".into()), create_test_node("N2"));
 
-    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
-        .unwrap();
-    doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N1", "N2"))
-        .unwrap();
-    doc.add_edge(EdgeId::new("E3".into()), create_test_edge("N2", "N1"))
-        .unwrap();
+    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))?;
+    doc.add_edge(EdgeId::new("E2".into()), create_test_edge("N1", "N2"))?;
+    doc.add_edge(EdgeId::new("E3".into()), create_test_edge("N2", "N1"))?;
 
-    doc.remove_node(&NodeId::new("N1".into())).unwrap();
+    doc.remove_node(&NodeId::new("N1".into()))?;
 
     assert!(doc.document.edges.is_empty());
+    Ok(())
 }
 
 #[test]
-fn cascading_deletion_handles_self_loop() {
+fn cascading_deletion_handles_self_loop() -> Result<(), DocumentError> {
     let mut doc = DiagramDocument::default();
     doc.document
         .nodes
         .insert(NodeId::new("N1".into()), create_test_node("N1"));
-    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N1"))
-        .unwrap();
+    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N1"))?;
 
-    doc.remove_node(&NodeId::new("N1".into())).unwrap();
+    doc.remove_node(&NodeId::new("N1".into()))?;
     assert!(doc.document.edges.is_empty());
+    Ok(())
 }
 
 #[test]
-fn invariant_all_edges_reference_existing_nodes() {
+fn invariant_all_edges_reference_existing_nodes() -> Result<(), DocumentError> {
     let mut doc = DiagramDocument::default();
     doc.document
         .nodes
@@ -227,15 +223,15 @@ fn invariant_all_edges_reference_existing_nodes() {
     doc.document
         .nodes
         .insert(NodeId::new("N2".into()), create_test_node("N2"));
-    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))
-        .unwrap();
+    doc.add_edge(EdgeId::new("E1".into()), create_test_edge("N1", "N2"))?;
 
     // Remove node cascades, keeping invariant intact
-    doc.remove_node(&NodeId::new("N1".into())).unwrap();
+    doc.remove_node(&NodeId::new("N1".into()))?;
     for edge in doc.document.edges.values() {
         assert!(doc.document.nodes.contains_key(&edge.source));
         assert!(doc.document.nodes.contains_key(&edge.target));
     }
+    Ok(())
 }
 
 #[test]

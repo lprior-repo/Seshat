@@ -16,17 +16,10 @@ use uuid::Uuid;
 pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData>) {
     let mut interaction_mode = state.interaction_mode;
     let mut doc_signal = state.doc_signal;
-    let mut history_signal = state.history_signal;
-    let mut tool_signal = state.tool_signal;
-    let edge_style_default = state.edge_style_default;
-    let arrow_type_default = state.arrow_type_default;
-    let mut space_pan_active = state.space_pan_active;
-    let shift_pressed = state.shift_pressed;
-    let ctrl_pressed = state.ctrl_pressed;
-    let meta_pressed = state.meta_pressed;
+    let history_signal = state.history_signal;
     let pending_pointer_sample = state.pending_pointer_sample;
-    let canvas_origin = state.canvas_origin;
     let db_tx = state.db_tx;
+    let mut space_pan_active = state.space_pan_active;
 
     flush_pending_pointer_update(
         doc_signal,
@@ -44,190 +37,189 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
             start_port,
             ..
         } => {
-            let coords = evt.data.coordinates().client();
-            let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
-            let local_x = coords.x - origin.0;
-            let local_y = coords.y - origin.1;
-            let doc = doc_signal.read().clone();
-            let pos = to_canvas_coords(
-                canvas_domain::ScreenCoord(local_x, local_y),
-                canvas_domain::CanvasCoord(
-                    doc.editor_state.camera_x.0,
-                    doc.editor_state.camera_y.0,
-                ),
-                doc.editor_state.zoom.0,
-            );
-            let target = find_node_at(&doc, pos.0, pos.1);
-            if let Some(target_id) = target.clone() {
-                if &target_id != from_node {
-                    let end_port = doc.document.nodes.get(&target_id).and_then(|tgt| {
-                        let dx = if tgt.width.0 > 0.0 {
-                            (pos.0 - tgt.x.0) / tgt.width.0
-                        } else {
-                            0.5
-                        };
-                        let dy = if tgt.height.0 > 0.0 {
-                            (pos.1 - tgt.y.0) / tgt.height.0
-                        } else {
-                            0.5
-                        };
-                        diagram_models::port::NormalizedOffset::new(
-                            diagram_models::document::OrderedFloat::new_unchecked(
-                                dx.clamp(0.0, 1.0),
-                            ),
-                            diagram_models::document::OrderedFloat::new_unchecked(
-                                dy.clamp(0.0, 1.0),
-                            ),
-                        )
-                        .ok()
-                        .map(diagram_models::port::PortAnchor::Custom)
-                    });
-                    let candidate_edge = diagram_models::document::Edge {
-                        source: from_node.clone(),
-                        target: target_id,
-                        label: String::new(),
-                        style: *edge_style_default.read(),
-                        arrow_type: *arrow_type_default.read(),
-                        label_offset_t: OrderedFloat(0.5),
-                        color: None,
-                        thickness: OrderedFloat(1.5),
-                        directed: true,
-                        bend_points: im::Vector::new(),
-                        tags: im::Vector::new(),
-                        metadata: HashMap::new(),
-                        font_size: None,
-                        source_port: *start_port,
-                        target_port: end_port,
-                    };
-
-                    if !edge_preserves_dag(&doc, &candidate_edge) {
-                        let _ = toast.show(
-                            crate::ui::toast::ToastIntent::Warning,
-                            "Cannot create circular connection",
-                            None,
-                        );
-                        if *tool_signal.read() == ToolMode::Edge {
-                            if let Some(target_id) = target {
-                                *mode = InteractionMode::DrawingEdge {
-                                    from_node: target_id,
-                                    current_pos: (pos.0, pos.1),
-                                    start_port: end_port,
-                                };
-                            } else {
-                                *mode = InteractionMode::Select;
-                            }
-                        } else {
-                            *mode = InteractionMode::Select;
-                        }
-                        return;
-                    }
-
-                    let current = doc_signal.read().clone();
-                    let history = history_signal.read().clone();
-                    *history_signal.write() = history.push(current);
-                    doc_signal.with_mut(|doc_mut| {
-                        doc_mut.document.edges = doc_mut
-                            .document
-                            .edges
-                            .update(EdgeId::new(Uuid::new_v4().to_string()), candidate_edge);
-                        doc_mut.revision = doc_mut.revision.increment();
-                    });
-                }
-            }
-            if *tool_signal.read() == ToolMode::Edge {
-                if let Some(target_id) = target {
-                    let end_port = doc.document.nodes.get(&target_id).and_then(|tgt| {
-                        let dx = if tgt.width.0 > 0.0 {
-                            (pos.0 - tgt.x.0) / tgt.width.0
-                        } else {
-                            0.5
-                        };
-                        let dy = if tgt.height.0 > 0.0 {
-                            (pos.1 - tgt.y.0) / tgt.height.0
-                        } else {
-                            0.5
-                        };
-                        diagram_models::port::NormalizedOffset::new(
-                            diagram_models::document::OrderedFloat::new_unchecked(
-                                dx.clamp(0.0, 1.0),
-                            ),
-                            diagram_models::document::OrderedFloat::new_unchecked(
-                                dy.clamp(0.0, 1.0),
-                            ),
-                        )
-                        .ok()
-                        .map(diagram_models::port::PortAnchor::Custom)
-                    });
-                    *mode = InteractionMode::DrawingEdge {
-                        from_node: target_id,
-                        current_pos: (pos.0, pos.1),
-                        start_port: end_port,
-                    };
-                } else {
-                    *mode = InteractionMode::Select;
-                }
-            } else {
-                *mode = InteractionMode::Select;
-            }
+            let next_mode =
+                handle_drawing_edge_release(&state, &evt, from_node.clone(), *start_port, toast);
+            *mode = next_mode;
         }
         InteractionMode::RubberBand { start, current } => {
-            let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
+            let additive = *state.shift_pressed.read()
+                || *state.ctrl_pressed.read()
+                || *state.meta_pressed.read();
             doc_signal.with_mut(|doc| {
                 apply_rubber_band_release(doc, *start, *current, additive);
             });
             *mode = InteractionMode::Select;
         }
         InteractionMode::DrawingSubgraph { start, current } => {
-            let doc_now = doc_signal.read().clone();
-            let snap = doc_now.editor_state.snap_to_grid;
-            let grid = doc_now.editor_state.grid_size;
-            if let Some((x, y, w, h)) = subgraph_release_bounds(*start, *current, snap, grid) {
-                let id = NodeId::new(Uuid::new_v4().to_string());
-                let current_doc = doc_signal.read().clone();
-                let history = history_signal.read().clone();
-                *history_signal.write() = history.push(current_doc);
-                doc_signal.with_mut(|doc| {
-                    let _ = doc.document.nodes.insert(
-                        id.clone(),
-                        Node {
-                            kind: NodeKind::Subgraph,
-                            icon: String::new(),
-                            label: String::from("Subgraph"),
-                            x: OrderedFloat(x),
-                            y: OrderedFloat(y),
-                            width: OrderedFloat(w),
-                            height: OrderedFloat(h),
-                            font_size: None,
-                            font_weight: None,
-                            lock_state: LockState::Locked,
-                            parent: None,
-                            dag_rank: None,
-                            tags: im::Vector::new(),
-                            metadata: HashMap::new(),
-                            z_index: -1,
-                            style: Some(NodeStyle::Box),
-                            collapsed: Some(false),
-                        },
-                    );
-                    doc.editor_state.selected_items.clear();
-                    let _ = doc.editor_state.selected_items.insert(id.to_string());
-                    doc.revision = doc.revision.increment();
-                });
-            }
-            tool_signal.set(ToolMode::Select);
-            *mode = InteractionMode::Select;
+            let next_mode = handle_drawing_subgraph_release(&state, *start, *current);
+            *mode = next_mode;
         }
         InteractionMode::ResizingSelection { .. } | InteractionMode::DraggingSelection { .. } => {
             let mut doc_clone = doc_signal.read().clone();
-            let did_change = finalize_motion_release(mode, &mut doc_clone, &db_tx);
-            if did_change {
+            if finalize_motion_release(mode, &mut doc_clone, &db_tx) {
                 doc_signal.set(doc_clone);
             }
         }
-        InteractionMode::Panning { .. } => {
+        InteractionMode::Panning { .. }
+        | InteractionMode::DraggingBendPoint { .. }
+        | InteractionMode::Select => {
             *mode = InteractionMode::Select;
         }
-        InteractionMode::Select => *mode = InteractionMode::Select,
     });
     space_pan_active.set(false);
+}
+
+fn handle_drawing_edge_release(
+    state: &CanvasState,
+    evt: &Event<dioxus::prelude::MouseData>,
+    from_node: NodeId,
+    start_port: Option<diagram_models::port::PortAnchor>,
+    toast: crate::ui::toast::ToastApi,
+) -> InteractionMode {
+    let mut doc_signal = state.doc_signal;
+    let mut history_signal = state.history_signal;
+    let coords = evt.data.coordinates().client();
+    let origin = sync_canvas_origin().unwrap_or_else(|| *state.canvas_origin.read());
+    let doc = doc_signal.read().clone();
+    let pos = to_canvas_coords(
+        canvas_domain::ScreenCoord(coords.x - origin.0, coords.y - origin.1),
+        canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
+        doc.editor_state.zoom.0,
+    );
+    let target = find_node_at(&doc, pos.0, pos.1);
+
+    if let Some(target_id) = target.clone() {
+        if target_id != from_node {
+            let end_port = calculate_port(&doc, &target_id, pos.0, pos.1);
+            let candidate_edge = diagram_models::document::Edge {
+                source: from_node,
+                target: target_id.clone(),
+                label: String::new(),
+                style: *state.edge_style_default.read(),
+                arrow_type: *state.arrow_type_default.read(),
+                label_offset_t: OrderedFloat(0.5),
+                color: None,
+                thickness: OrderedFloat(1.5),
+                directed: true,
+                bend_points: im::Vector::new(),
+                tags: im::Vector::new(),
+                metadata: HashMap::new(),
+                font_size: None,
+                source_port: start_port,
+                target_port: end_port,
+            };
+
+            if !edge_preserves_dag(&doc, &candidate_edge) {
+                let _ = toast.show(
+                    crate::ui::toast::ToastIntent::Warning,
+                    "Cannot create circular connection",
+                    None,
+                );
+                if *state.tool_signal.read() == ToolMode::Edge {
+                    return InteractionMode::DrawingEdge {
+                        from_node: target_id,
+                        current_pos: (pos.0, pos.1),
+                        start_port: end_port,
+                    };
+                }
+                return InteractionMode::Select;
+            }
+
+            let history = history_signal.read().clone();
+            *history_signal.write() = history.push(doc);
+            doc_signal.with_mut(|doc_mut| {
+                doc_mut.document.edges = doc_mut
+                    .document
+                    .edges
+                    .update(EdgeId::new(Uuid::new_v4().to_string()), candidate_edge);
+                doc_mut.revision = doc_mut.revision.increment();
+            });
+        }
+    }
+
+    if *state.tool_signal.read() == ToolMode::Edge {
+        if let Some(target_id) = target {
+            let end_port = calculate_port(&doc_signal.read(), &target_id, pos.0, pos.1);
+            return InteractionMode::DrawingEdge {
+                from_node: target_id,
+                current_pos: (pos.0, pos.1),
+                start_port: end_port,
+            };
+        }
+    }
+    InteractionMode::Select
+}
+
+fn calculate_port(
+    doc: &diagram_models::document::DiagramDocument,
+    tgt_id: &NodeId,
+    px: f64,
+    py: f64,
+) -> Option<diagram_models::port::PortAnchor> {
+    doc.document.nodes.get(tgt_id).and_then(|tgt| {
+        let dx = if tgt.width.0 > 0.0 {
+            (px - tgt.x.0) / tgt.width.0
+        } else {
+            0.5
+        };
+        let dy = if tgt.height.0 > 0.0 {
+            (py - tgt.y.0) / tgt.height.0
+        } else {
+            0.5
+        };
+        diagram_models::port::NormalizedOffset::new(
+            diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
+            diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
+        )
+        .ok()
+        .map(diagram_models::port::PortAnchor::Custom)
+    })
+}
+
+fn handle_drawing_subgraph_release(
+    state: &CanvasState,
+    start: (f64, f64),
+    current: (f64, f64),
+) -> InteractionMode {
+    let mut doc_signal = state.doc_signal;
+    let mut history_signal = state.history_signal;
+    let mut tool_signal = state.tool_signal;
+
+    let doc_now = doc_signal.read().clone();
+    let snap = doc_now.editor_state.snap_to_grid;
+    let grid = doc_now.editor_state.grid_size;
+    if let Some((x, y, w, h)) = subgraph_release_bounds(start, current, snap, grid) {
+        let id = NodeId::new(Uuid::new_v4().to_string());
+        let history = history_signal.read().clone();
+        *history_signal.write() = history.push(doc_now);
+        doc_signal.with_mut(|doc| {
+            let _ = doc.document.nodes.insert(
+                id.clone(),
+                Node {
+                    kind: NodeKind::Subgraph,
+                    icon: String::new(),
+                    label: String::from("Subgraph"),
+                    x: OrderedFloat(x),
+                    y: OrderedFloat(y),
+                    width: OrderedFloat(w),
+                    height: OrderedFloat(h),
+                    font_size: None,
+                    font_weight: None,
+                    lock_state: LockState::Locked,
+                    parent: None,
+                    dag_rank: None,
+                    tags: im::Vector::new(),
+                    metadata: HashMap::new(),
+                    z_index: -1,
+                    style: Some(NodeStyle::Box),
+                    collapsed: Some(false),
+                },
+            );
+            doc.editor_state.selected_items.clear();
+            let _ = doc.editor_state.selected_items.insert(id.to_string());
+            doc.revision = doc.revision.increment();
+        });
+    }
+    tool_signal.set(ToolMode::Select);
+    InteractionMode::Select
 }

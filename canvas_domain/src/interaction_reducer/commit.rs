@@ -12,8 +12,10 @@ use crate::stubs::LabelTargetType;
 use diagram_models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId};
 use diagram_models::envelope::EventEnvelope;
 use diagram_models::history::History;
+use diagram_models::validation::is_valid_label;
 
-use super::types::CommitError;
+// Re-export error types for consumers
+pub use super::types::{CommitError, LabelEditError};
 
 /// Commits an inline edit for a node or edge.
 ///
@@ -53,24 +55,6 @@ pub fn commit_inline_edit(
     Ok(false)
 }
 
-fn is_valid_label(label: &str) -> bool {
-    if label.len() > 1000 {
-        return false;
-    }
-    for c in label.chars() {
-        if c.is_control() && c != '\n' && c != '\r' && c != '\t' {
-            return false;
-        }
-        if matches!(c, '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}') {
-            return false;
-        }
-        if matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}') {
-            return false;
-        }
-    }
-    true
-}
-
 fn commit_node_edit(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
@@ -80,7 +64,7 @@ fn commit_node_edit(
 ) -> Result<bool, CommitError> {
     let new_label = edit_value.read().clone();
     if !is_valid_label(&new_label) {
-        return Err(CommitError::ValidationError);
+        return Err(LabelEditError::ValidationError.into());
     }
 
     let node_id_clone = node_id.clone();
@@ -92,9 +76,9 @@ fn commit_node_edit(
             .document
             .nodes
             .get(&node_id_clone)
-            .ok_or(CommitError::TargetNotFound)?;
+            .ok_or(LabelEditError::TargetNotFound)?;
 
-        old_label = node.label.clone();
+        old_label.clone_from(&node.label);
 
         if old_label == new_label_clone {
             return Ok(current_doc.clone());
@@ -124,7 +108,7 @@ fn dispatch_label_to_db(
     new_label: &str,
 ) {
     dispatch_update_label(db_tx, target_id, target_type, old_label, new_label)
-        .map_err(CommitError::DispatchFailed)
+        .map_err(CommitError::UpdateFailed)
         .ok();
 }
 
@@ -132,12 +116,12 @@ pub fn calculate_node_label_edit(
     doc: &DiagramDocument,
     node_id: &NodeId,
     new_label: &str,
-) -> Result<DiagramDocument, CommitError> {
+) -> Result<DiagramDocument, LabelEditError> {
     if !is_valid_label(new_label) {
-        return Err(CommitError::ValidationError);
+        return Err(LabelEditError::ValidationError);
     }
     if !doc.document.nodes.contains_key(node_id) {
-        return Err(CommitError::TargetNotFound);
+        return Err(LabelEditError::TargetNotFound);
     }
 
     let new_nodes = doc
@@ -189,7 +173,7 @@ fn commit_edge_edit(
 ) -> Result<bool, CommitError> {
     let new_label = edit_value.read().clone();
     if !is_valid_label(&new_label) {
-        return Err(CommitError::ValidationError);
+        return Err(LabelEditError::ValidationError.into());
     }
 
     let edge_id_clone = edge_id.clone();
@@ -201,9 +185,9 @@ fn commit_edge_edit(
             .document
             .edges
             .get(&edge_id_clone)
-            .ok_or(CommitError::TargetNotFound)?;
+            .ok_or(LabelEditError::TargetNotFound)?;
 
-        old_label = edge.label.clone();
+        old_label.clone_from(&edge.label);
 
         if old_label == new_label_clone {
             return Ok(current_doc.clone());
@@ -230,12 +214,12 @@ pub fn calculate_edge_label_edit(
     doc: &DiagramDocument,
     edge_id: &EdgeId,
     new_label: &str,
-) -> Result<DiagramDocument, CommitError> {
+) -> Result<DiagramDocument, LabelEditError> {
     if !is_valid_label(new_label) {
-        return Err(CommitError::ValidationError);
+        return Err(LabelEditError::ValidationError);
     }
     if !doc.document.edges.contains_key(edge_id) {
-        return Err(CommitError::TargetNotFound);
+        return Err(LabelEditError::TargetNotFound);
     }
 
     let new_edges = doc

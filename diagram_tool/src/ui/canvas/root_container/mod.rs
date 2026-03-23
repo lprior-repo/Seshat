@@ -154,6 +154,8 @@ pub fn RootContainer(state: CanvasState) -> Element {
                     editor_state: state.editor_state,
                     edit_value: state.edit_value,
                     viewport_size: state.viewport_size,
+                    interaction_mode: state.interaction_mode,
+                    canvas_origin: state.canvas_origin,
                     db_tx: state.db_tx
                 }
 

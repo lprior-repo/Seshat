@@ -8,15 +8,34 @@ use im::HashMap;
 
 use diagram_models::document::NodeId;
 
-/// Error type for `commit_inline_edit` operations
+/// Error type for pure domain label edit calculations.
+///
+/// This error type is used by `calculate_*` functions that perform
+/// pure domain transformations without any I/O or persistence concerns.
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub enum CommitError {
-    /// Dispatch failed (e.g., channel closed)
-    DispatchFailed(DispatchError),
+pub enum LabelEditError {
     /// Target node or edge not found in document
     TargetNotFound,
-    /// Invalid input data provided
+    /// Invalid input data provided (e.g., label too long, invalid characters)
     ValidationError,
+}
+
+/// Error type for `commit_inline_edit` operations (Action layer).
+///
+/// This error type wraps `LabelEditError` for pure domain failures
+/// and adds action-specific errors like persistence failures.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum CommitError {
+    /// Pure domain error during label edit calculation
+    LabelEdit(LabelEditError),
+    /// The system failed to persist the new label
+    UpdateFailed(DispatchError),
+}
+
+impl From<LabelEditError> for CommitError {
+    fn from(err: LabelEditError) -> Self {
+        Self::LabelEdit(err)
+    }
 }
 
 #[derive(Clone, Debug, PartialEq)]
@@ -51,6 +70,10 @@ pub enum InteractionMode {
     },
     Panning {
         last_pos: (f64, f64),
+    },
+    DraggingBendPoint {
+        edge_id: diagram_models::document::EdgeId,
+        bend_index: usize,
     },
 }
 

@@ -69,6 +69,30 @@ fn bezier_control_point(source: Point, target: Point) -> Point {
     )
 }
 
+fn bezier_extrema(p0: f64, p1: f64, p2: f64) -> (f64, f64) {
+    let mut min_val = p0.min(p2);
+    let mut max_val = p0.max(p2);
+    let denom = 2.0f64.mul_add(-p1, p0) + p2;
+
+    if denom.abs() > 1e-10 {
+        let t = (p0 - p1) / denom;
+        if (0.0..=1.0).contains(&t) {
+            let t2 = t * t;
+            let mt = 1.0 - t;
+            let px = t2.mul_add(p2, mt * mt * p0 + 2.0 * mt * t * p1);
+            min_val = min_val.min(px);
+            max_val = max_val.max(px);
+        }
+    }
+    (min_val, max_val)
+}
+
+fn compute_bezier_extrema(start: &Point, control: &Point, end: &Point) -> (f64, f64, f64, f64) {
+    let (min_x, max_x) = bezier_extrema(start.x, control.x, end.x);
+    let (min_y, max_y) = bezier_extrema(start.y, control.y, end.y);
+    (min_x, max_x, min_y, max_y)
+}
+
 /// Calculate tight bounds for a quadratic Bezier curve
 /// Uses derivative analysis to find exact extrema
 fn quadratic_bezier_tight_bounds(
@@ -77,41 +101,7 @@ fn quadratic_bezier_tight_bounds(
     end: Point,
     stroke_width: f64,
 ) -> AABB {
-    let tolerance = 1e-10;
-
-    // Start with endpoints
-    let mut min_x = start.x.min(end.x);
-    let mut max_x = start.x.max(end.x);
-    let mut min_y = start.y.min(end.y);
-    let mut max_y = start.y.max(end.y);
-
-    // Check x extrema using derivative
-    let denom_x = 2.0f64.mul_add(-control.x, start.x) + end.x;
-    if denom_x.abs() > tolerance {
-        let t = (start.x - control.x) / denom_x;
-        if (0.0..=1.0).contains(&t) {
-            let t2 = t * t;
-            let mt = 1.0 - t;
-            let mt2 = mt * mt;
-            let px = t2.mul_add(end.x, mt2 * start.x + 2.0 * mt * t * control.x);
-            min_x = min_x.min(px);
-            max_x = max_x.max(px);
-        }
-    }
-
-    // Check y extrema using derivative
-    let denom_y = 2.0f64.mul_add(-control.y, start.y) + end.y;
-    if denom_y.abs() > tolerance {
-        let t = (start.y - control.y) / denom_y;
-        if (0.0..=1.0).contains(&t) {
-            let t2 = t * t;
-            let mt = 1.0 - t;
-            let mt2 = mt * mt;
-            let py = t2.mul_add(end.y, mt2 * start.y + 2.0 * mt * t * control.y);
-            min_y = min_y.min(py);
-            max_y = max_y.max(py);
-        }
-    }
+    let (min_x, max_x, min_y, max_y) = compute_bezier_extrema(&start, &control, &end);
 
     let half_stroke = stroke_width / 2.0;
     AABB::new(
@@ -120,6 +110,67 @@ fn quadratic_bezier_tight_bounds(
         max_x + half_stroke,
         max_y + half_stroke,
     )
+}
+
+fn validate_edge_inputs(
+    source: &Point,
+    target: &Point,
+    thickness: f64,
+    bend_points: &[Point],
+) -> Result<(), EdgeBoundsError> {
+    validate_point(source)?;
+    validate_point(target)?;
+    validate_thickness(thickness)?;
+    for point in bend_points {
+        validate_point(point)?;
+    }
+    Ok(())
+}
+
+fn calculate_segment_bounds(
+    p1: Point,
+    p2: Point,
+    arrow_type: EdgeArrowType,
+    thickness: f64,
+) -> AABB {
+    if arrow_type == EdgeArrowType::Curved {
+        let control = bezier_control_point(p1, p2);
+        quadratic_bezier_tight_bounds(p1, control, p2, thickness)
+    } else {
+        line_bounds(p1, p2, thickness)
+    }
+}
+
+fn validate_edge_bounds(bounds: AABB, thickness: f64) -> Result<AABB, EdgeBoundsError> {
+    let new_max_x = bounds.max_x + thickness * 4.0;
+    if !bounds.min_x.is_finite()
+        || !bounds.min_y.is_finite()
+        || !new_max_x.is_finite()
+        || !bounds.max_y.is_finite()
+    {
+        return Err(EdgeBoundsError::InvalidNodePosition);
+    }
+    Ok(AABB::new(
+        bounds.min_x,
+        bounds.min_y,
+        new_max_x,
+        bounds.max_y,
+    ))
+}
+
+fn build_all_points(source: Point, target: Point, bend_points: &[Point]) -> Vec<Point> {
+    let mut all_points = vec![source];
+    all_points.extend(bend_points.iter().copied());
+    all_points.push(target);
+    all_points
+}
+
+fn reduce_segment_bounds(points: &[Point], arrow_type: EdgeArrowType, thickness: f64) -> AABB {
+    points
+        .windows(2)
+        .map(|w| calculate_segment_bounds(w[0], w[1], arrow_type, thickness))
+        .reduce(|a, b| a.union(&b))
+        .unwrap_or_else(|| AABB::new(0.0, 0.0, 0.0, 0.0))
 }
 
 /// Calculate bounds for an edge including Bezier curve extents
@@ -133,65 +184,8 @@ pub fn edge_bounds(
     thickness: f64,
     bend_points: &[Point],
 ) -> Result<AABB, EdgeBoundsError> {
-    // Validate inputs
-    validate_point(&source)?;
-    validate_point(&target)?;
-    validate_thickness(thickness)?;
-    for point in bend_points {
-        validate_point(point)?;
-    }
-
-    // Build the path points: source -> bend_points -> target
-    let mut all_points = vec![source];
-    all_points.extend(bend_points.iter().copied());
-    all_points.push(target);
-
-    // Calculate bounds for each segment
-    let mut bounds: Option<AABB> = None;
-
-    for window in all_points.windows(2) {
-        let segment_bounds = match arrow_type {
-            EdgeArrowType::Curved => {
-                // For curved edges, use quadratic Bezier
-                let control = bezier_control_point(window[0], window[1]);
-                quadratic_bezier_tight_bounds(window[0], control, window[1], thickness)
-            }
-            EdgeArrowType::Step
-            | EdgeArrowType::Default
-            | EdgeArrowType::Sharp
-            | EdgeArrowType::Straight => {
-                // For non-curved edges, use simple line bounds
-                line_bounds(window[0], window[1], thickness)
-            }
-        };
-
-        if let Some(b) = bounds {
-            bounds = Some(b.union(&segment_bounds));
-        } else {
-            bounds = Some(segment_bounds);
-        }
-    }
-
-    let mut bounds = bounds.unwrap_or_else(|| AABB::new(0.0, 0.0, 0.0, 0.0));
-
-    // Add arrowhead extension for directed edges
-    // Arrowhead extends backward from target
-    let arrowhead_size = thickness * 4.0;
-
-    let new_max_x = bounds.max_x + arrowhead_size;
-    let new_min_x = bounds.min_x;
-    let new_min_y = bounds.min_y;
-    let new_max_y = bounds.max_y;
-
-    if !new_min_x.is_finite()
-        || !new_min_y.is_finite()
-        || !new_max_x.is_finite()
-        || !new_max_y.is_finite()
-    {
-        return Err(EdgeBoundsError::InvalidNodePosition);
-    }
-
-    bounds = AABB::new(new_min_x, new_min_y, new_max_x, new_max_y);
-
-    Ok(bounds)
+    validate_edge_inputs(&source, &target, thickness, bend_points)?;
+    let all_points = build_all_points(source, target, bend_points);
+    let raw_bounds = reduce_segment_bounds(&all_points, arrow_type, thickness);
+    validate_edge_bounds(raw_bounds, thickness)
 }
