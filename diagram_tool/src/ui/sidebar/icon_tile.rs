@@ -10,7 +10,7 @@ fn IconImage(src: Option<String>) -> Element {
                 src: "{src_str}",
                 class: "w-8 h-8 object-contain pointer-events-none",
                 draggable: "false",
-                loading: "lazy",
+                loading: "eager",
                 decoding: "async"
             }
         } else {
