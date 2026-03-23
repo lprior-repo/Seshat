@@ -49,7 +49,7 @@ jobs:
 
       - name: Build
         working-directory: diagram_tool
-        run: dx build --release --base-path /Seshat/
+        run: dx bundle --release --base-path /Seshat/
 
       - name: Setup Pages
         uses: actions/configure-pages@v5
