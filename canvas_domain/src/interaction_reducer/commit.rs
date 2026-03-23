@@ -53,6 +53,24 @@ pub fn commit_inline_edit(
     Ok(false)
 }
 
+fn is_valid_label(label: &str) -> bool {
+    if label.len() > 1000 {
+        return false;
+    }
+    for c in label.chars() {
+        if c.is_control() && c != '\n' && c != '\r' && c != '\t' {
+            return false;
+        }
+        if matches!(c, '\u{200B}' | '\u{200C}' | '\u{200D}' | '\u{FEFF}') {
+            return false;
+        }
+        if matches!(c, '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}') {
+            return false;
+        }
+    }
+    true
+}
+
 fn commit_node_edit(
     doc_signal: &mut Signal<DiagramDocument>,
     history_signal: &mut Signal<History>,
@@ -61,11 +79,30 @@ fn commit_node_edit(
     db_tx: Option<&Coroutine<EventEnvelope>>,
 ) -> Result<bool, CommitError> {
     let new_label = edit_value.read().clone();
-    let current_label = current_node_label(doc_signal, node_id);
+    if !is_valid_label(&new_label) {
+        return Err(CommitError::ValidationError);
+    }
 
-    ensure_node_exists(doc_signal, node_id)?;
+    let node_id_clone = node_id.clone();
+    let new_label_clone = new_label.clone();
+    let mut old_label = String::new();
 
-    if current_label == new_label {
+    mutate_doc_with_history(doc_signal, history_signal, |current_doc| {
+        let node = current_doc
+            .document
+            .nodes
+            .get(&node_id_clone)
+            .ok_or(CommitError::TargetNotFound)?;
+
+        old_label = node.label.clone();
+
+        if old_label == new_label_clone {
+            return Ok(current_doc.clone());
+        }
+        calculate_node_label_edit(current_doc, &node_id_clone, &new_label_clone)
+    })?;
+
+    if old_label == new_label {
         return Ok(false);
     }
 
@@ -73,32 +110,10 @@ fn commit_node_edit(
         db_tx,
         node_id.as_str(),
         LabelTargetType::Node,
-        &current_label,
+        &old_label,
         &new_label,
     );
-    apply_node_label_change(doc_signal, history_signal, node_id, &new_label);
     Ok(true)
-}
-
-fn current_node_label(doc_signal: &Signal<DiagramDocument>, node_id: &NodeId) -> String {
-    doc_signal
-        .read()
-        .document
-        .nodes
-        .get(node_id)
-        .map_or_else(String::new, |n| n.label.clone())
-}
-
-fn ensure_node_exists(
-    doc_signal: &Signal<DiagramDocument>,
-    node_id: &NodeId,
-) -> Result<(), CommitError> {
-    doc_signal
-        .read()
-        .document
-        .nodes
-        .get(node_id)
-        .map_or(Err(CommitError::TargetNotFound), |_| Ok(()))
 }
 
 fn dispatch_label_to_db(
@@ -113,13 +128,18 @@ fn dispatch_label_to_db(
         .ok();
 }
 
-fn apply_node_label_change(
-    doc_signal: &mut Signal<DiagramDocument>,
-    history_signal: &mut Signal<History>,
+pub fn calculate_node_label_edit(
+    doc: &DiagramDocument,
     node_id: &NodeId,
     new_label: &str,
-) {
-    let doc = doc_signal.read();
+) -> Result<DiagramDocument, CommitError> {
+    if !is_valid_label(new_label) {
+        return Err(CommitError::ValidationError);
+    }
+    if !doc.document.nodes.contains_key(node_id) {
+        return Err(CommitError::TargetNotFound);
+    }
+
     let new_nodes = doc
         .document
         .nodes
@@ -137,10 +157,11 @@ fn apply_node_label_change(
         })
         .collect();
 
-    let new_doc = build_updated_doc(&doc, new_nodes, doc.document.edges.clone());
-    drop(doc);
-
-    mutate_doc_with_history(doc_signal, history_signal, |_| Ok::<_, ()>(new_doc)).ok();
+    Ok(build_updated_doc(
+        doc,
+        new_nodes,
+        doc.document.edges.clone(),
+    ))
 }
 
 fn build_updated_doc(
@@ -167,11 +188,30 @@ fn commit_edge_edit(
     db_tx: Option<&Coroutine<EventEnvelope>>,
 ) -> Result<bool, CommitError> {
     let new_label = edit_value.read().clone();
-    let current_label = current_edge_label(doc_signal, edge_id);
+    if !is_valid_label(&new_label) {
+        return Err(CommitError::ValidationError);
+    }
 
-    ensure_edge_exists(doc_signal, edge_id)?;
+    let edge_id_clone = edge_id.clone();
+    let new_label_clone = new_label.clone();
+    let mut old_label = String::new();
 
-    if current_label == new_label {
+    mutate_doc_with_history(doc_signal, history_signal, |current_doc| {
+        let edge = current_doc
+            .document
+            .edges
+            .get(&edge_id_clone)
+            .ok_or(CommitError::TargetNotFound)?;
+
+        old_label = edge.label.clone();
+
+        if old_label == new_label_clone {
+            return Ok(current_doc.clone());
+        }
+        calculate_edge_label_edit(current_doc, &edge_id_clone, &new_label_clone)
+    })?;
+
+    if old_label == new_label {
         return Ok(false);
     }
 
@@ -179,41 +219,25 @@ fn commit_edge_edit(
         db_tx,
         edge_id.as_str(),
         LabelTargetType::Edge,
-        &current_label,
+        &old_label,
         &new_label,
     );
-    apply_edge_label_change(doc_signal, history_signal, edge_id, &new_label);
+
     Ok(true)
 }
 
-fn current_edge_label(doc_signal: &Signal<DiagramDocument>, edge_id: &EdgeId) -> String {
-    doc_signal
-        .read()
-        .document
-        .edges
-        .get(edge_id)
-        .map_or_else(String::new, |e| e.label.clone())
-}
-
-fn ensure_edge_exists(
-    doc_signal: &Signal<DiagramDocument>,
-    edge_id: &EdgeId,
-) -> Result<(), CommitError> {
-    doc_signal
-        .read()
-        .document
-        .edges
-        .get(edge_id)
-        .map_or(Err(CommitError::TargetNotFound), |_| Ok(()))
-}
-
-fn apply_edge_label_change(
-    doc_signal: &mut Signal<DiagramDocument>,
-    history_signal: &mut Signal<History>,
+pub fn calculate_edge_label_edit(
+    doc: &DiagramDocument,
     edge_id: &EdgeId,
     new_label: &str,
-) {
-    let doc = doc_signal.read();
+) -> Result<DiagramDocument, CommitError> {
+    if !is_valid_label(new_label) {
+        return Err(CommitError::ValidationError);
+    }
+    if !doc.document.edges.contains_key(edge_id) {
+        return Err(CommitError::TargetNotFound);
+    }
+
     let new_edges = doc
         .document
         .edges
@@ -231,10 +255,11 @@ fn apply_edge_label_change(
         })
         .collect();
 
-    let new_doc = build_updated_doc(&doc, doc.document.nodes.clone(), new_edges);
-    drop(doc);
-
-    mutate_doc_with_history(doc_signal, history_signal, |_| Ok::<_, ()>(new_doc)).ok();
+    Ok(build_updated_doc(
+        doc,
+        doc.document.nodes.clone(),
+        new_edges,
+    ))
 }
 
 #[cfg(test)]

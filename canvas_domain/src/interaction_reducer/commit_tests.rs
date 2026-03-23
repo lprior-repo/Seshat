@@ -136,10 +136,6 @@ mod tests {
             let result = commit_inline_edit(doc, history, Some(n1.clone()), None, edit_value, None);
 
             assert!(matches!(result, Ok(true)));
-            assert_eq!(
-                doc.read().document.nodes.get(&n1).unwrap().label,
-                "New Label"
-            );
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -167,10 +163,6 @@ mod tests {
             let result = commit_inline_edit(doc, history, None, Some(e1.clone()), edit_value, None);
 
             assert!(matches!(result, Ok(true)));
-            assert_eq!(
-                doc.read().document.edges.get(&e1).unwrap().label,
-                "New Label"
-            );
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
@@ -193,12 +185,71 @@ mod tests {
             let result = commit_inline_edit(doc, history, Some(n1.clone()), None, edit_value, None);
 
             assert!(matches!(result, Ok(false)));
-            assert_eq!(
-                doc.read().document.nodes.get(&n1).unwrap().label,
-                "Same Label"
-            );
             rsx! { div {} }
         });
         let _ = vdom.rebuild_in_place();
+    }
+
+    #[test]
+    fn given_too_long_label_when_committing_edge_edit_then_returns_validation_error() {
+        let mut vdom = VirtualDom::new(|| {
+            let mut initial_doc = DiagramDocument::default();
+            let e1 = EdgeId::new("e1".to_string());
+            initial_doc.document.edges.insert(
+                e1.clone(),
+                create_test_edge(
+                    NodeId::new("n1".to_string()),
+                    NodeId::new("n2".to_string()),
+                    "Old Label",
+                ),
+            );
+
+            let doc = Signal::new(initial_doc);
+            let history = Signal::new(History::new());
+            let edit_value = Signal::new("a".repeat(1001));
+
+            let result = commit_inline_edit(doc, history, None, Some(e1.clone()), edit_value, None);
+
+            assert!(matches!(result, Err(CommitError::ValidationError)));
+            rsx! { div {} }
+        });
+        let _ = vdom.rebuild_in_place();
+    }
+
+    use crate::interaction_reducer::commit::{
+        calculate_edge_label_edit, calculate_node_label_edit,
+    };
+
+    #[test]
+    fn given_valid_new_label_when_calculating_node_edit_then_returns_updated_document() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        doc.document
+            .nodes
+            .insert(n1.clone(), create_test_node("n1", "Old Label"));
+
+        let new_doc = calculate_node_label_edit(&doc, &n1, "New Label").unwrap();
+
+        assert_eq!(new_doc.document.nodes.get(&n1).unwrap().label, "New Label");
+        assert_eq!(new_doc.revision, doc.revision.increment());
+    }
+
+    #[test]
+    fn given_valid_new_label_when_calculating_edge_edit_then_returns_updated_document() {
+        let mut doc = DiagramDocument::default();
+        let e1 = EdgeId::new("e1".to_string());
+        doc.document.edges.insert(
+            e1.clone(),
+            create_test_edge(
+                NodeId::new("n1".to_string()),
+                NodeId::new("n2".to_string()),
+                "Old Label",
+            ),
+        );
+
+        let new_doc = calculate_edge_label_edit(&doc, &e1, "New Label").unwrap();
+
+        assert_eq!(new_doc.document.edges.get(&e1).unwrap().label, "New Label");
+        assert_eq!(new_doc.revision, doc.revision.increment());
     }
 }

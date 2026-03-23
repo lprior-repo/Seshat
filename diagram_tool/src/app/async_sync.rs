@@ -131,5 +131,3 @@ pub fn use_store_sync_loop(doc_signal: Signal<DiagramDocument>) {
 
 #[cfg(any(not(feature = "async-db"), target_arch = "wasm32"))]
 pub(crate) fn use_store_sync_loop(_doc_signal: Signal<DiagramDocument>) {}
-
-

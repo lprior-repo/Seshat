@@ -103,6 +103,7 @@ pub fn EdgeLayer(
                                             db_tx,
                                         )
                                         .ok();
+                                        editor_state.set(crate::ui::canvas::state::EditorState::Idle);
                                     },
                                     onkeydown: move |evt| {
                                         if evt.key() == Key::Enter {
@@ -120,6 +121,7 @@ pub fn EdgeLayer(
                                                 db_tx,
                                             )
                                             .ok();
+                                            editor_state.set(crate::ui::canvas::state::EditorState::Idle);
                                         } else if evt.key() == Key::Escape {
                                             editor_state.set(crate::ui::canvas::state::EditorState::Idle);
                                         }

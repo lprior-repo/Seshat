@@ -10,8 +10,8 @@ pub enum HistoryError {
 impl std::fmt::Display for HistoryError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            HistoryError::NothingToUndo => write!(f, "Nothing to undo"),
-            HistoryError::NothingToRedo => write!(f, "Nothing to redo"),
+            Self::NothingToUndo => write!(f, "Nothing to undo"),
+            Self::NothingToRedo => write!(f, "Nothing to redo"),
         }
     }
 }

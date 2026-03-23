@@ -15,6 +15,8 @@ pub enum CommitError {
     DispatchFailed(DispatchError),
     /// Target node or edge not found in document
     TargetNotFound,
+    /// Invalid input data provided
+    ValidationError,
 }
 
 #[derive(Clone, Debug, PartialEq)]

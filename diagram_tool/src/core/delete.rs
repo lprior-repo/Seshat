@@ -16,7 +16,7 @@ pub fn delete_selected(doc: &mut DiagramDocument) -> bool {
     }
 
     // Remove any edges connected to deleted nodes
-    let selected_set: HashSet<_> = selected.iter().map(|s| s.as_str()).collect();
+    let selected_set: HashSet<_> = selected.iter().map(String::as_str).collect();
     doc.document.edges.retain(|_id, edge| {
         !deleted_node_ids.contains(&edge.source)
             && !deleted_node_ids.contains(&edge.target)
