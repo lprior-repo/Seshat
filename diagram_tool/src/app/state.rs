@@ -1,7 +1,7 @@
 use crate::app::types::DraggedIconPayload;
 use crate::history::History;
-use crate::ui::commands::ClipboardData;
 use crate::ui::editor::ToolMode;
+use diagram_models::clipboard::ClipboardData;
 use crate::ui::mobile::SidebarUiState;
 use crate::ui::toast::{AiConflictState, ToastQueue};
 use crate::ui::toolbar::ToolbarStats;

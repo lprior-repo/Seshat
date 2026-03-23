@@ -68,7 +68,3 @@ pub struct Rect {
     pub height: f64,
 }
 
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ClipboardData {
-    pub nodes: Vec<Node>,
-}

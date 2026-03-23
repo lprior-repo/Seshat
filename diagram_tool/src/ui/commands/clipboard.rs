@@ -9,52 +9,8 @@ use dioxus::prelude::*;
 use uuid::Uuid;
 
 use crate::history::History;
+use diagram_models::clipboard::ClipboardData;
 use diagram_models::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, OrderedFloat};
-
-/// Pure clipboard data type - immutable state for clipboard operations.
-///
-/// This replaces the mutable `thread_local` RefCell-based clipboard with
-/// a pure functional approach where clipboard state is passed explicitly.
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub struct ClipboardData {
-    /// The nodes that were copied to the clipboard
-    pub nodes: Vec<(NodeId, Node)>,
-    /// The edges that were copied to the clipboard
-    pub edges: Vec<Edge>,
-    /// Serial number for tracking paste operations (for offset calculation)
-    pub paste_serial: u32,
-}
-
-impl ClipboardData {
-    /// Creates a new empty clipboard
-    #[must_use]
-    pub const fn new() -> Self {
-        Self {
-            nodes: Vec::new(),
-            edges: Vec::new(),
-            paste_serial: 0,
-        }
-    }
-
-    /// Returns true if the clipboard has content that can be pasted
-    #[must_use]
-    pub const fn has_content(&self) -> bool {
-        !self.nodes.is_empty()
-    }
-
-    /// Prepares the clipboard for a paste operation by incrementing the serial
-    #[must_use]
-    pub const fn prepare_paste(mut self) -> Self {
-        self.paste_serial = self.paste_serial.saturating_add(1);
-        self
-    }
-}
-
-impl Default for ClipboardData {
-    fn default() -> Self {
-        Self::new()
-    }
-}
 
 /// Pure function: Checks if the given clipboard has pasteable content
 #[must_use]

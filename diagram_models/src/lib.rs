@@ -73,6 +73,7 @@ pub mod history;
 pub mod subgraph_events;
 pub mod validation;
 
+pub mod clipboard;
 pub mod clipboard_contract;
 
 #[cfg(test)]
