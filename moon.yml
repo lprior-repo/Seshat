@@ -121,6 +121,18 @@ tasks:
     options:
       cache: false
 
+  deploy-pages:
+    script: |
+      moon run :bundle-web-optimized
+      cd diagram_tool/dist/public
+      git init
+      git checkout -b gh-pages
+      git add -A
+      git commit -m "Deploy optimized WASM to GitHub Pages"
+      git push -f git@github.com:lprior-repo/Seshat.git gh-pages:gh-pages
+    options:
+      cache: false
+
   build-web-dev:
     script: |
       dx build --platform web
