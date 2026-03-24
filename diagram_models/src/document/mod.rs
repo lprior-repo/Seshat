@@ -13,6 +13,7 @@ pub mod error;
 pub mod node;
 pub mod routing;
 pub mod routing_interactions;
+pub mod session;
 pub mod types;
 
 // Re-export for convenience
@@ -20,6 +21,7 @@ pub use edge::{ArrowType, Edge, EdgeStyle, SerializedPoint};
 pub use editor::{EditorState, EditorTheme, GridError, GridSize, NonFiniteKind};
 pub use error::DocumentError;
 pub use node::{FontWeight, LockState, Node, NodeKind, NodeStyle};
+pub use session::DocumentSession;
 pub use types::{AuthorId, EdgeId, NodeId, OrderedFloat, OrderedFloatError, Revision, Timestamp};
 
 /// A validated rectangle for marquee selection.
