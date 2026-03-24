@@ -2,6 +2,7 @@ pub mod canvas;
 pub mod commands;
 pub mod dispatch;
 pub mod editor;
+pub mod ghost_diff;
 pub mod grid;
 pub mod icons;
 pub mod interaction;
