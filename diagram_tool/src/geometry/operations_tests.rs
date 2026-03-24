@@ -15,7 +15,6 @@
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_single_child_container() {
     // Given: a subgraph container with one child
     let children = vec![(100.0, 100.0, 50.0, 30.0)];
@@ -29,7 +28,6 @@ fn test_single_child_container() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_multiple_children_horizontal_spread() {
     // Given: children spread horizontally
     let children = vec![
@@ -47,7 +45,6 @@ fn test_multiple_children_horizontal_spread() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_multiple_children_vertical_spread() {
     // Given: children spread vertically
     let children = vec![
@@ -65,7 +62,6 @@ fn test_multiple_children_vertical_spread() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_empty_container() {
     // Given: no children
     let children: Vec<(f64, f64, f64, f64)> = vec![];
@@ -79,7 +75,6 @@ fn test_empty_container() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_child_with_negative_coordinates() {
     // Given: children with negative coordinates
     let children = vec![(-50.0, -50.0, 50.0, 50.0), (0.0, 0.0, 50.0, 50.0)];
@@ -93,7 +88,6 @@ fn test_child_with_negative_coordinates() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_child_overlap() {
     // Given: overlapping children
     let children = vec![(0.0, 0.0, 100.0, 100.0), (50.0, 50.0, 100.0, 100.0)];
@@ -107,7 +101,6 @@ fn test_child_overlap() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_invalid_child_nan() {
     // Given: one valid child and one with NaN coordinates
     let children = vec![(0.0, 0.0, 50.0, 50.0), (f64::NAN, 0.0, 50.0, 50.0)];
@@ -121,7 +114,6 @@ fn test_invalid_child_nan() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_invalid_child_infinity() {
     // Given: one valid child and one with Infinity coordinates
     let children = vec![(0.0, 0.0, 50.0, 50.0), (f64::INFINITY, 0.0, 50.0, 50.0)];
@@ -135,7 +127,6 @@ fn test_invalid_child_infinity() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_single_point_child() {
     // Given: child with zero size
     let children = vec![(50.0, 50.0, 0.0, 0.0)];
@@ -149,7 +140,6 @@ fn test_single_point_child() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_all_children_at_same_position() {
     // Given: multiple children at same position with different sizes
     let children = vec![

@@ -21,7 +21,6 @@ pub fn hit_test_rect(point: Point, rect: &Rectangle, margin: f64) -> bool {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_margin_inside() {
     // Given: point inside rectangle
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
@@ -36,7 +35,6 @@ fn test_hit_test_margin_inside() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_margin_within_margin() {
     // Given: point just outside rectangle but within margin
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
@@ -51,7 +49,6 @@ fn test_hit_test_margin_within_margin() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_margin_outside() {
     // Given: point outside margin
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
@@ -66,7 +63,6 @@ fn test_hit_test_margin_outside() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_margin_zero() {
     // Given: point on exact edge
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);

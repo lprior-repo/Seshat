@@ -78,6 +78,7 @@ fn adversarial_edge_labels() {
     let mut rejected_unexpectedly = Vec::new();
 
     // Verify accepted labels work
+    // Precondition: ceiling is accepted_labels.len()
     for (name, label) in &accepted_labels {
         let result = apply_update_edge_label(state.clone(), "e1", label);
         match result {
@@ -93,6 +94,7 @@ fn adversarial_edge_labels() {
     }
 
     // Verify rejected labels fail
+    // Precondition: ceiling is rejected_labels.len()
     for (name, label) in &rejected_labels {
         let result = apply_update_edge_label(state.clone(), "e1", label);
         match result {

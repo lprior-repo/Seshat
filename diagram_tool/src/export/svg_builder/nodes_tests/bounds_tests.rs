@@ -78,7 +78,6 @@ fn create_empty_document() -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_empty_document_when_calculate_bounds_then_returns_default_bounds(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -97,7 +96,6 @@ fn given_empty_document_when_calculate_bounds_then_returns_default_bounds(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_node_at_origin_when_calculate_bounds_then_returns_node_bounds(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -118,7 +116,6 @@ fn given_single_node_at_origin_when_calculate_bounds_then_returns_node_bounds(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_node_with_positive_coords_when_calculate_bounds_then_returns_node_bounds(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -139,7 +136,6 @@ fn given_single_node_with_positive_coords_when_calculate_bounds_then_returns_nod
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_two_nodes_when_calculate_bounds_then_returns_combined_bounds() -> Result<(), anyhow::Error>
 {
     // Given
@@ -168,7 +164,6 @@ fn given_two_nodes_when_calculate_bounds_then_returns_combined_bounds() -> Resul
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_nodes_with_negative_coords_when_calculate_bounds_then_handles_negative_values(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -189,7 +184,6 @@ fn given_nodes_with_negative_coords_when_calculate_bounds_then_handles_negative_
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_overlapping_nodes_when_calculate_bounds_then_returns_union_bounds(
 ) -> Result<(), anyhow::Error> {
     // Given

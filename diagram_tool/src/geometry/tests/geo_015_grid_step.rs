@@ -20,7 +20,6 @@ pub fn snap_to_grid(point: Point, grid_size: f64) -> Point {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_grid_step_snap() {
     // Given: point at (47, 53) with grid size 10
     let point = Point::new(47.0, 53.0);
@@ -36,7 +35,6 @@ fn test_grid_step_snap() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_grid_step_already_on_grid() {
     // Given: point already on grid
     let point = Point::new(50.0, 100.0);
@@ -52,7 +50,6 @@ fn test_grid_step_already_on_grid() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_grid_step_negative_coords() {
     // Given: point at negative coordinates
     let point = Point::new(-47.0, -53.0);

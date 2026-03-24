@@ -2,7 +2,6 @@ use crate::test_utils::TestCategory;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_category_expected_counts_are_correct() {
     assert_eq!(TestCategory::Sel.expected_count(), 25);
     assert_eq!(TestCategory::Clp.expected_count(), 10);
@@ -19,7 +18,6 @@ fn test_category_expected_counts_are_correct() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_total_expected_tests_is_228() {
     let total: usize = TestCategory::all().iter().map(|c| c.expected_count()).sum();
     assert_eq!(total, 228);
@@ -27,7 +25,6 @@ fn test_total_expected_tests_is_228() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_category_display_names() {
     assert_eq!(TestCategory::Sel.display_name(), "Selection");
     assert_eq!(TestCategory::Edg.display_name(), "Edge Binding");
@@ -36,7 +33,6 @@ fn test_category_display_names() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_category_all_returns_all_categories() {
     let all = TestCategory::all();
     assert_eq!(all.len(), 11);

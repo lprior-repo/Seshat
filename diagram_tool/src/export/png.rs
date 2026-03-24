@@ -92,8 +92,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_empty_document_when_export_png_then_creates_valid_png_file() -> Result<()> {
         let (_, bytes) = export_to_temp(&DiagramDocument::default())?;
         assert!(bytes.len() > 8);
@@ -102,8 +101,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_document_with_single_node_when_export_png_then_creates_valid_png() -> Result<()> {
         let doc = create_doc(vec![create_test_node("1", 50.0, 50.0)], vec![]);
         let (_, bytes) = export_to_temp(&doc)?;
@@ -113,8 +111,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_document_with_multiple_nodes_when_export_png_then_creates_valid_png() -> Result<()> {
         let doc = create_doc(
             vec![
@@ -130,8 +127,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_document_with_edges_when_export_png_then_creates_valid_png() -> Result<()> {
         let (src_id, src_node) = create_test_node("source", 0.0, 50.0);
         let (tgt_id, tgt_node) = create_test_node("target", 200.0, 50.0);
@@ -162,8 +158,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_valid_document_when_export_png_then_file_exists_on_disk() -> Result<()> {
         let (temp_file, _) = export_to_temp(&DiagramDocument::default())?;
         assert!(temp_file.path().exists());
@@ -171,8 +166,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_valid_document_when_export_png_then_png_has_iend_chunk() -> Result<()> {
         let (_, bytes) = export_to_temp(&DiagramDocument::default())?;
         assert!(bytes.windows(4).any(|w| w == b"IEND"));
@@ -180,8 +174,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_valid_document_when_export_png_then_png_has_ihdr_chunk() -> Result<()> {
         let (_, bytes) = export_to_temp(&DiagramDocument::default())?;
         assert!(bytes.windows(4).any(|w| w == b"IHDR"));
@@ -189,8 +182,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_invalid_output_path_when_export_png_then_returns_error() {
         assert!(export_png(
             &DiagramDocument::default(),
@@ -200,8 +192,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_document_with_large_coordinates_when_export_png_then_creates_valid_png() -> Result<()>
     {
         let doc = create_doc(vec![create_test_node("far", 10000.0, 10000.0)], vec![]);

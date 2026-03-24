@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_resize_aspect_lock() {
     // Given: original dimensions 100x50 (2:1 aspect ratio)
     let original_width = 100.0;
@@ -25,7 +24,6 @@ fn test_resize_aspect_lock() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_resize_aspect_lock_shrink() {
     // Given: original dimensions 100x50 (2:1 aspect ratio)
     let original_width = 100.0;
@@ -40,7 +38,6 @@ fn test_resize_aspect_lock_shrink() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_resize_aspect_lock_square() {
     // Given: square dimensions 100x100
     let original_width = 100.0;

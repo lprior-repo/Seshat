@@ -15,8 +15,7 @@ use super::snapping::*;
 mod tests {
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_valid_value_when_creating_grid_size_then_returns_ok() {
         let result = GridSize::new(50.0);
         assert!(result.is_ok());
@@ -24,8 +23,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_minimum_value_when_creating_grid_size_then_returns_ok() {
         let result = GridSize::new(10.0);
         assert!(result.is_ok());
@@ -33,8 +31,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_maximum_value_when_creating_grid_size_then_returns_ok() {
         let result = GridSize::new(100.0);
         assert!(result.is_ok());
@@ -42,16 +39,14 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_default_when_getting_default_grid_size_then_returns_20() {
         let default = GridSize::default();
         assert!((default.inner() - 20.0).abs() < f64::EPSILON);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_snap_disabled_when_snapping_value_then_returns_value_unchanged() {
         let value = 37.5;
         let grid_size = GridSize::new(20.0).unwrap();
@@ -60,8 +55,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_snap_enabled_when_snapping_value_then_returns_grid_multiple() {
         let value = 29.0;
         let grid_size = GridSize::new(20.0).unwrap();
@@ -70,8 +64,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_point_when_snapping_then_each_coordinate_snapped_independently() {
         let point = (31.0, 49.0);
         let grid_size = GridSize::new(20.0).unwrap();
@@ -81,8 +74,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_valid_json_number_when_deserializing_grid_size_then_succeeds() {
         let json = "25.0";
         let result: Result<GridSize, _> = serde_json::from_str(json);
@@ -92,48 +84,42 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_value_below_minimum_when_creating_grid_size_then_returns_out_of_range_error() {
         let result = GridSize::new(5.0);
         assert!(matches!(result, Err(GridError::OutOfRange { .. })));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_value_above_maximum_when_creating_grid_size_then_returns_out_of_range_error() {
         let result = GridSize::new(150.0);
         assert!(matches!(result, Err(GridError::OutOfRange { .. })));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_negative_value_when_creating_grid_size_then_returns_out_of_range_error() {
         let result = GridSize::new(-20.0);
         assert!(matches!(result, Err(GridError::OutOfRange { .. })));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_zero_value_when_creating_grid_size_then_returns_out_of_range_error() {
         let result = GridSize::new(0.0);
         assert!(matches!(result, Err(GridError::OutOfRange { .. })));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_nan_value_when_creating_grid_size_then_returns_not_finite_error() {
         let result = GridSize::new(f64::NAN);
         assert!(matches!(result, Err(GridError::NotFinite { kind }) if kind == NonFiniteKind::NaN));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_positive_infinity_when_creating_grid_size_then_returns_not_finite_error() {
         let result = GridSize::new(f64::INFINITY);
         assert!(matches!(
@@ -143,8 +129,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_negative_infinity_when_creating_grid_size_then_returns_not_finite_error() {
         let result = GridSize::new(f64::NEG_INFINITY);
         assert!(matches!(
@@ -154,8 +139,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_json_string_when_deserializing_grid_size_then_returns_error() {
         let json = r#""twenty""#;
         let result: Result<GridSize, _> = serde_json::from_str(json);
@@ -163,8 +147,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_out_of_range_json_number_when_deserializing_then_returns_error() {
         let json = "5.0";
         let result: Result<GridSize, _> = serde_json::from_str(json);
@@ -172,8 +155,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_json_null_when_deserializing_grid_size_then_returns_error() {
         let json = "null";
         let result: Result<GridSize, _> = serde_json::from_str(json);
@@ -181,8 +163,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_fractional_value_when_creating_grid_size_then_returns_ok() {
         let result = GridSize::new(50.5);
         assert!(result.is_ok());
@@ -190,8 +171,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_nan_value_when_snapping_then_returns_nan() {
         let grid_size = GridSize::new(20.0).unwrap();
         let result = snap_value(f64::NAN, true, grid_size);
@@ -199,8 +179,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_infinity_value_when_snapping_then_returns_infinity() {
         let grid_size = GridSize::new(20.0).unwrap();
         let result = snap_value(f64::INFINITY, true, grid_size);
@@ -208,8 +187,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_exact_grid_multiple_when_snapping_then_returns_same_value() {
         let grid_size = GridSize::new(20.0).unwrap();
         let result = snap_value(40.0, true, grid_size);
@@ -217,8 +195,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_value_midway_between_grid_lines_when_snapping_then_rounds_to_nearest() {
         let grid_size = GridSize::new(20.0).unwrap();
         let result = snap_value(30.0, true, grid_size);
@@ -226,8 +203,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_negative_value_when_snapping_then_handles_correctly() {
         let grid_size = GridSize::new(20.0).unwrap();
         let result = snap_value(-15.0, true, grid_size);
@@ -235,8 +211,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_precondition_p1_range_validation() {
         assert!(GridSize::new(9.9).is_err());
         assert!(GridSize::new(10.0).is_ok());
@@ -246,8 +221,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_precondition_p1_finite_validation() {
         assert!(GridSize::new(f64::NAN).is_err());
         assert!(GridSize::new(f64::INFINITY).is_err());
@@ -255,8 +229,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q1_inner_value_preserved() {
         let value = 42.5;
         let grid_size = GridSize::new(value).unwrap();
@@ -264,8 +237,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q2_snap_disabled_identity() {
         let values = [0.0, -10.0, 37.5, 100.0, f64::NAN, f64::INFINITY];
         let grid_size = GridSize::default();
@@ -284,8 +256,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q2_snap_enabled_grid_multiple() {
         let grid_size = GridSize::new(20.0).unwrap();
         let grid = grid_size.inner();
@@ -297,8 +268,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q4_serialization_format() {
         let grid_size = GridSize::new(25.0).unwrap();
         let json = serde_json::to_string(&grid_size).unwrap();
@@ -306,16 +276,14 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q5_default_value() {
         let default = GridSize::default();
         assert!((default.inner() - 20.0).abs() < f64::EPSILON);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_invariant_i1_range_guaranteed() {
         let test_values = [10.0, 20.0, 50.5, 99.9, 100.0];
         for v in test_values {
@@ -326,16 +294,14 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_invariant_i2_finite_guaranteed() {
         let gs = GridSize::new(50.0).unwrap();
         assert!(gs.inner().is_finite());
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_grid_size_when_serializing_and_deserializing_then_roundtrips() {
         let original = GridSize::new(42.5).unwrap();
         let json = serde_json::to_string(&original).unwrap();
@@ -358,16 +324,14 @@ mod proptests {
         #![proptest_config(ProptestConfig::with_cases(64))]
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn prop_grid_size_invariant_range(value in arb_grid_size_value()) {
             let gs = GridSize::new(value).unwrap();
             prop_assert!(gs.inner() >= 10.0 && gs.inner() <= 100.0);
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn prop_snap_idempotency(value in -1000.0_f64..1000.0, grid in arb_grid_size_value()) {
             let gs = GridSize::new(grid).unwrap();
             let snap1 = snap_value(value, true, gs);
@@ -378,8 +342,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn prop_snap_grid_alignment(value in -1000.0_f64..1000.0, grid in arb_grid_size_value()) {
             let gs = GridSize::new(grid).unwrap();
             let result = snap_value(value, true, gs);
@@ -391,8 +354,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn prop_snap_disabled_identity(value in -1e6_f64..1e6_f64, grid in arb_grid_size_value()) {
             let gs = GridSize::new(grid).unwrap();
             let result = snap_value(value, false, gs);
@@ -404,8 +366,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn prop_snap_point_consistent_with_snap_value(
             x in -1000.0_f64..1000.0,
             y in -1000.0_f64..1000.0,
@@ -424,8 +385,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn prop_serialization_roundtrip(value in arb_grid_size_value()) {
             let gs = GridSize::new(value).unwrap();
             let json = serde_json::to_string(&gs).unwrap();
@@ -450,8 +410,7 @@ mod snp_snapping_tests {
     // Tests that values within the snap threshold of a grid line snap correctly
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_value_near_grid_line_when_snap_enabled_then_snaps_to_grid() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -478,8 +437,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_value_at_snap_threshold_when_snap_enabled_then_engages_correctly() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -511,8 +469,7 @@ mod snp_snapping_tests {
     // Tests boundary conditions where snap should engage
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_drag_near_grid_edge_when_snap_enabled_then_snaps_to_nearest_grid() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -541,8 +498,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_point_near_grid_intersection_when_snap_enabled_then_snaps_both_axes() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -580,8 +536,7 @@ mod snp_snapping_tests {
     // the snap_point function that underlies it
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_multiple_offsets_when_snap_enabled_then_all_snap_consistently() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -614,8 +569,7 @@ mod snp_snapping_tests {
     // Tests that when snap_to_grid is false, values pass through unchanged
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_snap_disabled_when_snapping_then_returns_value_unchanged() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -634,8 +588,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_snap_disabled_when_snapping_point_then_returns_point_unchanged() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -669,8 +622,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_snap_disabled_with_nan_then_returns_nan() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -689,8 +641,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_snap_disabled_with_infinity_then_returns_infinity() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -705,8 +656,7 @@ mod snp_snapping_tests {
     // Tests that values exactly midway between grid lines snap consistently
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_value_exactly_midway_when_snap_enabled_then_deterministic_tie_break() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -741,8 +691,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_multiple_midway_values_when_snap_enabled_then_all_tie_break_consistently() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -774,8 +723,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_point_at_grid_center_when_snap_enabled_then_deterministic() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -804,8 +752,7 @@ mod snp_snapping_tests {
     // Additional edge case tests for completeness
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_very_small_grid_when_snap_enabled_then_still_snaps() {
         let grid = GridSize::new(10.0).unwrap(); // Minimum grid size
 
@@ -817,8 +764,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_very_large_grid_when_snap_enabled_then_still_snaps() {
         let grid = GridSize::new(100.0).unwrap(); // Maximum grid size
 
@@ -833,8 +779,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_zero_value_when_snap_enabled_then_returns_zero() {
         let grid = GridSize::new(20.0).unwrap();
 
@@ -847,8 +792,7 @@ mod snp_snapping_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_very_large_value_when_snap_enabled_then_snaps_correctly() {
         let grid = GridSize::new(20.0).unwrap();
 

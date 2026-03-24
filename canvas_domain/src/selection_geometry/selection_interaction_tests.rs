@@ -10,7 +10,6 @@ use diagram_models::history::History;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_selected_items_when_camera_transforms_then_selection_remains_unchanged() {
     let mut doc = DiagramDocument::default();
     let node_id = NodeId::new(String::from("test_node"));
@@ -53,7 +52,6 @@ fn given_selected_items_when_camera_transforms_then_selection_remains_unchanged(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_selection_history_when_undo_redo_then_selection_restored() {
     let mut doc = DiagramDocument::default();
     let n1 = NodeId::new(String::from("n1"));
@@ -116,7 +114,6 @@ fn given_selection_history_when_undo_redo_then_selection_restored() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiable() {
     let mut doc = DiagramDocument::default();
     let editable_id = NodeId::new(String::from("editable"));

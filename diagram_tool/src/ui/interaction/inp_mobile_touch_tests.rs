@@ -9,7 +9,6 @@
 )]
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_touch_drag_when_motion_below_threshold_then_not_considered_drag() {
     let touch_start = (100.0, 100.0);
     let touch_current_below = (101.5, 101.5); // ~2.12px distance
@@ -27,7 +26,6 @@ fn given_touch_drag_when_motion_below_threshold_then_not_considered_drag() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_touch_drag_when_rightward_then_uses_contain_selection_mode() {
     let start = (50.0, 50.0);
     let current = (150.0, 100.0); // Rightward drag
@@ -42,7 +40,6 @@ fn given_touch_drag_when_rightward_then_uses_contain_selection_mode() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_long_press_when_no_motion_then_not_drag_and_can_select() {
     let press_point = (100.0, 100.0);
     let slightly_moved = (100.5, 100.5); // ~0.7px distance
@@ -61,7 +58,6 @@ fn given_long_press_when_no_motion_then_not_drag_and_can_select() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_long_press_when_minor_jitter_then_still_not_drag() {
     let press_point = (0.0, 0.0);
     let jitter_positions = [
@@ -84,7 +80,6 @@ fn given_long_press_when_minor_jitter_then_still_not_drag() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_double_tap_timing_when_taps_within_window_then_detected() {
     const DOUBLE_TAP_WINDOW_MS: u64 = 400;
     let first_tap_ms: u64 = 1000;
@@ -108,7 +103,6 @@ fn given_double_tap_timing_when_taps_within_window_then_detected() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_double_tap_timing_constants_then_are_finite_and_reasonable() {
     const DOUBLE_TAP_MIN_MS: u64 = 100;
     const DOUBLE_TAP_MAX_MS: u64 = 700;
@@ -129,7 +123,6 @@ fn given_double_tap_timing_constants_then_are_finite_and_reasonable() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_touch_hit_area_when_checking_selection_handles_then_meets_minimum() {
     let handle_hit_radius: f64 = 7.0;
     let touch_enlarged_radius = handle_hit_radius.max(TOUCH_HIT_RADIUS_MIN);
@@ -144,7 +137,6 @@ fn given_touch_hit_area_when_checking_selection_handles_then_meets_minimum() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_touch_finger_hit_area_when_computed_then_meets_accessibility() {
     let min_touch_size = 44.0;
     let effective_radius = min_touch_size / 2.0;

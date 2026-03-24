@@ -31,7 +31,6 @@ fn node_at(x: f64, y: f64) -> Node {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_rubber_band_release_when_applied_then_selection_is_committed() {
     let mut doc = DiagramDocument::default();
     let node_id = NodeId::new(String::from("n1"));
@@ -50,7 +49,6 @@ fn given_rubber_band_release_when_applied_then_selection_is_committed() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_noop_rubber_band_when_released_then_selection_is_preserved() {
     let mut doc = DiagramDocument::default();
     let node_id = NodeId::new(String::from("n1"));
@@ -70,7 +68,6 @@ fn given_noop_rubber_band_when_released_then_selection_is_preserved() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_existing_selection_when_rubber_band_released_then_selection_is_cleared() {
     let mut doc = DiagramDocument::default();
     let node1_id = NodeId::new(String::from("n1"));
@@ -96,7 +93,6 @@ fn given_existing_selection_when_rubber_band_released_then_selection_is_cleared(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 #[allow(clippy::unwrap_used)]
 fn given_subgraph_release_bounds_when_drag_too_small_then_none() {
     let grid = GridSize::new(20.0).unwrap();
@@ -106,7 +102,6 @@ fn given_subgraph_release_bounds_when_drag_too_small_then_none() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 #[allow(clippy::unwrap_used)]
 fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
     let grid = GridSize::new(20.0).unwrap();
@@ -116,7 +111,6 @@ fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_icon_side_when_too_small_then_fit_never_panics_and_stays_non_negative() {
     let result = fit_icon_side(19.68);
     assert!(result >= 0.0);

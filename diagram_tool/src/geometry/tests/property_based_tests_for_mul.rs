@@ -10,8 +10,7 @@ const TOLERANCE: f64 = 1e-10;
 
 proptest! {
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_mul_rotation_preserves_distances(
         x1 in -100.0_f64..100.0,
         y1 in -100.0_f64..100.0,
@@ -40,8 +39,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_mul_full_rotation_returns_to_origin(
         x in -1000.0_f64..1000.0,
         y in -1000.0_f64..1000.0,
@@ -58,8 +56,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_mul_selection_center_unchanged_by_rotation(
         n in 2usize..10,
         angle in 0.0_f64..2.0 * PI

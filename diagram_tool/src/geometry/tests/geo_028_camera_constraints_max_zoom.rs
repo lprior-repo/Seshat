@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_constraints_max_zoom() {
     // Given: zoom values above maximum
     let above_max = [10.1, 15.0, 100.0, 1000.0];
@@ -26,7 +25,6 @@ fn test_camera_constraints_max_zoom() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_constraints_max_zoom_exact() {
     // Given: zoom at exact maximum
     let zoom = MAX_ZOOM;
@@ -40,7 +38,6 @@ fn test_camera_constraints_max_zoom_exact() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_constraints_valid_range() {
     // Given: zoom values within valid range
     let valid = [0.5, 1.0, 2.0, 5.0];

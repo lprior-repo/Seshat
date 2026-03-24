@@ -9,7 +9,6 @@
 )]
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_full_drag_workflow_from_raw_inputs_when_executed_then_yields_correct_final_state() {
     let mut dsl = CanvasTestDsl::new();
 
@@ -80,7 +79,6 @@ fn given_full_drag_workflow_from_raw_inputs_when_executed_then_yields_correct_fi
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_full_selection_workflow_from_raw_inputs_when_executed_then_yields_correct_selection_bounds(
 ) {
     let mut dsl = CanvasTestDsl::new();

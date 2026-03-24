@@ -21,7 +21,6 @@ fn clamp_to_min_size(width: f64, height: f64, min_size: f64) -> (f64, f64) {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_min_size_clamp_below_minimum() {
     // Given: dimensions below minimum
     let width = 0.5;
@@ -37,7 +36,6 @@ fn test_min_size_clamp_below_minimum() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_min_size_clamp_one_below_minimum() {
     // Given: one dimension below minimum
     let width = 50.0;
@@ -53,7 +51,6 @@ fn test_min_size_clamp_one_below_minimum() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_min_size_clamp_at_minimum() {
     // Given: dimensions at exactly minimum
     let width = MIN_SIZE;
@@ -69,7 +66,6 @@ fn test_min_size_clamp_at_minimum() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_min_size_clamp_above_minimum() {
     // Given: dimensions above minimum
     let width = 100.0;
@@ -85,7 +81,6 @@ fn test_min_size_clamp_above_minimum() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_min_size_clamp_with_scaling() {
     // Given: a rectangle being scaled down
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);

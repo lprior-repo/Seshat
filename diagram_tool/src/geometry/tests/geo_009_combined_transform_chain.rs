@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_combined_transforms() {
     // Given: a point at (2, 0), anchor at origin
     let point = Point::new(2.0, 0.0);
@@ -26,7 +25,6 @@ fn test_combined_transforms() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_combined_transforms_order_matters() {
     // Given: a point and anchor
     let point = Point::new(1.0, 0.0);

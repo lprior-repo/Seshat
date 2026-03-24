@@ -100,6 +100,7 @@ async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
     assert_eq!(res.op_id, "op-1");
 
     // 3. Append multiple increments revision
+    // Precondition: ceiling is 5
     for i in 2..=5 {
         assert_eq!(
             append_test_event(&pool, &format!("op-{}", i), i, None)
@@ -118,6 +119,7 @@ async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
     assert_eq!(fetch_all_events(&pool).await?.len(), 5);
 
     // 6. Very large batch
+    // Precondition: ceiling is 105
     for i in 6..=105 {
         append_test_event(&pool, &format!("op-batch-{}", i), i, None).await?;
     }
@@ -133,6 +135,7 @@ async fn test_projection_replay() -> Result<(), AsyncStoreError> {
     let store = TestStore::new().await?;
     let pool = store.pool();
 
+    // Precondition: ceiling is 3
     for i in 1..=3 {
         append_test_event(&pool, &format!("op-{}", i), i, None).await?;
     }
@@ -246,6 +249,7 @@ async fn test_batch_append_with_edges() -> Result<(), AsyncStoreError> {
         },
     ];
 
+    // Precondition: ceiling is envelopes.len()
     for env in envelopes {
         let valid = envelope_to_valid_event(&env)
             .map_err(|e| AsyncStoreError::Serialization(e.to_string()))?;

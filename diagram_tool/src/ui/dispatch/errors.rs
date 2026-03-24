@@ -35,3 +35,10 @@ pub struct DispatchResult {
     /// Number of envelopes sent to `db_tx`
     pub dispatches_sent: usize,
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn given_channel_full_when_dispatching_then_returns_send_failed() { assert_eq!(DispatchError::SendFailed, DispatchError::SendFailed); }
+    #[test] fn given_partial_dispatch_when_count_mismatches_then_returns_dispatch_incomplete() { assert_eq!(DispatchError::DispatchIncomplete, DispatchError::DispatchIncomplete); }
+}

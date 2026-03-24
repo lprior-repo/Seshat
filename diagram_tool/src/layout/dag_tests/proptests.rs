@@ -20,8 +20,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_all_coordinates_finite(
         node_count in 1usize..20,
@@ -41,8 +40,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_layer_ordering_respected(
         edge_count in 0usize..10,
@@ -91,8 +89,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_no_node_overlap(
         node_count in 2usize..15,
@@ -126,8 +123,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_edge_endpoints_valid(
         node_count in 2usize..10,
@@ -167,8 +163,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_extreme_coordinates_no_panic(
         x in f64::MIN..f64::MAX,
@@ -194,8 +189,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_node_count_preserved(
         node_count in 0usize..50,
@@ -212,8 +206,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_edge_count_preserved(
         node_count in 2usize..20,
@@ -244,8 +237,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[allow(clippy::unwrap_used)]
     fn prop_empty_document_no_panic(settings in arb_dag_layout_settings()) {
         let doc = make_doc_for_prop(vec![], vec![]);

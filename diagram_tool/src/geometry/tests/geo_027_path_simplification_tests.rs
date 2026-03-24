@@ -19,7 +19,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_001_basic_simplification() {
     // Given: A path with 5 points in a rough line
     let points = vec![
@@ -43,7 +42,6 @@ fn geo027_001_basic_simplification() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_002_endpoint_preservation_start() {
     // Given: A path
     let points = vec![
@@ -64,7 +62,6 @@ fn geo027_002_endpoint_preservation_start() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_003_endpoint_preservation_end() {
     // Given: A path
     let points = vec![
@@ -85,7 +82,6 @@ fn geo027_003_endpoint_preservation_end() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_006_insufficient_points_zero() {
     // Given: An empty path
     let points: Vec<Point> = vec![];
@@ -100,7 +96,6 @@ fn geo027_006_insufficient_points_zero() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_007_insufficient_points_one() {
     // Given: A path with one point
     let points = vec![Point::new(5.0, 5.0)];
@@ -115,7 +110,6 @@ fn geo027_007_insufficient_points_one() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_008_two_points_preserved() {
     // Given: A path with two points
     let points = vec![Point::new(0.0, 0.0), Point::new(10.0, 10.0)];
@@ -131,7 +125,6 @@ fn geo027_008_two_points_preserved() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_009_invalid_point_nan() {
     // Given: A path with NaN
     let points = vec![
@@ -150,7 +143,6 @@ fn geo027_009_invalid_point_nan() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_010_invalid_point_infinity() {
     // Given: A path with Infinity
     let points = vec![
@@ -169,7 +161,6 @@ fn geo027_010_invalid_point_infinity() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_011_epsilon_zero() {
     // Given: A path with points exactly on line
     let points = vec![
@@ -189,7 +180,6 @@ fn geo027_011_epsilon_zero() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_012_epsilon_boundary_exactly_on() {
     // Given: A path where middle point is exactly at epsilon distance
     // Point (5, 1) distance from line y=0 is exactly 1.0
@@ -210,7 +200,6 @@ fn geo027_012_epsilon_boundary_exactly_on() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_016_straight_line_preserved() {
     // Given: A simple straight line
     let points = vec![Point::new(0.0, 0.0), Point::new(100.0, 0.0)];
@@ -228,7 +217,6 @@ fn geo027_016_straight_line_preserved() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn geo027_014_curved_path_simplification() {
     // Given: A curved path along diagonal
     let points = vec![
@@ -251,7 +239,6 @@ fn geo027_014_curved_path_simplification() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn path_error_display() {
     assert_eq!(
         PathError::InsufficientPoints.to_string(),

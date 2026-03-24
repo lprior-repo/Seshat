@@ -43,7 +43,6 @@ pub fn orthogonal_route(from: Point, to: Point) -> OrthogonalRoute {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_edge_routing_orthogonal_l_shape() {
     // Given: source at (0, 0), target at (100, 50)
     let from = Point::new(0.0, 0.0);
@@ -60,7 +59,6 @@ fn test_edge_routing_orthogonal_l_shape() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_edge_routing_orthogonal_vertical() {
     // Given: vertically aligned points
     let from = Point::new(50.0, 0.0);
@@ -75,7 +73,6 @@ fn test_edge_routing_orthogonal_vertical() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_edge_routing_orthogonal_horizontal() {
     // Given: horizontally aligned points
     let from = Point::new(0.0, 50.0);

@@ -62,8 +62,7 @@ mod core_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_radius() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -85,8 +84,7 @@ mod core_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -108,8 +106,7 @@ mod core_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_edge_id() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -133,8 +130,7 @@ mod core_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -155,8 +151,7 @@ mod core_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across_zooms() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -180,8 +175,7 @@ mod core_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_endpoint_tie_when_clicking_shared_target_then_selection_is_stable_by_edge_id() {
         let source_a = NodeId::new(String::from("source-a"));
         let source_b = NodeId::new(String::from("source-b"));
@@ -288,8 +282,7 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_edge_is_selected(
     ) {
         let mut doc = create_document_with_edge();
@@ -311,8 +304,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_selected() {
         let doc = create_document_with_edge();
 
@@ -329,8 +321,7 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_empty_document_when_clicking_then_no_edge_selected() {
         let doc = DiagramDocument::default();
         let hit = find_edge_at(&doc, 50.0, 50.0);
@@ -338,8 +329,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_document_with_edge_when_clicking_far_from_edge_then_no_edge_selected() {
         let doc = create_document_with_edge();
         let hit = find_edge_at(&doc, 500.0, 500.0);
@@ -350,8 +340,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_selected() {
         let doc = create_document_with_edge();
         let hit_nan = find_edge_at(&doc, f64::NAN, 0.0);
@@ -368,8 +357,7 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_horizontal_edge_when_clicking_at_endpoint_then_edge_selected() {
         let doc = create_document_with_edge();
         let hit = find_edge_at(&doc, 0.0, 0.0);
@@ -381,8 +369,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_vertical_edge_when_clicking_along_edge_then_edge_selected() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -407,8 +394,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_diagonal_edge_when_clicking_along_edge_then_edge_selected() {
         let source_id = NodeId::new(String::from("source"));
         let target_id = NodeId::new(String::from("target"));
@@ -435,8 +421,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_sel_002_given_edge_with_bend_points_when_clicking_on_bend_then_edge_selected() {
         use diagram_models::document::Point;
 
@@ -491,8 +476,7 @@ mod sel_002_edge_selection_tests {
     // =========================================================================
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_precondition_p1_document_contains_edge() {
         let doc = create_document_with_edge();
         assert!(
@@ -504,8 +488,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_precondition_p4_coordinates_finite() {
         let doc = create_document_with_edge();
         let valid_hit = find_edge_at(&doc, 50.0, 0.0);
@@ -524,8 +507,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q1_selection_count_exactly_one() {
         let mut doc = create_document_with_edge();
         let hit = if let Some(h) = find_edge_at(&doc, 50.0, 0.0) {
@@ -543,8 +525,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q2_selection_contains_edge_id() {
         let mut doc = create_document_with_edge();
         let hit = if let Some(h) = find_edge_at(&doc, 50.0, 0.0) {
@@ -561,8 +542,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_invariant_i1_selection_contains_valid_ids() {
         let mut doc = create_document_with_edge();
         let hit = if let Some(h) = find_edge_at(&doc, 50.0, 0.0) {
@@ -579,8 +559,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_invariant_i4_edge_selection_does_not_mutate_nodes() {
         let source_id = NodeId::new(String::from("node-a"));
         let target_id = NodeId::new(String::from("node-b"));
@@ -631,8 +610,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q3_no_nodes_selected() {
         let mut doc = create_document_with_edge();
         let hit = if let Some(h) = find_edge_at(&doc, 50.0, 0.0) {
@@ -655,8 +633,7 @@ mod sel_002_edge_selection_tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_postcondition_q5_selection_replaces_previous() {
         let mut doc = create_document_with_edge();
         let hit = if let Some(h) = find_edge_at(&doc, 50.0, 0.0) {

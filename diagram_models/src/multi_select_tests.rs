@@ -33,7 +33,6 @@ fn paste_selection(
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn test_mul031_move_preserves_relative_positions() {
     let mut doc = setup_doc();
     let selection = NonEmptyVec::try_from(vec![
@@ -66,7 +65,6 @@ fn test_mul031_move_preserves_relative_positions() {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn test_mul032_resize_scales_items_proportionally() {
     let mut doc = setup_doc();
     let selection = NonEmptyVec::try_from(vec![

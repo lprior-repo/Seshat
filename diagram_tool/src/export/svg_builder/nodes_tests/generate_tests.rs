@@ -78,7 +78,6 @@ fn create_empty_document() -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_empty_document_when_generate_svg_string_then_contains_valid_svg_structure(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -97,7 +96,6 @@ fn given_empty_document_when_generate_svg_string_then_contains_valid_svg_structu
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_empty_document_when_generate_svg_string_then_uses_default_viewbox(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -115,7 +113,6 @@ fn given_empty_document_when_generate_svg_string_then_uses_default_viewbox(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_node_when_generate_svg_string_then_viewbox_contains_node_with_margin(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -138,7 +135,6 @@ fn given_single_node_when_generate_svg_string_then_viewbox_contains_node_with_ma
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_when_generate_svg_string_then_contains_node_rect() -> Result<(), anyhow::Error> {
     // Given
     let mut doc = create_empty_document();
@@ -157,7 +153,6 @@ fn given_node_when_generate_svg_string_then_contains_node_rect() -> Result<(), a
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_when_generate_svg_string_then_transform_uses_node_position(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -175,7 +170,6 @@ fn given_node_when_generate_svg_string_then_transform_uses_node_position(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_edge_between_nodes_when_generate_svg_string_then_line_connects_centers(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -210,7 +204,6 @@ fn given_edge_between_nodes_when_generate_svg_string_then_line_connects_centers(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_edge_with_offset_nodes_when_generate_svg_string_then_line_uses_correct_arithmetic(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -238,7 +231,6 @@ fn given_edge_with_offset_nodes_when_generate_svg_string_then_line_uses_correct_
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_edge_with_missing_source_node_when_generate_svg_string_then_skips_edge(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -259,7 +251,6 @@ fn given_edge_with_missing_source_node_when_generate_svg_string_then_skips_edge(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_edge_with_missing_target_node_when_generate_svg_string_then_skips_edge(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -280,7 +271,6 @@ fn given_edge_with_missing_target_node_when_generate_svg_string_then_skips_edge(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_small_content_when_generate_svg_string_then_enforces_minimum_dimensions(
 ) -> Result<(), anyhow::Error> {
     // Given - node at origin with small dimensions
@@ -301,7 +291,6 @@ fn given_small_content_when_generate_svg_string_then_enforces_minimum_dimensions
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_wide_document_when_generate_svg_string_then_viewbox_reflects_width(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -323,7 +312,6 @@ fn given_wide_document_when_generate_svg_string_then_viewbox_reflects_width(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_tall_document_when_generate_svg_string_then_viewbox_reflects_height(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -345,7 +333,6 @@ fn given_tall_document_when_generate_svg_string_then_viewbox_reflects_height(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_exact_position_when_generate_svg_string_then_text_is_centered(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -370,7 +357,6 @@ fn given_node_with_exact_position_when_generate_svg_string_then_text_is_centered
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_multiple_edges_when_generate_svg_string_then_all_edges_rendered(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -400,7 +386,6 @@ fn given_multiple_edges_when_generate_svg_string_then_all_edges_rendered(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_viewbox_margin_when_generate_svg_string_then_subtracts_50_from_bounds(
 ) -> Result<(), anyhow::Error> {
     // Given
@@ -421,7 +406,6 @@ fn given_viewbox_margin_when_generate_svg_string_then_subtracts_50_from_bounds(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_extent_calculation_when_calculate_bounds_then_adds_width_and_height(
 ) -> Result<(), anyhow::Error> {
     // Given - node at (100, 200) with size (150, 80)
@@ -440,7 +424,6 @@ fn given_node_extent_calculation_when_calculate_bounds_then_adds_width_and_heigh
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_center_calculation_when_edge_rendered_then_uses_division_by_2() -> Result<(), anyhow::Error>
 {
     // Given - odd width/height to verify division
@@ -468,7 +451,6 @@ fn given_center_calculation_when_edge_rendered_then_uses_division_by_2() -> Resu
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_icon_when_generate_svg_string_then_icon_is_centered_horizontally(
 ) -> Result<(), anyhow::Error> {
     // Given - node with known width and an icon that exists
@@ -490,7 +472,6 @@ fn given_node_with_icon_when_generate_svg_string_then_icon_is_centered_horizonta
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_icon_when_generate_svg_string_then_icon_is_centered_vertically_with_offset(
 ) -> Result<(), anyhow::Error> {
     // Given - node with known height and an icon that exists
@@ -512,7 +493,6 @@ fn given_node_with_icon_when_generate_svg_string_then_icon_is_centered_verticall
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_large_dimensions_when_generate_svg_string_then_icon_position_uses_subtraction(
 ) -> Result<(), anyhow::Error> {
     // Given - node with 200x100 dimensions
@@ -540,7 +520,6 @@ fn given_node_with_large_dimensions_when_generate_svg_string_then_icon_position_
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_icon_when_generate_svg_string_then_icon_size_is_32() -> Result<(), anyhow::Error>
 {
     // Given

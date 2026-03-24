@@ -16,8 +16,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_touch_drag_threshold_consistent_regardless_of_direction(
         origin in arb_touch_point(),
         delta in 3.0_f64..100.0,
@@ -35,8 +34,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_long_press_with_small_jitter_never_triggers_drag(
         origin in arb_touch_point(),
         jitter in arb_small_jitter(),
@@ -54,8 +52,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_double_tap_timing_window_is_positive(
         min_ms in 50_u64..200,
         max_offset in 200_u64..500,
@@ -67,8 +64,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_touch_hit_radius_always_positive_and_finite(radius in 1.0_f64..100.0) {
         let effective = radius.max(TOUCH_HIT_RADIUS_MIN);
         prop_assert!(effective.is_finite());

@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_repeated_tiny_transforms_no_drift() {
     // Given: a point at (100, 0)
     let original = Point::new(100.0, 0.0);
@@ -35,7 +34,6 @@ fn test_repeated_tiny_transforms_no_drift() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_repeated_tiny_rotations_full_circle() {
     // Given: a point at (100, 0)
     let original = Point::new(100.0, 0.0);

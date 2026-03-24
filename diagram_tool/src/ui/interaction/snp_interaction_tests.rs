@@ -9,7 +9,6 @@
 )]
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_multi_select_drag_when_snap_enabled_then_all_nodes_use_snapped_delta() {
     let grid = GridSize::new(20.0).unwrap();
 
@@ -48,7 +47,6 @@ fn given_multi_select_drag_when_snap_enabled_then_all_nodes_use_snapped_delta() 
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_multi_select_drag_when_snap_disabled_then_all_nodes_use_raw_delta() {
     let grid = GridSize::new(20.0).unwrap();
 
@@ -76,7 +74,6 @@ fn given_multi_select_drag_when_snap_disabled_then_all_nodes_use_raw_delta() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_multi_select_drag_from_nonzero_anchor_when_snap_enabled_then_snaps_correctly() {
     let grid = GridSize::new(20.0).unwrap();
 
@@ -108,7 +105,6 @@ fn given_multi_select_drag_from_nonzero_anchor_when_snap_enabled_then_snaps_corr
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_node_drag_when_snap_enabled_then_position_snapped() {
     let grid = GridSize::new(20.0).unwrap();
 
@@ -124,7 +120,6 @@ fn given_single_node_drag_when_snap_enabled_then_position_snapped() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_negative_drag_when_snap_enabled_then_snaps_to_negative_grid() {
     let grid = GridSize::new(20.0).unwrap();
 
@@ -142,7 +137,6 @@ fn given_negative_drag_when_snap_enabled_then_snaps_to_negative_grid() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_drag_threshold_boundary_when_checked_then_engages_correctly() {
     // DRAG_THRESHOLD_PX is 3.0
     // Test just below threshold
@@ -161,7 +155,6 @@ fn given_drag_threshold_boundary_when_checked_then_engages_correctly() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_diagonal_drag_when_threshold_checked_then_uses_euclidean_distance() {
     // Diagonal distance should be Euclidean
     // sqrt(3^2 + 3^2) = sqrt(18) ≈ 4.24 > 3.0
@@ -176,7 +169,6 @@ fn given_diagonal_drag_when_threshold_checked_then_uses_euclidean_distance() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_empty_selection_when_dragged_then_returns_empty() {
     let grid = GridSize::new(20.0).unwrap();
     let originals = HashMap::new();
@@ -188,7 +180,6 @@ fn given_empty_selection_when_dragged_then_returns_empty() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_large_multi_select_when_snap_enabled_then_all_processed() {
     let grid = GridSize::new(20.0).unwrap();
 
@@ -220,7 +211,6 @@ fn given_large_multi_select_when_snap_enabled_then_all_processed() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_different_grid_sizes_when_snap_enabled_then_snaps_to_correct_grid() {
     // Test with minimum grid size
     let small_grid = GridSize::new(10.0).unwrap();

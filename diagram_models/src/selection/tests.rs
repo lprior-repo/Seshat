@@ -75,7 +75,6 @@ fn setup_doc() -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_021_bounding_box_covers_rotated_nodes() {
     let mut doc = setup_doc();
     // Rotate n1 by 45 degrees
@@ -100,7 +99,6 @@ fn test_sel_021_bounding_box_covers_rotated_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_022_long_press_adds_node_to_selection_without_drag() {
     let mut doc = setup_doc();
     let res = handle_long_press(&mut doc, NodeId::new("n1".to_string()), 2.0);
@@ -110,7 +108,6 @@ fn test_sel_022_long_press_adds_node_to_selection_without_drag() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_023_double_click_enters_edit_mode_on_shape() {
     let mut doc = setup_doc();
     let res = handle_double_click(&mut doc, NodeId::new("n1".to_string()));
@@ -120,7 +117,6 @@ fn test_sel_023_double_click_enters_edit_mode_on_shape() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_024_selection_persists_across_camera_zoom_and_pan() {
     let mut doc = setup_doc();
     doc.editor_state.selected_items.insert("n1".to_string());
@@ -138,7 +134,6 @@ fn test_sel_024_selection_persists_across_camera_zoom_and_pan() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_025_marquee_selects_nodes_inside_subgraphs() {
     let mut doc = setup_doc();
     let child = Node {
@@ -175,7 +170,6 @@ fn test_sel_025_marquee_selects_nodes_inside_subgraphs() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_when_computing_bounds_for_missing_nodes() {
     let mut doc = setup_doc();
     doc.editor_state
@@ -188,7 +182,6 @@ fn test_returns_error_when_computing_bounds_for_missing_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_long_press_fails_when_movement_exceeds_threshold() {
     let mut doc = setup_doc();
     let res = handle_long_press(&mut doc, NodeId::new("n1".to_string()), 15.0);
@@ -200,7 +193,6 @@ fn test_long_press_fails_when_movement_exceeds_threshold() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_double_click_fails_on_uneditable_nodes() {
     let mut doc = setup_doc();
     doc.document
@@ -215,7 +207,6 @@ fn test_double_click_fails_on_uneditable_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p1_violation_returns_node_not_found() {
     let mut doc = setup_doc();
     doc.editor_state.selected_items.insert("n3".to_string());
@@ -225,7 +216,6 @@ fn test_p1_violation_returns_node_not_found() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p2_violation_returns_movement_exceeded_drag_threshold() {
     let mut doc = setup_doc();
     let res = handle_long_press(&mut doc, NodeId::new("n1".to_string()), 6.0);
@@ -234,7 +224,6 @@ fn test_p2_violation_returns_movement_exceeded_drag_threshold() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p3_violation_returns_node_not_editable() {
     let mut doc = setup_doc();
     doc.document
@@ -248,7 +237,6 @@ fn test_p3_violation_returns_node_not_editable() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p5_violation_returns_marquee_invalid() {
     let res = Rect::new(0.0, 0.0, -10.0, 10.0);
     assert_eq!(res.unwrap_err(), SelectionError::InvalidMarqueeBounds);
@@ -256,7 +244,6 @@ fn test_p5_violation_returns_marquee_invalid() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_021_bounding_box_with_mixed_rotated_and_unrotated_nodes() {
     let mut doc = setup_doc();
     // n1 is unrotated: 0,0 -> 100,100
@@ -285,7 +272,6 @@ fn test_sel_021_bounding_box_with_mixed_rotated_and_unrotated_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_025_marquee_partially_overlapping_parent_selects_fully_enclosed_child() {
     let mut doc = setup_doc();
     // Group A

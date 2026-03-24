@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul_mixed_rotation_combine() {
     // Given: a point and multiple rotation angles
     let original = Point::new(100.0, 0.0);
@@ -33,7 +32,6 @@ fn test_mul_mixed_rotation_combine() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul_mixed_rotation_combine_multiple() {
     // Given: a point and three rotation angles
     let original = Point::new(50.0, 50.0);

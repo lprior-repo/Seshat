@@ -220,8 +220,7 @@ mod tests {
     use crate::ui::grid::GridSize;
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_subgraph_release_bounds_when_drag_too_small_then_none() {
         let grid = GridSize::new(20.0).unwrap();
         let result = subgraph_release_bounds((0.0, 0.0), (10.0, 10.0), false, grid);
@@ -229,8 +228,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_subgraph_release_bounds_when_drag_valid_then_bounds_returned() {
         let grid = GridSize::new(20.0).unwrap();
         let result = subgraph_release_bounds((5.0, 10.0), (60.0, 70.0), false, grid);
@@ -238,8 +236,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_icon_side_when_too_small_then_fit_never_panics_and_stays_non_negative() {
         let result = fit_icon_side(19.68);
         assert!(result >= 0.0);

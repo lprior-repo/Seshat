@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_stroke_width_thick_stroke() {
     // Given: a rectangle with thick stroke
     let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0);
@@ -28,7 +27,6 @@ fn test_aabb_stroke_width_thick_stroke() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_stroke_width_rotated_shape() {
     // Given: a rotated rectangle with stroke
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0).with_rotation(PI / 4.0);
@@ -48,7 +46,6 @@ fn test_aabb_stroke_width_rotated_shape() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_stroke_width_fractional() {
     // Given: a rectangle with fractional stroke width
     let rect = Rectangle::new(50.0, 50.0, 100.0, 50.0);

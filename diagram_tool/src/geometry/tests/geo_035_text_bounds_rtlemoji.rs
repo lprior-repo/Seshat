@@ -162,7 +162,6 @@ impl ExtendedText {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_ltr_simple() {
     // Given: simple LTR text
     let text = ExtendedText::new(10.0, 20.0, "Hello", 16.0);
@@ -178,7 +177,6 @@ fn test_text_bounds_ltr_simple() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_rtl_simple() {
     // Given: RTL text (Arabic example)
     let text =
@@ -195,7 +193,6 @@ fn test_text_bounds_rtl_simple() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_emoji_simple() {
     // Given: text with simple emoji
     let text = ExtendedText::new(0.0, 0.0, "Hi 😀", 16.0);
@@ -210,7 +207,6 @@ fn test_text_bounds_emoji_simple() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_emoji_only() {
     // Given: emoji-only text
     let text = ExtendedText::new(0.0, 0.0, "😀🎉🚀", 20.0);
@@ -225,7 +221,6 @@ fn test_text_bounds_emoji_only() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_zwj_emoji() {
     // Given: text with ZWJ sequence emoji (family emoji = person + ZWJ + person + ...)
     // Family: 👨‍👩‍👧 (man + ZWJ + woman + ZWJ + girl)
@@ -241,7 +236,6 @@ fn test_text_bounds_zwj_emoji() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_mixed_ltr_emoji() {
     // Given: mixed text with emoji
     let text = ExtendedText::new(0.0, 0.0, "Test: ✓ Done! 🎉", 14.0);
@@ -256,7 +250,6 @@ fn test_text_bounds_mixed_ltr_emoji() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_skin_tone_modifier() {
     // Given: emoji with skin tone modifier
     let text = ExtendedText::new(0.0, 0.0, "👋🏻", 16.0); // Waving hand with light skin tone
@@ -270,7 +263,6 @@ fn test_text_bounds_skin_tone_modifier() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_text_bounds_empty() {
     // Given: empty text
     let text = ExtendedText::new(10.0, 20.0, "", 16.0);

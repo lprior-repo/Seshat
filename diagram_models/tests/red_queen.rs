@@ -70,6 +70,7 @@ fn attack_2_deep_parent_chain_stack_overflow() {
     let mut doc = DiagramDocument::default();
 
     let mut last_id = None;
+    // Precondition: ceiling is 1000
     for i in 0..1000 {
         let current_id = NodeId::new(format!("node_{}", i));
         let mut node = create_base_node(&format!("node_{}", i));

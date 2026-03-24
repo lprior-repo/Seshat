@@ -81,7 +81,6 @@ fn make_doc(nodes: Vec<(NodeId, Node)>, edges: Vec<(EdgeId, Edge)>) -> DiagramDo
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn nested_children_follow_ancestor_delta() {
     let root = NodeId::new("root".to_string());
     let child = NodeId::new("child".to_string());
@@ -133,7 +132,6 @@ fn nested_children_follow_ancestor_delta() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_two_unconnected_nodes_when_dag_layout_then_nodes_are_centered_in_single_layer() {
     let a = NodeId::new("A".to_string());
     let b = NodeId::new("B".to_string());
@@ -167,7 +165,6 @@ fn given_two_unconnected_nodes_when_dag_layout_then_nodes_are_centered_in_single
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_edge_when_dag_layout_then_layer_spacing_and_padding_are_applied() {
     let a = NodeId::new("A".to_string());
     let b = NodeId::new("B".to_string());
@@ -197,7 +194,6 @@ fn given_single_edge_when_dag_layout_then_layer_spacing_and_padding_are_applied(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_without_neighbors_when_barycentre_computed_then_result_is_max() {
     let mut graph = DiGraph::<NodeId, ()>::new();
     let isolated = graph.add_node(NodeId::new(String::from("isolated")));
@@ -209,7 +205,6 @@ fn given_node_without_neighbors_when_barycentre_computed_then_result_is_max() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_neighbor_positions_when_barycentre_computed_then_mean_is_used() {
     let mut graph = DiGraph::<NodeId, ()>::new();
     let a = graph.add_node(NodeId::new(String::from("a")));
@@ -225,7 +220,6 @@ fn given_neighbor_positions_when_barycentre_computed_then_mean_is_used() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_mixed_layer_sizes_when_assigning_coordinates_then_shorter_layers_are_centered() {
     let mut graph = DiGraph::<NodeId, ()>::new();
     let n0 = graph.add_node(NodeId::new(String::from("n0")));
@@ -245,7 +239,6 @@ fn given_mixed_layer_sizes_when_assigning_coordinates_then_shorter_layers_are_ce
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_ancestor_deltas_when_applying_position_then_deltas_are_accumulated() {
     let root_id = NodeId::new(String::from("root"));
     let child_id = NodeId::new(String::from("child"));
@@ -278,7 +271,6 @@ fn given_ancestor_deltas_when_applying_position_then_deltas_are_accumulated() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_nonzero_root_origin_when_dag_layout_runs_then_child_follows_exact_root_delta() {
     let root = NodeId::new(String::from("root"));
     let child = NodeId::new(String::from("child"));
@@ -323,7 +315,6 @@ fn given_nonzero_root_origin_when_dag_layout_runs_then_child_follows_exact_root_
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_crossed_two_layer_order_when_swept_then_barycenter_reorders_layer() {
     let mut graph = DiGraph::<NodeId, ()>::new();
     let a = graph.add_node(NodeId::new(String::from("a")));
@@ -344,7 +335,6 @@ fn given_crossed_two_layer_order_when_swept_then_barycenter_reorders_layer() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_multi_layer_graph_when_swept_then_matches_reference_sweep_order() {
     fn barycentre_ref(
         node: NodeIndex,

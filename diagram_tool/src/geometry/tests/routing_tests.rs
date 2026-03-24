@@ -187,7 +187,7 @@ fn test_handles_very_large_coordinates() {
 
     let result = compute_orthogonal_route(from, to);
     // Should either succeed or fail gracefully - both values are finite
-    assert!(result.is_ok() || matches!(result, Err(RoutingError::DegenerateRoute)));
+    assert!(result.is_ok());
 }
 
 #[test]
@@ -245,7 +245,7 @@ fn test_handles_zero_size_obstacle() {
     // Should handle gracefully - either return direct route or error
     let result = compute_orthogonal_route_avoiding(from, to, &obstacle);
     // Either succeeds or returns EndpointInsideObstacle (if point is treated as containing endpoints)
-    assert!(result.is_ok() || matches!(result, Err(RoutingError::EndpointInsideObstacle)));
+    assert!(result.is_ok());
 }
 
 // --------------------------------------------------------------------------

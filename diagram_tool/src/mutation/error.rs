@@ -38,3 +38,13 @@ impl From<anyhow::Error> for MutationError {
         Self::Schema(err.to_string())
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use diagram_models::validation::{ValidationIssue, ValidationSeverity, ValidationCode};
+    #[test] fn given_validation_issue_when_from_issue_called_then_returns_semantic_variant() {
+        let issue = ValidationIssue { severity: ValidationSeverity::Error, code: ValidationCode("VAL-001".into()), message: "".into(), subject: None, fix_hint: None };
+        assert!(matches!(MutationError::from_issue(&issue), MutationError::Semantic(_)));
+    }
+}

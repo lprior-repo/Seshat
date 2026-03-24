@@ -71,7 +71,6 @@ fn create_document_with_edge() -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_edge_is_selected() {
     let mut doc = create_document_with_edge();
     let hit = find_edge_at(&doc, 50.0, 0.0);
@@ -91,7 +90,6 @@ fn test_sel_002_given_document_with_two_nodes_and_edge_when_clicking_edge_then_e
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_selected() {
     let doc = create_document_with_edge();
     if let Some(edge_id) = find_edge_at(&doc, 50.0, 0.0) {
@@ -103,7 +101,6 @@ fn test_sel_002_given_document_with_edge_when_clicking_at_edge_center_then_edge_
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_002_given_empty_document_when_clicking_then_no_edge_selected() {
     assert!(DiagramDocument::default()
         .editor_state
@@ -114,14 +111,12 @@ fn test_sel_002_given_empty_document_when_clicking_then_no_edge_selected() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_002_given_document_with_edge_when_clicking_far_from_edge_then_no_edge_selected() {
     assert!(find_edge_at(&create_document_with_edge(), 500.0, 500.0).is_none());
 }
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_selected() {
     let doc = create_document_with_edge();
     assert!(find_edge_at(&doc, f64::NAN, 0.0).is_none());
@@ -130,7 +125,6 @@ fn test_sel_002_given_document_when_clicking_with_nan_coordinates_then_no_edge_s
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_sel_002_given_horizontal_edge_when_clicking_at_endpoint_then_edge_selected() {
     if let Some(edge_id) = find_edge_at(&create_document_with_edge(), 0.0, 0.0) {
         assert_eq!(edge_id.as_str(), "edge-1");

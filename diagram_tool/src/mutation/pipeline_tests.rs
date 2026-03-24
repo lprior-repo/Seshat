@@ -66,8 +66,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_invalid_version_transform_when_run_mutation_then_it_fails_closed_with_schema_error() {
         let current = DiagramDocument::default();
         let result = run_mutation(&current, |doc| {
@@ -81,8 +80,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_valid_transform_when_run_mutation_then_revision_increments_once() {
         let current = DiagramDocument::default();
         let result = run_mutation(&current, |doc| Ok(doc.clone()));
@@ -96,8 +94,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_preserve_policy_when_run_mutation_then_revision_is_not_incremented() {
         let current = DiagramDocument::default();
         let result = run_mutation_with_policy(
@@ -113,8 +110,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_preserve_policy_with_stale_transformed_revision_when_run_mutation_then_current_revision_wins(
     ) {
         let mut current = DiagramDocument::default();
@@ -132,8 +128,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_transform_that_creates_cycle_when_run_mutation_then_it_fails_closed() {
         let current = DiagramDocument::default();
         let result = run_mutation(&current, |_| {
@@ -175,8 +170,7 @@ mod proptests {
         #![proptest_config(ProptestConfig::with_cases(256))]
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn deeply_nested_mutation_chain_100_levels(initial_rev in 0u64..10) {
             let mut doc = DiagramDocument {
                 revision: make_revision(initial_rev),
@@ -206,8 +200,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn document_with_1000_nodes(node_count in 100usize..1000) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -246,8 +239,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn rapid_fire_apply_undo_cycles(cycles in 10usize..50) {
             let mut doc = DiagramDocument::default();
             let mut history: Vec<DiagramDocument> = Vec::new();
@@ -297,8 +289,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn nan_inf_scattered_through_document(
             use_nan_x in any::<bool>(),
             use_nan_y in any::<bool>(),
@@ -337,15 +328,14 @@ mod proptests {
             });
             let has_special = use_nan_x || use_nan_y || use_inf_width || use_neg_inf_height;
             if has_special {
-                prop_assert!(result.is_err() || result.is_ok());
+                prop_assert!(result.is_err());
             } else {
                 prop_assert!(result.is_ok());
             }
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn create_delete_create_same_id(iterations in 10usize..50) {
             let mut doc = DiagramDocument::default();
             let node_id = NodeId::new("flicker_test".into());
@@ -400,8 +390,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn concurrent_mutation_same_node_different_props(
             x_val in -1000.0f64..1000.0,
             y_val in -1000.0f64..1000.0,
@@ -442,8 +431,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn huge_string_in_label(label_len in 1000usize..10000) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -483,8 +471,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn all_min_positive_floats(scale in 0usize..10) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -521,8 +508,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn subnormal_floats_everywhere(subnormal_bits in 1u64..100) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -555,12 +541,11 @@ mod proptests {
                     ..DiagramDocument::default()
                 })
             });
-            prop_assert!(result.is_ok() || result.is_err());
+            prop_assert!(result.is_ok());
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn alternating_valid_invalid_operations(count in 10usize..50) {
             let mut doc = DiagramDocument::default();
 
@@ -613,8 +598,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn edge_self_loop_validation(_should_be_valid in any::<bool>()) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -667,8 +651,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn revision_preserve_vs_increment(rev_val in 0u64..100) {
             let mut current = DiagramDocument::default();
             current.revision = make_revision(rev_val);
@@ -693,8 +676,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn edge_dangling_reference_without_node(edge_label in ".*") {
             let current = DiagramDocument::default();
             let label = edge_label;
@@ -728,8 +710,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn extreme_z_index_values(z in -1_000_000i64..=1_000_000) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -765,8 +746,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn many_edges_between_same_nodes(edge_count in 1usize..100) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -846,8 +826,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn node_parent_self_reference(_ in Just(())) {
             let current = DiagramDocument::default();
             let nid = NodeId::new("self_parent".into());
@@ -884,8 +863,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn unicode_everywhere(
             node_label in "\\p{Any}{1,50}",
             icon_name in "\\p{Any}{0,20}",
@@ -925,8 +903,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn zero_dimension_node(width in Just(0.0f64), height in Just(0.0f64)) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -958,12 +935,11 @@ mod proptests {
                     ..DiagramDocument::default()
                 })
             });
-            prop_assert!(result.is_ok() || result.is_err());
+            prop_assert!(result.is_ok());
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn negative_dimensions(width in -100.0f64..=-0.001, height in -100.0f64..=-0.001) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -995,12 +971,11 @@ mod proptests {
                     ..DiagramDocument::default()
                 })
             });
-            prop_assert!(result.is_ok() || result.is_err());
+            prop_assert!(result.is_ok());
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn edge_bend_points_overflow(bend_count in 100usize..500) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -1080,8 +1055,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn editor_state_extreme_values(
             camera_x in -1e10f64..=1e10,
             camera_y in -1e10f64..=1e10,
@@ -1110,8 +1084,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn massive_metadata(metadata_entries in 50usize..200) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -1153,8 +1126,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn locked_node_modification(_attempt_modify in any::<bool>()) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {
@@ -1193,8 +1165,7 @@ mod proptests {
         }
 
         #[cfg(kani)]
-        #[kani::proof]
-        #[test]
+#[kani::proof]
         fn empty_string_ids_everywhere(_ in Just(())) {
             let current = DiagramDocument::default();
             let result = run_mutation(&current, move |_| {

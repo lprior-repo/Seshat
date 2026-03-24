@@ -76,73 +76,63 @@ mod tests {
     use super::*;
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_two_taps_within_threshold_when_checked_then_is_double_tap() {
         assert!(is_double_tap(1000, 1100));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_two_taps_exactly_at_threshold_when_checked_then_is_double_tap() {
         assert!(is_double_tap(1000, 1350));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_two_taps_just_over_threshold_when_checked_then_not_double_tap() {
         assert!(!is_double_tap(1000, 1351));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_two_taps_far_apart_when_checked_then_not_double_tap() {
         assert!(!is_double_tap(1000, 5000));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_zero_times_when_checked_then_is_double_tap() {
         assert!(is_double_tap(0, 0));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_same_timestamp_when_checked_then_is_double_tap() {
         assert!(is_double_tap(12345, 12345));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_reversed_timestamps_when_checked_then_not_double_tap() {
         assert!(is_double_tap(2000, 1000));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_threshold_boundary_values_when_checked_then_boundary_correct() {
         assert!(is_double_tap(0, DOUBLE_TAP_THRESHOLD_MS));
         assert!(!is_double_tap(0, DOUBLE_TAP_THRESHOLD_MS + 1));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_touch_input_when_hit_testing_handle_then_expanded_hit_area_used() {
         assert!(!touch_handle_hit_test(120.0, 100.0, 100.0, 100.0, false));
         assert!(touch_handle_hit_test(120.0, 100.0, 100.0, 100.0, true));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_touch_input_at_corner_when_hit_testing_then_expanded_area_covers_corners() {
         let half_touch = TOUCH_HIT_RADIUS_PX / 2.0;
         assert!(touch_handle_hit_test(
@@ -155,8 +145,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_touch_input_outside_expanded_area_when_hit_testing_then_fails() {
         let half_touch = TOUCH_HIT_RADIUS_PX / 2.0;
         assert!(!touch_handle_hit_test(
@@ -169,8 +158,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_mouse_input_when_hit_testing_handle_then_visual_size_used() {
         let half_visual = RESIZE_HANDLE_SIZE_PX / 2.0;
         assert!(touch_handle_hit_test(
@@ -183,51 +171,44 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_touch_input_directly_on_handle_when_hit_testing_then_succeeds() {
         assert!(touch_handle_hit_test(100.0, 100.0, 100.0, 100.0, true));
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_touch_input_when_calculating_hit_radius_then_uses_touch_minimum() {
         assert_eq!(touch_hit_radius(17.0, false), 17.0);
         assert_eq!(touch_hit_radius(17.0, true), TOUCH_HIT_RADIUS_PX);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_large_base_radius_when_touch_input_then_base_preserved_if_larger() {
         assert_eq!(touch_hit_radius(60.0, true), 60.0);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_mouse_input_when_calculating_hit_radius_then_base_unchanged() {
         assert_eq!(touch_hit_radius(25.0, false), 25.0);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_zero_base_radius_when_touch_input_then_touch_minimum_used() {
         assert_eq!(touch_hit_radius(0.0, true), TOUCH_HIT_RADIUS_PX);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_touch_minimum_matches_wcag_guideline() {
         assert_eq!(TOUCH_HIT_RADIUS_PX, 44.0);
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_double_tap_threshold_is_reasonable() {
         assert!(DOUBLE_TAP_THRESHOLD_MS >= 300);
         assert!(DOUBLE_TAP_THRESHOLD_MS <= 500);

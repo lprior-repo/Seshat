@@ -58,8 +58,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_complex_dag(num_nodes in 2usize..10, edge_density in 0.0f64..1.0) {
         let mut nodes = HashMap::new();
         let node_ids: Vec<NodeId> = (0..num_nodes).map(|i| NodeId::new(format!("n{}", i))).collect();
@@ -79,8 +78,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_linear_dag(num_nodes in 2usize..15) {
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();
@@ -94,8 +92,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_star_dag(center in 1usize..5, spokes in 2usize..8) {
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();
@@ -111,8 +108,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_complete_dag(num_nodes in 2usize..6) {
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();
@@ -132,8 +128,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_disconnected_components(num_components in 2usize..5, nodes_per_component in 2usize..5) {
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();
@@ -151,8 +146,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_dag_with_reverse_edges_fails(num_nodes in 3usize..8) {
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();
@@ -168,8 +162,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_mixed_node_kinds_in_dag(num_nodes in 3usize..10) {
         let mut nodes = HashMap::new();
         let mut edges = HashMap::new();

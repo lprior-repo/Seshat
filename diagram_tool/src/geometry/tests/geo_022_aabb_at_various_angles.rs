@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_at_various_angles() {
     // Given: a rectangle at various rotation angles
     let angles = [PI / 12.0, PI / 6.0, PI / 4.0, PI / 3.0, 5.0 * PI / 12.0]; // 15, 30, 45, 60, 75 degrees
@@ -33,7 +32,6 @@ fn test_aabb_at_various_angles() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_at_15_degrees() {
     // Given: rectangle rotated 15 degrees
     let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 12.0);
@@ -52,7 +50,6 @@ fn test_aabb_at_15_degrees() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_at_60_degrees() {
     // Given: rectangle rotated 60 degrees
     let rect = Rectangle::new(0.0, 0.0, 100.0, 50.0).with_rotation(PI / 3.0);

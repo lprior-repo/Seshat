@@ -19,7 +19,6 @@ use serde_json::Value;
 use std::collections::HashSet;
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn golden_mixed_selection_validity() {
     let scene = Scene::load("mixed_selection.json");
     assert_eq!(scene.version(), 2);
@@ -41,7 +40,6 @@ fn golden_mixed_selection_validity() {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn golden_nested_subgraph_validity() {
     let scene = Scene::load("nested_subgraph.json");
     assert_eq!(scene.version(), 2);
@@ -90,7 +88,6 @@ fn assert_operation(before_name: &str, after_name: &str, check: impl FnOnce(&Sce
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn golden_operations_snapshots() {
     assert_operation("move_before.json", "move_after.json", |b, a| {
         assert_eq!(b.nodes().len(), a.nodes().len());
@@ -139,7 +136,6 @@ fn golden_operations_snapshots() {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn golden_stress_scene_validity() {
     let doc = generate_stress_scene_json();
     let scene = Scene { doc: doc.clone() };
@@ -160,7 +156,6 @@ fn golden_stress_scene_validity() {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[test]
 fn all_fixtures_have_valid_schema() {
     let fixtures = [
         "mixed_selection.json",

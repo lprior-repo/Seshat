@@ -16,8 +16,7 @@ use proptest::prelude::*;
 
 proptest! {
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn fuzz_parse_event_never_panics(
         event_type in ".*",
         x in any::<f64>(),
@@ -58,8 +57,7 @@ fn arb_event() -> impl Strategy<Value = CanvasEvent> {
 
 proptest! {
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_valid_event_sequence_maintains_invariants(events in prop::collection::vec(arb_event(), 1..50)) {
         let mut state = InteractionState::Idle;
         for event in events {
@@ -77,7 +75,6 @@ proptest! {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_exhaustive_idle_transitions() {
     let state = InteractionState::Idle;
     for event in all_events() {
@@ -116,7 +113,6 @@ fn test_exhaustive_idle_transitions() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_exhaustive_hovering_transitions() {
     let state = InteractionState::Hovering { point: pt() };
     for event in all_events() {
@@ -155,7 +151,6 @@ fn test_exhaustive_hovering_transitions() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_exhaustive_dragging_transitions() {
     let state = InteractionState::Dragging {
         drag: crate::ui::canvas::domain::DragState {
@@ -194,7 +189,6 @@ fn test_exhaustive_dragging_transitions() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_exhaustive_selecting_transitions() {
     let state = InteractionState::Selecting {
         start: pt(),

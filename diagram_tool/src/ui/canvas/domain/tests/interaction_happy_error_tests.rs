@@ -9,7 +9,6 @@
 )]
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_valid_raw_event_when_parsed_then_returns_canvas_event() {
     let raw = RawEvent {
         event_type: "mouse_down_target".to_string(),
@@ -32,7 +31,6 @@ fn given_valid_raw_event_when_parsed_then_returns_canvas_event() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_idle_state_when_mouse_down_then_transitions_to_selecting() {
     let raw = RawEvent {
         event_type: "mouse_down_background".to_string(),
@@ -55,7 +53,6 @@ fn given_idle_state_when_mouse_down_then_transitions_to_selecting() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_idle_state_when_mouse_move_then_transitions_to_hovering() {
     let raw = RawEvent {
         event_type: "mouse_move".to_string(),
@@ -76,7 +73,6 @@ fn given_idle_state_when_mouse_move_then_transitions_to_hovering() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_selecting_state_when_mouse_up_then_transitions_to_idle() {
     let raw = RawEvent {
         event_type: "mouse_up".to_string(),
@@ -99,7 +95,6 @@ fn given_selecting_state_when_mouse_up_then_transitions_to_idle() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_valid_drag_state_when_delta_applied_then_updates_cumulative_offset() {
     let raw = RawEvent {
         event_type: "drag_move".to_string(),
@@ -130,7 +125,6 @@ fn given_valid_drag_state_when_delta_applied_then_updates_cumulative_offset() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_unknown_raw_event_when_parsed_then_returns_unparseable_error() {
     let raw = RawEvent {
         event_type: "unknown_click".to_string(),
@@ -148,7 +142,6 @@ fn given_unknown_raw_event_when_parsed_then_returns_unparseable_error() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_idle_state_when_drag_move_event_then_returns_invalid_transition_error() {
     let raw = RawEvent {
         event_type: "drag_move".to_string(),
@@ -170,7 +163,6 @@ fn given_idle_state_when_drag_move_event_then_returns_invalid_transition_error()
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_negative_area_when_creating_selection_bounds_then_returns_invalid_bounds_error() {
     let result = crate::ui::canvas::domain::SelectionBounds::new(
         CanvasPoint::new(10.0, 10.0).unwrap(),
@@ -181,7 +173,6 @@ fn given_negative_area_when_creating_selection_bounds_then_returns_invalid_bound
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_zero_delta_when_dragging_then_state_unchanged() {
     let raw = RawEvent {
         event_type: "drag_move".to_string(),
@@ -208,7 +199,6 @@ fn given_zero_delta_when_dragging_then_state_unchanged() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_hovering_state_when_mouse_move_event_then_returns_same_hovering_state() {
     let raw = RawEvent {
         event_type: "mouse_move".to_string(),
@@ -231,7 +221,6 @@ fn given_hovering_state_when_mouse_move_event_then_returns_same_hovering_state()
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_dragging_state_when_mouse_down_event_then_returns_invalid_transition_error() {
     let raw = RawEvent {
         event_type: "mouse_down_target".to_string(),

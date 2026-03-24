@@ -9,8 +9,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_bezier_point_returns_finite_for_finite_inputs(
         p0x in finite_f64(), p0y in finite_f64(),
         p1x in finite_f64(), p1y in finite_f64(),
@@ -23,8 +22,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_bezier_point_t_zero_returns_p0(
         p0x in finite_f64(), p0y in finite_f64(),
         p1x in finite_f64(), p1y in finite_f64(),
@@ -36,8 +34,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_bezier_point_t_one_returns_p2(
         p0x in finite_f64(), p0y in finite_f64(),
         p1x in finite_f64(), p1y in finite_f64(),
@@ -49,8 +46,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_t_zero_returns_first(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),
@@ -62,8 +58,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_t_one_returns_last(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),
@@ -75,8 +70,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_single_point_returns_that_point(
         x in finite_f64(), y in finite_f64(),
         t in 0.0_f64..=1.0_f64,
@@ -88,8 +82,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_empty_returns_zero(t in 0.0_f64..=1.0_f64) {
         let points: Vec<(f64, f64)> = vec![];
         let (px, py) = interpolate_polyline_point(&points, t);
@@ -98,8 +91,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_control_returns_finite_for_finite_input(
         sx in finite_f64(), sy in finite_f64(),
         tx in finite_f64(), ty in finite_f64(),
@@ -110,8 +102,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_control_lies_on_perpendicular_through_midpoint(
         sx in finite_f64(), sy in finite_f64(),
         tx in finite_f64(), ty in finite_f64(),
@@ -129,8 +120,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn dist_to_segment_zero_length_returns_distance_to_point(
         px in finite_f64(), py in finite_f64(),
         x in finite_f64(), y in finite_f64(),
@@ -142,8 +132,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn dist_to_segment_point_on_endpoint_returns_zero(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),
@@ -155,8 +144,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn dist_to_segment_always_non_negative(
         px in finite_f64(), py in finite_f64(),
         x1 in finite_f64(), y1 in finite_f64(),
@@ -167,8 +155,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_midpoint_two_points(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),
@@ -182,8 +169,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_returns_finite(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),
@@ -197,8 +183,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn interpolate_polyline_point_clamped_t_stays_in_bounds(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),

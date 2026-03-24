@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotation_then_resize_composition() {
     // Given: a point at (100, 0) relative to origin
     let point = Point::new(100.0, 0.0);
@@ -29,7 +28,6 @@ fn test_rotation_then_resize_composition() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotation_then_resize_45_degrees() {
     // Given: a point at (1, 0)
     let point = Point::new(1.0, 0.0);

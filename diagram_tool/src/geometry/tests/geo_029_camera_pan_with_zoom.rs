@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_pan_with_zoom() {
     // Given: screen-space delta and different zoom levels
     let screen_delta: f64 = 10.0; // 10 pixels
@@ -28,7 +27,6 @@ fn test_camera_pan_with_zoom() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_pan_consistent_screen_movement() {
     // Given: two zoom levels and their world deltas
     let zoom1: f64 = 1.0;
@@ -47,7 +45,6 @@ fn test_camera_pan_consistent_screen_movement() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_pan_at_min_zoom() {
     // Given: minimum zoom level
     let zoom = MIN_ZOOM;

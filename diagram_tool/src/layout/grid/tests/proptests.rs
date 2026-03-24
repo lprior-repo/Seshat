@@ -48,8 +48,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_never_panics_with_valid_cell_size(cell_size in 1e-10_f64..1e10_f64) {
         let doc = make_doc(vec![
             ("a".into(), 50.0, 50.0, false),
@@ -60,8 +59,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[should_panic(expected = "cell_size must be positive and finite")]
     fn prop_grid_layout_zero_cell_size(_ in Just(0.0_f64)) {
         let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
@@ -69,8 +67,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[should_panic(expected = "cell_size must be positive and finite")]
     fn prop_grid_layout_negative_cell_size(cell_size in -1e10_f64..-1e-10_f64) {
         let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
@@ -78,8 +75,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[should_panic(expected = "cell_size must be positive and finite")]
     fn prop_grid_layout_nan_cell_size(_ in Just(())) {
         let doc = make_doc(vec![("a".into(), 100.0, 100.0, false)]);
@@ -87,8 +83,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     #[should_panic(expected = "cell_size must be positive and finite")]
     fn prop_grid_layout_inf_cell_size(sign in -1_i32..=1) {
         let cell_size = match sign {
@@ -101,8 +96,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_extreme_node_coordinates(coord in -1e15_f64..1e15_f64) {
         let doc = make_doc(vec![
             ("a".into(), coord, coord, false),
@@ -113,8 +107,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_nan_node_positions(_ in Just(())) {
         let mut doc = DiagramDocument::default();
         let mut node = make_node(f64::NAN, f64::NAN, false, None);
@@ -126,8 +119,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_inf_node_positions(sign in -1_i32..=1) {
         let mut doc = DiagramDocument::default();
         let x = if sign < 0 { f64::NEG_INFINITY } else { f64::INFINITY };
@@ -140,8 +132,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_empty_document(_ in Just(())) {
         let doc = DiagramDocument::default();
         let result = calculate_grid_layout(&doc, 100.0);
@@ -149,8 +140,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_very_tiny_cell_size(_ in Just(())) {
         let doc = make_doc(vec![
             ("a".into(), 1e-5, 1e-5, false),
@@ -161,8 +151,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_mixed_locked_unlocked(
         unlocked_count in 1_usize..10,
         locked_count in 0_usize..5,
@@ -191,8 +180,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_positions_are_finite(
         cell_size in 0.1_f64..1e6_f64,
         x1 in -1e6_f64..1e6_f64,
@@ -212,8 +200,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_grid_layout_locked_nodes_unchanged(
         x in -1000.0_f64..1000.0_f64,
         y in -1000.0_f64..1000.0_f64,

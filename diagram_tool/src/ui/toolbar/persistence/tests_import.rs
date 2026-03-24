@@ -39,7 +39,6 @@ fn sample_doc_with_node(id: &str, x: f64) -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_malformed_import_when_preparing_transition_then_returns_parse_error() {
     let current = sample_doc_with_node("n-current", 40.0);
     let result = prepare_import_transition(&current, "{this-is-not-json");
@@ -48,7 +47,6 @@ fn given_malformed_import_when_preparing_transition_then_returns_parse_error() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_semantically_invalid_import_when_preparing_transition_then_returns_validation_error() {
     let current = sample_doc_with_node("n-current", 40.0);
     let invalid = r#"{
@@ -71,7 +69,6 @@ fn given_semantically_invalid_import_when_preparing_transition_then_returns_vali
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 #[allow(clippy::unwrap_used, clippy::expect_used)]
 fn given_valid_import_when_preparing_transition_then_new_doc_and_history_are_atomic() {
     let current = sample_doc_with_node("n-current", 40.0);
@@ -109,7 +106,6 @@ fn given_valid_import_when_preparing_transition_then_new_doc_and_history_are_ato
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_import_error_when_applying_contents_then_doc_and_history_remain_unchanged() {
     let mut doc = sample_doc_with_node("n-current", 40.0);
     let previous = sample_doc_with_node("n-prev", 12.0);
@@ -132,7 +128,6 @@ fn given_import_error_when_applying_contents_then_doc_and_history_remain_unchang
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_validation_error_when_applying_contents_then_doc_and_history_remain_unchanged() {
     let mut doc = sample_doc_with_node("n-current", 40.0);
     let previous = sample_doc_with_node("n-prev", 12.0);
@@ -169,7 +164,6 @@ fn given_validation_error_when_applying_contents_then_doc_and_history_remain_unc
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_import_error_when_selection_exists_then_selection_is_preserved() {
     let mut doc = sample_doc_with_node("n-current", 40.0);
     doc.editor_state.selected_items = HashSet::new().update(String::from("n-current"));

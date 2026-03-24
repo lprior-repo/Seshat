@@ -14,7 +14,6 @@ use phase1::{
 use tempfile::TempDir;
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_rusqlite_removed() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
     if has_dependency(&content, "rusqlite") {
@@ -26,7 +25,6 @@ async fn test_rusqlite_removed() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_sqlx_tokio_available() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
     if !has_dependency(&content, "sqlx") {
@@ -47,7 +45,6 @@ async fn test_sqlx_tokio_available() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_sqlx_tokio_non_optional() -> Phase1Result<()> {
     let content = read_cargo_toml()?;
     if content.contains("sqlx = {") && content.contains("optional = true") {
@@ -64,7 +61,6 @@ async fn test_sqlx_tokio_non_optional() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_store_module_imports() -> Phase1Result<()> {
     use diagram_tool::store_async::{bootstrap_async_store, AsyncStoreError};
     use sqlx::SqlitePool;
@@ -75,7 +71,6 @@ async fn test_store_module_imports() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_async_bootstrap() -> Phase1Result<()> {
     let (_temp_dir, bootstrap) = setup_test_db().await?;
     let pool = bootstrap.pool;
@@ -123,7 +118,6 @@ async fn test_async_bootstrap() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_async_append() -> Phase1Result<()> {
     let (_temp_dir, bootstrap) = setup_test_db().await?;
     let pool = bootstrap.pool;
@@ -180,11 +174,11 @@ async fn test_async_append() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_async_append_increments_revision() -> Phase1Result<()> {
     let (_temp_dir, bootstrap) = setup_test_db().await?;
     let pool = bootstrap.pool;
 
+    // Precondition: ceiling is 3
     for i in 1..=3 {
         let envelope = EventEnvelope {
             op_id: format!("test-op-{}", i),
@@ -233,7 +227,6 @@ async fn test_async_append_increments_revision() -> Phase1Result<()> {
 }
 
 #[cfg_attr(kani, kani::proof)]
-#[tokio::test]
 async fn test_async_bootstrap_corrupted_db() -> Phase1Result<()> {
     use diagram_tool::store_async::bootstrap_async_store;
     let temp_dir = TempDir::new().map_err(Phase1Error::Io)?;

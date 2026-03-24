@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul_rotate_360_no_drift() {
     // Given: multiple points representing selected item centers
     let items = [
@@ -41,7 +40,6 @@ fn test_mul_rotate_360_no_drift() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul_rotate_360_no_drift_incremental() {
     // Given: points and incremental rotation steps
     let items = [

@@ -8,7 +8,6 @@ use im::HashMap;
 /// Then: All geometry values are exactly preserved
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_document_with_fractional_coords_when_round_trip_then_geometry_preserved() {
     use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
     use diagram_models::canonical_json::to_canonical_pretty_json;
@@ -76,7 +75,6 @@ fn given_document_with_fractional_coords_when_round_trip_then_geometry_preserved
 /// IO-TEST-3b: Multiple nodes with various precision levels
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_document_with_various_precision_coords_when_round_trip_then_all_preserved() {
     use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
     use diagram_models::canonical_json::to_canonical_pretty_json;
@@ -149,7 +147,6 @@ fn given_document_with_various_precision_coords_when_round_trip_then_all_preserv
 /// Then: Import succeeds without floating-point overflow/crash
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_document_with_large_coordinates_when_import_then_succeeds() {
     use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
 
@@ -210,7 +207,6 @@ fn given_document_with_large_coordinates_when_import_then_succeeds() {
 /// IO-TEST-4b: Extreme but finite values
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_document_with_extreme_finite_coords_when_import_then_succeeds() {
     use crate::ui::toolbar::persistence_compat::parse_diagram_document_with_compat;
 

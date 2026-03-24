@@ -84,7 +84,6 @@ impl CubicBezier {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_quadratic_bezier_bounds_simple() {
     // Given: a simple quadratic Bezier (arc)
     let curve = QuadraticBezier::new(
@@ -104,7 +103,6 @@ fn test_quadratic_bezier_bounds_simple() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_quadratic_bezier_bounds_straight_line() {
     // Given: a quadratic Bezier that's essentially a straight line
     let curve = QuadraticBezier::new(
@@ -123,7 +121,6 @@ fn test_quadratic_bezier_bounds_straight_line() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_quadratic_bezier_bounds_with_stroke() {
     // Given: a curve with thick stroke
     let curve = QuadraticBezier::new(
@@ -142,7 +139,6 @@ fn test_quadratic_bezier_bounds_with_stroke() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_quadratic_bezier_tight_bounds() {
     // Given: a curve
     let curve = QuadraticBezier::new(
@@ -164,7 +160,6 @@ fn test_quadratic_bezier_tight_bounds() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_cubic_bezier_bounds_simple() {
     // Given: a simple cubic Bezier (S-curve)
     let curve = CubicBezier::new(
@@ -186,7 +181,6 @@ fn test_cubic_bezier_bounds_simple() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_cubic_bezier_bounds_complex() {
     // Given: a complex cubic Bezier with multiple extrema
     let curve = CubicBezier::new(

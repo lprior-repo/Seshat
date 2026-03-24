@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_bounds_edge_cases_zero_size() {
     // Given: zero-sized bounds
     let result = safe_bounds(0.0, 0.0, 0.0, 0.0);
@@ -24,7 +23,6 @@ fn test_bounds_edge_cases_zero_size() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_bounds_edge_cases_negative_coords() {
     // Given: negative coordinates
     let result = safe_bounds(-100.0, -50.0, -10.0, -5.0);
@@ -40,7 +38,6 @@ fn test_bounds_edge_cases_negative_coords() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_bounds_edge_cases_large_coords() {
     // Given: very large coordinates
     let result = safe_bounds(1e10, 1e10, 1e10 + 100.0, 1e10 + 100.0);
@@ -54,7 +51,6 @@ fn test_bounds_edge_cases_large_coords() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_bounds_edge_cases_nan() {
     // Given: NaN values
     let result = safe_bounds(f64::NAN, 0.0, 100.0, 100.0);
@@ -65,7 +61,6 @@ fn test_bounds_edge_cases_nan() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_bounds_edge_cases_infinity() {
     // Given: infinity values
     let result = safe_bounds(f64::INFINITY, 0.0, 100.0, 100.0);
@@ -76,7 +71,6 @@ fn test_bounds_edge_cases_infinity() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_bounds_edge_cases_swapped_min_max() {
     // Given: min > max (swapped)
     let result = safe_bounds(100.0, 100.0, 0.0, 0.0);

@@ -56,7 +56,6 @@ pub fn fit_to_viewport(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_fit_to_content_perfect_fit() {
     // Given: content exactly matching viewport
     let content = AABB::new(0.0, 0.0, 100.0, 100.0);
@@ -72,7 +71,6 @@ fn test_fit_to_content_perfect_fit() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_fit_to_content_scale_down() {
     // Given: content larger than viewport
     let content = AABB::new(0.0, 0.0, 200.0, 200.0);
@@ -88,7 +86,6 @@ fn test_fit_to_content_scale_down() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_fit_to_content_with_padding() {
     // Given: content with padding requirement
     let content = AABB::new(0.0, 0.0, 100.0, 100.0);
@@ -105,7 +102,6 @@ fn test_fit_to_content_with_padding() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_fit_to_content_centers_content() {
     // Given: off-center content
     let content = AABB::new(50.0, 50.0, 150.0, 150.0); // center at (100, 100), size 100x100

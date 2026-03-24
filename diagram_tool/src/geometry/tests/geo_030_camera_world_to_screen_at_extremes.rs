@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_world_to_screen_at_extremes() {
     // Given: extreme world coordinates
     let extreme_coords = [(1e6, 1e6), (-1e6, -1e6), (1e6, -1e6), (-1e6, 1e6)];
@@ -30,7 +29,6 @@ fn test_camera_world_to_screen_at_extremes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_world_to_screen_at_extremes_with_zoom() {
     // Given: extreme coordinates with high zoom
     let world = Point::new(1e6, 1e6);
@@ -48,7 +46,6 @@ fn test_camera_world_to_screen_at_extremes_with_zoom() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_camera_round_trip_at_extremes() {
     // Given: extreme world coordinates
     let world = Point::new(1e6, -1e6);

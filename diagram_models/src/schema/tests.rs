@@ -56,7 +56,6 @@ fn edge(source: &NodeId, target: &NodeId) -> Edge {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_default_document_when_validated_then_schema_passes() {
     let doc = DiagramDocument::default();
     let result = validate_schema(&doc);
@@ -65,7 +64,6 @@ fn given_default_document_when_validated_then_schema_passes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_non_v2_document_when_validated_then_schema_fails_without_runtime_gate() {
     let doc = DiagramDocument {
         version: 3,
@@ -78,7 +76,6 @@ fn given_non_v2_document_when_validated_then_schema_fails_without_runtime_gate()
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_parent_that_is_not_subgraph_when_validated_then_schema_fails() {
     let parent_id = NodeId::new(String::from("parent"));
     let child_id = NodeId::new(String::from("child"));
@@ -93,7 +90,6 @@ fn given_node_parent_that_is_not_subgraph_when_validated_then_schema_fails() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_edge_with_missing_target_when_validated_then_schema_fails() {
     let a = NodeId::new(String::from("a"));
     let b = NodeId::new(String::from("b"));
@@ -107,7 +103,6 @@ fn given_edge_with_missing_target_when_validated_then_schema_fails() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_missing_parent_reference_when_validated_then_schema_fails() {
     let missing_parent = NodeId::new(String::from("missing-parent"));
     let child_id = NodeId::new(String::from("child"));
@@ -121,7 +116,6 @@ fn given_node_with_missing_parent_reference_when_validated_then_schema_fails() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_existing_subgraph_parent_when_validated_then_schema_passes() {
     let parent_id = NodeId::new(String::from("parent"));
     let child_id = NodeId::new(String::from("child"));
@@ -140,7 +134,6 @@ fn given_node_with_existing_subgraph_parent_when_validated_then_schema_passes() 
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_circular_parent_chain_when_validated_then_schema_fails() {
     // Create a cycle: A -> B -> C -> A
     let a_id = NodeId::new(String::from("subgraph-a"));
@@ -172,7 +165,6 @@ fn given_circular_parent_chain_when_validated_then_schema_fails() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_self_referential_parent_when_validated_then_schema_fails() {
     // A node that is its own parent
     let a_id = NodeId::new(String::from("subgraph-a"));
@@ -189,7 +181,6 @@ fn given_self_referential_parent_when_validated_then_schema_fails() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_two_node_parent_cycle_when_validated_then_schema_fails() {
     // Create a 2-node cycle: A -> B -> A
     let a_id = NodeId::new(String::from("subgraph-a"));

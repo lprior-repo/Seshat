@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_center_90_degrees() {
     // Given: a point at (100, 0) and center at origin
     let point = Point::new(100.0, 0.0);
@@ -26,7 +25,6 @@ fn test_rotate_around_center_90_degrees() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_center_180_degrees() {
     // Given: a point at (100, 0) and center at origin
     let point = Point::new(100.0, 0.0);
@@ -42,7 +40,6 @@ fn test_rotate_around_center_180_degrees() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_center_keeps_center_fixed() {
     // Given: center as the point to rotate
     let center = Point::new(50.0, 50.0);
@@ -57,7 +54,6 @@ fn test_rotate_around_center_keeps_center_fixed() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_center_45_degrees() {
     // Given: a point at (1, 0) and center at origin
     let point = Point::new(1.0, 0.0);

@@ -12,7 +12,6 @@ fn default_config() -> InputConfig {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_pan_action_for_two_finger_movement_inp_004() {
     let config = default_config();
     let state = InputState::new();
@@ -62,7 +61,6 @@ fn test_returns_pan_action_for_two_finger_movement_inp_004() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_high_precision_hit_test_for_stylus_pen_inp_005() {
     let config = default_config();
     let handle = Handle {
@@ -74,7 +72,6 @@ fn test_returns_high_precision_hit_test_for_stylus_pen_inp_005() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_double_tap_action_when_tapped_twice_rapidly_inp_006() {
     let config = default_config();
     let state = InputState::new();
@@ -108,7 +105,6 @@ fn test_returns_double_tap_action_when_tapped_twice_rapidly_inp_006() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_hit_success_for_touch_within_expanded_radius_inp_007() {
     let config = default_config();
     let handle = Handle {
@@ -120,7 +116,6 @@ fn test_returns_hit_success_for_touch_within_expanded_radius_inp_007() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_when_pointer_move_received_for_untracked_id() {
     let config = default_config();
     let state = InputState::new();
@@ -138,7 +133,6 @@ fn test_returns_error_when_pointer_move_received_for_untracked_id() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_when_too_many_simultaneous_pointers_active() {
     let config = default_config();
     let mut state = InputState::new();
@@ -173,7 +167,6 @@ fn test_returns_error_when_too_many_simultaneous_pointers_active() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_handles_pointer_up_without_prior_down_gracefully() {
     let config = default_config();
     let state = InputState::new();
@@ -192,7 +185,6 @@ fn test_handles_pointer_up_without_prior_down_gracefully() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p1_violation_returns_compile_error_or_invalid_timing_threshold() {
     let res = InputConfig::new(0, 10.0, 5.0);
     assert_eq!(res, Err(Error::InvalidTimingThreshold));
@@ -200,7 +192,6 @@ fn test_p1_violation_returns_compile_error_or_invalid_timing_threshold() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p2_violation_returns_negative_hit_padding_error() {
     let res = InputConfig::new(300, -5.0, 5.0);
     assert_eq!(res, Err(Error::NegativeHitPadding));
@@ -208,7 +199,6 @@ fn test_p2_violation_returns_negative_hit_padding_error() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p3_violation_returns_duplicate_pointer_id_error() {
     let res = TwoFingerGesture::new(PointerId(1), PointerId(1));
     assert_eq!(res, Err(Error::DuplicatePointerId));

@@ -74,7 +74,6 @@ fn setup_doc() -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul026_commit_translation_updates_all_items_and_history() {
     let mut doc = setup_doc();
     let old_version = doc.version;
@@ -112,7 +111,6 @@ fn test_mul026_commit_translation_updates_all_items_and_history() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul027_commit_scaling_preserves_relative_proportions() {
     let mut doc = setup_doc();
     let selection = NonEmptySelection::try_new(vec![
@@ -149,7 +147,6 @@ fn test_mul027_commit_scaling_preserves_relative_proportions() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul028_commit_transform_increments_document_version() {
     let mut doc = setup_doc();
     let old_version = doc.version;
@@ -164,7 +161,6 @@ fn test_mul028_commit_transform_increments_document_version() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul030_commit_transform_returns_error_when_item_not_found() {
     let mut doc = setup_doc();
     let selection =
@@ -180,7 +176,6 @@ fn test_mul030_commit_transform_returns_error_when_item_not_found() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_precondition_selection_must_not_be_empty() {
     let result = NonEmptySelection::try_new(vec![]);
     assert_eq!(result.unwrap_err(), Error::EmptySelection);
@@ -188,7 +183,6 @@ fn test_precondition_selection_must_not_be_empty() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_precondition_transform_must_be_valid() {
     let result = ValidTransform::try_new(NAN, 0.0, 1.0, 1.0, 0.0);
     assert_eq!(result.unwrap_err(), Error::InvalidTransform);
@@ -199,7 +193,6 @@ fn test_precondition_transform_must_be_valid() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_when_document_locked() {
     // Current mock implementation for testing document lock
     let mut doc = setup_doc();
@@ -213,7 +206,6 @@ fn test_returns_error_when_document_locked() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_postcondition_atomic_failure_rollback() {
     let mut doc = setup_doc();
     let original_doc = doc.clone();

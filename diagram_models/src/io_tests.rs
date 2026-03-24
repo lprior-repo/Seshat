@@ -63,7 +63,6 @@ fn create_test_db() -> Result<(rusqlite::Connection, tempfile::TempDir), Box<dyn
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_001_malformed_json_import_syntax_error() {
     // Given: JSON input with syntax errors
     let malformed_json = r##"{"version": 2, "broken": [}"##;
@@ -77,7 +76,6 @@ fn io_001_malformed_json_import_syntax_error() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_001_malformed_json_import_unclosed_string() {
     // Given: JSON with unclosed string
     let malformed_json = r##"{"version": 2, "data": {"nodes": {"##;
@@ -91,7 +89,6 @@ fn io_001_malformed_json_import_unclosed_string() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_001_malformed_json_import_invalid_escape() {
     // Given: JSON with invalid escape sequence
     let malformed_json = r#"{"version": 2, "data": {"nodes": {"node-1": {"label": "test\x0"}}}}"#;
@@ -109,7 +106,6 @@ fn io_001_malformed_json_import_invalid_escape() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_002_empty_document_export() {
     // Given: Empty database (no events)
     let (conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
@@ -134,7 +130,6 @@ fn io_002_empty_document_export() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_003_invalid_schema_version_too_new() {
     // Given: JSON with version > current supported
     let future_version_json = serde_json::json!({
@@ -163,7 +158,6 @@ fn io_003_invalid_schema_version_too_new() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_003_invalid_schema_version_rejected_on_import() {
     // Given: JSON with future version
     let json = r#"{
@@ -196,7 +190,6 @@ fn io_003_invalid_schema_version_rejected_on_import() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_004_valid_json_parses() {
     // Given: Valid JSON export
     let json = create_minimal_export();
@@ -219,7 +212,6 @@ fn io_004_valid_json_parses() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_005_large_document_export_performance() {
     // Given: Document with 1000+ events
     let (conn, _temp_dir) = create_test_db().unwrap_or_else(|e| panic!("Failed to create test DB: {}", e));
@@ -254,7 +246,6 @@ fn io_005_large_document_export_performance() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_006_large_document_import_performance() {
     // Given: Export with 100 nodes
     let mut nodes = serde_json::Map::new();
@@ -317,7 +308,6 @@ fn io_006_large_document_import_performance() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_007_unicode_emoji_labels() {
     // Given: Document with emoji labels
     let labels = vec![
@@ -342,7 +332,6 @@ fn io_007_unicode_emoji_labels() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_007_unicode_rtl_text() {
     // Given: RTL text (Arabic, Hebrew)
     let rtl_labels = vec![
@@ -364,7 +353,6 @@ fn io_007_unicode_rtl_text() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_007_unicode_combining_characters() {
     // Given: Text with combining diacritics
     let text = "café";  // Combining acute accent
@@ -383,7 +371,6 @@ fn io_007_unicode_combining_characters() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_008_atomic_save_pattern_works() {
     use std::fs;
 
@@ -425,7 +412,6 @@ fn io_008_atomic_save_pattern_works() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_009_lkg_fallback_function_exists() {
     use crate::cli_persistence::{load_workspace_with_lkg, CliPersistenceError};
     use std::path::Path;
@@ -461,7 +447,6 @@ fn io_009_lkg_fallback_function_exists() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_010_validate_schema_exists() {
     use crate::schema::validate_schema;
     use crate::document::EditorState;
@@ -491,7 +476,6 @@ fn io_010_validate_schema_exists() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_011_recovery_mode_export_function_exists() {
     use crate::export::export_while_recovering;
 
@@ -528,7 +512,6 @@ fn io_011_recovery_mode_export_function_exists() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_012_backward_compatible_version_1() {
     use crate::export::validate_export_schema;
 
@@ -556,7 +539,6 @@ fn io_012_backward_compatible_version_1() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_013_null_version_field() {
     // Given: Version field is null
     let null_version = r#"{
@@ -578,7 +560,6 @@ fn io_013_null_version_field() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_014_truncated_json_mid_string() {
     // Given: JSON cut off mid-string
     let truncated = r##"{"version": 2, "revision": 0, "nodes": {"##;
@@ -596,7 +577,6 @@ fn io_014_truncated_json_mid_string() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_015_missing_version_field() {
     // Given: JSON missing version field
     let no_version = r#"{
@@ -613,7 +593,6 @@ fn io_015_missing_version_field() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn io_015_missing_metadata_field() {
     // Given: JSON missing metadata
     let no_metadata = r#"{

@@ -80,8 +80,7 @@ proptest! {
     #![proptest_config(ProptestConfig::with_cases(64))]
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_version_must_be_2(version in 0u32..100) {
         let doc = DiagramDocument {
             version,
@@ -101,8 +100,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_editor_state_extreme_floats(
         camera_x in arb_ordered_float_with_specials(),
         camera_y in arb_ordered_float_with_specials(),
@@ -137,8 +135,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_edge_to_nonexistent_node_fails(
         source in arb_node_id(),
         nonexistent in arb_node_id(),
@@ -158,8 +155,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_edge_both_nodes_nonexistent(
         source in arb_node_id(),
         target in arb_node_id(),
@@ -179,8 +175,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_node_parent_must_exist_and_be_subgraph(
         child_id in arb_node_id(),
         parent_id in arb_node_id(),
@@ -208,8 +203,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_node_references_missing_parent(child_id in arb_node_id(), missing in arb_node_id()) {
         let doc = DiagramDocument {
             version: 2,
@@ -224,8 +218,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_self_referential_edge(node_id in arb_node_id(), edge_id in arb_edge_id()) {
         let doc = DiagramDocument {
             version: 2,
@@ -241,8 +234,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_empty_vs_populated_empty_nodes(
         num_nodes in 0usize..10,
     ) {
@@ -265,8 +257,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_deeply_nested_parent_chain(depth in 1usize..20) {
         let mut nodes = HashMap::new();
         for i in 0..depth {
@@ -291,8 +282,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_circular_parent_chain_three_nodes(
         id_a in arb_node_id(),
         id_b in arb_node_id(),
@@ -315,8 +305,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_multiple_edges_same_nodes(
         source in arb_node_id(),
         target in arb_node_id(),
@@ -342,8 +331,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_node_extreme_coordinates(
         node_id in arb_node_id(),
         x in any::<f64>(),
@@ -369,8 +357,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_complex_dag(
         num_nodes in 2usize..10,
         edge_density in 0.0f64..1.0,
@@ -405,8 +392,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn prop_subgraph_with_children(
         subgraph_id in arb_node_id(),
         child_ids in prop::collection::vec(arb_node_id(), 1..5),

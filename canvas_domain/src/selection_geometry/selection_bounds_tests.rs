@@ -7,7 +7,6 @@ use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_selected_nodes_when_bounds_requested_then_bounds_cover_selection() {
     let mut doc = DiagramDocument::default();
     let id_a = NodeId::new(String::from("a"));
@@ -32,7 +31,6 @@ fn given_selected_nodes_when_bounds_requested_then_bounds_cover_selection() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_multi_type_selection_when_bounds_requested_then_all_types_included() {
     let mut doc = DiagramDocument::default();
     let shape_id = NodeId::new(String::from("shape_node"));
@@ -67,7 +65,6 @@ fn given_multi_type_selection_when_bounds_requested_then_all_types_included() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_nodes_at_negative_coords_when_selected_then_bounds_correct() {
     let mut doc = DiagramDocument::default();
     let neg_x = NodeId::new(String::from("neg_x"));

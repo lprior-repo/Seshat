@@ -23,8 +23,7 @@ mod tests {
     // =====================================================================
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_group_selection_creates_padded_container_and_reparents() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
@@ -62,8 +61,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_ungroup_selection_empty() {
         let mut doc = DiagramDocument::default();
         assert_eq!(
@@ -73,8 +71,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_ungroup_selection_no_subgraphs_selected() {
         let mut doc = DiagramDocument::default();
         let n1 = NodeId::new("1".to_string());
@@ -91,8 +88,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_ungroup_selection_deletes_subgraph_and_orphans_children() {
         let mut doc = DiagramDocument::default();
         let group_id = NodeId::new("g1".to_string());
@@ -118,8 +114,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_ungroup_selection_nested_subgraphs() {
         let mut doc = DiagramDocument::default();
         let parent_group_id = NodeId::new("pg".to_string());
@@ -149,8 +144,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn test_ungroup_selection_removes_edges_connected_to_subgraph() {
         let mut doc = DiagramDocument::default();
         let group_id = NodeId::new("g1".to_string());

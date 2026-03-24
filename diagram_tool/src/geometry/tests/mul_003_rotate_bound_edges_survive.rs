@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul_rotate_bound_edges_survive() {
     // Given: multiple rectangles representing selected items
     let rects = [

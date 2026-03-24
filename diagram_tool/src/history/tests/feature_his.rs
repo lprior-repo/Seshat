@@ -99,7 +99,6 @@ impl HistoryDsl {
 /// HIS-001: Move node undo restores original position
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_at_position_when_moved_and_undo_then_position_restored() {
     let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
     dsl.set_pos(200.0, 200.0);
@@ -113,7 +112,6 @@ fn given_node_at_position_when_moved_and_undo_then_position_restored() {
 /// HIS-002: Resize undo restores exact original dimensions
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_node_with_dimensions_when_resized_and_undo_then_dimensions_restored() {
     let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
     dsl.set_size(160.0, 80.0);
@@ -127,7 +125,6 @@ fn given_node_with_dimensions_when_resized_and_undo_then_dimensions_restored() {
 /// HIS-011: Push after undo clears redo stack
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
     let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
 
@@ -157,7 +154,6 @@ fn given_history_with_redo_entries_when_push_then_redo_stack_cleared() {
 /// HIS-012: Multiple undos walk back through history correctly
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_history_with_multiple_states_when_undo_multiple_times_then_walks_back_correctly() {
     let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
 
@@ -182,7 +178,6 @@ fn given_history_with_multiple_states_when_undo_multiple_times_then_walks_back_c
 /// HIS-013: Redo after multiple undos works correctly
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_history_after_multiple_undos_when_redo_then_walks_forward_correctly() {
     let mut dsl = HistoryDsl::new(100.0, 100.0, 80.0, 40.0);
 

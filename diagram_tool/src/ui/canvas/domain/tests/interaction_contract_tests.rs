@@ -9,7 +9,6 @@
 )]
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_precondition_parsed_boundaries() {
     let raw = RawEvent {
         event_type: "mouse_down_target".to_string(),
@@ -25,7 +24,6 @@ fn test_precondition_parsed_boundaries() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_precondition_semantic_coordinates() {
     let pt = CanvasPoint::new(10.0, 20.0).unwrap();
     assert_eq!(pt.x, 10.0);
@@ -34,7 +32,6 @@ fn test_precondition_semantic_coordinates() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p1_violation_returns_unparseable_event() {
     let raw = RawEvent {
         event_type: "unknown_click".to_string(),
@@ -50,7 +47,6 @@ fn test_p1_violation_returns_unparseable_event() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p2_violation_returns_coordinate_out_of_bounds() {
     let result = CanvasPoint::new(f64::NAN, f64::INFINITY);
     assert_eq!(result.unwrap_err(), CanvasError::CoordinateOutOfBounds);
@@ -58,7 +54,6 @@ fn test_p2_violation_returns_coordinate_out_of_bounds() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p3_violation_returns_invalid_selection_bounds() {
     let p1 = CanvasPoint::new(10.0, 10.0).unwrap();
     let p2 = CanvasPoint::new(10.0, 10.0).unwrap(); // area is zero
@@ -68,7 +63,6 @@ fn test_p3_violation_returns_invalid_selection_bounds() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_q2_violation_returns_coordinate_out_of_bounds() {
     let mut drag = crate::ui::canvas::domain::DragState {
         start: CanvasPoint::new(0.0, 0.0).unwrap(),
@@ -90,7 +84,6 @@ fn test_q2_violation_returns_coordinate_out_of_bounds() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_q3_violation_returns_invalid_transition() {
     let result = transition(
         InteractionState::Idle,

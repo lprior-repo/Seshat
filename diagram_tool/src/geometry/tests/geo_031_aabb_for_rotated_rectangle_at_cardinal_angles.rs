@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_rotated_0_degrees() {
     // Given: a rectangle rotated 0 degrees (no rotation)
     let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(0.0);
@@ -27,7 +26,6 @@ fn test_aabb_rotated_0_degrees() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_rotated_90_degrees_cardinal() {
     // Given: a rectangle rotated 90 degrees (PI/2)
     // Rectangle at (10, 20) with size 100x50, center at (60, 45)
@@ -49,7 +47,6 @@ fn test_aabb_rotated_90_degrees_cardinal() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_rotated_180_degrees_cardinal() {
     // Given: a rectangle rotated 180 degrees (PI)
     let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(PI);
@@ -66,7 +63,6 @@ fn test_aabb_rotated_180_degrees_cardinal() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_rotated_270_degrees_cardinal() {
     // Given: a rectangle rotated 270 degrees (3*PI/2)
     let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(3.0 * PI / 2.0);
@@ -85,7 +81,6 @@ fn test_aabb_rotated_270_degrees_cardinal() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_aabb_rotated_360_degrees_cardinal() {
     // Given: a rectangle rotated 360 degrees (2*PI)
     let rect = Rectangle::new(10.0, 20.0, 100.0, 50.0).with_rotation(2.0 * PI);

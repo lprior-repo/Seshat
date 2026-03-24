@@ -3,7 +3,6 @@ use diagram_models::document::{LockState, NodeKind};
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_create_golden_scene_produces_valid_document() {
     let nodes = vec![NodeSpec {
         id: "test-node-1".to_string(),
@@ -28,7 +27,6 @@ fn test_create_golden_scene_produces_valid_document() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_generate_stress_scene_produces_5000_nodes() {
     let doc = crate::test_utils::generate_stress_scene(12345);
 
@@ -47,7 +45,6 @@ fn test_generate_stress_scene_produces_5000_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_generate_stress_scene_is_deterministic() {
     let doc1 = crate::test_utils::generate_stress_scene(12345);
     let doc2 = crate::test_utils::generate_stress_scene(12345);
@@ -57,7 +54,6 @@ fn test_generate_stress_scene_is_deterministic() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_fuzz_document_operations_produces_deterministic_report() {
     let report1 = crate::test_utils::fuzz_document_operations(12345, 100).unwrap();
     let report2 = crate::test_utils::fuzz_document_operations(12345, 100).unwrap();

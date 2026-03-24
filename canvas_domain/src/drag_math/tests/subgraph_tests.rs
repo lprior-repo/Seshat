@@ -85,8 +85,7 @@ use crate::stubs::drag_original_positions;
     /// Given a container with a child at overlapping position,
     /// when hit testing by position, the child should be prioritized due to higher z_index.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_container_with_child_when_hit_testing_then_child_has_higher_z_index() {
         let mut doc = DiagramDocument::default();
 
@@ -144,8 +143,7 @@ use crate::stubs::drag_original_positions;
     /// Given a container with multiple children at different z_index values,
     /// when selecting by position, the highest z_index node should be preferred.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_nested_nodes_when_selecting_by_position_then_highest_z_index_wins() {
         let mut doc = DiagramDocument::default();
 
@@ -211,8 +209,7 @@ use crate::stubs::drag_original_positions;
     /// when performing rubber-band selection that spans both areas,
     /// then nodes from both inside and outside the container should be selectable.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_nodes_inside_and_outside_container_when_rubberband_selection_then_all_selectable() {
         let mut doc = DiagramDocument::default();
 
@@ -270,8 +267,7 @@ use crate::stubs::drag_original_positions;
     /// when the area partially overlaps a container,
     /// then only nodes within the selection area are selected (not all container children).
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_partial_container_overlap_when_rubberband_then_only_overlapping_selected() {
         let mut doc = DiagramDocument::default();
 
@@ -333,8 +329,7 @@ use crate::stubs::drag_original_positions;
     /// when serialized and deserialized,
     /// then the collapsed state is preserved.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_container_with_collapsed_state_when_roundtripped_then_state_preserved() {
         let mut doc = DiagramDocument::default();
 
@@ -373,8 +368,7 @@ use crate::stubs::drag_original_positions;
     /// when the container is set to collapsed,
     /// then the collapsed field reflects this but children remain in document.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_expanded_container_when_collapsed_then_children_remain_in_document() {
         let mut doc = DiagramDocument::default();
 
@@ -438,8 +432,7 @@ use crate::stubs::drag_original_positions;
     /// Given containers with different collapsed states,
     /// when queried, each container maintains its own collapsed state independently.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_multiple_containers_when_collapsed_independently_then_states_are_independent() {
         let mut doc = DiagramDocument::default();
 
@@ -498,8 +491,7 @@ use crate::stubs::drag_original_positions;
     /// when checking lock status,
     /// then children are independently unlocked (not inheriting parent's locked state).
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_locked_container_with_unlocked_children_then_children_are_independently_unlocked() {
         let mut doc = DiagramDocument::default();
 
@@ -542,8 +534,7 @@ use crate::stubs::drag_original_positions;
     /// when selecting the child,
     /// then the child can be selected independently.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_locked_container_when_selecting_unlocked_child_then_child_is_selectable() {
         let mut doc = DiagramDocument::default();
 
@@ -587,8 +578,7 @@ use crate::stubs::drag_original_positions;
     /// when checking each node's lock state,
     /// then each node maintains its own lock state without inheritance.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_mixed_lock_hierarchy_then_lock_states_are_per_node() {
         let mut doc = DiagramDocument::default();
 
@@ -645,8 +635,7 @@ use crate::stubs::drag_original_positions;
     /// when the container is selected and resized,
     /// then children are included in resize targets and parent references are preserved.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_container_with_children_when_selected_then_children_included_in_resize_targets() {
         let mut doc = DiagramDocument::default();
 
@@ -738,8 +727,7 @@ use crate::stubs::drag_original_positions;
     /// when the container is selected for resize,
     /// then the parent references of children remain intact.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_container_with_children_when_resizing_then_parent_references_preserved() {
         let mut doc = DiagramDocument::default();
 
@@ -783,8 +771,7 @@ use crate::stubs::drag_original_positions;
     /// when checking parent-child relationships,
     /// then each node correctly references its immediate parent.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_nested_containers_then_parent_chain_is_correct() {
         let mut doc = DiagramDocument::default();
 
@@ -845,8 +832,7 @@ use crate::stubs::drag_original_positions;
     /// when drag positions are calculated,
     /// then both nodes are tracked for the drag operation.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_multiple_selected_nodes_when_drag_position_calculated_then_all_tracked() {
         
 
@@ -896,8 +882,7 @@ use crate::stubs::drag_original_positions;
     /// when the inner container is positioned within outer bounds,
     /// then the geometry supports valid nesting.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_two_containers_when_inner_positioned_in_outer_then_geometry_supports_nesting() {
         let mut doc = DiagramDocument::default();
 
@@ -948,8 +933,7 @@ use crate::stubs::drag_original_positions;
     /// when a middle container (which has children) is selected,
     /// then dragging includes both the container and its descendants.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_nested_container_with_children_when_middle_selected_then_descendants_included() {
         
 
@@ -1011,8 +995,7 @@ use crate::stubs::drag_original_positions;
     /// when calculating resize targets,
     /// then both container and child are included for boundary calculations.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_container_with_child_near_edge_when_resize_targets_then_both_included() {
         let mut doc = DiagramDocument::default();
 
@@ -1087,8 +1070,7 @@ use crate::stubs::drag_original_positions;
     /// when the outer container is selected,
     /// then drag positions include all descendants.
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_three_level_hierarchy_when_outer_selected_then_all_descendants_in_drag_positions() {
         
 

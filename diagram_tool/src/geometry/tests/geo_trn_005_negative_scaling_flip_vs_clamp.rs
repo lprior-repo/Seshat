@@ -42,7 +42,6 @@ fn scale_with_clamp(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_flip_x() {
     // Given: a rectangle with positive dimensions
     let width = 100.0;
@@ -60,7 +59,6 @@ fn test_negative_scaling_flip_x() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_flip_y() {
     // Given: a rectangle with positive dimensions
     let width = 100.0;
@@ -78,7 +76,6 @@ fn test_negative_scaling_flip_y() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_flip_both() {
     // Given: a rectangle
     let width = 100.0;
@@ -96,7 +93,6 @@ fn test_negative_scaling_flip_both() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_clamp_x() {
     // Given: a rectangle
     let width = 100.0;
@@ -114,7 +110,6 @@ fn test_negative_scaling_clamp_x() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_clamp_y() {
     // Given: a rectangle
     let width = 100.0;
@@ -132,7 +127,6 @@ fn test_negative_scaling_clamp_y() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_clamp_both() {
     // Given: a rectangle
     let width = 100.0;
@@ -150,7 +144,6 @@ fn test_negative_scaling_clamp_both() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_negative_scaling_zero_transition() {
     // Given: scale factor approaching zero from positive side
     let width = 100.0;

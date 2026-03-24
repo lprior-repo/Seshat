@@ -146,7 +146,10 @@ impl Node {
         let mut world_y = self.y.0;
         let mut current_parent_id = self.parent.as_ref();
 
+        let mut depth = 0;
         while let Some(parent_id) = current_parent_id {
+            if depth > 1000 { return Err("Cycle".into()); }
+            depth += 1;
             let parent_node = nodes
                 .get(parent_id)
                 .ok_or_else(|| format!("Parent node not found: {parent_id}"))?;
@@ -170,7 +173,10 @@ impl Node {
         let mut world_y = self.y.0;
         let mut current_parent_id = self.parent.as_ref();
 
+        let mut depth = 0;
         while let Some(parent_id) = current_parent_id {
+            if depth > 1000 { return Err("Cycle".into()); }
+            depth += 1;
             let parent_node = nodes
                 .get(parent_id)
                 .ok_or_else(|| format!("Parent node not found: {parent_id}"))?;

@@ -57,21 +57,18 @@ fn doc_with_nodes() -> DiagramDocument {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_small_motion_when_threshold_checked_then_returns_false() {
     assert!(!has_drag_threshold((0.0, 0.0), (1.0, 1.0)));
 }
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_large_motion_when_threshold_checked_then_returns_true() {
     assert!(has_drag_threshold((0.0, 0.0), (4.0, 0.0)));
 }
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_selection_when_toggling_then_adds_and_removes_item() {
     let once = toggle_selection(&HashSet::new(), "node-1");
     assert!(once.contains("node-1"));
@@ -82,7 +79,6 @@ fn given_selection_when_toggling_then_adds_and_removes_item() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_single_item_when_select_single_then_only_item_is_selected() {
     let selected = select_single(String::from("edge-1"));
     assert!(selected.contains("edge-1"));
@@ -91,7 +87,6 @@ fn given_single_item_when_select_single_then_only_item_is_selected() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_drag_anchor_and_current_when_dragged_positions_then_offsets_nodes() {
     let originals = HashMap::new().update(NodeId::new(String::from("a")), (2.0, 3.0));
     let updated = dragged_positions(&originals, (0.0, 0.0), (5.0, -2.0));
@@ -101,7 +96,6 @@ fn given_drag_anchor_and_current_when_dragged_positions_then_offsets_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_snap_enabled_when_dragging_then_positions_use_grid_delta() {
     let originals = HashMap::new().update(NodeId::new(String::from("a")), (3.0, 7.0));
     let grid = GridSize::new(20.0).unwrap();
@@ -112,7 +106,6 @@ fn given_snap_enabled_when_dragging_then_positions_use_grid_delta() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_rect_when_node_ids_in_rect_then_returns_contained_nodes() {
     let doc = doc_with_nodes();
     let selected = node_ids_in_rect(&doc, (0.0, 0.0), (60.0, 60.0));
@@ -122,7 +115,6 @@ fn given_rect_when_node_ids_in_rect_then_returns_contained_nodes() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_leftward_drag_when_selection_mode_resolved_then_uses_intersect() {
     let mode = selection_mode_from_drag((100.0, 100.0), (40.0, 120.0));
     assert_eq!(mode, SelectionMode::Intersect);
@@ -130,7 +122,6 @@ fn given_leftward_drag_when_selection_mode_resolved_then_uses_intersect() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_rightward_drag_when_selection_mode_resolved_then_uses_contain() {
     let mode = selection_mode_from_drag((40.0, 100.0), (100.0, 120.0));
     assert_eq!(mode, SelectionMode::Contain);
@@ -138,7 +129,6 @@ fn given_rightward_drag_when_selection_mode_resolved_then_uses_contain() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_leftward_drag_when_node_ids_in_rect_then_uses_intersection_behavior() {
     let doc = doc_with_nodes();
     let rightward = node_ids_in_rect(&doc, (35.0, 25.0), (42.0, 32.0));
@@ -150,7 +140,6 @@ fn given_leftward_drag_when_node_ids_in_rect_then_uses_intersection_behavior() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_intersect_mode_when_rect_touches_node_then_node_is_selected() {
     let doc = doc_with_nodes();
     let selected =
@@ -160,7 +149,6 @@ fn given_intersect_mode_when_rect_touches_node_then_node_is_selected() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_snap_enabled_when_snapping_values_then_rounds_to_grid() {
     assert!((snap_value(29.0, true, 20.0) - 20.0).abs() < f64::EPSILON);
     let pt = snap_point((31.0, 49.0), true, 20.0);
@@ -169,7 +157,6 @@ fn given_snap_enabled_when_snapping_values_then_rounds_to_grid() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_selected_endpoints_when_auto_selecting_edges_then_connecting_edge_is_selected() {
     let source = NodeId::new(String::from("source"));
     let target = NodeId::new(String::from("target"));
@@ -213,7 +200,6 @@ fn given_selected_endpoints_when_auto_selecting_edges_then_connecting_edge_is_se
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_contain_mode() {
     let mut doc = DiagramDocument::default();
     let node_id = NodeId::new(String::from("text-node"));
@@ -254,7 +240,6 @@ fn given_rightward_drag_inside_node_when_node_ids_in_rect_then_returns_empty_in_
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_leftward_drag_inside_node_when_node_ids_in_rect_then_returns_node_in_intersect_mode() {
     let mut doc = DiagramDocument::default();
     let node_id = NodeId::new(String::from("text-node"));

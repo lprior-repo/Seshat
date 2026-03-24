@@ -9,7 +9,6 @@ use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_locked_and_unlocked_nodes_when_selection_bounds_then_exclude_locked() {
     let mut doc = DiagramDocument::default();
     let unlocked_id = NodeId::new(String::from("unlocked"));
@@ -43,7 +42,6 @@ fn given_locked_and_unlocked_nodes_when_selection_bounds_then_exclude_locked() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_all_locked_nodes_when_selection_bounds_then_none() {
     let mut doc = DiagramDocument::default();
     let locked_a = NodeId::new(String::from("locked_a"));
@@ -71,7 +69,6 @@ fn given_all_locked_nodes_when_selection_bounds_then_none() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_mixed_selection_when_selected_node_ids_then_exclude_locked() {
     let mut doc = DiagramDocument::default();
     let unlocked_id = NodeId::new(String::from("unlocked"));

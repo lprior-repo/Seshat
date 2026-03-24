@@ -95,3 +95,14 @@ impl From<Point> for (f64, f64) {
         (p.x, p.y)
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test] fn p_test() {
+        let p1 = Point::new(0.0, 0.0); let p2 = Point::new(10.0, 10.0);
+        assert!(p1.distance_to(p2) > 0.0);
+        assert!(p1.interpolate(p2, 0.5).x > 0.0);
+        assert!(p1.dist_to_segment_squared(p2, p2) > 0.0);
+    }
+}

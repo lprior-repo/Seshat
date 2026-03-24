@@ -21,7 +21,6 @@ pub fn snap_horizontal(line_y: f64, targets: &[f64], tolerance: f64) -> Option<f
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_snap_horizontal_within_tolerance() {
     // Given: line at y=52 and snap targets
     let line_y = 52.0;
@@ -37,7 +36,6 @@ fn test_snap_horizontal_within_tolerance() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_snap_horizontal_outside_tolerance() {
     // Given: line at y=60 (too far from targets)
     let line_y = 60.0;
@@ -53,7 +51,6 @@ fn test_snap_horizontal_outside_tolerance() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_snap_horizontal_exact_match() {
     // Given: line exactly on target
     let line_y = 50.0;

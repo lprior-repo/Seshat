@@ -22,7 +22,6 @@ fn selection_center(points: &[Point]) -> Point {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_mul_rotate_around_center() {
     // Given: multiple selected items at different positions
     let items = [

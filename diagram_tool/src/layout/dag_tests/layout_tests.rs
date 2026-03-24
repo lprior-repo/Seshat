@@ -82,7 +82,6 @@ fn make_doc(nodes: Vec<(NodeId, Node)>, edges: Vec<(EdgeId, Edge)>) -> DiagramDo
 // ── Test 1: A→B→C sequential: A.x < B.x < C.x ──────────────────────────
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn sequential_dag_x_ordering() {
     let a = NodeId::new("A".to_string());
     let b = NodeId::new("B".to_string());
@@ -111,7 +110,6 @@ fn sequential_dag_x_ordering() {
 // ── Test 2: No edges → no panic, all nodes present ──────────────────────
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn no_edges_no_panic() {
     let a = NodeId::new("A".to_string());
     let b = NodeId::new("B".to_string());
@@ -128,7 +126,6 @@ fn no_edges_no_panic() {
 // ── Test 3: Cycle A→B→A falls back without panic ────────────────────────
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn cycle_fallback_no_panic() {
     let a = NodeId::new("A".to_string());
     let b = NodeId::new("B".to_string());
@@ -151,7 +148,6 @@ fn cycle_fallback_no_panic() {
 // ── Test 4: Locked nodes are not moved ──────────────────────────────────
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn locked_nodes_unchanged() {
     let locked = NodeId::new("locked".to_string());
     let free = NodeId::new("free".to_string());
@@ -182,7 +178,6 @@ fn locked_nodes_unchanged() {
 // ── Test 5: Deterministic — two calls on same input produce same result ─
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn deterministic_output() {
     let a = NodeId::new("A".to_string());
     let b = NodeId::new("B".to_string());

@@ -53,7 +53,6 @@ fn edge(source: NodeId, target: NodeId) -> Edge {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_radius() {
     let source_id = NodeId::new(String::from("source"));
     let target_id = NodeId::new(String::from("target"));
@@ -75,7 +74,6 @@ fn given_low_zoom_when_clicking_near_edge_then_hit_test_uses_screen_consistent_r
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter() {
     let source_id = NodeId::new(String::from("source"));
     let target_id = NodeId::new(String::from("target"));
@@ -97,7 +95,6 @@ fn given_high_zoom_when_clicking_same_world_distance_then_hit_test_is_tighter() 
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_edge_id() {
     let source_id = NodeId::new(String::from("source"));
     let target_id = NodeId::new(String::from("target"));
@@ -121,7 +118,6 @@ fn given_overlapping_edges_when_hit_distance_ties_then_selection_is_stable_by_ed
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit() {
     let source_id = NodeId::new(String::from("source"));
     let target_id = NodeId::new(String::from("target"));
@@ -142,7 +138,6 @@ fn given_click_near_arrow_endpoint_when_within_endpoint_radius_then_edge_is_hit(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across_zooms() {
     let source_id = NodeId::new(String::from("source"));
     let target_id = NodeId::new(String::from("target"));
@@ -166,7 +161,6 @@ fn given_thin_vertical_edge_when_clicking_near_segment_then_hit_is_stable_across
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_endpoint_tie_when_clicking_shared_target_then_selection_is_stable_by_edge_id() {
     let source_a = NodeId::new(String::from("source-a"));
     let source_b = NodeId::new(String::from("source-b"));
@@ -196,8 +190,7 @@ fn finite_f64() -> impl Strategy<Value = f64> {
 
 proptest! {
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_bezier_point_returns_finite_for_finite_inputs(
         p0x in finite_f64(), p0y in finite_f64(),
         p1x in finite_f64(), p1y in finite_f64(),
@@ -210,8 +203,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_bezier_point_t_zero_returns_p0(
         p0x in finite_f64(), p0y in finite_f64(),
         p1x in finite_f64(), p1y in finite_f64(),
@@ -223,8 +215,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_bezier_point_t_one_returns_p2(
         p0x in finite_f64(), p0y in finite_f64(),
         p1x in finite_f64(), p1y in finite_f64(),
@@ -236,8 +227,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_control_returns_finite_for_finite_input(
         sx in finite_f64(), sy in finite_f64(),
         tx in finite_f64(), ty in finite_f64(),
@@ -248,8 +238,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn quadratic_control_lies_on_perpendicular_through_midpoint(
         sx in finite_f64(), sy in finite_f64(),
         tx in finite_f64(), ty in finite_f64(),
@@ -267,8 +256,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn dist_to_segment_zero_length_returns_distance_to_point(
         px in finite_f64(), py in finite_f64(),
         x in finite_f64(), y in finite_f64(),
@@ -280,8 +268,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn dist_to_segment_point_on_endpoint_returns_zero(
         x1 in finite_f64(), y1 in finite_f64(),
         x2 in finite_f64(), y2 in finite_f64(),
@@ -293,8 +280,7 @@ proptest! {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn dist_to_segment_always_non_negative(
         px in finite_f64(), py in finite_f64(),
         x1 in finite_f64(), y1 in finite_f64(),

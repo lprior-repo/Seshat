@@ -26,7 +26,6 @@ fn push_docs(count: u64) -> History {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn undo_returns_correct_document() {
     let (restored, _) = push_docs(1).undo(doc(20)).unwrap();
     assert_eq!(restored.revision, doc(1).revision);
@@ -34,7 +33,6 @@ fn undo_returns_correct_document() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn undo_updates_history_stacks() {
     let (_, h) = push_docs(3).undo(doc(100)).unwrap();
     assert_eq!(h.undo_stack_len(), 2);
@@ -43,14 +41,12 @@ fn undo_updates_history_stacks() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn undo_on_empty_returns_none() {
     assert!(History::new().undo(doc(1)).is_none());
 }
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn redo_returns_correct_document() {
     let (_, after_undo) = push_docs(1).undo(doc(20)).unwrap();
     let (restored, _) = after_undo.redo(doc(10)).unwrap();
@@ -59,14 +55,12 @@ fn redo_returns_correct_document() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn redo_on_fresh_returns_none() {
     assert!(push_docs(1).redo(doc(2)).is_none());
 }
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn undo_then_redo_round_trip() {
     let start = doc(999);
     let (undo_doc, after_undo) = push_docs(1).undo(start.clone()).unwrap();
@@ -78,7 +72,6 @@ fn undo_then_redo_round_trip() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn push_clears_redo_stack() {
     let (_, after_undo) = push_docs(2).undo(doc(3)).unwrap();
     assert_eq!(after_undo.redo_stack_len(), 1);
@@ -87,7 +80,6 @@ fn push_clears_redo_stack() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn multiple_pushes_undo_order() {
     let (first, h1) = push_docs(3).undo(doc(100)).unwrap();
     assert_eq!(first.revision, doc(3).revision);
@@ -98,7 +90,6 @@ fn multiple_pushes_undo_order() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn can_undo_redo_states() {
     assert!(!History::new().can_undo());
     assert!(push_docs(1).can_undo());
@@ -110,7 +101,6 @@ fn can_undo_redo_states() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn multiple_entries_walks_back_in_order() {
     let h = push_docs(3);
     let (d1, h) = h.undo(doc(4)).unwrap();
@@ -124,7 +114,6 @@ fn multiple_entries_walks_back_in_order() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn cap_boundary_round_trip() {
     let h = push_docs(100);
     let current = doc(500);

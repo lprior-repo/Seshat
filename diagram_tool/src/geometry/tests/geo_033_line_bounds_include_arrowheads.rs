@@ -131,7 +131,6 @@ impl Line {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_line_bounds_simple() {
     // Given: a simple line without arrowheads
     let line = Line::new(Point::new(0.0, 0.0), Point::new(100.0, 50.0));
@@ -148,7 +147,6 @@ fn test_line_bounds_simple() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_line_bounds_with_end_arrow() {
     // Given: a line with an arrowhead at the end
     let arrow = Arrowhead {
@@ -170,7 +168,6 @@ fn test_line_bounds_with_end_arrow() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_line_bounds_with_both_arrows() {
     // Given: a line with arrowheads at both ends
     let arrow = Arrowhead {
@@ -191,7 +188,6 @@ fn test_line_bounds_with_both_arrows() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_line_bounds_with_thick_stroke() {
     // Given: a line with thick stroke
     let line = Line::new(Point::new(0.0, 0.0), Point::new(100.0, 0.0)).with_stroke_width(10.0);
@@ -206,7 +202,6 @@ fn test_line_bounds_with_thick_stroke() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_line_bounds_diagonal_with_arrow() {
     // Given: a diagonal line with arrowhead
     let arrow = Arrowhead {

@@ -22,7 +22,6 @@ fn doc_with_revision(steps: u64) -> DiagramDocument {
 /// Direct test: empty history stays empty
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_empty_history_then_undo_stack_is_empty() {
     let history = History::new();
     assert!(
@@ -42,7 +41,6 @@ fn given_single_push_then_can_undo() {
 /// Direct test: more than cap when pushing, undo stack is capped at 100
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_more_than_cap_when_pushing_then_undo_stack_is_capped_at_100() {
     let history = (0..105_u64).fold(History::new(), |acc, step| {
         acc.push(doc_with_revision(step))
@@ -59,7 +57,6 @@ fn given_more_than_cap_when_pushing_then_undo_stack_is_capped_at_100() {
 /// Direct test: capped history when undo all, exactly 100 undos succeed
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_capped_history_when_undo_all_then_exactly_100_undos_succeed() {
     let history = (0..105_u64).fold(History::new(), |acc, step| {
         acc.push(doc_with_revision(step))

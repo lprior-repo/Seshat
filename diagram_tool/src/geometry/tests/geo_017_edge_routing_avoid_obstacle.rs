@@ -79,7 +79,6 @@ fn segment_intersects_aabb(p1: Point, p2: Point, aabb: &AABB) -> bool {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_edge_routing_avoid_obstacle_no_intersection() {
     // Given: route that doesn't cross obstacle
     let from = Point::new(0.0, 0.0);
@@ -95,7 +94,6 @@ fn test_edge_routing_avoid_obstacle_no_intersection() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_edge_routing_avoid_obstacle_with_intersection() {
     // Given: route that crosses obstacle
     let from = Point::new(0.0, 75.0);

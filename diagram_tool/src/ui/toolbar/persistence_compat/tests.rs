@@ -15,7 +15,6 @@ mod fixtures;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_document_when_serialized_then_round_trips() {
     let doc = DiagramDocument::default();
     let json = serde_json::to_string_pretty(&doc).unwrap();
@@ -25,7 +24,6 @@ fn given_document_when_serialized_then_round_trips() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_ts_style_json_when_parsed_then_document_loads() {
     let loaded = super::parse_diagram_document_with_compat(fixtures::TS_STYLE_JSON);
     assert!(loaded.is_ok(), "{:?}", loaded.err());
@@ -33,7 +31,6 @@ fn given_ts_style_json_when_parsed_then_document_loads() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_legacy_font_size_keys_when_parsed_then_document_loads() {
     let loaded = super::parse_diagram_document_with_compat(fixtures::LEGACY_FONT_SIZE_JSON);
     assert!(loaded.is_ok(), "{:?}", loaded.err());
@@ -41,7 +38,6 @@ fn given_legacy_font_size_keys_when_parsed_then_document_loads() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_equivalent_legacy_aliases_when_parsed_then_canonical_json_is_identical() {
     use diagram_models::canonical_json::to_canonical_pretty_json;
 
@@ -57,7 +53,6 @@ fn given_equivalent_legacy_aliases_when_parsed_then_canonical_json_is_identical(
 /// IO-TEST-5: Import Older Version Migration (bd-1u1)
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_version_1_document_when_import_then_migrates_to_current_version() {
     let result = super::parse_diagram_document_with_compat(fixtures::VERSION_1_DOCUMENT);
     assert!(
@@ -79,7 +74,6 @@ fn given_version_1_document_when_import_then_migrates_to_current_version() {
 /// IO-TEST-5b: Version migration with legacy field names
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_older_document_with_legacy_fields_when_import_then_fields_remapped() {
     let result = super::parse_diagram_document_with_compat(fixtures::LEGACY_FIELDS_DOCUMENT);
     assert!(
@@ -123,7 +117,6 @@ fn given_older_document_with_legacy_fields_when_import_then_fields_remapped() {
 /// IO-TEST-5c: Version field is required
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_document_without_version_when_import_then_fails_gracefully() {
     let result = super::parse_diagram_document_with_compat(fixtures::NO_VERSION_DOCUMENT);
     assert!(

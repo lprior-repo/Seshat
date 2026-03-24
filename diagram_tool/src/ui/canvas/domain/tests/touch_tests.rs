@@ -10,7 +10,6 @@
 // Happy Path Tests
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_parses_touch_down_target_successfully() {
     let raw = RawEvent {
         event_type: "touch_down_target".to_string(),
@@ -32,7 +31,6 @@ fn test_parses_touch_down_target_successfully() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_parses_touch_down_background_successfully() {
     let raw = RawEvent {
         event_type: "touch_down_background".to_string(),
@@ -54,7 +52,6 @@ fn test_parses_touch_down_background_successfully() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_parses_touch_move_successfully() {
     let raw = RawEvent {
         event_type: "touch_move".to_string(),
@@ -76,7 +73,6 @@ fn test_parses_touch_move_successfully() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_parses_touch_up_successfully() {
     let raw = RawEvent {
         event_type: "touch_up".to_string(),
@@ -92,7 +88,6 @@ fn test_parses_touch_up_successfully() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_reduces_touch_down_target_from_idle_to_dragging() {
     let state = InteractionState::Idle;
     let event = CanvasEvent::TouchDownTarget {
@@ -114,7 +109,6 @@ fn test_reduces_touch_down_target_from_idle_to_dragging() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_reduces_touch_down_background_from_idle_to_selecting() {
     let state = InteractionState::Idle;
     let event = CanvasEvent::TouchDownBackground {
@@ -135,7 +129,6 @@ fn test_reduces_touch_down_background_from_idle_to_selecting() {
 // Error Path Tests
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_when_touch_coordinates_are_nan() {
     let raw = RawEvent {
         event_type: "touch_down_target".to_string(),
@@ -151,7 +144,6 @@ fn test_returns_error_when_touch_coordinates_are_nan() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_when_touch_deltas_are_infinity() {
     let raw = RawEvent {
         event_type: "touch_move".to_string(),
@@ -167,7 +159,6 @@ fn test_returns_error_when_touch_deltas_are_infinity() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_returns_error_for_unknown_touch_event_type() {
     let raw = RawEvent {
         event_type: "touch_hover".to_string(),
@@ -184,7 +175,6 @@ fn test_returns_error_for_unknown_touch_event_type() {
 // Edge Case Tests
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_handles_zero_delta_touch_move_gracefully() {
     let state = InteractionState::Dragging {
         drag: DragState {
@@ -203,7 +193,6 @@ fn test_handles_zero_delta_touch_move_gracefully() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_ignores_touch_move_when_idle() {
     let state = InteractionState::Idle;
     let event = CanvasEvent::TouchMove {
@@ -217,7 +206,6 @@ fn test_ignores_touch_move_when_idle() {
 // Contract Verification Tests
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_precondition_finite_coordinates_for_touch() {
     let raw = RawEvent {
         event_type: "touch_down_background".to_string(),
@@ -232,7 +220,6 @@ fn test_precondition_finite_coordinates_for_touch() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_precondition_finite_deltas_for_touch() {
     let raw = RawEvent {
         event_type: "touch_move".to_string(),
@@ -247,7 +234,6 @@ fn test_precondition_finite_deltas_for_touch() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_postcondition_touch_move_ignored_when_idle() {
     let state = InteractionState::Idle;
     let event = CanvasEvent::TouchMove {
@@ -259,7 +245,6 @@ fn test_postcondition_touch_move_ignored_when_idle() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_invariant_touch_never_produces_nan_points() {
     let raw1 = RawEvent {
         event_type: "touch_down_target".to_string(),
@@ -285,7 +270,6 @@ fn test_invariant_touch_never_produces_nan_points() {
 // Contract Violation Tests
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p1_violation_returns_coordinate_out_of_bounds() {
     let raw = RawEvent {
         event_type: "touch_down_target".to_string(),
@@ -300,7 +284,6 @@ fn test_p1_violation_returns_coordinate_out_of_bounds() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p2_violation_returns_coordinate_out_of_bounds() {
     let raw = RawEvent {
         event_type: "touch_move".to_string(),
@@ -315,7 +298,6 @@ fn test_p2_violation_returns_coordinate_out_of_bounds() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_p3_violation_returns_unparseable_event() {
     let raw = RawEvent {
         event_type: "touch_hover".to_string(),
@@ -330,7 +312,6 @@ fn test_p3_violation_returns_unparseable_event() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_q5_violation_prevents_hover_state() {
     let state = InteractionState::Idle;
     let event = CanvasEvent::TouchMove {

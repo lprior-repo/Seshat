@@ -35,7 +35,6 @@ fn node(x: f64, y: f64, locked: bool, parent: Option<NodeId>) -> Node {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_nested_children_when_grid_layout_moves_root_then_descendants_follow() {
     let root = NodeId::new(String::from("root"));
     let child = NodeId::new(String::from("child"));
@@ -93,7 +92,6 @@ fn given_nested_children_when_grid_layout_moves_root_then_descendants_follow() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_only_locked_roots_when_grid_layout_calculated_then_document_is_unchanged() {
     let n1 = NodeId::new(String::from("n1"));
     let n2 = NodeId::new(String::from("n2"));
@@ -109,7 +107,6 @@ fn given_only_locked_roots_when_grid_layout_calculated_then_document_is_unchange
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_locked_cells_when_layout_runs_then_unlocked_nodes_avoid_occupied_cells() {
     let locked = NodeId::new(String::from("locked"));
     let free1 = NodeId::new(String::from("free1"));
@@ -144,7 +141,6 @@ fn given_locked_cells_when_layout_runs_then_unlocked_nodes_avoid_occupied_cells(
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_first_row_occupied_when_layout_runs_then_next_free_node_moves_to_next_row() {
     let l0 = NodeId::new(String::from("l0"));
     let l1 = NodeId::new(String::from("l1"));
@@ -169,7 +165,6 @@ fn given_first_row_occupied_when_layout_runs_then_next_free_node_moves_to_next_r
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_four_unlocked_nodes_when_layout_runs_then_positions_are_deterministic_and_unique() {
     let ids = [
         NodeId::new(String::from("n1")),
@@ -199,7 +194,6 @@ fn given_four_unlocked_nodes_when_layout_runs_then_positions_are_deterministic_a
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_sparse_locked_cells_when_layout_runs_then_scan_order_is_stable() {
     let lock00 = NodeId::new(String::from("lock00"));
     let lock11 = NodeId::new(String::from("lock11"));
@@ -239,7 +233,6 @@ fn given_sparse_locked_cells_when_layout_runs_then_scan_order_is_stable() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn given_locked_prefix_cells_when_layout_runs_then_it_advances_to_next_open_row() {
     let lock00 = NodeId::new(String::from("lock00"));
     let lock10 = NodeId::new(String::from("lock10"));

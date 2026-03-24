@@ -56,7 +56,6 @@ fn run_undo_test(
 /// HIS-003: Drag gesture creates one history entry
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_his003_drag_creates_single_history_entry() {
     let id = NodeId::new("n1".to_string());
     let restored = run_undo_test(
@@ -79,7 +78,6 @@ fn test_his003_drag_creates_single_history_entry() {
 /// HIS-004: Undo after grouping nodes removes the group
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_his004_group_undo_removes_group() {
     let (na, nb, ng) = (
         NodeId::new("na".into()),
@@ -111,7 +109,6 @@ fn test_his004_group_undo_removes_group() {
 /// HIS-005: Undo after reparenting restores original parent
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_his005_reparent_undo_restores_parent() {
     let (p1, p2, c) = (
         NodeId::new("p1".into()),
@@ -140,7 +137,6 @@ fn test_his005_reparent_undo_restores_parent() {
 /// HIS-006: Undo after creating edge removes the edge
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_his006_connector_create_undo_removes_edge() {
     let (n1, n2, e1) = (
         NodeId::new("n1".into()),
@@ -185,7 +181,6 @@ fn test_his006_connector_create_undo_removes_edge() {
 /// HIS-007: Undo after changing node style restores original style
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_his007_style_change_undo_restores_style() {
     let id = NodeId::new("n1".into());
     let restored = run_undo_test(
@@ -207,7 +202,6 @@ fn test_his007_style_change_undo_restores_style() {
 /// HIS-008: Text edit creates single entry
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_his008_text_edit_creates_single_entry() {
     let id = NodeId::new("n1".into());
     let restored = run_undo_test(
@@ -240,7 +234,6 @@ fn setup_history() -> (DiagramDocument, DiagramDocument, History) {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_apply_undo_success_restores_previous_state() {
     let (a, b, mut h) = setup_history();
     let mut curr = b.clone();
@@ -251,7 +244,6 @@ fn test_apply_undo_success_restores_previous_state() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_apply_undo_failure_returns_error_on_empty_history() {
     assert_eq!(
         apply_undo(&mut DiagramDocument::default(), &mut History::new()),
@@ -261,7 +253,6 @@ fn test_apply_undo_failure_returns_error_on_empty_history() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_apply_redo_success_restores_next_state() {
     let (_, b, mut h) = setup_history();
     let mut curr = b.clone();
@@ -273,7 +264,6 @@ fn test_apply_redo_success_restores_next_state() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_apply_redo_failure_returns_error_on_empty_redo_stack() {
     let mut a = DiagramDocument::default();
     a.revision = Revision::new(1);

@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_resize_then_rotation_composition() {
     // Given: a point at (100, 0) relative to origin
     let point = Point::new(100.0, 0.0);
@@ -29,7 +28,6 @@ fn test_resize_then_rotation_composition() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_transform_order_matters() {
     // Given: a point and transformation parameters
     // Using a non-45-degree angle and non-origin center to ensure order matters

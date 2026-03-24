@@ -13,7 +13,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_selection_center_single_item() {
     // Given: a single rectangle
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);
@@ -32,7 +31,6 @@ fn test_rotate_around_selection_center_single_item() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_selection_center_multiple_items() {
     // Given: multiple items forming a pattern
     let positions = [
@@ -67,7 +65,6 @@ fn test_rotate_around_selection_center_multiple_items() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotate_around_selection_center_45_degrees() {
     // Given: three items at different positions
     let positions = [

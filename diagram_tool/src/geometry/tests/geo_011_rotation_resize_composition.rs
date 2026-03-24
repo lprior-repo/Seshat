@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotation_resize_composition() {
     // Given: a point, anchor, scale factor, and rotation angle
     let point = Point::new(10.0, 0.0);
@@ -29,7 +28,6 @@ fn test_rotation_resize_composition() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotation_resize_composition_reverse_order() {
     // Given: a point at (10, 0)
     let point = Point::new(10.0, 0.0);
@@ -47,7 +45,6 @@ fn test_rotation_resize_composition_reverse_order() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_rotation_resize_composition_no_scale() {
     // Given: scale factor of 1.0
     let point = Point::new(10.0, 0.0);

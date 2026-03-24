@@ -3,7 +3,6 @@ use diagram_models::document::{DiagramDocument, LockState, Node, NodeId, NodeKin
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_verify_invariants_passes_for_valid_document() {
     let mut doc = DiagramDocument::default();
 
@@ -37,7 +36,6 @@ fn test_verify_invariants_passes_for_valid_document() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_verify_invariants_fails_for_nan_coordinates() {
     let mut doc = DiagramDocument::default();
 
@@ -77,7 +75,6 @@ fn test_verify_invariants_fails_for_nan_coordinates() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_verify_invariants_fails_for_negative_dimensions() {
     let mut doc = DiagramDocument::default();
 
@@ -117,7 +114,6 @@ fn test_verify_invariants_fails_for_negative_dimensions() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_compute_document_hash_is_stable() {
     let doc = DiagramDocument::default();
     let hash1 = crate::test_utils::compute_document_hash(&doc);
@@ -128,7 +124,6 @@ fn test_compute_document_hash_is_stable() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_test_db_path_is_unique_per_test() {
     let path1 = crate::test_utils::test_db_path("test_a");
     let path2 = crate::test_utils::test_db_path("test_b");
@@ -138,7 +133,6 @@ fn test_test_db_path_is_unique_per_test() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_run_all_tests_aggregates_categories() {
     let categories = &[TestCategory::Sel, TestCategory::Clp];
     let report = crate::test_utils::run_all_tests(categories).unwrap();

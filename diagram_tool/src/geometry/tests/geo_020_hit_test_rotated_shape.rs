@@ -28,7 +28,6 @@ pub fn hit_test_rotated_rect(point: Point, rect: &Rectangle) -> bool {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_rotated_inside() {
     // Given: rotated square (45 degrees) and point at center
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0).with_rotation(std::f64::consts::PI / 4.0);
@@ -44,7 +43,6 @@ fn test_hit_test_rotated_inside() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_rotated_corner() {
     // Given: rotated square (45 degrees) and point at the actual corner
     // For a square at (0,0) with size 100 rotated 45 degrees around its center (50, 50):
@@ -64,7 +62,6 @@ fn test_hit_test_rotated_corner() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_rotated_outside() {
     // Given: rotated square and point outside
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0).with_rotation(std::f64::consts::PI / 4.0);
@@ -79,7 +76,6 @@ fn test_hit_test_rotated_outside() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_hit_test_rotated_no_rotation() {
     // Given: non-rotated rectangle
     let rect = Rectangle::new(0.0, 0.0, 100.0, 100.0);

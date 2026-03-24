@@ -10,7 +10,6 @@ const TOLERANCE: f64 = 1e-10;
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_scale_around_anchor() {
     // Given: a point and anchor
     let point = Point::new(100.0, 100.0);
@@ -28,7 +27,6 @@ fn test_scale_around_anchor() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_scale_around_anchor_keeps_anchor_fixed() {
     // Given: anchor point as the point to scale
     let anchor = Point::new(50.0, 50.0);
@@ -43,7 +41,6 @@ fn test_scale_around_anchor_keeps_anchor_fixed() {
 
 #[cfg(kani)]
 #[kani::proof]
-#[test]
 fn test_scale_around_anchor_shrink() {
     // Given: a point and anchor
     let point = Point::new(100.0, 100.0);

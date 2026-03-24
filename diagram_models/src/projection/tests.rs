@@ -43,8 +43,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_empty_events_when_replaying_then_returns_empty_projection() {
         let events: &[crate::projection::types::EventRecord] = &[];
         let result = replay_events(events);
@@ -57,8 +56,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_single_node_add_when_replaying_then_includes_node() {
         let events = [make_event(
             "op-1",
@@ -83,8 +81,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_multiple_events_when_replaying_then_increments_revision() {
         let events = [
             make_event(
@@ -135,8 +132,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_revision_gap_when_replaying_then_returns_error() {
         let events = [
             make_event(
@@ -179,8 +175,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_apply_event_on_valid_state_then_returns_updated_state() {
         let initial = DiagramProjection::empty();
         let event = make_event(
@@ -205,8 +200,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_human_author_then_priority_map_has_true() {
         let initial = DiagramProjection::empty();
         let event = make_event(
@@ -231,8 +225,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-    #[kani::proof]
-    #[test]
+#[kani::proof]
     fn given_ai_author_then_priority_map_has_false() {
         let initial = DiagramProjection::empty();
         let event = make_event(
