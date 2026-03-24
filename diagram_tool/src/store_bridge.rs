@@ -10,8 +10,8 @@ use tokio::runtime::Runtime;
 
 use crate::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,
-    envelope_to_valid_event, fetch_events_since, parse_revision, AsyncAppendResult,
-    AsyncBatchAppendResult, AsyncStoreBootstrap, AsyncStoreError, EventRecord,
+    envelope_to_valid_event, fetch_events_since, parse_revision, reset_store_async,
+    AsyncAppendResult, AsyncBatchAppendResult, AsyncStoreBootstrap, AsyncStoreError, EventRecord,
 };
 use diagram_models::envelope::EventEnvelope;
 
@@ -125,6 +125,16 @@ impl StoreBridge {
     /// Returns an error if the store is not initialized or the fetch fails.
     pub fn fetch_events_since_sync(&self, revision: i64) -> Result<Vec<EventRecord>, BridgeError> {
         self.run_async(|pool| async move { fetch_events_since(&pool, revision).await })
+    }
+
+    /// Resets the store by deleting all events synchronously.
+    ///
+    /// This is used when opening a new document to clear any existing event history.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the reset fails.
+    pub fn reset_store_sync(&self) -> Result<(), BridgeError> {
+        self.run_async(|pool| async move { reset_store_async(&pool).await })
     }
 
     /// Shuts down the store bridge.
@@ -254,6 +264,29 @@ mod tests {
             .expect("Failed to append second (should be exact duplicate)");
 
         assert_eq!(result1.revision, result2.revision);
+
+        bridge.shutdown().expect("Failed to shutdown");
+    }
+
+    #[test]
+    fn test_reset_store_sync() {
+        let temp_dir = TempDir::new().expect("Failed to create temp dir");
+        let db_path = temp_dir.path().join("test.db");
+
+        let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
+
+        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
+        bridge
+            .append_event_sync(&envelope, None)
+            .expect("Failed to append");
+
+        let events = bridge.fetch_events_since_sync(0).expect("Failed to fetch");
+        assert_eq!(events.len(), 1);
+
+        bridge.reset_store_sync().expect("Failed to reset store");
+
+        let events = bridge.fetch_events_since_sync(0).expect("Failed to fetch after reset");
+        assert!(events.is_empty());
 
         bridge.shutdown().expect("Failed to shutdown");
     }

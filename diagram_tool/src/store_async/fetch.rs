@@ -89,6 +89,20 @@ pub async fn integrity_check_async(db_path: &Path) -> Result<Vec<String>, AsyncS
     Ok(results)
 }
 
+/// Resets the store by deleting all events.
+///
+/// This is used when opening a new document to clear any existing event history.
+///
+/// # Errors
+/// Returns an error if the deletion fails.
+pub async fn reset_store_async(pool: &SqlitePool) -> Result<(), AsyncStoreError> {
+    sqlx::query("DELETE FROM events")
+        .execute(pool)
+        .await
+        .map_err(AsyncStoreError::Sqlx)?;
+    Ok(())
+}
+
 /// Opens the database in recovery mode.
 ///
 /// # Errors

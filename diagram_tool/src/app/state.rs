@@ -5,13 +5,14 @@ use crate::ui::mobile::SidebarUiState;
 use crate::ui::toast::{AiConflictState, ToastQueue};
 use crate::ui::toolbar::ToolbarStats;
 use diagram_models::clipboard::ClipboardData;
-use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
+use diagram_models::document::{ArrowType, DiagramDocument, DocumentSession, EdgeStyle};
 use dioxus::prelude::*;
 use std::collections::HashSet;
 
 #[derive(Clone, Copy)]
 pub struct AppState {
     pub document: Signal<DiagramDocument>,
+    pub session: Signal<DocumentSession>,
     pub history: Signal<History>,
     pub clipboard: Signal<Option<ClipboardData>>,
     pub tool_mode: Signal<ToolMode>,
@@ -30,8 +31,11 @@ pub struct AppState {
 
 impl AppState {
     pub fn provide() -> Self {
+        let doc = DiagramDocument::default();
+        let session = DocumentSession::new(doc.clone());
         use_context_provider(|| Self {
-            document: Signal::new(DiagramDocument::default()),
+            document: Signal::new(doc),
+            session: Signal::new(session),
             history: Signal::new(History::new()),
             clipboard: Signal::new(None),
             tool_mode: Signal::new(ToolMode::Select),
@@ -64,6 +68,8 @@ mod tests {
             assert_eq!(state.edge_style.read().clone(), EdgeStyle::Solid);
             assert_eq!(state.arrow_type.read().clone(), ArrowType::Default);
             assert_eq!(state.sidebar.read().open, true);
+            assert!(!state.session.read().is_dirty());
+            assert!(state.session.read().file_path().is_none());
             rsx! { div {} }
         }
 

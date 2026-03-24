@@ -31,6 +31,7 @@ pub use bootstrap::{bootstrap_async_store, create_async_pool, read_store_pragmas
 pub use error::{AsyncStoreError, DuplicateKind, CURRENT_SCHEMA_VERSION};
 pub use fetch::{
     fetch_all_events, fetch_events_since, integrity_check_async, open_recovery_mode_async,
+    reset_store_async,
 };
 pub use parse::{
     envelope_batch_to_bounded_batch, envelope_to_valid_event, parse_bounded_batch, parse_revision,
