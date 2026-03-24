@@ -11,3 +11,6 @@ mod tests;
 
 #[cfg(test)]
 mod proptests;
+
+#[cfg(test)]
+mod boon_smoke_tests;
