@@ -1,0 +1,54 @@
+{
+  "outcomes": [
+    {
+      "scenario": "Baseline",
+      "summary": "Failure",
+      "log_path": "log/baseline.log",
+      "diff_path": null,
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 6.208995848,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=diagram_models@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.050496732,
+          "process_status": {
+            "Failure": 1
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=diagram_models@0.1.0",
+            "--skip",
+            "adversarial",
+            "--skip",
+            "red_queen",
+            "--skip",
+            "attack_",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    }
+  ],
+  "total_mutants": 0,
+  "missed": 0,
+  "caught": 0,
+  "timeout": 0,
+  "unviable": 0,
+  "success": 0,
+  "start_time": "2026-03-24T13:28:09.144974947Z",
+  "end_time": "2026-03-24T13:28:15.444361012Z",
+  "cargo_mutants_version": "27.0.0"
+}

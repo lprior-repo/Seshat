@@ -1,0 +1,21 @@
+--- diagram_models/src/apply.rs
++++ replace apply_delete_node -> Result<DeleteNodeResult, ApplyError> with Ok(Default::default())
+@@ -90,17 +90,17 @@
+ ///
+ /// * `ApplyError::SnapshotIdMismatch` if `was_node_id != node_id`
+ /// * `ApplyError::NodeNotFound` if `node_id` is not in the document
+ /// * `ApplyError::DocumentError` if the underlying mutation fails
+ pub fn apply_delete_node(
+     doc: &mut DiagramDocument,
+     change: &ProposedChange,
+ ) -> Result<DeleteNodeResult, ApplyError> {
+-    apply_delete_node_inner(doc, change, DiagramDocument::remove_node)
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Test-only seam: inject a failing `remove_fn` to exercise the
+ /// `ApplyError::DocumentError` wrapping path.
+ #[cfg(test)]
+ pub(crate) fn apply_delete_node_with_remove(
+     doc: &mut DiagramDocument,
+     change: &ProposedChange,

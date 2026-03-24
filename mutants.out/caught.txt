@@ -1,0 +1,9 @@
+diagram_models/src/apply.rs:133:20: replace != with == in apply_delete_node_inner
+diagram_models/src/apply.rs:141:8: delete ! in apply_delete_node_inner
+diagram_models/src/apply.rs:164:5: replace collect_cascade_edge_ids -> Vec<EdgeId> with vec![]
+diagram_models/src/apply.rs:70:31: replace == with != in check_revision_mismatch
+diagram_models/src/apply.rs:166:41: replace == with != in collect_cascade_edge_ids
+diagram_models/src/apply.rs:182:5: replace cascade_edges_for_node -> Option<Vec<EdgeId>> with None
+diagram_models/src/apply.rs:166:53: replace || with && in collect_cascade_edge_ids
+diagram_models/src/apply.rs:182:5: replace cascade_edges_for_node -> Option<Vec<EdgeId>> with Some(vec![])
+diagram_models/src/apply.rs:166:68: replace == with != in collect_cascade_edge_ids

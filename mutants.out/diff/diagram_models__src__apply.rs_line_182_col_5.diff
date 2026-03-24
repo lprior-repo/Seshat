@@ -1,0 +1,24 @@
+--- diagram_models/src/apply.rs
++++ replace cascade_edges_for_node -> Option<Vec<EdgeId>> with None
+@@ -174,20 +174,17 @@
+ /// rendering layer to show which edges will disappear.
+ ///
+ /// # Returns
+ ///
+ /// `Some(Vec<EdgeId>)` for every edge where `source == node_id` or `target == node_id`.
+ /// Returns `None` if the node does not exist.
+ #[must_use]
+ pub fn cascade_edges_for_node(doc: &DiagramDocument, node_id: &NodeId) -> Option<Vec<EdgeId>> {
+-    doc.document
+-        .nodes
+-        .contains_key(node_id)
+-        .then(|| collect_cascade_edge_ids(&doc.document.edges, node_id))
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // ===========================================================================
+ // Tests
+ // ===========================================================================
+ #[cfg(test)]
+ mod tests {
+     use super::*;

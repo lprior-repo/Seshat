@@ -1,0 +1,28 @@
+--- diagram_models/src/apply.rs
++++ replace check_revision_mismatch -> ApplyResult with Default::default()
+@@ -62,24 +62,17 @@
+ ///
+ /// # Invariants
+ ///
+ /// * No mutation of `doc` or `proposal`.
+ /// * Never panics.
+ /// * O(1) time complexity.
+ #[must_use]
+ pub fn check_revision_mismatch(doc: &DiagramDocument, proposal: &ProposedChanges) -> ApplyResult {
+-    if proposal.base_revision == doc.revision {
+-        ApplyResult::Applied
+-    } else {
+-        ApplyResult::Stale(StaleInfo {
+-            expected: proposal.base_revision,
+-            current: doc.revision,
+-        })
+-    }
++    Default::default() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ // ---------------------------------------------------------------------------
+ // DeleteNode apply logic
+ // ---------------------------------------------------------------------------
+ 
+ /// Apply a DeleteNode proposed change to the document.
+ ///

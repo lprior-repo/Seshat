@@ -4,7 +4,9 @@
 //! in [`crate::apply::check_revision_mismatch`].  A sibling bead will flesh out
 //! the full `ProposedChange` enum and additional fields.
 
-use crate::document::types::{AuthorId, Revision, Timestamp};
+use crate::document::types::{AuthorId, EdgeId, NodeId, Revision, Timestamp};
+use crate::document::{DocumentError, Node};
+use serde::{Deserialize, Serialize};
 
 /// A complete proposal submitted by an AI agent.
 ///
@@ -21,4 +23,187 @@ pub struct ProposedChanges {
     pub proposed_at: Timestamp,
     /// Human-readable summary for UI display.
     pub summary: String,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum GhostDiffBadge {
+    Add,
+    Modify,
+    Delete,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ProposedChange {
+    DeleteNode {
+        node_id: NodeId,
+        was_node_id: NodeId,
+        was: Node,
+    },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+pub enum ApplyError {
+    #[error("cannot delete node: {0} not found in document")]
+    NodeNotFound(NodeId),
+
+    #[error("delete node snapshot mismatch: declared {declared}, snapshot has {snapshot}")]
+    SnapshotIdMismatch { declared: NodeId, snapshot: NodeId },
+
+    #[error("document mutation failed during delete node: {0}")]
+    DocumentError(DocumentError),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct DeleteNodeResult {
+    pub deleted_node_id: NodeId,
+    pub cascade_deleted_edge_ids: Vec<EdgeId>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::document::types::OrderedFloat;
+    use crate::document::LockState;
+    use crate::document::NodeKind;
+
+    fn test_node(id: &str) -> Node {
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: id.to_string(),
+            x: OrderedFloat::new_unchecked(0.0),
+            y: OrderedFloat::new_unchecked(0.0),
+            width: OrderedFloat::new_unchecked(100.0),
+            height: OrderedFloat::new_unchecked(100.0),
+            font_size: None,
+            font_weight: None,
+            lock_state: LockState::Unlocked,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            z_index: 0,
+            style: None,
+            collapsed: None,
+        }
+    }
+
+    #[test]
+    fn ghost_diff_badge_add_serializes_to_lowercase() {
+        let json = serde_json::to_string(&GhostDiffBadge::Add).unwrap();
+        assert_eq!(json, r#""add""#);
+    }
+
+    #[test]
+    fn ghost_diff_badge_modify_serializes_to_lowercase() {
+        let json = serde_json::to_string(&GhostDiffBadge::Modify).unwrap();
+        assert_eq!(json, r#""modify""#);
+    }
+
+    #[test]
+    fn ghost_diff_badge_delete_serializes_to_lowercase() {
+        let json = serde_json::to_string(&GhostDiffBadge::Delete).unwrap();
+        assert_eq!(json, r#""delete""#);
+    }
+
+    #[test]
+    fn ghost_diff_badge_add_roundtrips_through_serde() {
+        let badge = GhostDiffBadge::Add;
+        let json = serde_json::to_string(&badge).unwrap();
+        let recovered: GhostDiffBadge = serde_json::from_str(&json).unwrap();
+        assert_eq!(badge, recovered);
+    }
+
+    #[test]
+    fn ghost_diff_badge_modify_roundtrips_through_serde() {
+        let badge = GhostDiffBadge::Modify;
+        let json = serde_json::to_string(&badge).unwrap();
+        let recovered: GhostDiffBadge = serde_json::from_str(&json).unwrap();
+        assert_eq!(badge, recovered);
+    }
+
+    #[test]
+    fn ghost_diff_badge_delete_roundtrips_through_serde() {
+        let badge = GhostDiffBadge::Delete;
+        let json = serde_json::to_string(&badge).unwrap();
+        let recovered: GhostDiffBadge = serde_json::from_str(&json).unwrap();
+        assert_eq!(badge, recovered);
+    }
+
+    #[test]
+    fn proposed_change_delete_node_stores_node_id_and_snapshot() {
+        let node = test_node("n1");
+        let change = ProposedChange::DeleteNode {
+            node_id: NodeId::new("n1".into()),
+            was_node_id: NodeId::new("n1".into()),
+            was: node.clone(),
+        };
+        match change {
+            ProposedChange::DeleteNode {
+                node_id,
+                was_node_id,
+                was,
+            } => {
+                assert_eq!(node_id, NodeId::new("n1".into()));
+                assert_eq!(was_node_id, NodeId::new("n1".into()));
+                assert_eq!(was, node);
+            }
+        }
+    }
+
+    #[test]
+    fn apply_error_snapshot_id_mismatch_displays_both_ids() {
+        let err = ApplyError::SnapshotIdMismatch {
+            declared: NodeId::new("n1".into()),
+            snapshot: NodeId::new("n2".into()),
+        };
+        let msg = err.to_string();
+        assert!(
+            msg.contains("n1"),
+            "message must contain declared id: {msg}"
+        );
+        assert!(
+            msg.contains("n2"),
+            "message must contain snapshot id: {msg}"
+        );
+    }
+
+    #[test]
+    fn apply_error_node_not_found_displays_node_id() {
+        let err = ApplyError::NodeNotFound(NodeId::new("missing".into()));
+        let msg = err.to_string();
+        assert!(
+            msg.contains("missing"),
+            "message must contain node id: {msg}"
+        );
+        assert!(
+            msg.contains("not found"),
+            "message must contain 'not found': {msg}"
+        );
+    }
+
+    #[test]
+    fn apply_error_document_error_displays_wrapped_message() {
+        let inner = DocumentError::NodeNotFound(NodeId::new("x".into()));
+        let err = ApplyError::DocumentError(inner);
+        let msg = err.to_string();
+        assert!(
+            msg.contains("document mutation failed"),
+            "message must contain wrapping context: {msg}"
+        );
+    }
+
+    #[test]
+    fn delete_node_result_stores_deleted_node_and_cascade_edges() {
+        let result = DeleteNodeResult {
+            deleted_node_id: NodeId::new("n1".into()),
+            cascade_deleted_edge_ids: vec![EdgeId::new("e1".into())],
+        };
+        assert_eq!(result.deleted_node_id, NodeId::new("n1".into()));
+        assert_eq!(
+            result.cascade_deleted_edge_ids,
+            vec![EdgeId::new("e1".into())]
+        );
+    }
 }
