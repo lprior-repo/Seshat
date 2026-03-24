@@ -61,12 +61,12 @@ fn apply_bounds_to_container(container: &Node, bounds: RectMetrics) -> Result<No
     let mut updated = container.clone();
     let padding = LayoutConstants::SUBGRAPH_PADDING;
 
-    updated.x = to_ordered(bounds.x - padding).map_err(|_| LayoutError::MathFailure)?;
-    updated.y = to_ordered(bounds.y - padding).map_err(|_| LayoutError::MathFailure)?;
+    updated.x = to_ordered(bounds.x - padding).map_err(|()| LayoutError::MathFailure)?;
+    updated.y = to_ordered(bounds.y - padding).map_err(|()| LayoutError::MathFailure)?;
     updated.width =
-        to_ordered(bounds.width + (padding * 2.0)).map_err(|_| LayoutError::MathFailure)?;
+        to_ordered(bounds.width + (padding * 2.0)).map_err(|()| LayoutError::MathFailure)?;
     updated.height =
-        to_ordered(bounds.height + (padding * 2.0)).map_err(|_| LayoutError::MathFailure)?;
+        to_ordered(bounds.height + (padding * 2.0)).map_err(|()| LayoutError::MathFailure)?;
 
     Ok(updated)
 }

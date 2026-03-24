@@ -56,8 +56,8 @@ impl ValidTransform {
         scale_y: f64,
         rotation: f64,
     ) -> Result<Self, TransformError> {
-        let coord_dx = Coordinate::try_new(dx).ok_or(TransformError::InvalidTransform)?;
-        let coord_dy = Coordinate::try_new(dy).ok_or(TransformError::InvalidTransform)?;
+        let delta_x = Coordinate::try_new(dx).ok_or(TransformError::InvalidTransform)?;
+        let delta_y = Coordinate::try_new(dy).ok_or(TransformError::InvalidTransform)?;
 
         if !scale_x.is_finite()
             || !scale_y.is_finite()
@@ -69,8 +69,8 @@ impl ValidTransform {
         }
 
         Ok(Self {
-            dx: coord_dx,
-            dy: coord_dy,
+            dx: delta_x,
+            dy: delta_y,
             scale_x: ScaleFactor(scale_x),
             scale_y: ScaleFactor(scale_y),
             rotation: Radians(rotation),

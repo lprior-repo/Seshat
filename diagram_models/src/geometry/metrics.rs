@@ -20,7 +20,7 @@ impl Coordinate {
 
     /// Creates a new `Coordinate`. Returns `None` if value is not finite.
     #[must_use]
-    pub fn try_new(val: f64) -> Option<Self> {
+    pub const fn try_new(val: f64) -> Option<Self> {
         if val.is_finite() {
             Some(Self(val))
         } else {
