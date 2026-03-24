@@ -51,6 +51,29 @@ impl ValidationCode {
     pub fn as_str(&self) -> &str {
         &self.0
     }
+
+    /// Returns a template string with placeholders for fix parameters.
+    /// Returns None for unknown codes.
+    #[must_use]
+    pub fn default_fix_hint(&self) -> Option<&'static str> {
+        match self.0.as_ref() {
+            "edge-dangling" => Some("Remove edge {edge_id} or create missing node {missing_node_id}"),
+            "invalid-parent" => Some("Set node {node_id}.parent to None or reference an existing Subgraph node"),
+            "invalid-numeric" => Some("Ensure numeric field {field_name} is finite. Got: {actual_value}"),
+            "dag-cycle" => Some("Remove one edge in the cycle to break it. Cycle path: {cycle_path}"),
+            "dag-disconnected" => Some("Add edges to connect all {n} components into a single connected graph"),
+            "internal-error" => Some("This is a bug. Report to developers with reproduction steps."),
+            "schema" => Some("Fix schema violation at {path}: expected {expected}, got {actual}"),
+            "invalid-version" => Some("Set document version to 2. Current: {actual}"),
+            "parent-cycle" => Some("Break the parent chain cycle by setting {node_id}.parent = None"),
+            "edge-invalid-offset" => Some("Set edge {edge_id}.label_offset_t to a value in [0.0, 1.0]. Got: {actual}"),
+            "edge-invalid-thickness" => Some("Set edge {edge_id}.thickness to a finite non-negative value. Got: {actual}"),
+            "edge-invalid-color" => Some("Set edge {edge_id}.color to hex format #RGB, #RGBA, #RRGGBB, or #RRGGBBAA. Got: {actual}"),
+            "edge-invalid-font-size" => Some("Set edge {edge_id}.font_size to a finite value. Got: {actual}"),
+            "editor-invalid-state" => Some("Set editor.{field} to a finite value. Got: {actual}"),
+            _ => None,
+        }
+    }
 }
 
 impl From<&'static str> for ValidationCode {
@@ -90,20 +113,41 @@ pub struct ValidationIssue {
     pub code: ValidationCode,
     pub message: String,
     pub subject: Option<String>,
+    /// Actionable hint for AI agents to fix this issue
+    pub fix_hint: Option<String>,
 }
 
 impl ValidationIssue {
-    /// Create a new error issue.
+    /// Create a new error issue with auto-populated fix_hint.
     pub fn error(
         code: ValidationCode,
         message: impl Into<String>,
         subject: Option<String>,
     ) -> Self {
+        let fix_hint = code.default_fix_hint().map(str::to_string);
         Self {
             severity: ValidationSeverity::Error,
             code,
             message: message.into(),
             subject,
+            fix_hint,
+        }
+    }
+
+    /// Create an issue with an explicit custom fix hint.
+    pub fn with_fix_hint(
+        severity: ValidationSeverity,
+        code: ValidationCode,
+        message: impl Into<String>,
+        subject: Option<String>,
+        fix_hint: impl Into<String>,
+    ) -> Self {
+        Self {
+            severity,
+            code,
+            message: message.into(),
+            subject,
+            fix_hint: Some(fix_hint.into()),
         }
     }
 }

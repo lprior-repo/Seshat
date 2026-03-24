@@ -11,4 +11,5 @@
 mod collect_all;
 mod editor_tests;
 mod error_paths;
+mod fix_hints;
 mod happy_path;
