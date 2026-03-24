@@ -56,9 +56,10 @@ impl ValidTransform {
         scale_y: f64,
         rotation: f64,
     ) -> Result<Self, TransformError> {
-        if !dx.is_finite()
-            || !dy.is_finite()
-            || !scale_x.is_finite()
+        let coord_dx = Coordinate::try_new(dx).ok_or(TransformError::InvalidTransform)?;
+        let coord_dy = Coordinate::try_new(dy).ok_or(TransformError::InvalidTransform)?;
+
+        if !scale_x.is_finite()
             || !scale_y.is_finite()
             || !rotation.is_finite()
             || scale_x == 0.0
@@ -66,9 +67,10 @@ impl ValidTransform {
         {
             return Err(TransformError::InvalidTransform);
         }
+
         Ok(Self {
-            dx: Coordinate(dx),
-            dy: Coordinate(dy),
+            dx: coord_dx,
+            dy: coord_dy,
             scale_x: ScaleFactor(scale_x),
             scale_y: ScaleFactor(scale_y),
             rotation: Radians(rotation),
@@ -108,13 +110,13 @@ pub fn apply_transform_to_node(
     transform: &ValidTransform,
 ) -> Result<Node, TransformError> {
     let mut updated = node.clone();
-    updated.x = calculate_scaled_coord(node.x.0, transform.scale_x.0, transform.dx.0)?;
-    updated.y = calculate_scaled_coord(node.y.0, transform.scale_y.0, transform.dy.0)?;
+    updated.x = calculate_scaled_coord(node.x.0, transform.scale_x.0, transform.dx.value())?;
+    updated.y = calculate_scaled_coord(node.y.0, transform.scale_y.0, transform.dy.value())?;
     updated.width = calculate_dimension(node.width.0, transform.scale_x.0)?;
     updated.height = calculate_dimension(node.height.0, transform.scale_y.0)?;
 
     if transform.rotation.0 != 0.0 {
-        apply_rotation_to_metadata(&mut updated, transform.rotation);
+        updated = apply_rotation_to_metadata(updated, transform.rotation);
     }
 
     Ok(updated)
@@ -132,7 +134,7 @@ fn calculate_dimension(val: f64, scale: f64) -> Result<OrderedFloat, TransformEr
     OrderedFloat::new(val * scale).map_err(|_| TransformError::InvalidTransform)
 }
 
-fn apply_rotation_to_metadata(node: &mut Node, rotation: Radians) {
+fn apply_rotation_to_metadata(mut node: Node, rotation: Radians) -> Node {
     let current_rot = node
         .metadata
         .get("rotation")
@@ -142,6 +144,7 @@ fn apply_rotation_to_metadata(node: &mut Node, rotation: Radians) {
         "rotation".to_string(),
         serde_json::json!(current_rot + rotation.0),
     );
+    node
 }
 
 /// Pure function: Calculates aligned positions for a group of nodes.
@@ -232,7 +235,7 @@ fn apply_axis_pos(
     axis: AlignmentAxis,
 ) -> Result<Node, TransformError> {
     let mut updated = node.clone();
-    let val = OrderedFloat::new(pos.0).map_err(|_| TransformError::InvalidTransform)?;
+    let val = OrderedFloat::new(pos.value()).map_err(|_| TransformError::InvalidTransform)?;
     match axis {
         AlignmentAxis::Horizontal => updated.x = val,
         AlignmentAxis::Vertical => updated.y = val,
@@ -302,10 +305,10 @@ fn calculate_spacing(sorted: &[(&NodeId, &Node, RectMetrics)], axis: AlignmentAx
     let (last_pos, last_size) = get_axis_metrics(last_elem.2, axis);
 
     let total_span = (last_pos + last_size) - first_pos;
-    let sum_sizes = Coordinate(
+    let sum_sizes = Coordinate::new_unchecked(
         sorted
             .iter()
-            .map(|e| get_axis_metrics(e.2, axis).1 .0)
+            .map(|e| get_axis_metrics(e.2, axis).1.value())
             .sum(),
     );
     #[allow(clippy::cast_precision_loss)]

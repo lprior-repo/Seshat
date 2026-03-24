@@ -7,22 +7,21 @@ use diagram_models::transform::{
 use im::HashMap;
 
 fn apply_transform_to_doc(
-    doc: &mut DiagramDocument,
+    doc: DiagramDocument,
     transform_fn: impl Fn(
         &[NodeId],
         &HashMap<NodeId, Node>,
     ) -> Result<Vec<(NodeId, Node)>, TransformError>,
-) -> Result<(), TransformError> {
-    let selected_ids = collect_selected_ids(doc);
+) -> Result<DiagramDocument, TransformError> {
+    let selected_ids = collect_selected_ids(&doc);
     if selected_ids.is_empty() {
         return Err(TransformError::EmptySelection);
     }
 
-    check_selection_locks(doc, &selected_ids)?;
+    check_selection_locks(&doc, &selected_ids)?;
     let updates = transform_fn(&selected_ids, &doc.document.nodes)?;
 
-    perform_document_update(doc, &selected_ids, updates);
-    Ok(())
+    Ok(perform_document_update(doc, &selected_ids, updates))
 }
 
 fn collect_selected_ids(doc: &DiagramDocument) -> Vec<NodeId> {
@@ -45,10 +44,10 @@ fn check_selection_locks(doc: &DiagramDocument, ids: &[NodeId]) -> Result<(), Tr
 }
 
 fn perform_document_update(
-    doc: &mut DiagramDocument,
+    mut doc: DiagramDocument,
     ids: &[NodeId],
     updates: Vec<(NodeId, Node)>,
-) {
+) -> DiagramDocument {
     let mut new_nodes = doc.document.nodes.clone();
     for (id, node) in updates {
         new_nodes = new_nodes.update(id, node);
@@ -56,6 +55,7 @@ fn perform_document_update(
 
     doc.document.nodes = recompute_affected_container_bounds(new_nodes, ids);
     doc.revision = doc.revision.increment();
+    doc
 }
 
 /// Aligns selected nodes along the specified axis.
@@ -64,9 +64,11 @@ pub fn align_selection(
     axis: &AlignmentAxis,
     mode: &AlignmentMode,
 ) -> Result<(), TransformError> {
-    apply_transform_to_doc(doc, |selected, nodes| {
+    let new_doc = apply_transform_to_doc(doc.clone(), |selected, nodes| {
         calculate_alignment(nodes, selected, *axis, *mode)
-    })
+    })?;
+    *doc = new_doc;
+    Ok(())
 }
 
 /// Distributes selected nodes evenly along the specified axis.
@@ -78,9 +80,11 @@ pub fn distribute_selection(
         return Err(TransformError::EmptySelection);
     }
 
-    apply_transform_to_doc(doc, |selected, nodes| {
+    let new_doc = apply_transform_to_doc(doc.clone(), |selected, nodes| {
         calculate_distribution(nodes, selected, *axis)
-    })
+    })?;
+    *doc = new_doc;
+    Ok(())
 }
 
 /// Translates selected nodes by `dx` and `dy`.
@@ -91,7 +95,7 @@ pub fn translate_selection(
 ) -> Result<(), TransformError> {
     let transform = ValidTransform::translate(dx, dy)?;
 
-    apply_transform_to_doc(doc, |selected, nodes| {
+    let new_doc = apply_transform_to_doc(doc.clone(), |selected, nodes| {
         selected
             .iter()
             .map(|id| {
@@ -104,7 +108,9 @@ pub fn translate_selection(
                     })
             })
             .collect()
-    })
+    })?;
+    *doc = new_doc;
+    Ok(())
 }
 
 #[cfg(test)]

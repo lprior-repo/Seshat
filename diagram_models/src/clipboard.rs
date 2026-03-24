@@ -178,8 +178,8 @@ fn collect_pasted_ids(id_map: &HashMap<NodeId, NodeId>) -> im::HashSet<String> {
 
 fn create_pasted_node(node: &Node, offset: Coordinate, id_map: &HashMap<NodeId, NodeId>) -> Node {
     let mut next = node.clone();
-    next.x = OrderedFloat(next.x.0 + offset.0);
-    next.y = OrderedFloat(next.y.0 + offset.0);
+    next.x = OrderedFloat(next.x.0 + offset.value());
+    next.y = OrderedFloat(next.y.0 + offset.value());
     next.parent = next
         .parent
         .and_then(|pid| id_map.get(&pid).cloned().or(Some(pid)));

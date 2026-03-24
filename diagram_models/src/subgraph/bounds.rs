@@ -5,6 +5,13 @@ use crate::geometry::{Coordinate, RectMetrics};
 use crate::subgraph::LayoutConstants;
 use im::HashMap;
 use itertools::Itertools;
+use thiserror::Error;
+
+#[derive(Debug, Error, PartialEq, Eq)]
+pub enum LayoutError {
+    #[error("Coordinate math failure")]
+    MathFailure,
+}
 
 /// Recomputes the bounds of subgraph containers that contain the moved nodes.
 #[must_use]
@@ -50,20 +57,22 @@ fn collect_child_metrics(nodes: &HashMap<NodeId, Node>, parent_id: &NodeId) -> V
         .collect()
 }
 
-fn apply_bounds_to_container(container: &Node, bounds: RectMetrics) -> Result<Node, ()> {
+fn apply_bounds_to_container(container: &Node, bounds: RectMetrics) -> Result<Node, LayoutError> {
     let mut updated = container.clone();
     let padding = LayoutConstants::SUBGRAPH_PADDING;
 
-    updated.x = to_ordered(bounds.x - padding)?;
-    updated.y = to_ordered(bounds.y - padding)?;
-    updated.width = to_ordered(bounds.width + (padding * 2.0))?;
-    updated.height = to_ordered(bounds.height + (padding * 2.0))?;
+    updated.x = to_ordered(bounds.x - padding).map_err(|_| LayoutError::MathFailure)?;
+    updated.y = to_ordered(bounds.y - padding).map_err(|_| LayoutError::MathFailure)?;
+    updated.width =
+        to_ordered(bounds.width + (padding * 2.0)).map_err(|_| LayoutError::MathFailure)?;
+    updated.height =
+        to_ordered(bounds.height + (padding * 2.0)).map_err(|_| LayoutError::MathFailure)?;
 
     Ok(updated)
 }
 
 fn to_ordered(coord: Coordinate) -> Result<OrderedFloat, ()> {
-    OrderedFloat::new(coord.0).map_err(|_| ())
+    OrderedFloat::new(coord.value()).map_err(|_| ())
 }
 
 fn calculate_subgraph_bounds(metrics: &[RectMetrics]) -> Option<RectMetrics> {
@@ -79,6 +88,18 @@ fn calculate_subgraph_bounds(metrics: &[RectMetrics]) -> Option<RectMetrics> {
         .iter()
         .map(|m| m.y)
         .fold(Coordinate::MAX, Coordinate::min);
+
+    let (max_x, max_y) = calculate_max_extents(metrics);
+
+    Some(RectMetrics::new(
+        min_x.value(),
+        min_y.value(),
+        (max_x - min_x).value(),
+        (max_y - min_y).value(),
+    ))
+}
+
+fn calculate_max_extents(metrics: &[RectMetrics]) -> (Coordinate, Coordinate) {
     let max_x = metrics
         .iter()
         .map(RectMetrics::right)
@@ -87,11 +108,5 @@ fn calculate_subgraph_bounds(metrics: &[RectMetrics]) -> Option<RectMetrics> {
         .iter()
         .map(RectMetrics::bottom)
         .fold(Coordinate::MIN, Coordinate::max);
-
-    Some(RectMetrics::new(
-        min_x.0,
-        min_y.0,
-        (max_x - min_x).0,
-        (max_y - min_y).0,
-    ))
+    (max_x, max_y)
 }

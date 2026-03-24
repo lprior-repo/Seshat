@@ -5,16 +5,33 @@ use std::ops::{Add, Div, Mul, Sub};
 
 /// A coordinate in world or local space.
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Default)]
-pub struct Coordinate(pub f64);
+pub struct Coordinate(f64);
 
 impl Coordinate {
     pub const ZERO: Self = Self(0.0);
     pub const MAX: Self = Self(f64::MAX);
     pub const MIN: Self = Self(f64::MIN);
 
+    /// Internal/Const constructor. Bypasses finiteness check.
     #[must_use]
-    pub const fn new(val: f64) -> Self {
+    pub const fn new_unchecked(val: f64) -> Self {
         Self(val)
+    }
+
+    /// Creates a new `Coordinate`. Returns `None` if value is not finite.
+    #[must_use]
+    pub fn try_new(val: f64) -> Option<Self> {
+        if val.is_finite() {
+            Some(Self(val))
+        } else {
+            None
+        }
+    }
+
+    /// Access the inner value
+    #[must_use]
+    pub const fn value(self) -> f64 {
+        self.0
     }
 
     #[must_use]
@@ -33,11 +50,6 @@ impl Coordinate {
         } else {
             other
         }
-    }
-
-    #[must_use]
-    pub const fn is_finite(self) -> bool {
-        self.0.is_finite()
     }
 }
 

@@ -22,9 +22,11 @@
 //! - I3: Node positions relative to parent (or world space if no parent)
 //! - I4: Document revision monotonically increases
 
+pub mod apply;
 pub mod canonical_json;
 pub mod conflict;
 pub mod dag;
+pub mod proposed_changes;
 
 #[cfg(test)]
 pub mod dag_tests;
