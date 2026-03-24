@@ -13,44 +13,52 @@ fn apply_transform_to_doc(
         &HashMap<NodeId, Node>,
     ) -> Result<Vec<(NodeId, Node)>, TransformError>,
 ) -> Result<(), TransformError> {
-    let selected_ids: Vec<NodeId> = doc
-        .editor_state
-        .selected_items
-        .iter()
-        .map(|s| NodeId::new(s.clone()))
-        .collect();
-
+    let selected_ids = collect_selected_ids(doc);
     if selected_ids.is_empty() {
         return Err(TransformError::EmptySelection);
     }
 
-    // Check for locked nodes
-    selected_ids.iter().try_for_each(|id| {
+    check_selection_locks(doc, &selected_ids)?;
+    let updates = transform_fn(&selected_ids, &doc.document.nodes)?;
+
+    perform_document_update(doc, &selected_ids, updates);
+    Ok(())
+}
+
+fn collect_selected_ids(doc: &DiagramDocument) -> Vec<NodeId> {
+    doc.editor_state
+        .selected_items
+        .iter()
+        .map(|s| NodeId::new(s.clone()))
+        .collect()
+}
+
+fn check_selection_locks(doc: &DiagramDocument, ids: &[NodeId]) -> Result<(), TransformError> {
+    ids.iter().try_for_each(|id| {
         if let Some(node) = doc.document.nodes.get(id) {
             if !node.lock_state.is_movable(&node.kind) {
                 return Err(TransformError::NodeLocked(id.clone()));
             }
         }
         Ok(())
-    })?;
+    })
+}
 
-    let updates = transform_fn(&selected_ids, &doc.document.nodes)?;
-
+fn perform_document_update(
+    doc: &mut DiagramDocument,
+    ids: &[NodeId],
+    updates: Vec<(NodeId, Node)>,
+) {
     let mut new_nodes = doc.document.nodes.clone();
     for (id, node) in updates {
         new_nodes = new_nodes.update(id, node);
     }
 
-    doc.document.nodes = recompute_affected_container_bounds(new_nodes, &selected_ids);
+    doc.document.nodes = recompute_affected_container_bounds(new_nodes, ids);
     doc.revision = doc.revision.increment();
-    Ok(())
 }
 
 /// Aligns selected nodes along the specified axis.
-///
-/// # Errors
-/// Returns `TransformError::EmptySelection` if fewer than 2 nodes are selected.
-/// Returns `TransformError::NodeLocked` if any selected node is locked.
 pub fn align_selection(
     doc: &mut DiagramDocument,
     axis: &AlignmentAxis,
@@ -62,10 +70,6 @@ pub fn align_selection(
 }
 
 /// Distributes selected nodes evenly along the specified axis.
-///
-/// # Errors
-/// Returns `TransformError::EmptySelection` if fewer than 3 nodes are selected.
-/// Returns `TransformError::NodeLocked` if any selected node is locked.
 pub fn distribute_selection(
     doc: &mut DiagramDocument,
     axis: &AlignmentAxis,
@@ -80,11 +84,6 @@ pub fn distribute_selection(
 }
 
 /// Translates selected nodes by `dx` and `dy`.
-///
-/// # Errors
-/// Returns `TransformError::InvalidTransform` if `dx` or `dy` is not finite.
-/// Returns `TransformError::EmptySelection` if no nodes are selected.
-/// Returns `TransformError::NodeLocked` if any selected node is locked.
 pub fn translate_selection(
     doc: &mut DiagramDocument,
     dx: f64,
@@ -104,7 +103,7 @@ pub fn translate_selection(
                             .map(|updated| (id.clone(), updated))
                     })
             })
-            .collect::<Result<Vec<(NodeId, Node)>, TransformError>>()
+            .collect()
     })
 }
 

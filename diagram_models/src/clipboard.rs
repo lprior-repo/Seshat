@@ -4,6 +4,8 @@
 //! ensuring that both nodes and edges are correctly preserved during operations.
 
 use crate::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, OrderedFloat};
+use crate::geometry::Coordinate;
+use crate::subgraph::LayoutConstants;
 use im::HashMap;
 use uuid::Uuid;
 
@@ -68,23 +70,8 @@ pub fn copy_selection(doc: &DiagramDocument, selection: &[NodeId]) -> Option<Cli
         return None;
     }
 
-    let nodes = selection
-        .iter()
-        .filter_map(|id| {
-            doc.document
-                .nodes
-                .get(id)
-                .map(|node| (id.clone(), node.clone()))
-        })
-        .collect::<Vec<_>>();
-
-    let edges = doc
-        .document
-        .edges
-        .values()
-        .filter(|edge| selection.contains(&edge.source) && selection.contains(&edge.target))
-        .cloned()
-        .collect();
+    let nodes = collect_clipboard_nodes(doc, selection);
+    let edges = collect_clipboard_edges(doc, selection);
 
     Some(ClipboardData {
         nodes,
@@ -93,35 +80,38 @@ pub fn copy_selection(doc: &DiagramDocument, selection: &[NodeId]) -> Option<Cli
     })
 }
 
+fn collect_clipboard_nodes(doc: &DiagramDocument, selection: &[NodeId]) -> Vec<(NodeId, Node)> {
+    selection
+        .iter()
+        .filter_map(|id| {
+            doc.document
+                .nodes
+                .get(id)
+                .map(|node| (id.clone(), node.clone()))
+        })
+        .collect()
+}
+
+fn collect_clipboard_edges(doc: &DiagramDocument, selection: &[NodeId]) -> Vec<Edge> {
+    doc.document
+        .edges
+        .values()
+        .filter(|edge| selection.contains(&edge.source) && selection.contains(&edge.target))
+        .cloned()
+        .collect()
+}
+
 /// Pure function: Calculates the results of pasting clipboard contents.
 ///
 /// Returns a `PasteResult` containing (`updated_nodes`, `updated_edges`, `id_map`, `selected`).
 #[must_use]
 pub fn calculate_paste(clipboard: &ClipboardData, doc: &DiagramDocument) -> PasteResult {
-    let serial = clipboard.paste_serial.saturating_add(1);
-    let offset = 20.0 * f64::from(serial.max(1));
-
+    let offset = calculate_paste_offset(clipboard.paste_serial);
     let id_map = generate_id_map(&clipboard.nodes);
-    let mut nodes = doc.document.nodes.clone();
-    let mut selected = im::HashSet::new();
 
-    for (old_id, node) in &clipboard.nodes {
-        if let Some(new_id) = id_map.get(old_id).cloned() {
-            let next = create_pasted_node(node, offset, &id_map);
-            nodes = nodes.update(new_id.clone(), next);
-            selected.insert(new_id.to_string());
-        }
-    }
-
-    let mut edges = doc.document.edges.clone();
-    for edge in &clipboard.edges {
-        if let (Some(new_source), Some(new_target)) =
-            (id_map.get(&edge.source), id_map.get(&edge.target))
-        {
-            let next = create_pasted_edge(edge, new_source, new_target);
-            edges = edges.update(EdgeId::new(Uuid::new_v4().to_string()), next);
-        }
-    }
+    let nodes = paste_nodes(&clipboard.nodes, &doc.document.nodes, offset, &id_map);
+    let edges = paste_edges(&clipboard.edges, &doc.document.edges, &id_map);
+    let selected = collect_pasted_ids(&id_map);
 
     PasteResult {
         nodes,
@@ -131,6 +121,11 @@ pub fn calculate_paste(clipboard: &ClipboardData, doc: &DiagramDocument) -> Past
     }
 }
 
+fn calculate_paste_offset(serial: u32) -> Coordinate {
+    let multiplier = f64::from(serial.saturating_add(1).max(1));
+    LayoutConstants::PASTE_OFFSET * multiplier
+}
+
 fn generate_id_map(nodes: &[(NodeId, Node)]) -> HashMap<NodeId, NodeId> {
     nodes
         .iter()
@@ -138,10 +133,53 @@ fn generate_id_map(nodes: &[(NodeId, Node)]) -> HashMap<NodeId, NodeId> {
         .collect()
 }
 
-fn create_pasted_node(node: &Node, offset: f64, id_map: &HashMap<NodeId, NodeId>) -> Node {
+fn paste_nodes(
+    clipboard_nodes: &[(NodeId, Node)],
+    existing_nodes: &HashMap<NodeId, Node>,
+    offset: Coordinate,
+    id_map: &HashMap<NodeId, NodeId>,
+) -> HashMap<NodeId, Node> {
+    clipboard_nodes
+        .iter()
+        .fold(existing_nodes.clone(), |acc, (old_id, node)| {
+            if let Some(new_id) = id_map.get(old_id).cloned() {
+                acc.update(new_id, create_pasted_node(node, offset, id_map))
+            } else {
+                acc
+            }
+        })
+}
+
+fn paste_edges(
+    clipboard_edges: &[Edge],
+    existing_edges: &HashMap<EdgeId, Edge>,
+    id_map: &HashMap<NodeId, NodeId>,
+) -> HashMap<EdgeId, Edge> {
+    clipboard_edges
+        .iter()
+        .fold(existing_edges.clone(), |acc, edge| {
+            if let (Some(new_source), Some(new_target)) =
+                (id_map.get(&edge.source), id_map.get(&edge.target))
+            {
+                let next = create_pasted_edge(edge, new_source, new_target);
+                acc.update(EdgeId::new(Uuid::new_v4().to_string()), next)
+            } else {
+                acc
+            }
+        })
+}
+
+fn collect_pasted_ids(id_map: &HashMap<NodeId, NodeId>) -> im::HashSet<String> {
+    id_map
+        .values()
+        .map(std::string::ToString::to_string)
+        .collect()
+}
+
+fn create_pasted_node(node: &Node, offset: Coordinate, id_map: &HashMap<NodeId, NodeId>) -> Node {
     let mut next = node.clone();
-    next.x = OrderedFloat(next.x.0 + offset);
-    next.y = OrderedFloat(next.y.0 + offset);
+    next.x = OrderedFloat(next.x.0 + offset.0);
+    next.y = OrderedFloat(next.y.0 + offset.0);
     next.parent = next
         .parent
         .and_then(|pid| id_map.get(&pid).cloned().or(Some(pid)));

@@ -16,9 +16,6 @@ pub fn clipboard_has_content(clipboard: Option<&ClipboardData>) -> bool {
 }
 
 /// Pure function: Pastes clipboard content into the document.
-///
-/// Returns `None` if the clipboard is empty or has no nodes.
-/// Otherwise returns a tuple of (`updated_document`, `updated_clipboard`).
 #[must_use]
 pub fn paste_contents(
     mut clipboard: ClipboardData,
@@ -41,9 +38,6 @@ pub fn paste_contents(
 }
 
 /// Public API: Applies copy operation using a clipboard signal.
-///
-/// This function maintains backward compatibility with the existing API
-/// by using a Dioxus signal for clipboard state management.
 #[must_use]
 pub fn apply_copy_selection(
     doc_signal: Signal<DiagramDocument>,
@@ -58,8 +52,6 @@ pub fn apply_copy_selection(
 }
 
 /// Public API: Applies paste operation using a clipboard signal.
-///
-/// Returns true if paste was successful, false otherwise.
 #[must_use]
 pub fn apply_paste_selection(
     mut doc_signal: Signal<DiagramDocument>,
@@ -84,9 +76,6 @@ pub fn apply_paste_selection(
 }
 
 /// Public API: Applies duplicate operation.
-///
-/// This is equivalent to copy followed by paste, but uses `paste_serial=1`
-/// to ensure the duplicated content is offset from the original.
 #[must_use]
 pub fn apply_duplicate_selection(
     mut doc_signal: Signal<DiagramDocument>,
@@ -95,26 +84,30 @@ pub fn apply_duplicate_selection(
 ) -> bool {
     let doc = doc_signal.read().clone();
     let selection = selected_node_ids(&doc);
-    let Some(mut clipboard) = copy_selection(&doc, &selection) else {
-        return false;
-    };
 
-    // Duplicate uses paste_serial=1 for offset
-    clipboard.paste_serial = 1;
-
-    let Some((new_doc, _)) = paste_contents(clipboard, doc) else {
+    let Some(new_data) = duplicate_clipboard_contents(&doc, &selection) else {
         return false;
     };
 
     push_history(history_signal, doc_signal.read().clone());
-
-    // Copy selection before moving new_doc
-    let selection = selected_node_ids(&new_doc);
-    let new_clipboard = copy_selection(&new_doc, &selection);
-
-    doc_signal.set(new_doc);
-    clipboard_signal.set(new_clipboard);
+    doc_signal.set(new_data.0);
+    clipboard_signal.set(new_data.1);
     true
+}
+
+fn duplicate_clipboard_contents(
+    doc: &DiagramDocument,
+    selection: &[NodeId],
+) -> Option<(DiagramDocument, Option<ClipboardData>)> {
+    let mut clipboard = copy_selection(doc, selection)?;
+    clipboard.paste_serial = 1;
+
+    let (new_doc, _) = paste_contents(clipboard, doc.clone())?;
+
+    let new_selection = selected_node_ids(&new_doc);
+    let new_clipboard = copy_selection(&new_doc, &new_selection);
+
+    Some((new_doc, new_clipboard))
 }
 
 // Private helper functions

@@ -1,6 +1,8 @@
 //! Logic for recomputing container bounds based on children.
 
 use crate::document::{Node, NodeId, NodeKind, OrderedFloat};
+use crate::geometry::{Coordinate, RectMetrics};
+use crate::subgraph::LayoutConstants;
 use im::HashMap;
 use itertools::Itertools;
 
@@ -25,43 +27,71 @@ pub fn recompute_affected_container_bounds(
         .cloned()
         .collect::<Vec<_>>();
 
-    containers.into_iter().fold(nodes, |acc, cid| {
-        let children_metrics = acc
-            .iter()
-            .filter(|(_, n)| n.parent.as_ref() == Some(&cid))
-            .map(|(_, n)| (n.x.0, n.y.0, n.width.0, n.height.0))
-            .collect::<Vec<_>>();
-
-        if let Some((x, y, w, h)) = calculate_subgraph_bounds(&children_metrics) {
-            if let Some(container) = acc.get(&cid) {
-                let mut updated = container.clone();
-                // Use a fixed padding of 24.0
-                updated.x = OrderedFloat::new(x - 24.0).unwrap_or(updated.x);
-                updated.y = OrderedFloat::new(y - 24.0).unwrap_or(updated.y);
-                updated.width = OrderedFloat::new(w + 48.0).unwrap_or(updated.width);
-                updated.height = OrderedFloat::new(h + 48.0).unwrap_or(updated.height);
-                return acc.update(cid, updated);
-            }
-        }
-        acc
-    })
+    containers.into_iter().fold(nodes, update_container_bounds)
 }
 
-fn calculate_subgraph_bounds(nodes: &[(f64, f64, f64, f64)]) -> Option<(f64, f64, f64, f64)> {
-    if nodes.is_empty() {
+fn update_container_bounds(mut nodes: HashMap<NodeId, Node>, cid: NodeId) -> HashMap<NodeId, Node> {
+    let metrics = collect_child_metrics(&nodes, &cid);
+    if let Some(bounds) = calculate_subgraph_bounds(&metrics) {
+        if let Some(container) = nodes.get(&cid) {
+            if let Ok(updated) = apply_bounds_to_container(container, bounds) {
+                nodes = nodes.update(cid, updated);
+            }
+        }
+    }
+    nodes
+}
+
+fn collect_child_metrics(nodes: &HashMap<NodeId, Node>, parent_id: &NodeId) -> Vec<RectMetrics> {
+    nodes
+        .iter()
+        .filter(|(_, n)| n.parent.as_ref() == Some(parent_id))
+        .map(|(_, n)| RectMetrics::new(n.x.0, n.y.0, n.width.0, n.height.0))
+        .collect()
+}
+
+fn apply_bounds_to_container(container: &Node, bounds: RectMetrics) -> Result<Node, ()> {
+    let mut updated = container.clone();
+    let padding = LayoutConstants::SUBGRAPH_PADDING;
+
+    updated.x = to_ordered(bounds.x - padding)?;
+    updated.y = to_ordered(bounds.y - padding)?;
+    updated.width = to_ordered(bounds.width + (padding * 2.0))?;
+    updated.height = to_ordered(bounds.height + (padding * 2.0))?;
+
+    Ok(updated)
+}
+
+fn to_ordered(coord: Coordinate) -> Result<OrderedFloat, ()> {
+    OrderedFloat::new(coord.0).map_err(|_| ())
+}
+
+fn calculate_subgraph_bounds(metrics: &[RectMetrics]) -> Option<RectMetrics> {
+    if metrics.is_empty() {
         return None;
     }
 
-    let min_x = nodes.iter().map(|n| n.0).fold(f64::INFINITY, f64::min);
-    let min_y = nodes.iter().map(|n| n.1).fold(f64::INFINITY, f64::min);
-    let max_x = nodes
+    let min_x = metrics
         .iter()
-        .map(|n| n.0 + n.2)
-        .fold(f64::NEG_INFINITY, f64::max);
-    let max_y = nodes
+        .map(|m| m.x)
+        .fold(Coordinate::MAX, Coordinate::min);
+    let min_y = metrics
         .iter()
-        .map(|n| n.1 + n.3)
-        .fold(f64::NEG_INFINITY, f64::max);
+        .map(|m| m.y)
+        .fold(Coordinate::MAX, Coordinate::min);
+    let max_x = metrics
+        .iter()
+        .map(|m| m.right())
+        .fold(Coordinate::MIN, Coordinate::max);
+    let max_y = metrics
+        .iter()
+        .map(|m| m.bottom())
+        .fold(Coordinate::MIN, Coordinate::max);
 
-    Some((min_x, min_y, max_x - min_x, max_y - min_y))
+    Some(RectMetrics::new(
+        min_x.0,
+        min_y.0,
+        (max_x - min_x).0,
+        (max_y - min_y).0,
+    ))
 }
