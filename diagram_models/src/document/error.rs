@@ -3,9 +3,10 @@
 //! Provides a domain-specific error taxonomy for document mutations.
 
 use super::types::{EdgeId, NodeId};
+use serde::{Deserialize, Serialize};
 
 /// Errors that can occur during document operations
-#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
 pub enum DocumentError {
     #[error("node not found: {0}")]
     NodeNotFound(NodeId),

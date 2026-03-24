@@ -6,32 +6,55 @@
 
 use crate::document::types::{AuthorId, EdgeId, NodeId, Revision, Timestamp};
 use crate::document::{DocumentError, Node};
+use serde::{Deserialize, Serialize};
 
-/// A complete proposal submitted by an AI agent.
-///
-/// Only `base_revision` is consumed by the revision-mismatch gate; the
-/// remaining fields are placeholders for downstream beads.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct ProposedChanges {
-    /// The document revision this proposal was built against.
-    /// Must match `DiagramDocument::revision` at apply time.
     pub base_revision: Revision,
-    /// Identifier of the proposing AI agent.
     pub proposer: AuthorId,
-    /// Wall-clock time when the proposal was generated.
     pub proposed_at: Timestamp,
-    /// Human-readable summary for UI display.
     pub summary: String,
+    pub changes: Vec<ProposedChange>,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+impl ProposedChanges {
+    #[must_use]
+    pub const fn new(
+        base_revision: Revision,
+        proposer: AuthorId,
+        proposed_at: Timestamp,
+        summary: String,
+        changes: Vec<ProposedChange>,
+    ) -> Self {
+        Self {
+            base_revision,
+            proposer,
+            proposed_at,
+            summary,
+            changes,
+        }
+    }
+
+    #[must_use]
+    pub fn is_empty(&self) -> bool {
+        self.changes.is_empty()
+    }
+
+    #[must_use]
+    pub fn len(&self) -> usize {
+        self.changes.len()
+    }
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum GhostDiffBadge {
     Add,
     Modify,
     Delete,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(tag = "type")]
 #[allow(clippy::large_enum_variant)]
 pub enum ProposedChange {
     DeleteNode {
@@ -44,7 +67,7 @@ pub enum ProposedChange {
     TestUnsupportedVariant,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
+#[derive(Clone, Debug, PartialEq, Eq, thiserror::Error, Serialize, Deserialize)]
 pub enum ApplyError {
     #[error("cannot delete node: {0} not found in document")]
     NodeNotFound(NodeId),
@@ -59,7 +82,7 @@ pub enum ApplyError {
     UnsupportedChangeVariant,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct DeleteNodeResult {
     pub deleted_node_id: NodeId,
     pub cascade_deleted_edge_ids: Vec<EdgeId>,
@@ -169,5 +192,144 @@ mod tests {
             result.cascade_deleted_edge_ids,
             vec![EdgeId::new("e1".into())]
         );
+    }
+
+    #[test]
+    fn proposed_changes_new_creates_instance_with_all_fields() {
+        let changes = ProposedChanges::new(
+            Revision::new(1),
+            AuthorId::new("agent-1".into()),
+            Timestamp::new(1234567890),
+            "Test proposal".to_string(),
+            vec![],
+        );
+        assert_eq!(changes.base_revision, Revision::new(1));
+        assert_eq!(changes.proposer, AuthorId::new("agent-1".into()));
+        assert_eq!(changes.proposed_at, Timestamp::new(1234567890));
+        assert_eq!(changes.summary, "Test proposal");
+        assert!(changes.changes.is_empty());
+    }
+
+    #[test]
+    fn proposed_changes_is_empty_returns_true_for_empty_changes() {
+        let changes = ProposedChanges::new(
+            Revision::new(0),
+            AuthorId::new("agent".into()),
+            Timestamp::new(0),
+            String::new(),
+            vec![],
+        );
+        assert!(changes.is_empty());
+    }
+
+    #[test]
+    fn proposed_changes_is_empty_returns_false_for_non_empty_changes() {
+        let node = test_node("n1");
+        let change = ProposedChange::DeleteNode {
+            node_id: NodeId::new("n1".into()),
+            was_node_id: NodeId::new("n1".into()),
+            was: node,
+        };
+        let changes = ProposedChanges::new(
+            Revision::new(0),
+            AuthorId::new("agent".into()),
+            Timestamp::new(0),
+            String::new(),
+            vec![change],
+        );
+        assert!(!changes.is_empty());
+    }
+
+    #[test]
+    fn proposed_changes_len_returns_change_count() {
+        let node = test_node("n1");
+        let change1 = ProposedChange::DeleteNode {
+            node_id: NodeId::new("n1".into()),
+            was_node_id: NodeId::new("n1".into()),
+            was: node.clone(),
+        };
+        let change2 = ProposedChange::DeleteNode {
+            node_id: NodeId::new("n2".into()),
+            was_node_id: NodeId::new("n2".into()),
+            was: node,
+        };
+        let changes = ProposedChanges::new(
+            Revision::new(0),
+            AuthorId::new("agent".into()),
+            Timestamp::new(0),
+            String::new(),
+            vec![change1, change2],
+        );
+        assert_eq!(changes.len(), 2);
+    }
+
+    #[test]
+    fn proposed_changes_serializes_and_deserializes_correctly() {
+        let node = test_node("n1");
+        let original = ProposedChanges::new(
+            Revision::new(5),
+            AuthorId::new("claude-3".into()),
+            Timestamp::new(1700000000),
+            "Move node to new position".to_string(),
+            vec![ProposedChange::DeleteNode {
+                node_id: NodeId::new("n1".into()),
+                was_node_id: NodeId::new("n1".into()),
+                was: node,
+            }],
+        );
+        let json = serde_json::to_string(&original).expect("serialization should succeed");
+        let deserialized: ProposedChanges =
+            serde_json::from_str(&json).expect("deserialization should succeed");
+        assert_eq!(original, deserialized);
+    }
+
+    #[test]
+    fn proposed_changes_empty_serialization_roundtrip() {
+        let original = ProposedChanges::new(
+            Revision::new(0),
+            AuthorId::new("agent".into()),
+            Timestamp::new(0),
+            String::new(),
+            vec![],
+        );
+        let json = serde_json::to_string(&original).expect("serialization should succeed");
+        let deserialized: ProposedChanges =
+            serde_json::from_str(&json).expect("deserialization should succeed");
+        assert_eq!(original, deserialized);
+    }
+
+    #[test]
+    fn ghost_diff_badge_serialization_roundtrip() {
+        for badge in [
+            GhostDiffBadge::Add,
+            GhostDiffBadge::Modify,
+            GhostDiffBadge::Delete,
+        ] {
+            let json = serde_json::to_string(&badge).expect("serialization should succeed");
+            let deserialized: GhostDiffBadge =
+                serde_json::from_str(&json).expect("deserialization should succeed");
+            assert_eq!(badge, deserialized);
+        }
+    }
+
+    #[test]
+    fn apply_error_serialization_roundtrip() {
+        let err = ApplyError::NodeNotFound(NodeId::new("missing".into()));
+        let json = serde_json::to_string(&err).expect("serialization should succeed");
+        let deserialized: ApplyError =
+            serde_json::from_str(&json).expect("deserialization should succeed");
+        assert_eq!(err, deserialized);
+    }
+
+    #[test]
+    fn delete_node_result_serialization_roundtrip() {
+        let result = DeleteNodeResult {
+            deleted_node_id: NodeId::new("n1".into()),
+            cascade_deleted_edge_ids: vec![EdgeId::new("e1".into()), EdgeId::new("e2".into())],
+        };
+        let json = serde_json::to_string(&result).expect("serialization should succeed");
+        let deserialized: DeleteNodeResult =
+            serde_json::from_str(&json).expect("deserialization should succeed");
+        assert_eq!(result, deserialized);
     }
 }

@@ -334,12 +334,13 @@ mod tests {
     }
 
     fn proposal_at(rev: u64) -> ProposedChanges {
-        ProposedChanges {
-            base_revision: Revision::new(rev),
-            proposer: AuthorId::new("test-agent".into()),
-            proposed_at: Timestamp::new(0),
-            summary: String::new(),
-        }
+        ProposedChanges::new(
+            Revision::new(rev),
+            AuthorId::new("test-agent".into()),
+            Timestamp::new(0),
+            String::new(),
+            vec![],
+        )
     }
 
     fn test_node(id: &str) -> Node {
