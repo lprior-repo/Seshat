@@ -414,30 +414,31 @@ fn given_scene_nested_subgraph_v1_json_when_parsed_then_document_valid() {
     assert_eq!(doc.document.edges.len(), 1, "should have 1 edge");
 }
 
-/// Test that schema validation passes for valid nested subgraphs
+/// Test that validation passes for valid nested subgraphs
 #[cfg(kani)]
 #[kani::proof]
 #[test]
 fn given_valid_nested_subgraph_document_when_validated_then_passes() {
-    use crate::schema::validate_schema;
+    use crate::validation::validate_document;
 
     let json = include_str!("../../e2e/scenes/scene_nested_subgraph_v1.json");
     let doc: DiagramDocument = serde_json::from_str(json).expect("should parse valid JSON");
 
-    let result = validate_schema(&doc);
+    let issues = validate_document(&doc);
     assert!(
-        result.is_ok(),
+        issues.is_empty(),
         "valid document should pass validation: {:?}",
-        result
+        issues
     );
 }
 
-/// Test that schema validation fails for node with non-subgraph parent
+/// Test that validation fails for node with non-subgraph parent
 #[cfg(kani)]
 #[kani::proof]
 #[test]
 fn given_node_with_non_subgraph_parent_when_validated_then_fails() {
-    use crate::schema::validate_schema;
+    use crate::validation::validate_document;
+    use crate::validation::ValidationCode;
 
     let mut doc = DiagramDocument::default();
 
@@ -465,12 +466,16 @@ fn given_node_with_non_subgraph_parent_when_validated_then_fails() {
     );
     doc.document.nodes.insert(child_id, child_node);
 
-    let result = validate_schema(&doc);
-    assert!(result.is_err(), "invalid document should fail validation");
-    let err_msg = result.unwrap_err().to_string();
+    let issues = validate_document(&doc);
     assert!(
-        err_msg.contains("parent"),
-        "error should mention parent: {}",
-        err_msg
+        !issues.is_empty(),
+        "invalid document should fail validation"
+    );
+    assert!(
+        issues
+            .iter()
+            .any(|i| i.code == ValidationCode::INVALID_PARENT),
+        "error should mention parent: {:?}",
+        issues
     );
 }

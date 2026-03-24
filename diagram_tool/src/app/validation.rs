@@ -1,25 +1,12 @@
 use dioxus::prelude::*;
 
 use diagram_models::document::{DiagramDocument, Revision};
-use diagram_models::schema::validate_schema;
-use diagram_models::validation::{validate_document_data, ValidationIssue, ValidationSeverity};
+use diagram_models::validation::{validate_document, ValidationIssue};
 
 use super::types::VALIDATION_IDLE_MS;
 
 pub fn collect_validation_issues(doc: &DiagramDocument) -> Vec<ValidationIssue> {
-    let schema_issues = validate_schema(doc)
-        .err()
-        .map(|e| ValidationIssue {
-            severity: ValidationSeverity::Error,
-            code: diagram_models::validation::ValidationCode::SCHEMA,
-            message: e.to_string(),
-            subject: None,
-        })
-        .into_iter();
-
-    schema_issues
-        .chain(validate_document_data(&doc.document))
-        .collect()
+    validate_document(doc)
 }
 
 pub fn use_validation_state(
@@ -174,12 +161,9 @@ mod tests {
             .insert(NodeId::new("bad".to_string()), bad_node);
 
         let issues = collect_validation_issues(&doc);
-        assert!(
-            issues
-                .iter()
-                .any(|i| i.code == ValidationCode::INVALID_NUMERIC
-                    || i.code == ValidationCode::SCHEMA)
-        );
+        assert!(issues
+            .iter()
+            .any(|i| i.code == ValidationCode::INVALID_NUMERIC));
     }
 
     #[test]

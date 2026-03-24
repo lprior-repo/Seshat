@@ -37,6 +37,15 @@ impl ValidationCode {
     pub const DAG_DISCONNECTED: Self = Self(std::borrow::Cow::Borrowed("dag-disconnected"));
     pub const INTERNAL_ERROR: Self = Self(std::borrow::Cow::Borrowed("internal-error"));
     pub const SCHEMA: Self = Self(std::borrow::Cow::Borrowed("schema"));
+    pub const INVALID_VERSION: Self = Self(std::borrow::Cow::Borrowed("invalid-version"));
+    pub const PARENT_CYCLE: Self = Self(std::borrow::Cow::Borrowed("parent-cycle"));
+    pub const EDGE_INVALID_OFFSET: Self = Self(std::borrow::Cow::Borrowed("edge-invalid-offset"));
+    pub const EDGE_INVALID_THICKNESS: Self =
+        Self(std::borrow::Cow::Borrowed("edge-invalid-thickness"));
+    pub const EDGE_INVALID_COLOR: Self = Self(std::borrow::Cow::Borrowed("edge-invalid-color"));
+    pub const EDGE_INVALID_FONT_SIZE: Self =
+        Self(std::borrow::Cow::Borrowed("edge-invalid-font-size"));
+    pub const EDITOR_INVALID_STATE: Self = Self(std::borrow::Cow::Borrowed("editor-invalid-state"));
 
     #[must_use]
     pub fn as_str(&self) -> &str {
