@@ -81,11 +81,11 @@ fn calculate_subgraph_bounds(metrics: &[RectMetrics]) -> Option<RectMetrics> {
         .fold(Coordinate::MAX, Coordinate::min);
     let max_x = metrics
         .iter()
-        .map(|m| m.right())
+        .map(RectMetrics::right)
         .fold(Coordinate::MIN, Coordinate::max);
     let max_y = metrics
         .iter()
-        .map(|m| m.bottom())
+        .map(RectMetrics::bottom)
         .fold(Coordinate::MIN, Coordinate::max);
 
     Some(RectMetrics::new(

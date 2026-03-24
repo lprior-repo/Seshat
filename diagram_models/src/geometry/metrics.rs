@@ -18,17 +18,25 @@ impl Coordinate {
     }
 
     #[must_use]
-    pub fn min(self, other: Self) -> Self {
-        Self(self.0.min(other.0))
+    pub const fn min(self, other: Self) -> Self {
+        if self.0 < other.0 {
+            self
+        } else {
+            other
+        }
     }
 
     #[must_use]
-    pub fn max(self, other: Self) -> Self {
-        Self(self.0.max(other.0))
+    pub const fn max(self, other: Self) -> Self {
+        if self.0 > other.0 {
+            self
+        } else {
+            other
+        }
     }
 
     #[must_use]
-    pub fn is_finite(self) -> bool {
+    pub const fn is_finite(self) -> bool {
         self.0.is_finite()
     }
 }

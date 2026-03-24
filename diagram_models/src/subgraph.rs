@@ -19,12 +19,14 @@
 
 pub mod bounds;
 pub mod collapse;
+pub mod constants;
 pub mod reparenting;
 pub mod selection;
 pub mod transform;
 pub mod types;
 
 pub use bounds::recompute_affected_container_bounds;
+pub use constants::LayoutConstants;
 pub use types::CanvasState;
 pub use types::{
     apply_viewport_transform, calculate_container_bounds, create_empty_subgraph, BoundingBox,

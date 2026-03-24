@@ -76,11 +76,17 @@ impl ValidTransform {
     }
 
     /// Creates a pure translation transform.
+    ///
+    /// # Errors
+    /// Returns `TransformError::InvalidTransform` if dx or dy is not finite.
     pub fn translate(dx: f64, dy: f64) -> Result<Self, TransformError> {
         Self::try_new(dx, dy, 1.0, 1.0, 0.0)
     }
 
     /// Creates a pure scale transform around an anchor point.
+    ///
+    /// # Errors
+    /// Returns `TransformError::InvalidTransform` if scale factors are zero or not finite.
     pub fn scale_around(
         scale_x: f64,
         scale_y: f64,
@@ -139,6 +145,11 @@ fn apply_rotation_to_metadata(node: &mut Node, rotation: Radians) {
 }
 
 /// Pure function: Calculates aligned positions for a group of nodes.
+///
+/// # Errors
+/// Returns `TransformError::EmptySelection` if selection is too small.
+/// Returns `TransformError::ItemNotFound` if a node is missing.
+/// Returns `TransformError::InvalidTransform` if coordinate math fails.
 pub fn calculate_alignment(
     nodes: &HashMap<NodeId, Node>,
     selection: &[NodeId],
@@ -230,6 +241,11 @@ fn apply_axis_pos(
 }
 
 /// Pure function: Calculates distributed positions for a group of nodes.
+///
+/// # Errors
+/// Returns `TransformError::EmptySelection` if selection is too small.
+/// Returns `TransformError::ItemNotFound` if a node is missing.
+/// Returns `TransformError::InvalidTransform` if coordinate math fails.
 pub fn calculate_distribution(
     nodes: &HashMap<NodeId, Node>,
     selection: &[NodeId],
