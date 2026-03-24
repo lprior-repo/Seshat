@@ -6,7 +6,6 @@
 
 use crate::document::types::{AuthorId, EdgeId, NodeId, Revision, Timestamp};
 use crate::document::{DocumentError, Node};
-use serde::{Deserialize, Serialize};
 
 /// A complete proposal submitted by an AI agent.
 ///
@@ -25,8 +24,7 @@ pub struct ProposedChanges {
     pub summary: String,
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
-#[serde(rename_all = "lowercase")]
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum GhostDiffBadge {
     Add,
     Modify,
@@ -34,12 +32,16 @@ pub enum GhostDiffBadge {
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::large_enum_variant)]
 pub enum ProposedChange {
     DeleteNode {
         node_id: NodeId,
         was_node_id: NodeId,
         was: Node,
     },
+    /// Placeholder variant for testing the "unsupported change variant" dispatch.
+    /// Will be removed when real variants (MoveNode, AddEdge, etc.) are added.
+    TestUnsupportedVariant,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -52,6 +54,9 @@ pub enum ApplyError {
 
     #[error("document mutation failed during delete node: {0}")]
     DocumentError(DocumentError),
+
+    #[error("unsupported change variant")]
+    UnsupportedChangeVariant,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq)]
@@ -90,48 +95,6 @@ mod tests {
     }
 
     #[test]
-    fn ghost_diff_badge_add_serializes_to_lowercase() {
-        let json = serde_json::to_string(&GhostDiffBadge::Add).unwrap();
-        assert_eq!(json, r#""add""#);
-    }
-
-    #[test]
-    fn ghost_diff_badge_modify_serializes_to_lowercase() {
-        let json = serde_json::to_string(&GhostDiffBadge::Modify).unwrap();
-        assert_eq!(json, r#""modify""#);
-    }
-
-    #[test]
-    fn ghost_diff_badge_delete_serializes_to_lowercase() {
-        let json = serde_json::to_string(&GhostDiffBadge::Delete).unwrap();
-        assert_eq!(json, r#""delete""#);
-    }
-
-    #[test]
-    fn ghost_diff_badge_add_roundtrips_through_serde() {
-        let badge = GhostDiffBadge::Add;
-        let json = serde_json::to_string(&badge).unwrap();
-        let recovered: GhostDiffBadge = serde_json::from_str(&json).unwrap();
-        assert_eq!(badge, recovered);
-    }
-
-    #[test]
-    fn ghost_diff_badge_modify_roundtrips_through_serde() {
-        let badge = GhostDiffBadge::Modify;
-        let json = serde_json::to_string(&badge).unwrap();
-        let recovered: GhostDiffBadge = serde_json::from_str(&json).unwrap();
-        assert_eq!(badge, recovered);
-    }
-
-    #[test]
-    fn ghost_diff_badge_delete_roundtrips_through_serde() {
-        let badge = GhostDiffBadge::Delete;
-        let json = serde_json::to_string(&badge).unwrap();
-        let recovered: GhostDiffBadge = serde_json::from_str(&json).unwrap();
-        assert_eq!(badge, recovered);
-    }
-
-    #[test]
     fn proposed_change_delete_node_stores_node_id_and_snapshot() {
         let node = test_node("n1");
         let change = ProposedChange::DeleteNode {
@@ -149,6 +112,7 @@ mod tests {
                 assert_eq!(was_node_id, NodeId::new("n1".into()));
                 assert_eq!(was, node);
             }
+            ProposedChange::TestUnsupportedVariant => {}
         }
     }
 

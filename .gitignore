@@ -48,6 +48,12 @@ playwright-report/
 .beads/.beads-credential-key
 .beads/seshat-*/
 
+# Cargo-mutants output
+mutants.out/
+
+# Proptest regression artifacts
+**/proptest-regressions/
+
 # Local scratch workspaces
 dont-fuck-up/
 

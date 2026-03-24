@@ -1,5 +1,0 @@
-diagram_models/src/apply.rs:70:5: replace check_revision_mismatch -> ApplyResult with Default::default()
-diagram_models/src/apply.rs:98:5: replace apply_delete_node -> Result<DeleteNodeResult, ApplyError> with Ok(Default::default())
-diagram_models/src/apply.rs:124:5: replace apply_delete_node_inner -> Result<DeleteNodeResult, ApplyError> with Ok(Default::default())
-diagram_models/src/apply.rs:164:5: replace collect_cascade_edge_ids -> Vec<EdgeId> with vec![Default::default()]
-diagram_models/src/apply.rs:182:5: replace cascade_edges_for_node -> Option<Vec<EdgeId>> with Some(vec![Default::default()])

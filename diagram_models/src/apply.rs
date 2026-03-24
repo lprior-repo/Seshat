@@ -127,6 +127,9 @@ fn apply_delete_node_inner(
             was_node_id,
             ..
         } => (node_id, was_node_id),
+        ProposedChange::TestUnsupportedVariant => {
+            return Err(ApplyError::UnsupportedChangeVariant);
+        }
     };
 
     // Step 1: Parametric validation — snapshot ID consistency (P1)
@@ -221,6 +224,9 @@ fn format_error_reason(idx: usize, error: &ApplyError) -> String {
         ApplyError::DocumentError(inner) => {
             format!("change [{idx}]: document error: {inner}")
         }
+        ApplyError::UnsupportedChangeVariant => {
+            format!("change [{idx}]: unsupported change variant")
+        }
     }
 }
 
@@ -241,8 +247,9 @@ pub fn apply_proposal(
     accepted_indices: &[usize],
 ) -> ApplyResult {
     // Step 1: Revision gate — pure check, no mutation
-    if let ApplyResult::Stale(_) = check_revision_mismatch(doc, proposal) {
-        return check_revision_mismatch(doc, proposal);
+    let gate = check_revision_mismatch(doc, proposal);
+    if let ApplyResult::Stale(_) = gate {
+        return gate;
     }
 
     // Step 2: Validate and dedup indices
@@ -259,6 +266,9 @@ pub fn apply_proposal(
         match change {
             ProposedChange::DeleteNode { .. } => {
                 apply_delete_node(doc, change).map_err(|e| (idx, e))
+            }
+            ProposedChange::TestUnsupportedVariant => {
+                return Err((idx, ApplyError::UnsupportedChangeVariant));
             }
         }?;
         Ok(())
@@ -2167,15 +2177,16 @@ mod tests {
             apply_proposal(&mut doc, &proposal, &changes, &accepted)
         }));
 
-        assert!(
-            result.is_ok(),
-            "apply_proposal must not panic on adversarial indices"
-        );
-        let inner = result.unwrap();
-        assert!(matches!(
-            inner,
-            ApplyResult::Applied | ApplyResult::Stale(_) | ApplyResult::PartialConflict { .. }
-        ));
+        match result {
+            Ok(inner) => {
+                assert_eq!(
+                    inner,
+                    ApplyResult::Applied,
+                    "empty changes with adversarial indices → all OOB → Applied"
+                );
+            }
+            Err(_) => panic!("apply_proposal must not panic on adversarial indices"),
+        }
     }
 
     // -- Behavior 18: Unrelated nodes and edges preserved --
@@ -2337,10 +2348,71 @@ mod tests {
     // tests at the lower layer.
 
     // -- Behaviors 23, 24: Unsupported change variant --
-    // NOTE: ProposedChange currently has only DeleteNode variant. When future beads
-    // add variants (MoveNode, AddEdge, RelabelNode), the "unsupported change variant"
-    // dispatch and "not attempted" after unsupported variant tests must be added here.
-    // The dispatch table must produce: "change [N]: unsupported change variant"
+
+    #[test]
+    fn apply_proposal_unsupported_variant_produces_partial_conflict_with_reason() {
+        let mut doc = doc_with_nodes_and_edges(vec![("n1", test_node("n1"))], vec![]);
+        let proposal = proposal_at(0);
+        let changes = vec![
+            delete_node_change_with_independent_ids("n1"),
+            ProposedChange::TestUnsupportedVariant,
+        ];
+        let accepted = [0, 1];
+
+        let result = apply_proposal(&mut doc, &proposal, &changes, &accepted);
+
+        match result {
+            ApplyResult::PartialConflict {
+                applied_count,
+                skipped_count,
+                reasons,
+            } => {
+                assert_eq!(applied_count, 0);
+                assert_eq!(skipped_count, 2);
+                let unsupported_reason = reasons
+                    .iter()
+                    .find(|r| r.contains("[1]") && r.contains("unsupported change variant"));
+                assert!(
+                    unsupported_reason.is_some(),
+                    "expected reason for change [1] with 'unsupported change variant', got: {reasons:?}"
+                );
+                let rolled_back_reason = reasons.iter().find(|r| {
+                    r.contains("[0]") && r.contains("rolled back due to subsequent failure")
+                });
+                assert!(
+                    rolled_back_reason.is_some(),
+                    "expected reason for change [0] with 'rolled back', got: {reasons:?}"
+                );
+            }
+            other => panic!("expected PartialConflict, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn apply_proposal_not_attempted_after_unsupported_variant() {
+        let mut doc = doc_with_nodes_and_edges(vec![("n1", test_node("n1"))], vec![]);
+        let proposal = proposal_at(0);
+        let changes = vec![
+            ProposedChange::TestUnsupportedVariant,
+            delete_node_change_with_independent_ids("n1"),
+        ];
+        let accepted = [0, 1];
+
+        let result = apply_proposal(&mut doc, &proposal, &changes, &accepted);
+
+        match result {
+            ApplyResult::PartialConflict { reasons, .. } => {
+                let not_attempted = reasons.iter().find(|r| {
+                    r.contains("[1]") && r.contains("not attempted due to prior failure")
+                });
+                assert!(
+                    not_attempted.is_some(),
+                    "expected 'not attempted' reason for change [1], got: {reasons:?}"
+                );
+            }
+            other => panic!("expected PartialConflict, got {other:?}"),
+        }
+    }
 
     // =====================================================================
     // Proptests: validate_and_dedup_indices (Behaviors PP1, PP2)
@@ -3598,12 +3670,18 @@ mod tests {
                 apply_proposal(&mut doc, &proposal, &changes, &accepted)
             }));
 
-            assert!(
-                result.is_ok(),
-                "DQ: must not panic on empty changes + nonempty indices"
-            );
-            let inner = result.unwrap();
-            assert_eq!(inner, ApplyResult::Applied);
+            match result {
+                Ok(inner) => {
+                    assert_eq!(
+                        inner,
+                        ApplyResult::Applied,
+                        "empty changes + nonempty indices → all OOB → Applied"
+                    );
+                }
+                Err(_) => {
+                    panic!("DQ: must not panic on empty changes + nonempty indices")
+                }
+            }
             assert!(
                 doc.document
                     .nodes
