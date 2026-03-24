@@ -28,9 +28,9 @@ regex-lite      = "0.1"
 futures-util    = "0.3.32"
 tower           = { version = "0.5.3", features = ["util"] }
 ahash           = "0.8"
-boon            = "0.6"
 
 [dev-dependencies]
+boon = "0.6"
 proptest = "1.10.0"
 rand = "0.8"
 futures-channel = "0.3"

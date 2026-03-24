@@ -66,10 +66,10 @@ fn boon_validates_valid_instance() -> Result<(), String> {
     let instance = json!({ "name": "seshat" });
 
     let result = schemas.validate(&instance, sch_index);
-    assert!(
-        result.is_ok(),
-        "valid instance should pass validation: {result:?}"
-    );
+    match result {
+        Ok(()) => {}
+        Err(e) => return Err(format!("valid instance should pass validation: {e}")),
+    }
 
     Ok(())
 }
@@ -84,10 +84,17 @@ fn boon_rejects_missing_required_property() -> Result<(), String> {
     let instance = json!({});
 
     let result = schemas.validate(&instance, sch_index);
-    assert!(
-        result.is_err(),
-        "missing required property 'name' should produce at least one error"
-    );
+
+    match result {
+        Err(validation_error) => {
+            let msg = validation_error.to_string();
+            assert!(
+                msg.contains("name"),
+                "error should indicate missing property: {msg}"
+            );
+        }
+        Ok(()) => return Err("expected validation error but got success".to_string()),
+    }
 
     Ok(())
 }

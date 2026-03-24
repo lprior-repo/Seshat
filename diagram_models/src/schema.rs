@@ -14,3 +14,6 @@ mod proptests;
 
 #[cfg(test)]
 mod boon_smoke_tests;
+
+#[cfg(test)]
+mod serde_schema_alignment;

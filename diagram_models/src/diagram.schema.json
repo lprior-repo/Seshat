@@ -6,8 +6,7 @@
   "required": [
     "version",
     "revision",
-    "document",
-    "editor_state"
+    "document"
   ],
   "properties": {
     "version": {
@@ -51,16 +50,11 @@
       "additionalProperties": false,
       "required": [
         "kind",
-        "icon",
         "label",
         "x",
         "y",
         "width",
-        "height",
-        "locked",
-        "tags",
-        "metadata",
-        "z_index"
+        "height"
       ],
       "properties": {
         "kind": {
@@ -85,14 +79,14 @@
         "height": {
           "type": "number"
         },
-        "font_size": {
+        "fontSize": {
           "type": ["number", "null"]
         },
         "font_weight": {
           "type": ["string", "null"],
           "enum": ["normal", "bold", null]
         },
-        "locked": {
+        "lock_state": {
           "type": "boolean"
         },
         "parent": {
@@ -136,16 +130,7 @@
       "additionalProperties": false,
       "required": [
         "source",
-        "target",
-        "label",
-        "style",
-        "arrowhead",
-        "label_offset_t",
-        "thickness",
-        "directed",
-        "bend_points",
-        "tags",
-        "metadata"
+        "target"
       ],
       "properties": {
         "source": {
@@ -161,9 +146,9 @@
           "type": "string",
           "enum": ["solid", "dashed", "dotted"]
         },
-        "arrowhead": {
+        "arrowType": {
           "type": "string",
-          "enum": ["arrow", "open", "diamond", "circle", "none"]
+          "enum": ["default", "sharp", "curved", "step", "straight"]
         },
         "label_offset_t": {
           "type": "number"
@@ -192,24 +177,29 @@
         "metadata": {
           "type": "object"
         },
-        "font_size": {
+        "fontSize": {
           "type": ["number", "null"]
+        },
+        "source_port": {
+          "anyOf": [
+            { "$ref": "#/$defs/port_anchor" },
+            { "type": "null" }
+          ]
+        },
+        "target_port": {
+          "anyOf": [
+            { "$ref": "#/$defs/port_anchor" },
+            { "type": "null" }
+          ]
         }
       }
     },
     "editor_state": {
       "type": "object",
-      "additionalProperties": false,
       "required": [
         "camera_x",
         "camera_y",
-        "zoom",
-        "grid_size",
-        "snap_to_grid",
-        "selected_items",
-        "theme",
-        "show_grid",
-        "minimap_visible"
+        "zoom"
       ],
       "properties": {
         "camera_x": {
@@ -234,6 +224,9 @@
           },
           "uniqueItems": true
         },
+        "edit_mode_target": {
+          "type": ["string", "null"]
+        },
         "editing_edge_id": {
           "type": ["string", "null"]
         },
@@ -247,6 +240,33 @@
         "minimap_visible": {
           "type": "boolean"
         }
+      }
+    },
+    "port_anchor": {
+      "anyOf": [
+        { "const": "top" },
+        { "const": "bottom" },
+        { "const": "left" },
+        { "const": "right" },
+        { "const": "center" },
+        {
+          "type": "object",
+          "required": ["custom"],
+          "properties": {
+            "custom": {
+              "$ref": "#/$defs/normalized_offset"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "normalized_offset": {
+      "type": "object",
+      "required": ["x", "y"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" }
       }
     }
   }
