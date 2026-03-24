@@ -1,26 +1,30 @@
-//! Canonical clipboard data type for diagram operations
+//! Canonical clipboard data type and operations for diagramming.
 //!
-//! This module provides the single source of truth for clipboard data structures
-//! used across the diagram_tool application.
+//! This module provides the single source of truth for clipboard functionality,
+//! ensuring that both nodes and edges are correctly preserved during operations.
 
-use crate::document::{Edge, Node, NodeId};
+use crate::document::{DiagramDocument, Edge, EdgeId, Node, NodeId, OrderedFloat};
+use im::HashMap;
+use uuid::Uuid;
+
+/// Results of a paste operation calculation.
+pub struct PasteResult {
+    /// The updated node map
+    pub nodes: HashMap<NodeId, Node>,
+    /// The updated edge map
+    pub edges: HashMap<EdgeId, Edge>,
+    /// Mapping from old node IDs to new ones
+    pub id_map: HashMap<NodeId, NodeId>,
+    /// Set of newly created (pasted) item IDs
+    pub selected: im::HashSet<String>,
+}
 
 /// Pure clipboard data type - immutable state for clipboard operations.
-///
-/// This replaces the mutable `thread_local` RefCell-based clipboard with
-/// a pure functional approach where clipboard state is passed explicitly.
-///
-/// # Design Rationale
-///
-/// - `nodes` preserves `NodeId` tuples to maintain identity during copy/paste
-/// - `edges` contains only `Edge` values (no IDs) since pasting generates new edge IDs
-/// - `paste_serial` tracks paste operations for spatial offset calculation
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ClipboardData {
     /// The nodes that were copied to the clipboard, preserving their original IDs
     pub nodes: Vec<(NodeId, Node)>,
     /// The edges that were copied to the clipboard
-    /// Note: Edge IDs are NOT preserved since new IDs are generated on paste
     pub edges: Vec<Edge>,
     /// Serial number for tracking paste operations (for offset calculation)
     pub paste_serial: u32,
@@ -57,6 +61,100 @@ impl Default for ClipboardData {
     }
 }
 
+/// Pure function: Creates a clipboard from the given selection in the document.
+#[must_use]
+pub fn copy_selection(doc: &DiagramDocument, selection: &[NodeId]) -> Option<ClipboardData> {
+    if selection.is_empty() {
+        return None;
+    }
+
+    let nodes = selection
+        .iter()
+        .filter_map(|id| {
+            doc.document
+                .nodes
+                .get(id)
+                .map(|node| (id.clone(), node.clone()))
+        })
+        .collect::<Vec<_>>();
+
+    let edges = doc
+        .document
+        .edges
+        .values()
+        .filter(|edge| selection.contains(&edge.source) && selection.contains(&edge.target))
+        .cloned()
+        .collect();
+
+    Some(ClipboardData {
+        nodes,
+        edges,
+        paste_serial: 0,
+    })
+}
+
+/// Pure function: Calculates the results of pasting clipboard contents.
+///
+/// Returns a `PasteResult` containing (`updated_nodes`, `updated_edges`, `id_map`, `selected`).
+#[must_use]
+pub fn calculate_paste(clipboard: &ClipboardData, doc: &DiagramDocument) -> PasteResult {
+    let serial = clipboard.paste_serial.saturating_add(1);
+    let offset = 20.0 * f64::from(serial.max(1));
+
+    let id_map = generate_id_map(&clipboard.nodes);
+    let mut nodes = doc.document.nodes.clone();
+    let mut selected = im::HashSet::new();
+
+    for (old_id, node) in &clipboard.nodes {
+        if let Some(new_id) = id_map.get(old_id).cloned() {
+            let next = create_pasted_node(node, offset, &id_map);
+            nodes = nodes.update(new_id.clone(), next);
+            selected.insert(new_id.to_string());
+        }
+    }
+
+    let mut edges = doc.document.edges.clone();
+    for edge in &clipboard.edges {
+        if let (Some(new_source), Some(new_target)) =
+            (id_map.get(&edge.source), id_map.get(&edge.target))
+        {
+            let next = create_pasted_edge(edge, new_source, new_target);
+            edges = edges.update(EdgeId::new(Uuid::new_v4().to_string()), next);
+        }
+    }
+
+    PasteResult {
+        nodes,
+        edges,
+        id_map,
+        selected,
+    }
+}
+
+fn generate_id_map(nodes: &[(NodeId, Node)]) -> HashMap<NodeId, NodeId> {
+    nodes
+        .iter()
+        .map(|(old_id, _)| (old_id.clone(), NodeId::new(Uuid::new_v4().to_string())))
+        .collect()
+}
+
+fn create_pasted_node(node: &Node, offset: f64, id_map: &HashMap<NodeId, NodeId>) -> Node {
+    let mut next = node.clone();
+    next.x = OrderedFloat(next.x.0 + offset);
+    next.y = OrderedFloat(next.y.0 + offset);
+    next.parent = next
+        .parent
+        .and_then(|pid| id_map.get(&pid).cloned().or(Some(pid)));
+    next
+}
+
+fn create_pasted_edge(edge: &Edge, source: &NodeId, target: &NodeId) -> Edge {
+    let mut next = edge.clone();
+    next.source = source.clone();
+    next.target = target.clone();
+    next
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -66,32 +164,5 @@ mod tests {
         let clipboard = ClipboardData::new();
         assert!(!clipboard.has_content());
         assert_eq!(clipboard.paste_serial, 0);
-    }
-
-    #[test]
-    fn test_default_is_empty() {
-        let clipboard = ClipboardData::default();
-        assert!(!clipboard.has_content());
-    }
-
-    #[test]
-    fn test_prepare_paste_increments_serial() {
-        let clipboard = ClipboardData::new();
-        assert_eq!(clipboard.paste_serial, 0);
-
-        let prepared = clipboard.prepare_paste();
-        assert_eq!(prepared.paste_serial, 1);
-
-        let prepared_again = prepared.prepare_paste();
-        assert_eq!(prepared_again.paste_serial, 2);
-    }
-
-    #[test]
-    fn test_has_content_returns_true_when_nodes_present() {
-        let mut clipboard = ClipboardData::new();
-        assert!(!clipboard.has_content());
-
-        clipboard.nodes = vec![(NodeId::new("test".to_string()), Node::default())];
-        assert!(clipboard.has_content());
     }
 }

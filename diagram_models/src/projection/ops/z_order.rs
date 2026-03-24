@@ -11,6 +11,7 @@ use std::collections::BTreeSet;
 
 use crate::document::{Node, NodeId};
 use crate::envelope::DomainOp;
+use crate::z_order::{apply_z_order_reorder, ZOrderOp};
 use im::HashMap;
 
 use crate::projection::types::{DiagramProjection, ReplayError};
@@ -108,11 +109,11 @@ fn build_result(state: DiagramProjection, new_nodes: NodeMap) -> DiagramProjecti
 fn apply_z_order(
     state: DiagramProjection,
     ids: &[NodeId],
-    reorder_fn: impl FnOnce(Vec<NodeId>, &BTreeSet<NodeId>) -> Vec<NodeId>,
+    op: ZOrderOp,
 ) -> Result<DiagramProjection, ReplayError> {
     let selected = validate_and_collect_selected(&state, ids)?;
     let mut node_ids = sort_nodes_by_z(&state);
-    node_ids = reorder_fn(node_ids, &selected);
+    apply_z_order_reorder(&mut node_ids, &selected, op);
 
     let min_z = calculate_min_z(&node_ids, &state.nodes);
     validate_z_bounds(node_ids.len())?;
@@ -126,16 +127,7 @@ pub fn apply_bring_forward(
     state: DiagramProjection,
     ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
-    apply_z_order(state, ids, |mut node_ids, selected| {
-        for idx in (0..node_ids.len() - 1).rev() {
-            let current_selected = selected.contains(&node_ids[idx]);
-            let next_selected = selected.contains(&node_ids[idx + 1]);
-            if current_selected && !next_selected {
-                node_ids.swap(idx, idx + 1);
-            }
-        }
-        node_ids
-    })
+    apply_z_order(state, ids, ZOrderOp::BringForward)
 }
 
 /// Apply `SendBackward` operation (z-order)
@@ -143,16 +135,7 @@ pub fn apply_send_backward(
     state: DiagramProjection,
     ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
-    apply_z_order(state, ids, |mut node_ids, selected| {
-        for idx in 1..node_ids.len() {
-            let current_selected = selected.contains(&node_ids[idx]);
-            let previous_selected = selected.contains(&node_ids[idx - 1]);
-            if current_selected && !previous_selected {
-                node_ids.swap(idx - 1, idx);
-            }
-        }
-        node_ids
-    })
+    apply_z_order(state, ids, ZOrderOp::SendBackward)
 }
 
 /// Apply `BringToFront` operation (z-order)
@@ -160,15 +143,7 @@ pub fn apply_bring_to_front(
     state: DiagramProjection,
     ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
-    apply_z_order(state, ids, |node_ids, selected| {
-        let reordered: Vec<NodeId> = node_ids
-            .iter()
-            .filter(|id| !selected.contains(*id))
-            .cloned()
-            .chain(node_ids.iter().filter(|id| selected.contains(*id)).cloned())
-            .collect();
-        reordered
-    })
+    apply_z_order(state, ids, ZOrderOp::BringToFront)
 }
 
 /// Apply `SendToBack` operation (z-order)
@@ -176,20 +151,7 @@ pub fn apply_send_to_back(
     state: DiagramProjection,
     ids: &[NodeId],
 ) -> Result<DiagramProjection, ReplayError> {
-    apply_z_order(state, ids, |node_ids, selected| {
-        let reordered: Vec<NodeId> = node_ids
-            .iter()
-            .filter(|id| selected.contains(*id))
-            .cloned()
-            .chain(
-                node_ids
-                    .iter()
-                    .filter(|id| !selected.contains(*id))
-                    .cloned(),
-            )
-            .collect();
-        reordered
-    })
+    apply_z_order(state, ids, ZOrderOp::SendToBack)
 }
 
 /// Apply a z-order operation to the projection

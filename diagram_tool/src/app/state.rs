@@ -1,10 +1,10 @@
 use crate::app::types::DraggedIconPayload;
 use crate::history::History;
 use crate::ui::editor::ToolMode;
-use diagram_models::clipboard::ClipboardData;
 use crate::ui::mobile::SidebarUiState;
 use crate::ui::toast::{AiConflictState, ToastQueue};
 use crate::ui::toolbar::ToolbarStats;
+use diagram_models::clipboard::ClipboardData;
 use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle};
 use dioxus::prelude::*;
 use std::collections::HashSet;

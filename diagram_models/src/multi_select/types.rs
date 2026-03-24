@@ -1,4 +1,3 @@
-use crate::document::Node;
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
@@ -67,4 +66,3 @@ pub struct Rect {
     pub width: f64,
     pub height: f64,
 }
-

@@ -85,17 +85,6 @@ pub(super) fn scale_node(
     Ok(())
 }
 
-pub(super) fn generate_unique_id(base_label: &str, doc: &DiagramDocument) -> NodeId {
-    let mut idx = 1;
-    loop {
-        let new_id = NodeId::new(format!("{base_label}_{idx}"));
-        if !doc.document.nodes.contains_key(&new_id) {
-            return new_id;
-        }
-        idx += 1;
-    }
-}
-
 pub(super) fn apply_resize_scale(
     node: &mut Node,
     min_x: f64,
@@ -153,12 +142,6 @@ pub(super) fn verify_all_removed(
 pub(super) fn remove_node_from_doc(doc: &mut DiagramDocument, id: &NodeId) {
     doc.document.nodes.remove(id);
     doc.editor_state.selected_items.remove(&id.to_string());
-}
-
-pub(super) fn add_node_to_doc(doc: &mut DiagramDocument, new_node: Node, new_id: NodeId) -> NodeId {
-    doc.document.nodes.insert(new_id.clone(), new_node);
-    doc.editor_state.selected_items.insert(new_id.to_string());
-    new_id
 }
 
 pub(super) fn validate_scale_factor(scale_factor: f64) -> Result<(), Error> {

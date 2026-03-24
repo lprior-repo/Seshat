@@ -2,14 +2,18 @@
 //!
 //! Operations for scaling and transforming groups of nodes.
 
-use crate::document::{Node, NodeId, OrderedFloat};
+use crate::document::{Node, NodeId};
 use crate::geometry::Point;
+use crate::transform::{apply_transform_to_node, TransformError, ValidTransform};
 
 use super::types::CanvasState;
 use super::types::PositiveScale;
 use thiserror::Error;
 
 pub type Subgraph = CanvasState;
+
+pub const MAX_COORDINATE: f64 = 1_000_000.0;
+pub const MIN_DIMENSION: f64 = 1.0;
 
 #[derive(Debug, Error, PartialEq, Eq)]
 pub enum GroupTransformError {
@@ -23,8 +27,16 @@ pub enum GroupTransformError {
     OutOfBounds,
 }
 
-const MIN_DIMENSION: f64 = 1.0;
-const MAX_COORDINATE: f64 = 1_000_000.0;
+impl From<TransformError> for GroupTransformError {
+    fn from(err: TransformError) -> Self {
+        match err {
+            TransformError::EmptySelection => Self::EmptySelection,
+            TransformError::ItemNotFound(id) => Self::NodeNotFound(id),
+            TransformError::NodeLocked(id) => Self::NodeLocked(id),
+            TransformError::InvalidTransform => Self::OutOfBounds,
+        }
+    }
+}
 
 /// Scales a group of selected nodes relative to an anchor point.
 ///
@@ -41,107 +53,34 @@ pub fn scale_group(
         return Err(GroupTransformError::EmptySelection);
     }
 
-    let updates = calculate_scaled_nodes(subgraph, selection, scale_factor, anchor)?;
-    apply_node_updates(subgraph, updates)
-}
+    let s = scale_factor.value();
+    let transform = ValidTransform::scale_around(s, s, anchor.x, anchor.y)?;
 
-fn calculate_scaled_nodes(
-    subgraph: &Subgraph,
-    selection: &[NodeId],
-    scale_factor: PositiveScale,
-    anchor: Point,
-) -> Result<Vec<(NodeId, Node)>, GroupTransformError> {
-    let scale = scale_factor.value();
+    let new_nodes = selection.iter().try_fold(
+        subgraph.nodes.clone(),
+        |acc, id| -> Result<im::HashMap<NodeId, Node>, GroupTransformError> {
+            let node = acc
+                .get(id)
+                .ok_or_else(|| GroupTransformError::NodeNotFound(id.clone()))?;
+            if node.lock_state.is_locked() {
+                return Err(GroupTransformError::NodeLocked(id.clone()));
+            }
+            let updated = apply_transform_to_node(node, &transform)?;
 
-    selection
-        .iter()
-        .map(|id| transform_single_node(subgraph, id, scale, anchor))
-        .collect()
-}
+            // Validate against constants
+            if updated.x.0.abs() > MAX_COORDINATE
+                || updated.y.0.abs() > MAX_COORDINATE
+                || updated.width.0 > MAX_COORDINATE
+                || updated.height.0 > MAX_COORDINATE
+            {
+                return Err(GroupTransformError::OutOfBounds);
+            }
 
-fn transform_single_node(
-    subgraph: &Subgraph,
-    id: &NodeId,
-    scale: f64,
-    anchor: Point,
-) -> Result<(NodeId, Node), GroupTransformError> {
-    let node = subgraph
-        .nodes
-        .get(id)
-        .ok_or_else(|| GroupTransformError::NodeNotFound(id.clone()))?;
+            Ok(acc.update(id.clone(), updated))
+        },
+    )?;
 
-    if node.lock_state.is_locked() {
-        return Err(GroupTransformError::NodeLocked(id.clone()));
-    }
-
-    let (new_x, new_y, new_w, new_h) = compute_scaled_dimensions(node, scale, anchor)?;
-    let updated_node = create_scaled_node(node, new_x, new_y, new_w, new_h)?;
-
-    Ok((id.clone(), updated_node))
-}
-
-fn compute_scaled_dimensions(
-    node: &Node,
-    scale: f64,
-    anchor: Point,
-) -> Result<(f64, f64, f64, f64), GroupTransformError> {
-    let new_x = (node.x.0 - anchor.x).mul_add(scale, anchor.x);
-    let new_y = (node.y.0 - anchor.y).mul_add(scale, anchor.y);
-    let new_w = (node.width.0 * scale).max(MIN_DIMENSION);
-    let new_h = (node.height.0 * scale).max(MIN_DIMENSION);
-
-    validate_scaled_dimensions(new_x, new_y, new_w, new_h)?;
-
-    Ok((new_x, new_y, new_w, new_h))
-}
-
-fn validate_scaled_dimensions(
-    new_x: f64,
-    new_y: f64,
-    new_w: f64,
-    new_h: f64,
-) -> Result<(), GroupTransformError> {
-    if !new_x.is_finite() || !new_y.is_finite() || !new_w.is_finite() || !new_h.is_finite() {
-        return Err(GroupTransformError::OutOfBounds);
-    }
-
-    if new_x.abs() > MAX_COORDINATE
-        || new_y.abs() > MAX_COORDINATE
-        || new_w > MAX_COORDINATE
-        || new_h > MAX_COORDINATE
-    {
-        return Err(GroupTransformError::OutOfBounds);
-    }
-    Ok(())
-}
-
-fn create_scaled_node(
-    node: &Node,
-    new_x: f64,
-    new_y: f64,
-    new_w: f64,
-    new_h: f64,
-) -> Result<Node, GroupTransformError> {
-    Ok(Node {
-        x: OrderedFloat::new(new_x).map_err(|_| GroupTransformError::OutOfBounds)?,
-        y: OrderedFloat::new(new_y).map_err(|_| GroupTransformError::OutOfBounds)?,
-        width: OrderedFloat::new(new_w).map_err(|_| GroupTransformError::OutOfBounds)?,
-        height: OrderedFloat::new(new_h).map_err(|_| GroupTransformError::OutOfBounds)?,
-        ..node.clone()
-    })
-}
-
-#[allow(clippy::unnecessary_wraps)]
-fn apply_node_updates(
-    subgraph: &mut Subgraph,
-    updates: Vec<(NodeId, Node)>,
-) -> Result<(), GroupTransformError> {
-    subgraph.nodes = updates
-        .into_iter()
-        .fold(subgraph.nodes.clone(), |nodes, (id, node)| {
-            nodes.update(id, node)
-        });
-
+    subgraph.nodes = new_nodes;
     Ok(())
 }
 
@@ -180,6 +119,42 @@ mod tests {
             nodes: HashMap::new(),
             edges: HashMap::new(),
         }
+    }
+
+    fn validate_scaled_dimensions(
+        x: f64,
+        y: f64,
+        w: f64,
+        h: f64,
+    ) -> Result<(), GroupTransformError> {
+        if !x.is_finite() || !y.is_finite() || !w.is_finite() || !h.is_finite() {
+            return Err(GroupTransformError::OutOfBounds);
+        }
+        if x.abs() > MAX_COORDINATE
+            || y.abs() > MAX_COORDINATE
+            || w > MAX_COORDINATE
+            || h > MAX_COORDINATE
+        {
+            return Err(GroupTransformError::OutOfBounds);
+        }
+        Ok(())
+    }
+
+    fn compute_scaled_dimensions(
+        node: &Node,
+        scale: f64,
+        anchor: Point,
+    ) -> Result<(f64, f64, f64, f64), GroupTransformError> {
+        let rel_x = node.x.0 - anchor.x;
+        let rel_y = node.y.0 - anchor.y;
+
+        let new_x = rel_x.mul_add(scale, anchor.x);
+        let new_y = rel_y.mul_add(scale, anchor.y);
+        let new_w = (node.width.0 * scale).max(MIN_DIMENSION);
+        let new_h = (node.height.0 * scale).max(MIN_DIMENSION);
+
+        validate_scaled_dimensions(new_x, new_y, new_w, new_h)?;
+        Ok((new_x, new_y, new_w, new_h))
     }
 
     #[test]

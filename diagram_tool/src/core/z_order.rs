@@ -1,13 +1,6 @@
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
+use diagram_models::z_order::{apply_z_order_reorder, ZOrderOp};
 use std::collections::BTreeSet;
-
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum ZOrderOp {
-    BringForward,
-    SendBackward,
-    BringToFront,
-    SendToBack,
-}
 
 fn selected_node_ids(doc: &DiagramDocument) -> BTreeSet<NodeId> {
     doc.editor_state
@@ -46,51 +39,6 @@ fn ordered_layer_node_ids(doc: &DiagramDocument, subgraph_layer: bool) -> Vec<No
     node_ids
 }
 
-pub fn apply_z_order_to_ids(ids: &mut Vec<NodeId>, selected: &BTreeSet<NodeId>, op: ZOrderOp) {
-    if ids.len() < 2 {
-        return;
-    }
-
-    match op {
-        ZOrderOp::BringForward => {
-            for idx in (0..(ids.len() - 1)).rev() {
-                let current_selected = selected.contains(&ids[idx]);
-                let next_selected = selected.contains(&ids[idx + 1]);
-                if current_selected && !next_selected {
-                    ids.swap(idx, idx + 1);
-                }
-            }
-        }
-        ZOrderOp::SendBackward => {
-            for idx in 1..ids.len() {
-                let current_selected = selected.contains(&ids[idx]);
-                let previous_selected = selected.contains(&ids[idx - 1]);
-                if current_selected && !previous_selected {
-                    ids.swap(idx - 1, idx);
-                }
-            }
-        }
-        ZOrderOp::BringToFront => {
-            let mut reordered = ids
-                .iter()
-                .filter(|id| !selected.contains(*id))
-                .cloned()
-                .collect::<Vec<_>>();
-            reordered.extend(ids.iter().filter(|id| selected.contains(*id)).cloned());
-            *ids = reordered;
-        }
-        ZOrderOp::SendToBack => {
-            let mut reordered = ids
-                .iter()
-                .filter(|id| selected.contains(*id))
-                .cloned()
-                .collect::<Vec<_>>();
-            reordered.extend(ids.iter().filter(|id| !selected.contains(*id)).cloned());
-            *ids = reordered;
-        }
-    }
-}
-
 pub fn apply_z_order_operation(doc: &mut DiagramDocument, op: ZOrderOp) -> bool {
     let selected = selected_node_ids(doc)
         .into_iter()
@@ -114,7 +62,7 @@ pub fn apply_z_order_operation(doc: &mut DiagramDocument, op: ZOrderOp) -> bool 
             continue;
         }
         let mut reordered = ordered.clone();
-        apply_z_order_to_ids(&mut reordered, &selected, op);
+        apply_z_order_reorder(&mut reordered, &selected, op);
         if reordered == ordered {
             continue;
         }

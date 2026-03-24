@@ -1,11 +1,11 @@
 use crate::document::{DiagramDocument, NodeId};
 
 use super::helpers::{
-    add_node_to_doc, apply_resize_scale, apply_scale_to_selection, check_invalid_hierarchy,
-    check_locked_items, compute_bounding_box, compute_resize_scales, generate_unique_id,
-    remove_node_from_doc, to_ordered, validate_scale_factor, verify_all_removed,
+    apply_resize_scale, apply_scale_to_selection, check_invalid_hierarchy, check_locked_items,
+    compute_bounding_box, compute_resize_scales, remove_node_from_doc, to_ordered,
+    validate_scale_factor, verify_all_removed,
 };
-use super::types::{ClipboardData, Error, NonEmptyVec, Rect, Vector2D};
+use super::types::{Error, NonEmptyVec, Rect, Vector2D};
 
 /// Moves the selection by the given delta.
 ///
@@ -85,56 +85,6 @@ pub fn delete_selection(
     }
 
     verify_all_removed(doc, selection_slice)
-}
-
-/// Copies the selection.
-///
-/// # Errors
-///
-/// Returns `Error` if a node is not found.
-pub fn copy_selection(
-    doc: &DiagramDocument,
-    selection: &NonEmptyVec<NodeId>,
-) -> Result<ClipboardData, Error> {
-    let selection_slice = selection.as_slice();
-    let mut copied_nodes = Vec::new();
-
-    for id in selection_slice {
-        let node = doc.document.nodes.get(id).ok_or(Error::NodeNotFound)?;
-        copied_nodes.push(node.clone());
-    }
-
-    Ok(ClipboardData {
-        nodes: copied_nodes,
-    })
-}
-
-/// Pastes the selection.
-///
-/// # Errors
-///
-/// Returns `Error` on invalid offset.
-pub fn paste_selection(
-    doc: &mut DiagramDocument,
-    clipboard: &ClipboardData,
-    offset: Vector2D,
-) -> Result<Vec<NodeId>, Error> {
-    doc.editor_state.selected_items.clear();
-
-    let offset_x = to_ordered(offset.x)?;
-    let offset_y = to_ordered(offset.y)?;
-
-    let mut new_ids = Vec::new();
-    for node in &clipboard.nodes {
-        let mut new_node = node.clone();
-        new_node.x = new_node.x + offset_x;
-        new_node.y = new_node.y + offset_y;
-        let new_id = generate_unique_id(&node.label, doc);
-        let id = add_node_to_doc(doc, new_node, new_id);
-        new_ids.push(id);
-    }
-
-    Ok(new_ids)
 }
 
 /// Computes the centroid of the selection.

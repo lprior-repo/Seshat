@@ -17,12 +17,14 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
+pub mod bounds;
 pub mod collapse;
 pub mod reparenting;
 pub mod selection;
 pub mod transform;
 pub mod types;
 
+pub use bounds::recompute_affected_container_bounds;
 pub use types::CanvasState;
 pub use types::{
     apply_viewport_transform, calculate_container_bounds, create_empty_subgraph, BoundingBox,
@@ -32,7 +34,7 @@ pub use types::{
 pub use collapse::toggle_collapse;
 pub use reparenting::{set_node_parent, unparent_node};
 pub use selection::{evaluate_selection, SelectionModifiers, SelectionResult};
-pub use transform::{scale_group, GroupTransformError, Subgraph};
+pub use transform::{scale_group, GroupTransformError, Subgraph, MAX_COORDINATE, MIN_DIMENSION};
 
 #[cfg(test)]
 #[path = "subgraph_tests.rs"]

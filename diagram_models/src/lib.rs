@@ -72,6 +72,7 @@ pub mod transform_tests;
 pub mod history;
 pub mod subgraph_events;
 pub mod validation;
+pub mod z_order;
 
 pub mod clipboard;
 pub mod clipboard_contract;
@@ -93,6 +94,9 @@ pub mod subgraph_persistence_tests;
 
 #[cfg(test)]
 pub mod subgraph_relative_tests;
+
+#[cfg(test)]
+pub mod stress_tests;
 
 #[cfg(test)]
 pub mod marquee_tests;

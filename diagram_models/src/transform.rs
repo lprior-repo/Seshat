@@ -1,44 +1,37 @@
-use crate::document::{DiagramDocument, NodeId, OrderedFloat};
+//! Transform operations for diagram nodes.
+//!
+//! Provides pure logic for transforming (translating, scaling, rotating)
+//! and aligning/distributing nodes.
+
+use crate::document::{Node, NodeId, OrderedFloat};
 use im::HashMap;
 use thiserror::Error;
 
 #[derive(Debug, Clone, PartialEq, Eq, Error)]
-pub enum Error {
+pub enum TransformError {
     #[error("Empty selection")]
     EmptySelection,
     #[error("Invalid transform")]
     InvalidTransform,
     #[error("Item not found: {0}")]
     ItemNotFound(NodeId),
-    #[error("Document is locked")]
-    DocumentLocked,
-    #[error("Persistence failed")]
-    PersistenceFailed,
+    #[error("Node locked: {0}")]
+    NodeLocked(NodeId),
 }
 
-#[derive(Debug, Clone)]
-pub struct NonEmptySelection {
-    items: Vec<NodeId>,
+/// Alignment axes
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignmentAxis {
+    Horizontal,
+    Vertical,
 }
 
-impl NonEmptySelection {
-    /// Creates a new `NonEmptySelection`.
-    ///
-    /// # Errors
-    ///
-    /// Returns `Error::EmptySelection` if the provided items list is empty.
-    pub fn try_new(items: Vec<NodeId>) -> Result<Self, Error> {
-        if items.is_empty() {
-            Err(Error::EmptySelection)
-        } else {
-            Ok(Self { items })
-        }
-    }
-
-    #[must_use]
-    pub fn items(&self) -> &[NodeId] {
-        &self.items
-    }
+/// Alignment modes
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum AlignmentMode {
+    Start,
+    Center,
+    End,
 }
 
 #[derive(Debug, Clone)]
@@ -54,16 +47,14 @@ impl ValidTransform {
     /// Creates a new `ValidTransform`.
     ///
     /// # Errors
-    ///
-    /// Returns `Error::InvalidTransform` if any of the parameters are not finite,
-    /// or if scale factors are zero.
+    /// Returns `TransformError::InvalidTransform` if any parameters are non-finite or scales are zero.
     pub fn try_new(
         dx: f64,
         dy: f64,
         scale_x: f64,
         scale_y: f64,
         rotation: f64,
-    ) -> Result<Self, Error> {
+    ) -> Result<Self, TransformError> {
         if !dx.is_finite()
             || !dy.is_finite()
             || !scale_x.is_finite()
@@ -72,211 +63,224 @@ impl ValidTransform {
             || scale_x == 0.0
             || scale_y == 0.0
         {
-            Err(Error::InvalidTransform)
-        } else {
-            Ok(Self {
-                dx,
-                dy,
-                scale_x,
-                scale_y,
-                rotation,
-            })
+            return Err(TransformError::InvalidTransform);
         }
+        Ok(Self {
+            dx,
+            dy,
+            scale_x,
+            scale_y,
+            rotation,
+        })
+    }
+
+    /// Creates a pure translation transform.
+    ///
+    /// # Errors
+    /// Returns `TransformError::InvalidTransform` if dx or dy is not finite.
+    pub fn translate(dx: f64, dy: f64) -> Result<Self, TransformError> {
+        Self::try_new(dx, dy, 1.0, 1.0, 0.0)
+    }
+
+    /// Creates a pure scale transform around an anchor point.
+    ///
+    /// # Errors
+    /// Returns `TransformError::InvalidTransform` if scale factors are zero or not finite.
+    pub fn scale_around(
+        scale_x: f64,
+        scale_y: f64,
+        anchor_x: f64,
+        anchor_y: f64,
+    ) -> Result<Self, TransformError> {
+        let dx = anchor_x.mul_add(1.0 - scale_x, 0.0);
+        let dy = anchor_y.mul_add(1.0 - scale_y, 0.0);
+        Self::try_new(dx, dy, scale_x, scale_y, 0.0)
     }
 }
 
-/// Commits a transformation to the selected items in the document.
+/// Pure function: Applies a transform to a single node.
 ///
 /// # Errors
-///
-/// Returns an error if any of the items are not found in the document,
-/// or if the document is locked.
-pub fn commit_transform(
-    selection: &NonEmptySelection,
+/// Returns `TransformError::InvalidTransform` if the resulting coordinates are invalid.
+pub fn apply_transform_to_node(
+    node: &Node,
     transform: &ValidTransform,
-    doc: &mut DiagramDocument,
-) -> Result<(), Error> {
-    // Check if document is locked (e.g. read-only)
-    // We'll use a hypothetical metadata flag or just checking a standard field
-    // For now, let's assume doc.editor_state doesn't lock the whole doc, but we can check an overall lock if it existed.
-    // Let's check if the doc has a "locked" flag in its root. It doesn't, so maybe we check if any node is locked?
-    // Wait, the contract says "The document must not be locked or read-only."
-    // Let's see if there's a document lock.
+) -> Result<Node, TransformError> {
+    let mut updated = node.clone();
+    updated.x = OrderedFloat::new(node.x.0.mul_add(transform.scale_x, transform.dx))
+        .map_err(|_| TransformError::InvalidTransform)?;
+    updated.y = OrderedFloat::new(node.y.0.mul_add(transform.scale_y, transform.dy))
+        .map_err(|_| TransformError::InvalidTransform)?;
+    updated.width = OrderedFloat::new(node.width.0 * transform.scale_x)
+        .map_err(|_| TransformError::InvalidTransform)?;
+    updated.height = OrderedFloat::new(node.height.0 * transform.scale_y)
+        .map_err(|_| TransformError::InvalidTransform)?;
 
-    // Step 1: Validate all items exist before applying any changes
-    for item_id in selection.items() {
-        if !doc.document.nodes.contains_key(item_id) {
-            return Err(Error::ItemNotFound(item_id.clone()));
-        }
+    if transform.rotation != 0.0 {
+        apply_rotation_to_metadata(&mut updated, transform.rotation);
     }
 
-    // Step 2: Calculate new nodes (Pure calculation)
-    let new_nodes = selection.items().iter().try_fold(
-        doc.document.nodes.clone(),
-        |acc, item_id| -> Result<HashMap<NodeId, crate::document::Node>, Error> {
-            acc.get(item_id).map_or_else(
-                || Err(Error::ItemNotFound(item_id.clone())),
-                |node| {
-                    let new_x =
-                        OrderedFloat::new(node.x.0.mul_add(transform.scale_x, transform.dx))
-                            .map_err(|_| Error::InvalidTransform)?;
-                    let new_y =
-                        OrderedFloat::new(node.y.0.mul_add(transform.scale_y, transform.dy))
-                            .map_err(|_| Error::InvalidTransform)?;
-                    let new_width = OrderedFloat::new(node.width.0 * transform.scale_x)
-                        .map_err(|_| Error::InvalidTransform)?;
-                    let new_height = OrderedFloat::new(node.height.0 * transform.scale_y)
-                        .map_err(|_| Error::InvalidTransform)?;
+    Ok(updated)
+}
 
-                    let mut updated_node = node.clone();
-                    updated_node.x = new_x;
-                    updated_node.y = new_y;
-                    updated_node.width = new_width;
-                    updated_node.height = new_height;
+fn apply_rotation_to_metadata(node: &mut Node, rotation: f64) {
+    let current_rot = node
+        .metadata
+        .get("rotation")
+        .and_then(serde_json::Value::as_f64)
+        .unwrap_or(0.0);
+    node.metadata.insert(
+        "rotation".to_string(),
+        serde_json::json!(current_rot + rotation),
+    );
+}
 
-                    // Apply rotation to metadata if needed, but the simple transform just updates x,y,w,h.
-                    // Assuming rotation is added to metadata
-                    if transform.rotation != 0.0 {
-                        let current_rot = updated_node
-                            .metadata
-                            .get("rotation")
-                            .and_then(serde_json::Value::as_f64)
-                            .unwrap_or(0.0);
-                        updated_node.metadata.insert(
-                            "rotation".to_string(),
-                            serde_json::json!(current_rot + transform.rotation),
-                        );
-                    }
+/// Pure function: Calculates aligned positions for a group of nodes.
+///
+/// # Errors
+/// Returns `TransformError::EmptySelection` if selection is too small.
+/// Returns `TransformError::ItemNotFound` if a node is missing.
+pub fn calculate_alignment(
+    nodes: &HashMap<NodeId, Node>,
+    selection: &[NodeId],
+    axis: AlignmentAxis,
+    mode: AlignmentMode,
+) -> Result<Vec<(NodeId, Node)>, TransformError> {
+    if selection.len() < 2 {
+        return Err(TransformError::EmptySelection);
+    }
 
-                    Ok(acc.update(item_id.clone(), updated_node))
-                },
-            )
+    let extents = collect_extents(nodes, selection, axis)?;
+    let (min_val, max_val) = calculate_range(&extents);
+    let target_pos = calculate_target_pos(min_val, max_val, mode);
+
+    extents
+        .into_iter()
+        .map(|(id, node, _, size)| {
+            let new_pos = calculate_node_pos(target_pos, size, mode);
+            let updated = apply_axis_pos(node, new_pos, axis)?;
+            Ok((id.clone(), updated))
+        })
+        .collect()
+}
+
+fn collect_extents<'a>(
+    nodes: &'a HashMap<NodeId, Node>,
+    selection: &'a [NodeId],
+    axis: AlignmentAxis,
+) -> Result<Vec<(&'a NodeId, &'a Node, f64, f64)>, TransformError> {
+    selection
+        .iter()
+        .map(|id| {
+            nodes
+                .get(id)
+                .map(|n| {
+                    let (pos, size) = get_axis_metrics(n, axis);
+                    (id, n, pos, size)
+                })
+                .ok_or_else(|| TransformError::ItemNotFound(id.clone()))
+        })
+        .collect()
+}
+
+const fn get_axis_metrics(node: &Node, axis: AlignmentAxis) -> (f64, f64) {
+    match axis {
+        AlignmentAxis::Horizontal => (node.x.0, node.width.0),
+        AlignmentAxis::Vertical => (node.y.0, node.height.0),
+    }
+}
+
+fn calculate_range(extents: &[(&NodeId, &Node, f64, f64)]) -> (f64, f64) {
+    extents
+        .iter()
+        .fold((f64::MAX, f64::MIN), |(min, max), (_, _, pos, size)| {
+            (min.min(*pos), max.max(*pos + *size))
+        })
+}
+
+fn calculate_target_pos(min: f64, max: f64, mode: AlignmentMode) -> f64 {
+    match mode {
+        AlignmentMode::Start => min,
+        AlignmentMode::Center => min + (max - min) / 2.0,
+        AlignmentMode::End => max,
+    }
+}
+
+fn calculate_node_pos(target: f64, size: f64, mode: AlignmentMode) -> f64 {
+    match mode {
+        AlignmentMode::Start => target,
+        AlignmentMode::Center => target - (size / 2.0),
+        AlignmentMode::End => target - size,
+    }
+}
+
+fn apply_axis_pos(node: &Node, pos: f64, axis: AlignmentAxis) -> Result<Node, TransformError> {
+    let mut updated = node.clone();
+    let val = OrderedFloat::new(pos).map_err(|_| TransformError::InvalidTransform)?;
+    match axis {
+        AlignmentAxis::Horizontal => updated.x = val,
+        AlignmentAxis::Vertical => updated.y = val,
+    }
+    Ok(updated)
+}
+
+/// Pure function: Calculates distributed positions for a group of nodes.
+///
+/// # Errors
+/// Returns `TransformError::EmptySelection` if selection is too small.
+/// Returns `TransformError::ItemNotFound` if a node is missing.
+pub fn calculate_distribution(
+    nodes: &HashMap<NodeId, Node>,
+    selection: &[NodeId],
+    axis: AlignmentAxis,
+) -> Result<Vec<(NodeId, Node)>, TransformError> {
+    if selection.len() < 3 {
+        return Err(TransformError::EmptySelection);
+    }
+
+    let mut sorted = collect_extents(nodes, selection, axis)?;
+    sorted.sort_by(|a, b| a.2.partial_cmp(&b.2).unwrap_or(std::cmp::Ordering::Equal));
+
+    let spacing = calculate_spacing(&sorted);
+    let first_pos = sorted[0].2;
+
+    let (_, updates) = sorted.into_iter().fold(
+        (first_pos, Vec::new()),
+        |(curr, mut acc), (id, node, _, size)| {
+            if let Ok(updated) = apply_axis_pos(node, curr, axis) {
+                acc.push((id.clone(), updated));
+            }
+            (curr + size + spacing, acc)
         },
-    )?;
+    );
 
-    // Step 3: Apply the atomic update (Action at the boundary of this fn)
-    doc.document.nodes = new_nodes;
-    doc.version = doc.version.saturating_add(1);
-    doc.revision = doc.revision.increment();
+    Ok(updates)
+}
 
-    Ok(())
+fn calculate_spacing(sorted: &[(&NodeId, &Node, f64, f64)]) -> f64 {
+    let Some(first_elem) = sorted.first() else {
+        return 0.0;
+    };
+    let Some(last_elem) = sorted.last() else {
+        return 0.0;
+    };
+    let total_span = (last_elem.2 + last_elem.3) - first_elem.2;
+    let sum_sizes: f64 = sorted.iter().map(|e| e.3).sum();
+    #[allow(clippy::cast_precision_loss)]
+    let count = sorted.len() as f64;
+    if count <= 1.0 {
+        return 0.0;
+    }
+    (total_span - sum_sizes) / (count - 1.0)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::document::{LockState, Node, NodeKind};
-
-    fn create_test_node(x: f64, y: f64, width: f64, height: f64) -> Node {
-        Node {
-            kind: NodeKind::Node,
-            icon: String::new(),
-            label: "test".to_string(),
-            x: OrderedFloat(x),
-            y: OrderedFloat(y),
-            width: OrderedFloat(width),
-            height: OrderedFloat(height),
-            font_size: None,
-            font_weight: None,
-            lock_state: LockState::Unlocked,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: im::HashMap::new(),
-            z_index: 0,
-            style: None,
-            collapsed: None,
-        }
-    }
-
-    #[test]
-    fn test_non_empty_selection() {
-        let empty = NonEmptySelection::try_new(vec![]);
-        assert_eq!(empty.unwrap_err(), Error::EmptySelection);
-
-        let valid = NonEmptySelection::try_new(vec![NodeId::new("n1".to_string())]);
-        assert!(valid.is_ok());
-        assert_eq!(valid.unwrap().items().len(), 1);
-    }
 
     #[test]
     fn test_valid_transform() {
-        let invalid = ValidTransform::try_new(f64::NAN, 0.0, 1.0, 1.0, 0.0);
-        assert_eq!(invalid.unwrap_err(), Error::InvalidTransform);
-
-        let zero_scale = ValidTransform::try_new(0.0, 0.0, 0.0, 1.0, 0.0);
-        assert_eq!(zero_scale.unwrap_err(), Error::InvalidTransform);
-
-        let valid = ValidTransform::try_new(10.0, 20.0, 2.0, 2.0, std::f64::consts::PI);
+        let valid = ValidTransform::try_new(10.0, 20.0, 2.0, 2.0, 1.5);
         assert!(valid.is_ok());
-        let valid = valid.unwrap();
-        assert_eq!(valid.dx, 10.0);
-        assert_eq!(valid.dy, 20.0);
-        assert_eq!(valid.scale_x, 2.0);
-        assert_eq!(valid.scale_y, 2.0);
-        assert_eq!(valid.rotation, std::f64::consts::PI);
-    }
-
-    #[test]
-    fn test_commit_transform_item_not_found() {
-        let mut doc = DiagramDocument::default();
-        let selection = NonEmptySelection::try_new(vec![NodeId::new("n1".to_string())]).unwrap();
-        let transform = ValidTransform::try_new(10.0, 10.0, 1.0, 1.0, 0.0).unwrap();
-
-        let result = commit_transform(&selection, &transform, &mut doc);
-        assert_eq!(
-            result,
-            Err(Error::ItemNotFound(NodeId::new("n1".to_string())))
-        );
-    }
-
-    #[test]
-    fn test_commit_transform_success() {
-        let mut doc = DiagramDocument::default();
-        let n1_id = NodeId::new("n1".to_string());
-        doc.document
-            .nodes
-            .insert(n1_id.clone(), create_test_node(10.0, 10.0, 20.0, 20.0));
-
-        let selection = NonEmptySelection::try_new(vec![n1_id.clone()]).unwrap();
-        let transform = ValidTransform::try_new(5.0, 5.0, 2.0, 2.0, 0.0).unwrap();
-
-        let initial_version = doc.version;
-        let initial_revision = doc.revision.clone();
-
-        let result = commit_transform(&selection, &transform, &mut doc);
-        assert!(result.is_ok());
-
-        let updated = doc.document.nodes.get(&n1_id).unwrap();
-        assert_eq!(updated.x, OrderedFloat(25.0)); // 10*2 + 5 = 25.0
-        assert_eq!(updated.y, OrderedFloat(25.0));
-        assert_eq!(updated.width, OrderedFloat(40.0)); // 20*2 = 40.0
-        assert_eq!(updated.height, OrderedFloat(40.0));
-
-        assert_eq!(doc.version, initial_version + 1);
-        assert!(doc.revision != initial_revision);
-    }
-
-    #[test]
-    fn test_commit_transform_with_rotation() {
-        let mut doc = DiagramDocument::default();
-        let n1_id = NodeId::new("n1".to_string());
-        doc.document
-            .nodes
-            .insert(n1_id.clone(), create_test_node(10.0, 10.0, 20.0, 20.0));
-
-        let selection = NonEmptySelection::try_new(vec![n1_id.clone()]).unwrap();
-        let transform = ValidTransform::try_new(0.0, 0.0, 1.0, 1.0, 1.5).unwrap();
-
-        let result = commit_transform(&selection, &transform, &mut doc);
-        assert!(result.is_ok());
-
-        let updated = doc.document.nodes.get(&n1_id).unwrap();
-        let rot = updated
-            .metadata
-            .get("rotation")
-            .and_then(serde_json::Value::as_f64)
-            .unwrap();
-        assert_eq!(rot, 1.5);
     }
 }

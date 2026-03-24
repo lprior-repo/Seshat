@@ -9,6 +9,7 @@
 )]
 use crate::core::z_order::*;
 use diagram_models::document::{DiagramDocument, LockState, Node, NodeId, NodeKind, OrderedFloat};
+use diagram_models::z_order::{apply_z_order_reorder, ZOrderOp};
 use std::collections::BTreeSet;
 
 fn make_node(label: &str) -> Node {
@@ -43,7 +44,7 @@ fn given_selected_middle_node_when_bring_to_front_then_relative_order_preserved(
     let mut selected = BTreeSet::new();
     let _ = selected.insert(NodeId::new(String::from("b")));
 
-    apply_z_order_to_ids(&mut ids, &selected, ZOrderOp::BringToFront);
+    apply_z_order_reorder(&mut ids, &selected, ZOrderOp::BringToFront);
 
     assert_eq!(
         ids,
@@ -65,7 +66,7 @@ fn given_selected_middle_node_when_send_to_back_then_relative_order_preserved() 
     let mut selected = BTreeSet::new();
     let _ = selected.insert(NodeId::new(String::from("b")));
 
-    apply_z_order_to_ids(&mut ids, &selected, ZOrderOp::SendToBack);
+    apply_z_order_reorder(&mut ids, &selected, ZOrderOp::SendToBack);
 
     assert_eq!(
         ids,
