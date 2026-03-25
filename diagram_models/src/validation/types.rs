@@ -1,7 +1,7 @@
 use std::fmt;
 
 /// Severity of a validation issue.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub enum ValidationSeverity {
     Warning,
     Error,
@@ -26,7 +26,7 @@ impl Ord for ValidationSeverity {
 }
 
 /// Strongly typed validation code, eliminating primitive obsession.
-#[derive(Clone, Debug, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
 pub struct ValidationCode(pub std::borrow::Cow<'static, str>);
 
 impl ValidationCode {
@@ -107,7 +107,7 @@ impl PartialEq<str> for ValidationCode {
 }
 
 /// A single validation issue discovered in a `DiagramDocument`.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
 pub struct ValidationIssue {
     pub severity: ValidationSeverity,
     pub code: ValidationCode,

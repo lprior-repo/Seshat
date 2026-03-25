@@ -61,6 +61,7 @@ impl std::fmt::Display for ParseError {
 pub enum ExecutionError {
     SimulatedFailure,
     Show(ShowError),
+    Apply(crate::apply::ApplyCommandError),
 }
 
 impl std::fmt::Display for ExecutionError {
@@ -70,6 +71,7 @@ impl std::fmt::Display for ExecutionError {
                 write!(f, "Execution failed: Subcommand 'simulate_failure' aborted")
             }
             Self::Show(e) => write!(f, "{e}"),
+            Self::Apply(e) => write!(f, "{e}"),
         }
     }
 }

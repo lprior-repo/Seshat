@@ -12,7 +12,8 @@ use serde_json::Value;
 ///
 /// Only `base_revision` is consumed by the revision-mismatch gate; the
 /// remaining fields are placeholders for downstream beads.
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq, serde::Serialize, serde::Deserialize)]
+#[serde(deny_unknown_fields)]
 pub struct ProposedChanges {
     /// The document revision this proposal was built against.
     /// Must match `DiagramDocument::revision` at apply time.
@@ -42,7 +43,7 @@ fn serialize_f64_allow_nan<S: serde::Serializer>(v: &f64, s: S) -> Result<S::Ok,
 }
 
 #[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
-#[serde(tag = "change_type", rename_all = "snake_case")]
+#[serde(tag = "change_type", rename_all = "snake_case", deny_unknown_fields)]
 #[allow(clippy::large_enum_variant)]
 pub enum ProposedChange {
     MoveNode {

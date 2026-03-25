@@ -57,6 +57,7 @@ pub enum Subcommand {
     SimulateFailure,
     ComplexState { depth: Depth },
     Show(ShowCommand),
+    Apply(crate::apply::ApplyCommand, std::path::PathBuf),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]
