@@ -1,0 +1,16 @@
+[package]
+name = "seshat_cli"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "seshat"
+path = "src/main.rs"
+
+[dependencies]
+clap = { version = "4.4", features = ["derive"] }
+
+[dev-dependencies]
+rstest = "0.18"
+proptest = "1.4"
+libc = "0.2.183"

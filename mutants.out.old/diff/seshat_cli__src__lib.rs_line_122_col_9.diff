@@ -1,0 +1,21 @@
+--- seshat_cli/src/lib.rs
++++ delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error
+@@ -114,17 +114,17 @@
+         |e| map_clap_error(&e),
+         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),
+     )
+ }
+ 
+ fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {
+     match e.kind() {
+         clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),
+-        clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),
++         /* ~ changed by cargo-mutants ~ */
+         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),
+     }
+ }
+ 
+ fn format_clap_error(e: &clap::Error) -> String {
+     e.to_string()
+         .replace("[COMMAND]", "[OPTIONS] [COMMAND]")
+         .replace("'--help'.\n", "'--help'\n")

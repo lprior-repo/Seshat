@@ -1,0 +1,21 @@
+--- seshat_cli/src/lib.rs
++++ replace < with > in parse_depth
+@@ -54,17 +54,17 @@
+ }
+ 
+ #[derive(Debug, PartialEq, Eq, Clone, Copy)]
+ pub struct Depth(pub i32);
+ 
+ pub fn parse_depth(s: &str) -> Result<Depth, String> {
+     let val: i32 = s.parse().map_err(|_| "number too small".to_string())?;
+     match val {
+-        v if v < 0 => Err("depth cannot be negative".to_string()),
++        v if v > /* ~ changed by cargo-mutants ~ */ 0 => Err("depth cannot be negative".to_string()),
+         v if v > 254 => Err("max nesting depth exceeded".to_string()),
+         v => Ok(Depth(v)),
+     }
+ }
+ 
+ #[derive(Debug, PartialEq, Eq, Clone)]
+ pub enum Subcommand {
+     ValidCommand,

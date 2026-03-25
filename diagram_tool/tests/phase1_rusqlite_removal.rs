@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 #![allow(clippy::io_other_error, clippy::unnecessary_cast)]
 #![cfg(not(target_arch = "wasm32"))]
 

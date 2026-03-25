@@ -1,0 +1,2 @@
+seshat_cli/src/lib.rs:62:16: replace < with <= in parse_depth
+seshat_cli/src/lib.rs:63:16: replace > with >= in parse_depth

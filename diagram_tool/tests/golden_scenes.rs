@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 //! Golden scene fixtures for snapshot-based testing
 //!
 //! This module provides canonical test fixtures for deterministic comparison

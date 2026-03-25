@@ -1,0 +1,4 @@
+seshat_cli/src/lib.rs:60:5: replace parse_depth -> Result<Depth, String> with Ok(Default::default())
+seshat_cli/src/lib.rs:103:5: replace parse_args -> Result<Cli, Error> with Ok(Default::default())
+seshat_cli/src/lib.rs:120:5: replace map_clap_error -> Result<Cli, Error> with Ok(Default::default())
+seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with Some(Default::default())

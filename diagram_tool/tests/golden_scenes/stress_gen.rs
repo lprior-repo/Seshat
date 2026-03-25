@@ -1,3 +1,4 @@
+#![allow(dead_code)]
 use serde_json::Value;
 
 pub fn generate_stress_scene_json() -> Value {

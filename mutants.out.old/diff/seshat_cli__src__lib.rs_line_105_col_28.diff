@@ -1,0 +1,21 @@
+--- seshat_cli/src/lib.rs
++++ replace || with && in parse_args
+@@ -97,17 +97,17 @@
+         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]
+         depth: Depth,
+     },
+ }
+ 
+ pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {
+     let args_vec: Vec<OsString> = args.collect();
+ 
+-    if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {
++    if args_vec.is_empty() && /* ~ changed by cargo-mutants ~ */ (args_vec.len() == 1 && args_vec[0].is_empty()) {
+         return Err(Error::ArgumentParse(ParseError::NoArguments));
+     }
+ 
+     if args_vec.len() > 65535 {
+         return Err(Error::ArgumentParse(ParseError::TooManyArguments));
+     }
+ 
+     ClapCli::try_parse_from(args_vec).map_or_else(

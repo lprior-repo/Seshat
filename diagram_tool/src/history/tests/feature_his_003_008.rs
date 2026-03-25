@@ -247,7 +247,7 @@ fn test_apply_undo_success_restores_previous_state() {
 fn test_apply_undo_failure_returns_error_on_empty_history() {
     assert_eq!(
         apply_undo(&mut DiagramDocument::default(), &mut History::new()),
-        Err("Nothing to undo")
+        Err(crate::core::history::HistoryError::NothingToUndo)
     );
 }
 
@@ -268,5 +268,8 @@ fn test_apply_redo_failure_returns_error_on_empty_redo_stack() {
     let mut a = DiagramDocument::default();
     a.revision = Revision::new(1);
     let mut h = History::new().push(a.clone());
-    assert_eq!(apply_redo(&mut a, &mut h), Err("Nothing to redo"));
+    assert_eq!(
+        apply_redo(&mut a, &mut h),
+        Err(crate::core::history::HistoryError::NothingToRedo)
+    );
 }

@@ -1,0 +1,23 @@
+--- seshat_cli/src/lib.rs
++++ replace format_clap_error -> String with "xyzzy".into()
+@@ -120,19 +120,17 @@
+     match e.kind() {
+         clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),
+         clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),
+         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),
+     }
+ }
+ 
+ fn format_clap_error(e: &clap::Error) -> String {
+-    e.to_string()
+-        .replace("[COMMAND]", "[OPTIONS] [COMMAND]")
+-        .replace("'--help'.\n", "'--help'\n")
++    "xyzzy".into() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn map_subcommand(cmd: Option<ClapSubcommandEnum>) -> Option<Subcommand> {
+     cmd.map(|c| match c {
+         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,
+         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,
+         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },
+     })

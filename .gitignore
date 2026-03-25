@@ -68,3 +68,6 @@ third_party/
 binaryen-version_*/
 binaryen-*-linux.tar.gz
 fix.py
+cov.json
+coverage.json
+scratch

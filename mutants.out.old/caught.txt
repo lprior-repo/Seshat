@@ -1,0 +1,28 @@
+seshat_cli/src/lib.rs:16:9: replace <impl std::fmt::Display for ParseError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with true in parse_depth
+seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with false in parse_depth
+seshat_cli/src/lib.rs:49:9: replace <impl std::fmt::Display for Error>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with true in parse_depth
+seshat_cli/src/lib.rs:33:9: replace <impl std::fmt::Display for ExecutionError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with false in parse_depth
+seshat_cli/src/lib.rs:62:16: replace < with == in parse_depth
+seshat_cli/src/lib.rs:63:16: replace > with == in parse_depth
+seshat_cli/src/lib.rs:62:16: replace < with > in parse_depth
+seshat_cli/src/lib.rs:63:16: replace > with < in parse_depth
+seshat_cli/src/lib.rs:105:28: replace || with && in parse_args
+seshat_cli/src/lib.rs:105:52: replace && with || in parse_args
+seshat_cli/src/lib.rs:105:47: replace == with != in parse_args
+seshat_cli/src/lib.rs:109:23: replace > with == in parse_args
+seshat_cli/src/lib.rs:109:23: replace > with < in parse_args
+seshat_cli/src/lib.rs:109:23: replace > with >= in parse_args
+seshat_cli/src/lib.rs:121:9: delete match arm clap::error::ErrorKind::DisplayHelp in map_clap_error
+seshat_cli/src/lib.rs:122:9: delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error
+seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with String::new()
+seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with "xyzzy".into()
+seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with None
+seshat_cli/src/lib.rs:143:5: replace execute -> Result<(), Error> with Ok(())
+seshat_cli/src/lib.rs:153:5: replace get_help -> String with String::new()
+seshat_cli/src/lib.rs:153:5: replace get_help -> String with "xyzzy".into()
+seshat_cli/src/lib.rs:159:5: replace get_version -> String with String::new()
+seshat_cli/src/lib.rs:159:5: replace get_version -> String with "xyzzy".into()
+seshat_cli/src/main.rs:4:5: replace main -> ExitCode with Default::default()

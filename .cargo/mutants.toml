@@ -12,6 +12,7 @@ examine_globs = [
     "diagram_tool/src/layout/**/*.rs",
     "diagram_tool/src/history.rs",
     "diagram_tool/src/export/**/*.rs",
+    "seshat_cli/src/**/*.rs",
 ]
 
 # Exclude UI code, hooks, backend, CLI, and main entry points

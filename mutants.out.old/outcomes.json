@@ -1,0 +1,2268 @@
+{
+  "outcomes": [
+    {
+      "scenario": "Baseline",
+      "summary": "Success",
+      "log_path": "log/baseline.log",
+      "diff_path": null,
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 1.502392817,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.30090664,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:16:9: replace <impl std::fmt::Display for ParseError>::fmt -> std::fmt::Result with Ok(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "<impl std::fmt::Display for ParseError>::fmt",
+            "return_type": "-> std::fmt::Result",
+            "span": {
+              "start": {
+                "line": 15,
+                "column": 5
+              },
+              "end": {
+                "line": 23,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 16,
+              "column": 9
+            },
+            "end": {
+              "line": 22,
+              "column": 10
+            }
+          },
+          "replacement": "Ok(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_16_col_9.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_16_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.552548175,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.351034767,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with true in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 62,
+              "column": 14
+            },
+            "end": {
+              "line": 62,
+              "column": 19
+            }
+          },
+          "replacement": "true",
+          "genre": "MatchArmGuard"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_62_col_14.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_62_col_14.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.602300535,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.30080919,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:60:5: replace parse_depth -> Result<Depth, String> with Ok(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 60,
+              "column": 5
+            },
+            "end": {
+              "line": 65,
+              "column": 6
+            }
+          },
+          "replacement": "Ok(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/seshat_cli__src__lib.rs_line_60_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_60_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.258168496,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with false in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 62,
+              "column": 14
+            },
+            "end": {
+              "line": 62,
+              "column": 19
+            }
+          },
+          "replacement": "false",
+          "genre": "MatchArmGuard"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_62_col_14_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_62_col_14_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.35177313,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.301283996,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:49:9: replace <impl std::fmt::Display for Error>::fmt -> std::fmt::Result with Ok(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "<impl std::fmt::Display for Error>::fmt",
+            "return_type": "-> std::fmt::Result",
+            "span": {
+              "start": {
+                "line": 48,
+                "column": 5
+              },
+              "end": {
+                "line": 53,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 49,
+              "column": 9
+            },
+            "end": {
+              "line": 52,
+              "column": 10
+            }
+          },
+          "replacement": "Ok(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_49_col_9.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_49_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.606761143,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401013495,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with true in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 63,
+              "column": 14
+            },
+            "end": {
+              "line": 63,
+              "column": 21
+            }
+          },
+          "replacement": "true",
+          "genre": "MatchArmGuard"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_63_col_14.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_63_col_14.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451660997,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.300831981,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:33:9: replace <impl std::fmt::Display for ExecutionError>::fmt -> std::fmt::Result with Ok(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "<impl std::fmt::Display for ExecutionError>::fmt",
+            "return_type": "-> std::fmt::Result",
+            "span": {
+              "start": {
+                "line": 32,
+                "column": 5
+              },
+              "end": {
+                "line": 38,
+                "column": 6
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 33,
+              "column": 9
+            },
+            "end": {
+              "line": 37,
+              "column": 10
+            }
+          },
+          "replacement": "Ok(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_33_col_9.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_33_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 2.608419419,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.451151722,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with false in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 63,
+              "column": 14
+            },
+            "end": {
+              "line": 63,
+              "column": 21
+            }
+          },
+          "replacement": "false",
+          "genre": "MatchArmGuard"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_63_col_14_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_63_col_14_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.300752381,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.350839909,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:62:16: replace < with == in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 62,
+              "column": 16
+            },
+            "end": {
+              "line": 62,
+              "column": 17
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_62_col_16.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_62_col_16.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451676267,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401045664,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:63:16: replace > with == in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 63,
+              "column": 16
+            },
+            "end": {
+              "line": 63,
+              "column": 17
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_63_col_16.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_63_col_16.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400934875,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400951235,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:62:16: replace < with > in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 62,
+              "column": 16
+            },
+            "end": {
+              "line": 62,
+              "column": 17
+            }
+          },
+          "replacement": ">",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_62_col_16_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_62_col_16_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451024202,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400763337,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:62:16: replace < with <= in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 62,
+              "column": 16
+            },
+            "end": {
+              "line": 62,
+              "column": 17
+            }
+          },
+          "replacement": "<=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_62_col_16_002.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_62_col_16_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.401011314,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.451043353,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:103:5: replace parse_args -> Result<Cli, Error> with Ok(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 103,
+              "column": 5
+            },
+            "end": {
+              "line": 116,
+              "column": 6
+            }
+          },
+          "replacement": "Ok(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/seshat_cli__src__lib.rs_line_103_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_103_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400925365,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:63:16: replace > with < in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 63,
+              "column": 16
+            },
+            "end": {
+              "line": 63,
+              "column": 17
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_63_col_16_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_63_col_16_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451154421,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.351044737,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:105:28: replace || with && in parse_args",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 105,
+              "column": 28
+            },
+            "end": {
+              "line": 105,
+              "column": 30
+            }
+          },
+          "replacement": "&&",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_105_col_28.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_105_col_28.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400989635,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.350918907,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:63:16: replace > with >= in parse_depth",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_depth",
+            "return_type": "-> Result<Depth, String>",
+            "span": {
+              "start": {
+                "line": 59,
+                "column": 1
+              },
+              "end": {
+                "line": 66,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 63,
+              "column": 16
+            },
+            "end": {
+              "line": 63,
+              "column": 17
+            }
+          },
+          "replacement": ">=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "MissedMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_63_col_16_002.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_63_col_16_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.450966873,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400959385,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:105:52: replace && with || in parse_args",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 105,
+              "column": 52
+            },
+            "end": {
+              "line": 105,
+              "column": 54
+            }
+          },
+          "replacement": "||",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_105_col_52.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_105_col_52.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.401124893,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400873556,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:105:47: replace == with != in parse_args",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 105,
+              "column": 47
+            },
+            "end": {
+              "line": 105,
+              "column": 49
+            }
+          },
+          "replacement": "!=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_105_col_47.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_105_col_47.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.401065735,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401153213,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:109:23: replace > with == in parse_args",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 23
+            },
+            "end": {
+              "line": 109,
+              "column": 24
+            }
+          },
+          "replacement": "==",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_109_col_23.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_109_col_23.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400861736,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400818617,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:109:23: replace > with < in parse_args",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 23
+            },
+            "end": {
+              "line": 109,
+              "column": 24
+            }
+          },
+          "replacement": "<",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_109_col_23_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_109_col_23_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400759157,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.350810779,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:120:5: replace map_clap_error -> Result<Cli, Error> with Ok(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "map_clap_error",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 119,
+                "column": 1
+              },
+              "end": {
+                "line": 125,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 120,
+              "column": 5
+            },
+            "end": {
+              "line": 124,
+              "column": 6
+            }
+          },
+          "replacement": "Ok(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/seshat_cli__src__lib.rs_line_120_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_120_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.350897088,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:109:23: replace > with >= in parse_args",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "parse_args",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 102,
+                "column": 1
+              },
+              "end": {
+                "line": 117,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 109,
+              "column": 23
+            },
+            "end": {
+              "line": 109,
+              "column": 24
+            }
+          },
+          "replacement": ">=",
+          "genre": "BinaryOperator"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_109_col_23_002.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_109_col_23_002.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400865357,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400889736,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:121:9: delete match arm clap::error::ErrorKind::DisplayHelp in map_clap_error",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "map_clap_error",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 119,
+                "column": 1
+              },
+              "end": {
+                "line": 125,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 121,
+              "column": 9
+            },
+            "end": {
+              "line": 121,
+              "column": 62
+            }
+          },
+          "replacement": "",
+          "genre": "MatchArm"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_121_col_9.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_121_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.401005885,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400886286,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:122:9: delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "map_clap_error",
+            "return_type": "-> Result<Cli, Error>",
+            "span": {
+              "start": {
+                "line": 119,
+                "column": 1
+              },
+              "end": {
+                "line": 125,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 122,
+              "column": 9
+            },
+            "end": {
+              "line": 122,
+              "column": 68
+            }
+          },
+          "replacement": "",
+          "genre": "MatchArm"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_122_col_9.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_122_col_9.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400829577,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400965755,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with Some(Default::default())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "map_subcommand",
+            "return_type": "-> Option<Subcommand>",
+            "span": {
+              "start": {
+                "line": 133,
+                "column": 1
+              },
+              "end": {
+                "line": 139,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 134,
+              "column": 5
+            },
+            "end": {
+              "line": 138,
+              "column": 7
+            }
+          },
+          "replacement": "Some(Default::default())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "Unviable",
+      "log_path": "log/seshat_cli__src__lib.rs_line_134_col_5_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_134_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.30084035,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with String::new()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "format_clap_error",
+            "return_type": "-> String",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 1
+              },
+              "end": {
+                "line": 131,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 128,
+              "column": 5
+            },
+            "end": {
+              "line": 130,
+              "column": 46
+            }
+          },
+          "replacement": "String::new()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_128_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_128_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451250301,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401107084,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with \"xyzzy\".into()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "format_clap_error",
+            "return_type": "-> String",
+            "span": {
+              "start": {
+                "line": 127,
+                "column": 1
+              },
+              "end": {
+                "line": 131,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 128,
+              "column": 5
+            },
+            "end": {
+              "line": 130,
+              "column": 46
+            }
+          },
+          "replacement": "\"xyzzy\".into()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_128_col_5_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_128_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400723757,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400947806,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with None",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "map_subcommand",
+            "return_type": "-> Option<Subcommand>",
+            "span": {
+              "start": {
+                "line": 133,
+                "column": 1
+              },
+              "end": {
+                "line": 139,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 134,
+              "column": 5
+            },
+            "end": {
+              "line": 138,
+              "column": 7
+            }
+          },
+          "replacement": "None",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_134_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_134_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400837646,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.400914926,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:143:5: replace execute -> Result<(), Error> with Ok(())",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "execute",
+            "return_type": "-> Result<(), Error>",
+            "span": {
+              "start": {
+                "line": 141,
+                "column": 1
+              },
+              "end": {
+                "line": 149,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 143,
+              "column": 5
+            },
+            "end": {
+              "line": 148,
+              "column": 6
+            }
+          },
+          "replacement": "Ok(())",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_143_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_143_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.250688514,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.300782731,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:153:5: replace get_help -> String with String::new()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "get_help",
+            "return_type": "-> String",
+            "span": {
+              "start": {
+                "line": 151,
+                "column": 1
+              },
+              "end": {
+                "line": 155,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 153,
+              "column": 5
+            },
+            "end": {
+              "line": 154,
+              "column": 49
+            }
+          },
+          "replacement": "String::new()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_153_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_153_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451158112,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401292732,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:153:5: replace get_help -> String with \"xyzzy\".into()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "get_help",
+            "return_type": "-> String",
+            "span": {
+              "start": {
+                "line": 151,
+                "column": 1
+              },
+              "end": {
+                "line": 155,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 153,
+              "column": 5
+            },
+            "end": {
+              "line": 154,
+              "column": 49
+            }
+          },
+          "replacement": "\"xyzzy\".into()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_153_col_5_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_153_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.450966723,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.401704469,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:159:5: replace get_version -> String with String::new()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "get_version",
+            "return_type": "-> String",
+            "span": {
+              "start": {
+                "line": 157,
+                "column": 1
+              },
+              "end": {
+                "line": 161,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 159,
+              "column": 5
+            },
+            "end": {
+              "line": 160,
+              "column": 40
+            }
+          },
+          "replacement": "String::new()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_159_col_5.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_159_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.451031413,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.351075536,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/lib.rs:159:5: replace get_version -> String with \"xyzzy\".into()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/lib.rs",
+          "function": {
+            "function_name": "get_version",
+            "return_type": "-> String",
+            "span": {
+              "start": {
+                "line": 157,
+                "column": 1
+              },
+              "end": {
+                "line": 161,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 159,
+              "column": 5
+            },
+            "end": {
+              "line": 160,
+              "column": 40
+            }
+          },
+          "replacement": "\"xyzzy\".into()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__lib.rs_line_159_col_5_001.log",
+      "diff_path": "diff/seshat_cli__src__lib.rs_line_159_col_5_001.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.400789327,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.351066097,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    },
+    {
+      "scenario": {
+        "Mutant": {
+          "name": "seshat_cli/src/main.rs:4:5: replace main -> ExitCode with Default::default()",
+          "package": "seshat_cli",
+          "file": "seshat_cli/src/main.rs",
+          "function": {
+            "function_name": "main",
+            "return_type": "-> ExitCode",
+            "span": {
+              "start": {
+                "line": 3,
+                "column": 1
+              },
+              "end": {
+                "line": 26,
+                "column": 2
+              }
+            }
+          },
+          "span": {
+            "start": {
+              "line": 4,
+              "column": 5
+            },
+            "end": {
+              "line": 25,
+              "column": 6
+            }
+          },
+          "replacement": "Default::default()",
+          "genre": "FnValue"
+        }
+      },
+      "summary": "CaughtMutant",
+      "log_path": "log/seshat_cli__src__main.rs_line_4_col_5.log",
+      "diff_path": "diff/seshat_cli__src__main.rs_line_4_col_5.diff",
+      "phase_results": [
+        {
+          "phase": "Build",
+          "duration": 0.351006007,
+          "process_status": "Success",
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--no-run",
+            "--verbose",
+            "--package=seshat_cli@0.1.0"
+          ]
+        },
+        {
+          "phase": "Test",
+          "duration": 0.30092868,
+          "process_status": {
+            "Failure": 101
+          },
+          "argv": [
+            "/home/lewis/.rustup/toolchains/stable-x86_64-unknown-linux-gnu/bin/cargo",
+            "test",
+            "--verbose",
+            "--package=seshat_cli@0.1.0",
+            "--",
+            "--test-threads=2"
+          ]
+        }
+      ]
+    }
+  ],
+  "total_mutants": 34,
+  "missed": 2,
+  "caught": 28,
+  "timeout": 0,
+  "unviable": 4,
+  "success": 0,
+  "start_time": "2026-03-24T23:39:25.815462643Z",
+  "end_time": "2026-03-24T23:39:35.916068665Z",
+  "cargo_mutants_version": "27.0.0"
+}

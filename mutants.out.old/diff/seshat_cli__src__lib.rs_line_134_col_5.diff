@@ -1,0 +1,25 @@
+--- seshat_cli/src/lib.rs
++++ replace map_subcommand -> Option<Subcommand> with None
+@@ -126,21 +126,17 @@
+ 
+ fn format_clap_error(e: &clap::Error) -> String {
+     e.to_string()
+         .replace("[COMMAND]", "[OPTIONS] [COMMAND]")
+         .replace("'--help'.\n", "'--help'\n")
+ }
+ 
+ fn map_subcommand(cmd: Option<ClapSubcommandEnum>) -> Option<Subcommand> {
+-    cmd.map(|c| match c {
+-        ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,
+-        ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,
+-        ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },
+-    })
++    None /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[allow(clippy::needless_pass_by_value)]
+ pub fn execute(cli: Cli) -> Result<(), Error> {
+     match cli {
+         Cli::Run(Some(Subcommand::SimulateFailure)) => {
+             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))
+         }

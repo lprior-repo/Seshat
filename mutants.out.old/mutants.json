@@ -1,1 +1,1090 @@
-[]
+[
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace <impl std::fmt::Display for ParseError>::fmt -> std::fmt::Result with Ok(Default::default())\n@@ -8,23 +8,17 @@\n pub enum ParseError {\n     NoArguments,\n     TooManyArguments,\n     Clap(String),\n }\n \n impl std::fmt::Display for ParseError {\n     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {\n-        match self {\n-            Self::NoArguments => write!(f, \"error: no arguments provided\"),\n-            Self::TooManyArguments => {\n-                write!(f, \"error: argument count exceeds maximum limit of 65535\")\n-            }\n-            Self::Clap(msg) => write!(f, \"{msg}\"),\n-        }\n+        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[derive(Debug, PartialEq, Eq)]\n pub enum ExecutionError {\n     SimulatedFailure,\n }\n \n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "<impl std::fmt::Display for ParseError>::fmt",
+      "return_type": "-> std::fmt::Result",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 23
+        },
+        "start": {
+          "column": 5,
+          "line": 15
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:16:9: replace <impl std::fmt::Display for ParseError>::fmt -> std::fmt::Result with Ok(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 10,
+        "line": 22
+      },
+      "start": {
+        "column": 9,
+        "line": 16
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace <impl std::fmt::Display for ExecutionError>::fmt -> std::fmt::Result with Ok(Default::default())\n@@ -25,21 +25,17 @@\n \n #[derive(Debug, PartialEq, Eq)]\n pub enum ExecutionError {\n     SimulatedFailure,\n }\n \n impl std::fmt::Display for ExecutionError {\n     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {\n-        match self {\n-            Self::SimulatedFailure => {\n-                write!(f, \"Execution failed: Subcommand 'simulate_failure' aborted\")\n-            }\n-        }\n+        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[derive(Debug, PartialEq, Eq)]\n pub enum Error {\n     ArgumentParse(ParseError),\n     CommandExecution(ExecutionError),\n }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "<impl std::fmt::Display for ExecutionError>::fmt",
+      "return_type": "-> std::fmt::Result",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 38
+        },
+        "start": {
+          "column": 5,
+          "line": 32
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:33:9: replace <impl std::fmt::Display for ExecutionError>::fmt -> std::fmt::Result with Ok(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 10,
+        "line": 37
+      },
+      "start": {
+        "column": 9,
+        "line": 33
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace <impl std::fmt::Display for Error>::fmt -> std::fmt::Result with Ok(Default::default())\n@@ -41,20 +41,17 @@\n #[derive(Debug, PartialEq, Eq)]\n pub enum Error {\n     ArgumentParse(ParseError),\n     CommandExecution(ExecutionError),\n }\n \n impl std::fmt::Display for Error {\n     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {\n-        match self {\n-            Self::ArgumentParse(e) => write!(f, \"{e}\"),\n-            Self::CommandExecution(e) => write!(f, \"{e}\"),\n-        }\n+        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "<impl std::fmt::Display for Error>::fmt",
+      "return_type": "-> std::fmt::Result",
+      "span": {
+        "end": {
+          "column": 6,
+          "line": 53
+        },
+        "start": {
+          "column": 5,
+          "line": 48
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:49:9: replace <impl std::fmt::Display for Error>::fmt -> std::fmt::Result with Ok(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 10,
+        "line": 52
+      },
+      "start": {
+        "column": 9,
+        "line": 49
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace parse_depth -> Result<Depth, String> with Ok(Default::default())\n@@ -52,22 +52,17 @@\n         }\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n-    let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n-    match val {\n-        v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n-        v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n-        v => Ok(Depth(v)),\n-    }\n+    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n     SimulateFailure,\n     ComplexState { depth: Depth },\n }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:60:5: replace parse_depth -> Result<Depth, String> with Ok(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 65
+      },
+      "start": {
+        "column": 5,
+        "line": 60
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace match guard v < 0 with true in parse_depth\n@@ -54,17 +54,17 @@\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n-        v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n+        v if true /* ~ changed by cargo-mutants ~ */ => Err(\"depth cannot be negative\".to_string()),\n         v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with true in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 19,
+        "line": 62
+      },
+      "start": {
+        "column": 14,
+        "line": 62
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace match guard v < 0 with false in parse_depth\n@@ -54,17 +54,17 @@\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n-        v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n+        v if false /* ~ changed by cargo-mutants ~ */ => Err(\"depth cannot be negative\".to_string()),\n         v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with false in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 19,
+        "line": 62
+      },
+      "start": {
+        "column": 14,
+        "line": 62
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace match guard v > 254 with true in parse_depth\n@@ -55,17 +55,17 @@\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n         v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n-        v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n+        v if true /* ~ changed by cargo-mutants ~ */ => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n     SimulateFailure,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with true in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "true",
+    "span": {
+      "end": {
+        "column": 21,
+        "line": 63
+      },
+      "start": {
+        "column": 14,
+        "line": 63
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace match guard v > 254 with false in parse_depth\n@@ -55,17 +55,17 @@\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n         v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n-        v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n+        v if false /* ~ changed by cargo-mutants ~ */ => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n     SimulateFailure,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "MatchArmGuard",
+    "name": "seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with false in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "false",
+    "span": {
+      "end": {
+        "column": 21,
+        "line": 63
+      },
+      "start": {
+        "column": 14,
+        "line": 63
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace < with == in parse_depth\n@@ -54,17 +54,17 @@\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n-        v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n+        v if v == /* ~ changed by cargo-mutants ~ */ 0 => Err(\"depth cannot be negative\".to_string()),\n         v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:62:16: replace < with == in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 62
+      },
+      "start": {
+        "column": 16,
+        "line": 62
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace < with > in parse_depth\n@@ -54,17 +54,17 @@\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n-        v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n+        v if v > /* ~ changed by cargo-mutants ~ */ 0 => Err(\"depth cannot be negative\".to_string()),\n         v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:62:16: replace < with > in parse_depth",
+    "package": "seshat_cli",
+    "replacement": ">",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 62
+      },
+      "start": {
+        "column": 16,
+        "line": 62
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace < with <= in parse_depth\n@@ -54,17 +54,17 @@\n }\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n-        v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n+        v if v <= /* ~ changed by cargo-mutants ~ */ 0 => Err(\"depth cannot be negative\".to_string()),\n         v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:62:16: replace < with <= in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "<=",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 62
+      },
+      "start": {
+        "column": 16,
+        "line": 62
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace > with == in parse_depth\n@@ -55,17 +55,17 @@\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n         v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n-        v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n+        v if v == /* ~ changed by cargo-mutants ~ */ 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n     SimulateFailure,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:63:16: replace > with == in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 63
+      },
+      "start": {
+        "column": 16,
+        "line": 63
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace > with < in parse_depth\n@@ -55,17 +55,17 @@\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n         v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n-        v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n+        v if v < /* ~ changed by cargo-mutants ~ */ 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n     SimulateFailure,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:63:16: replace > with < in parse_depth",
+    "package": "seshat_cli",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 63
+      },
+      "start": {
+        "column": 16,
+        "line": 63
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace > with >= in parse_depth\n@@ -55,17 +55,17 @@\n \n #[derive(Debug, PartialEq, Eq, Clone, Copy)]\n pub struct Depth(pub i32);\n \n pub fn parse_depth(s: &str) -> Result<Depth, String> {\n     let val: i32 = s.parse().map_err(|_| \"number too small\".to_string())?;\n     match val {\n         v if v < 0 => Err(\"depth cannot be negative\".to_string()),\n-        v if v > 254 => Err(\"max nesting depth exceeded\".to_string()),\n+        v if v >= /* ~ changed by cargo-mutants ~ */ 254 => Err(\"max nesting depth exceeded\".to_string()),\n         v => Ok(Depth(v)),\n     }\n }\n \n #[derive(Debug, PartialEq, Eq, Clone)]\n pub enum Subcommand {\n     ValidCommand,\n     SimulateFailure,\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_depth",
+      "return_type": "-> Result<Depth, String>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 66
+        },
+        "start": {
+          "column": 1,
+          "line": 59
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:63:16: replace > with >= in parse_depth",
+    "package": "seshat_cli",
+    "replacement": ">=",
+    "span": {
+      "end": {
+        "column": 17,
+        "line": 63
+      },
+      "start": {
+        "column": 16,
+        "line": 63
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace parse_args -> Result<Cli, Error> with Ok(Default::default())\n@@ -95,30 +95,17 @@\n     #[command(name = \"complex-state\")]\n     ComplexState {\n         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]\n         depth: Depth,\n     },\n }\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n-    let args_vec: Vec<OsString> = args.collect();\n-\n-    if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n-        return Err(Error::ArgumentParse(ParseError::NoArguments));\n-    }\n-\n-    if args_vec.len() > 65535 {\n-        return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n-    }\n-\n-    ClapCli::try_parse_from(args_vec).map_or_else(\n-        |e| map_clap_error(&e),\n-        |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n-    )\n+    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {\n     match e.kind() {\n         clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),\n         clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),\n         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),\n     }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:103:5: replace parse_args -> Result<Cli, Error> with Ok(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 116
+      },
+      "start": {
+        "column": 5,
+        "line": 103
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace || with && in parse_args\n@@ -97,17 +97,17 @@\n         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]\n         depth: Depth,\n     },\n }\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n     let args_vec: Vec<OsString> = args.collect();\n \n-    if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n+    if args_vec.is_empty() && /* ~ changed by cargo-mutants ~ */ (args_vec.len() == 1 && args_vec[0].is_empty()) {\n         return Err(Error::ArgumentParse(ParseError::NoArguments));\n     }\n \n     if args_vec.len() > 65535 {\n         return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n     }\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:105:28: replace || with && in parse_args",
+    "package": "seshat_cli",
+    "replacement": "&&",
+    "span": {
+      "end": {
+        "column": 30,
+        "line": 105
+      },
+      "start": {
+        "column": 28,
+        "line": 105
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace && with || in parse_args\n@@ -97,17 +97,17 @@\n         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]\n         depth: Depth,\n     },\n }\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n     let args_vec: Vec<OsString> = args.collect();\n \n-    if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n+    if args_vec.is_empty() || (args_vec.len() == 1 || /* ~ changed by cargo-mutants ~ */ args_vec[0].is_empty()) {\n         return Err(Error::ArgumentParse(ParseError::NoArguments));\n     }\n \n     if args_vec.len() > 65535 {\n         return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n     }\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:105:52: replace && with || in parse_args",
+    "package": "seshat_cli",
+    "replacement": "||",
+    "span": {
+      "end": {
+        "column": 54,
+        "line": 105
+      },
+      "start": {
+        "column": 52,
+        "line": 105
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace == with != in parse_args\n@@ -97,17 +97,17 @@\n         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]\n         depth: Depth,\n     },\n }\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n     let args_vec: Vec<OsString> = args.collect();\n \n-    if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n+    if args_vec.is_empty() || (args_vec.len() != /* ~ changed by cargo-mutants ~ */ 1 && args_vec[0].is_empty()) {\n         return Err(Error::ArgumentParse(ParseError::NoArguments));\n     }\n \n     if args_vec.len() > 65535 {\n         return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n     }\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:105:47: replace == with != in parse_args",
+    "package": "seshat_cli",
+    "replacement": "!=",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 105
+      },
+      "start": {
+        "column": 47,
+        "line": 105
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace > with == in parse_args\n@@ -101,17 +101,17 @@\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n     let args_vec: Vec<OsString> = args.collect();\n \n     if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n         return Err(Error::ArgumentParse(ParseError::NoArguments));\n     }\n \n-    if args_vec.len() > 65535 {\n+    if args_vec.len() == /* ~ changed by cargo-mutants ~ */ 65535 {\n         return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n     }\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n         |e| map_clap_error(&e),\n         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n     )\n }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:109:23: replace > with == in parse_args",
+    "package": "seshat_cli",
+    "replacement": "==",
+    "span": {
+      "end": {
+        "column": 24,
+        "line": 109
+      },
+      "start": {
+        "column": 23,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace > with < in parse_args\n@@ -101,17 +101,17 @@\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n     let args_vec: Vec<OsString> = args.collect();\n \n     if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n         return Err(Error::ArgumentParse(ParseError::NoArguments));\n     }\n \n-    if args_vec.len() > 65535 {\n+    if args_vec.len() < /* ~ changed by cargo-mutants ~ */ 65535 {\n         return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n     }\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n         |e| map_clap_error(&e),\n         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n     )\n }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:109:23: replace > with < in parse_args",
+    "package": "seshat_cli",
+    "replacement": "<",
+    "span": {
+      "end": {
+        "column": 24,
+        "line": 109
+      },
+      "start": {
+        "column": 23,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace > with >= in parse_args\n@@ -101,17 +101,17 @@\n \n pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli, Error> {\n     let args_vec: Vec<OsString> = args.collect();\n \n     if args_vec.is_empty() || (args_vec.len() == 1 && args_vec[0].is_empty()) {\n         return Err(Error::ArgumentParse(ParseError::NoArguments));\n     }\n \n-    if args_vec.len() > 65535 {\n+    if args_vec.len() >= /* ~ changed by cargo-mutants ~ */ 65535 {\n         return Err(Error::ArgumentParse(ParseError::TooManyArguments));\n     }\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n         |e| map_clap_error(&e),\n         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n     )\n }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "parse_args",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 117
+        },
+        "start": {
+          "column": 1,
+          "line": 102
+        }
+      }
+    },
+    "genre": "BinaryOperator",
+    "name": "seshat_cli/src/lib.rs:109:23: replace > with >= in parse_args",
+    "package": "seshat_cli",
+    "replacement": ">=",
+    "span": {
+      "end": {
+        "column": 24,
+        "line": 109
+      },
+      "start": {
+        "column": 23,
+        "line": 109
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace map_clap_error -> Result<Cli, Error> with Ok(Default::default())\n@@ -112,21 +112,17 @@\n \n     ClapCli::try_parse_from(args_vec).map_or_else(\n         |e| map_clap_error(&e),\n         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n     )\n }\n \n fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {\n-    match e.kind() {\n-        clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),\n-        clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),\n-        _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),\n-    }\n+    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */\n }\n \n fn format_clap_error(e: &clap::Error) -> String {\n     e.to_string()\n         .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n         .replace(\"'--help'.\\n\", \"'--help'\\n\")\n }\n \n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "map_clap_error",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 125
+        },
+        "start": {
+          "column": 1,
+          "line": 119
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:120:5: replace map_clap_error -> Result<Cli, Error> with Ok(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Ok(Default::default())",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 124
+      },
+      "start": {
+        "column": 5,
+        "line": 120
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ delete match arm clap::error::ErrorKind::DisplayHelp in map_clap_error\n@@ -113,17 +113,17 @@\n     ClapCli::try_parse_from(args_vec).map_or_else(\n         |e| map_clap_error(&e),\n         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n     )\n }\n \n fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {\n     match e.kind() {\n-        clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),\n+         /* ~ changed by cargo-mutants ~ */\n         clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),\n         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),\n     }\n }\n \n fn format_clap_error(e: &clap::Error) -> String {\n     e.to_string()\n         .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "map_clap_error",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 125
+        },
+        "start": {
+          "column": 1,
+          "line": 119
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "seshat_cli/src/lib.rs:121:9: delete match arm clap::error::ErrorKind::DisplayHelp in map_clap_error",
+    "package": "seshat_cli",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 62,
+        "line": 121
+      },
+      "start": {
+        "column": 9,
+        "line": 121
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error\n@@ -114,17 +114,17 @@\n         |e| map_clap_error(&e),\n         |clap_cli| Ok(Cli::Run(map_subcommand(clap_cli.subcommand))),\n     )\n }\n \n fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {\n     match e.kind() {\n         clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),\n-        clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),\n+         /* ~ changed by cargo-mutants ~ */\n         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),\n     }\n }\n \n fn format_clap_error(e: &clap::Error) -> String {\n     e.to_string()\n         .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n         .replace(\"'--help'.\\n\", \"'--help'\\n\")\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "map_clap_error",
+      "return_type": "-> Result<Cli, Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 125
+        },
+        "start": {
+          "column": 1,
+          "line": 119
+        }
+      }
+    },
+    "genre": "MatchArm",
+    "name": "seshat_cli/src/lib.rs:122:9: delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error",
+    "package": "seshat_cli",
+    "replacement": "",
+    "span": {
+      "end": {
+        "column": 68,
+        "line": 122
+      },
+      "start": {
+        "column": 9,
+        "line": 122
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace format_clap_error -> String with String::new()\n@@ -120,19 +120,17 @@\n     match e.kind() {\n         clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),\n         clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),\n         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),\n     }\n }\n \n fn format_clap_error(e: &clap::Error) -> String {\n-    e.to_string()\n-        .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n-        .replace(\"'--help'.\\n\", \"'--help'\\n\")\n+    String::new() /* ~ changed by cargo-mutants ~ */\n }\n \n fn map_subcommand(cmd: Option<ClapSubcommandEnum>) -> Option<Subcommand> {\n     cmd.map(|c| match c {\n         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,\n         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,\n         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },\n     })\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "format_clap_error",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 131
+        },
+        "start": {
+          "column": 1,
+          "line": 127
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with String::new()",
+    "package": "seshat_cli",
+    "replacement": "String::new()",
+    "span": {
+      "end": {
+        "column": 46,
+        "line": 130
+      },
+      "start": {
+        "column": 5,
+        "line": 128
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace format_clap_error -> String with \"xyzzy\".into()\n@@ -120,19 +120,17 @@\n     match e.kind() {\n         clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),\n         clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),\n         _ => Err(Error::ArgumentParse(ParseError::Clap(format_clap_error(e)))),\n     }\n }\n \n fn format_clap_error(e: &clap::Error) -> String {\n-    e.to_string()\n-        .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n-        .replace(\"'--help'.\\n\", \"'--help'\\n\")\n+    \"xyzzy\".into() /* ~ changed by cargo-mutants ~ */\n }\n \n fn map_subcommand(cmd: Option<ClapSubcommandEnum>) -> Option<Subcommand> {\n     cmd.map(|c| match c {\n         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,\n         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,\n         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },\n     })\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "format_clap_error",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 131
+        },
+        "start": {
+          "column": 1,
+          "line": 127
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with \"xyzzy\".into()",
+    "package": "seshat_cli",
+    "replacement": "\"xyzzy\".into()",
+    "span": {
+      "end": {
+        "column": 46,
+        "line": 130
+      },
+      "start": {
+        "column": 5,
+        "line": 128
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace map_subcommand -> Option<Subcommand> with None\n@@ -126,21 +126,17 @@\n \n fn format_clap_error(e: &clap::Error) -> String {\n     e.to_string()\n         .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n         .replace(\"'--help'.\\n\", \"'--help'\\n\")\n }\n \n fn map_subcommand(cmd: Option<ClapSubcommandEnum>) -> Option<Subcommand> {\n-    cmd.map(|c| match c {\n-        ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,\n-        ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,\n-        ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },\n-    })\n+    None /* ~ changed by cargo-mutants ~ */\n }\n \n #[allow(clippy::needless_pass_by_value)]\n pub fn execute(cli: Cli) -> Result<(), Error> {\n     match cli {\n         Cli::Run(Some(Subcommand::SimulateFailure)) => {\n             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))\n         }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "map_subcommand",
+      "return_type": "-> Option<Subcommand>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 139
+        },
+        "start": {
+          "column": 1,
+          "line": 133
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with None",
+    "package": "seshat_cli",
+    "replacement": "None",
+    "span": {
+      "end": {
+        "column": 7,
+        "line": 138
+      },
+      "start": {
+        "column": 5,
+        "line": 134
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace map_subcommand -> Option<Subcommand> with Some(Default::default())\n@@ -126,21 +126,17 @@\n \n fn format_clap_error(e: &clap::Error) -> String {\n     e.to_string()\n         .replace(\"[COMMAND]\", \"[OPTIONS] [COMMAND]\")\n         .replace(\"'--help'.\\n\", \"'--help'\\n\")\n }\n \n fn map_subcommand(cmd: Option<ClapSubcommandEnum>) -> Option<Subcommand> {\n-    cmd.map(|c| match c {\n-        ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,\n-        ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,\n-        ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },\n-    })\n+    Some(Default::default()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[allow(clippy::needless_pass_by_value)]\n pub fn execute(cli: Cli) -> Result<(), Error> {\n     match cli {\n         Cli::Run(Some(Subcommand::SimulateFailure)) => {\n             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))\n         }\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "map_subcommand",
+      "return_type": "-> Option<Subcommand>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 139
+        },
+        "start": {
+          "column": 1,
+          "line": 133
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with Some(Default::default())",
+    "package": "seshat_cli",
+    "replacement": "Some(Default::default())",
+    "span": {
+      "end": {
+        "column": 7,
+        "line": 138
+      },
+      "start": {
+        "column": 5,
+        "line": 134
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace execute -> Result<(), Error> with Ok(())\n@@ -135,22 +135,17 @@\n         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,\n         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,\n         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },\n     })\n }\n \n #[allow(clippy::needless_pass_by_value)]\n pub fn execute(cli: Cli) -> Result<(), Error> {\n-    match cli {\n-        Cli::Run(Some(Subcommand::SimulateFailure)) => {\n-            Err(Error::CommandExecution(ExecutionError::SimulatedFailure))\n-        }\n-        Cli::Run(_) | Cli::Help | Cli::Version => Ok(()),\n-    }\n+    Ok(()) /* ~ changed by cargo-mutants ~ */\n }\n \n #[must_use]\n pub fn get_help() -> String {\n     use clap::CommandFactory;\n     ClapCli::command().render_help().to_string()\n }\n \n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "execute",
+      "return_type": "-> Result<(), Error>",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 149
+        },
+        "start": {
+          "column": 1,
+          "line": 141
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:143:5: replace execute -> Result<(), Error> with Ok(())",
+    "package": "seshat_cli",
+    "replacement": "Ok(())",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 148
+      },
+      "start": {
+        "column": 5,
+        "line": 143
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace get_help -> String with String::new()\n@@ -145,18 +145,17 @@\n             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))\n         }\n         Cli::Run(_) | Cli::Help | Cli::Version => Ok(()),\n     }\n }\n \n #[must_use]\n pub fn get_help() -> String {\n-    use clap::CommandFactory;\n-    ClapCli::command().render_help().to_string()\n+    String::new() /* ~ changed by cargo-mutants ~ */\n }\n \n #[must_use]\n pub fn get_version() -> String {\n     use clap::CommandFactory;\n     ClapCli::command().render_version()\n }\n \n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "get_help",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 155
+        },
+        "start": {
+          "column": 1,
+          "line": 151
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:153:5: replace get_help -> String with String::new()",
+    "package": "seshat_cli",
+    "replacement": "String::new()",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 154
+      },
+      "start": {
+        "column": 5,
+        "line": 153
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace get_help -> String with \"xyzzy\".into()\n@@ -145,18 +145,17 @@\n             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))\n         }\n         Cli::Run(_) | Cli::Help | Cli::Version => Ok(()),\n     }\n }\n \n #[must_use]\n pub fn get_help() -> String {\n-    use clap::CommandFactory;\n-    ClapCli::command().render_help().to_string()\n+    \"xyzzy\".into() /* ~ changed by cargo-mutants ~ */\n }\n \n #[must_use]\n pub fn get_version() -> String {\n     use clap::CommandFactory;\n     ClapCli::command().render_version()\n }\n \n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "get_help",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 155
+        },
+        "start": {
+          "column": 1,
+          "line": 151
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:153:5: replace get_help -> String with \"xyzzy\".into()",
+    "package": "seshat_cli",
+    "replacement": "\"xyzzy\".into()",
+    "span": {
+      "end": {
+        "column": 49,
+        "line": 154
+      },
+      "start": {
+        "column": 5,
+        "line": 153
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace get_version -> String with String::new()\n@@ -151,18 +151,17 @@\n #[must_use]\n pub fn get_help() -> String {\n     use clap::CommandFactory;\n     ClapCli::command().render_help().to_string()\n }\n \n #[must_use]\n pub fn get_version() -> String {\n-    use clap::CommandFactory;\n-    ClapCli::command().render_version()\n+    String::new() /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n mod tests {\n     use super::*;\n \n     #[test]\n     fn error_display_returns_formatted_string_when_argument_parse_variant() {\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "get_version",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 161
+        },
+        "start": {
+          "column": 1,
+          "line": 157
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:159:5: replace get_version -> String with String::new()",
+    "package": "seshat_cli",
+    "replacement": "String::new()",
+    "span": {
+      "end": {
+        "column": 40,
+        "line": 160
+      },
+      "start": {
+        "column": 5,
+        "line": 159
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/lib.rs\n+++ replace get_version -> String with \"xyzzy\".into()\n@@ -151,18 +151,17 @@\n #[must_use]\n pub fn get_help() -> String {\n     use clap::CommandFactory;\n     ClapCli::command().render_help().to_string()\n }\n \n #[must_use]\n pub fn get_version() -> String {\n-    use clap::CommandFactory;\n-    ClapCli::command().render_version()\n+    \"xyzzy\".into() /* ~ changed by cargo-mutants ~ */\n }\n \n #[cfg(test)]\n mod tests {\n     use super::*;\n \n     #[test]\n     fn error_display_returns_formatted_string_when_argument_parse_variant() {\n",
+    "file": "seshat_cli/src/lib.rs",
+    "function": {
+      "function_name": "get_version",
+      "return_type": "-> String",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 161
+        },
+        "start": {
+          "column": 1,
+          "line": 157
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/lib.rs:159:5: replace get_version -> String with \"xyzzy\".into()",
+    "package": "seshat_cli",
+    "replacement": "\"xyzzy\".into()",
+    "span": {
+      "end": {
+        "column": 40,
+        "line": 160
+      },
+      "start": {
+        "column": 5,
+        "line": 159
+      }
+    }
+  },
+  {
+    "diff": "--- seshat_cli/src/main.rs\n+++ replace main -> ExitCode with Default::default()\n@@ -1,26 +1,5 @@\n use std::process::ExitCode;\n \n fn main() -> ExitCode {\n-    let args = std::env::args_os();\n-    match seshat_cli::parse_args(args) {\n-        Ok(seshat_cli::Cli::Help) => {\n-            print!(\"{}\", seshat_cli::get_help());\n-            ExitCode::SUCCESS\n-        }\n-        Ok(seshat_cli::Cli::Version) => {\n-            print!(\"{}\", seshat_cli::get_version());\n-            ExitCode::SUCCESS\n-        }\n-        Ok(cli @ seshat_cli::Cli::Run(_)) => match seshat_cli::execute(cli) {\n-            Ok(()) => ExitCode::SUCCESS,\n-            Err(e) => {\n-                eprintln!(\"{e}\");\n-                ExitCode::FAILURE\n-            }\n-        },\n-        Err(e) => {\n-            eprintln!(\"{e}\");\n-            ExitCode::from(2)\n-        }\n-    }\n+    Default::default() /* ~ changed by cargo-mutants ~ */\n }\n",
+    "file": "seshat_cli/src/main.rs",
+    "function": {
+      "function_name": "main",
+      "return_type": "-> ExitCode",
+      "span": {
+        "end": {
+          "column": 2,
+          "line": 26
+        },
+        "start": {
+          "column": 1,
+          "line": 3
+        }
+      }
+    },
+    "genre": "FnValue",
+    "name": "seshat_cli/src/main.rs:4:5: replace main -> ExitCode with Default::default()",
+    "package": "seshat_cli",
+    "replacement": "Default::default()",
+    "span": {
+      "end": {
+        "column": 6,
+        "line": 25
+      },
+      "start": {
+        "column": 5,
+        "line": 4
+      }
+    }
+  }
+]

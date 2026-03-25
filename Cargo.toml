@@ -1,5 +1,5 @@
 [workspace]
-members = ["canvas_math", "diagram_tool", "diagram_models", "canvas_domain"]
+members = ["canvas_math", "diagram_tool", "diagram_models", "canvas_domain", "seshat_cli"]
 resolver = "2"
 
 [profile.release]
