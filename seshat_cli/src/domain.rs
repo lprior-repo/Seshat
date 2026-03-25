@@ -16,6 +16,48 @@ pub struct ShowCommand {
     pub source: ShowSource,
 }
 
+/// Source for the patch command input.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PatchSource {
+    /// Read input from the given path.
+    File(PathBuf),
+    /// Read input from stdin.
+    Stdin,
+}
+
+/// Target for the patch command output.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum PatchTarget {
+    /// Write output to the given path.
+    File(PathBuf),
+    /// Write output to stdout.
+    Stdout,
+}
+
+/// Domain command for the patch subcommand.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PatchCommand {
+    pub input: PatchSource,
+    pub patch: PathBuf,
+    pub output: PatchTarget,
+}
+
+/// Source for the apply command input.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ApplySource {
+    /// Read input from the given path.
+    File(PathBuf),
+    /// Read input from stdin.
+    Stdin,
+}
+
+/// Domain command for the apply subcommand.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ApplyCommand {
+    pub document: ApplySource,
+    pub proposal: PathBuf,
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DepthError {
     Negative,
@@ -57,6 +99,8 @@ pub enum Subcommand {
     SimulateFailure,
     ComplexState { depth: Depth },
     Show(ShowCommand),
+    Patch(PatchCommand),
+    Apply(ApplyCommand),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

@@ -30,6 +30,27 @@ enum ClapSubcommandEnum {
         #[arg(long, required = true)]
         json: bool,
     },
+    #[command(name = "patch")]
+    Patch {
+        /// Path to the input diagram file. If omitted, reads from stdin.
+        #[arg(long, short = 'i')]
+        input: Option<std::path::PathBuf>,
+        /// Path to the JSON patch file.
+        #[arg(long, short = 'p')]
+        patch: std::path::PathBuf,
+        /// Path to the output diagram file. If omitted, writes to stdout.
+        #[arg(long, short = 'o')]
+        output: Option<std::path::PathBuf>,
+    },
+    #[command(name = "apply")]
+    Apply {
+        /// Path to the input diagram file. If omitted, reads from stdin.
+        #[arg(long, short = 'i')]
+        input: Option<std::path::PathBuf>,
+        /// Path to the JSON proposal file.
+        #[arg(long, short = 'p')]
+        proposal: std::path::PathBuf,
+    },
 }
 
 /// Parses an iterator of string arguments into a `Cli` command.
@@ -68,6 +89,14 @@ fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },
         ClapSubcommandEnum::Show { file, json: _ } => {
             Subcommand::Show(crate::show::map_show_subcommand(file))
+        }
+        ClapSubcommandEnum::Patch {
+            input,
+            patch,
+            output,
+        } => Subcommand::Patch(crate::patch::map_patch_subcommand(input, patch, output)),
+        ClapSubcommandEnum::Apply { input, proposal } => {
+            Subcommand::Apply(crate::apply::map_apply_subcommand(input, proposal))
         }
     }
 }

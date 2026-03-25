@@ -40,6 +40,99 @@ impl std::fmt::Display for ShowError {
 
 impl std::error::Error for ShowError {}
 
+/// Errors that can occur during execution of the `patch` subcommand.
+#[derive(Debug, PartialEq, Eq)]
+pub enum PatchError {
+    /// The specified file path does not exist or is not accessible.
+    FileNotFound(std::path::PathBuf),
+    /// An I/O error occurred while reading or writing.
+    IoError(String),
+    /// The input bytes were not valid UTF-8.
+    InvalidUtf8,
+    /// The input was empty.
+    EmptyInput,
+    /// JSON parsing failed.
+    JsonDeserialize(String),
+    /// Patch application failed.
+    ApplyError(String),
+    /// Missing a revision test in the patch.
+    MissingRevisionTest,
+    /// The output document is invalid.
+    InvalidDocument(String),
+    /// `serde_json` serialization of the modified document failed.
+    SerializationFailure(String),
+}
+
+impl std::fmt::Display for PatchError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FileNotFound(path) => {
+                write!(f, "error: patch: file not found: {}", path.display())
+            }
+            Self::IoError(msg) => write!(f, "error: patch: I/O error: {msg}"),
+            Self::InvalidUtf8 => write!(f, "error: patch: invalid utf-8 in input"),
+            Self::EmptyInput => write!(f, "error: patch: empty input"),
+            Self::JsonDeserialize(msg) => write!(f, "error: patch: JSON parse error: {msg}"),
+            Self::ApplyError(msg) => write!(f, "error: patch: failed to apply patch: {msg}"),
+            Self::MissingRevisionTest => {
+                write!(f, "error: patch: patch must include a test for /revision")
+            }
+            Self::InvalidDocument(msg) => {
+                write!(f, "error: patch: invalid document after patch: {msg}")
+            }
+            Self::SerializationFailure(msg) => {
+                write!(f, "error: patch: serialization failure: {msg}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for PatchError {}
+
+/// Errors that can occur during execution of the `apply` subcommand.
+#[derive(Debug, PartialEq, Eq)]
+pub enum ApplyError {
+    /// The specified file path does not exist or is not accessible.
+    FileNotFound(std::path::PathBuf),
+    /// An I/O error occurred while reading or writing.
+    IoError(String),
+    /// The input bytes were not valid UTF-8.
+    InvalidUtf8,
+    /// The input was empty.
+    EmptyInput,
+    /// JSON parsing failed.
+    JsonDeserialize(String),
+    /// Proposal validation failed.
+    InvalidProposal(String),
+    /// The input document is invalid.
+    InvalidDocument(String),
+    /// `serde_json` serialization failed.
+    SerializationFailure(String),
+}
+
+impl std::fmt::Display for ApplyError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FileNotFound(path) => {
+                write!(f, "error: apply: file not found: {}", path.display())
+            }
+            Self::IoError(msg) => write!(f, "error: apply: I/O error: {msg}"),
+            Self::InvalidUtf8 => write!(f, "error: apply: invalid utf-8 in input"),
+            Self::EmptyInput => write!(f, "error: apply: empty input"),
+            Self::JsonDeserialize(msg) => write!(f, "error: apply: JSON parse error: {msg}"),
+            Self::InvalidProposal(msg) => write!(f, "error: apply: invalid proposal: {msg}"),
+            Self::InvalidDocument(msg) => {
+                write!(f, "error: apply: invalid document: {msg}")
+            }
+            Self::SerializationFailure(msg) => {
+                write!(f, "error: apply: serialization failure: {msg}")
+            }
+        }
+    }
+}
+
+impl std::error::Error for ApplyError {}
+
 /// Represents errors that occur during argument parsing.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
@@ -61,6 +154,8 @@ impl std::fmt::Display for ParseError {
 pub enum ExecutionError {
     SimulatedFailure,
     Show(ShowError),
+    Patch(PatchError),
+    Apply(ApplyError),
 }
 
 impl std::fmt::Display for ExecutionError {
@@ -70,6 +165,8 @@ impl std::fmt::Display for ExecutionError {
                 write!(f, "Execution failed: Subcommand 'simulate_failure' aborted")
             }
             Self::Show(e) => write!(f, "{e}"),
+            Self::Patch(e) => write!(f, "{e}"),
+            Self::Apply(e) => write!(f, "{e}"),
         }
     }
 }

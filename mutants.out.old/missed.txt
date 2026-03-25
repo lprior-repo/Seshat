@@ -1,6 +1,0 @@
-seshat_cli/src/show.rs:774:9: replace verification::verify_map_show_subcommand_is_structurally_total with ()
-seshat_cli/src/show.rs:789:9: replace verification::verify_serialize_document_never_panics_for_valid_doc with ()
-seshat_cli/src/show.rs:790:13: delete field version from struct DiagramDocument expression in verification::verify_serialize_document_never_panics_for_valid_doc
-seshat_cli/src/show.rs:813:9: replace verification::verify_load_document_from_reader_cannot_return_file_not_found with ()
-seshat_cli/src/show.rs:801:9: replace verification::verify_show_error_display_prefix_for_all_variants with ()
-seshat_cli/src/show.rs:818:13: delete match arm Err(crate::error::ShowError::FileNotFound(_)) in verification::verify_load_document_from_reader_cannot_return_file_not_found

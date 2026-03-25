@@ -18,6 +18,14 @@ pub fn execute(cli: Cli) -> Result<(), Error> {
             crate::show::serialize_document,
         )
         .map_err(|e| Error::CommandExecution(ExecutionError::Show(e))),
+        Cli::Run(Subcommand::Patch(cmd)) => {
+            crate::patch::execute_patch(&cmd, std::io::stdin(), std::io::stdout())
+                .map_err(|e| Error::CommandExecution(ExecutionError::Patch(e)))
+        }
+        Cli::Run(Subcommand::Apply(cmd)) => {
+            crate::apply::execute_apply(&cmd, std::io::stdin(), std::io::stdout())
+                .map_err(|e| Error::CommandExecution(ExecutionError::Apply(e)))
+        }
         Cli::Run(_) | Cli::Help(_) | Cli::Version(_) | Cli::Bare => Ok(()),
     }
 }
