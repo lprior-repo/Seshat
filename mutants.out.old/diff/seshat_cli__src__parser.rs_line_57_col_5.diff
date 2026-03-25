@@ -1,0 +1,25 @@
+--- seshat_cli/src/parser.rs
++++ replace map_clap_error -> Result<Cli, Error> with Ok(Default::default())
+@@ -49,21 +49,17 @@
+             Ok(clap_cli
+                 .subcommand
+                 .map_or(Cli::Bare, |cmd| Cli::Run(map_subcommand(cmd))))
+         },
+     )
+ }
+ 
+ fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {
+-    match e.kind() {
+-        clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),
+-        clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),
+-        _ => Err(Error::ArgumentParse(ParseError::Clap(e.to_string()))),
+-    }
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
+     match cmd {
+         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,
+         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,
+         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },
+         ClapSubcommandEnum::Show { file, json: _ } => {

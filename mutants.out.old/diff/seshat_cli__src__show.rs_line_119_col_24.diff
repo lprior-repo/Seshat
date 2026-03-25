@@ -1,0 +1,21 @@
+--- seshat_cli/src/show.rs
++++ replace && with || in parse_document
+@@ -111,17 +111,17 @@
+ /// - `ShowError::JsonDeserialize` — malformed JSON syntax or type mismatch.
+ fn parse_document(json: &str) -> Result<DiagramDocument, ShowError> {
+     // Pass 1: validate raw JSON syntax first.
+     serde_json::from_str::<serde_json::Value>(json)
+         .map_err(|e| ShowError::JsonDeserialize(e.to_string()))?;
+ 
+     // Pass 2: deserialize into the typed struct.
+     serde_json::from_str::<DiagramDocument>(json).map_err(|e| {
+-        if e.is_data() && e.to_string().contains("unknown field") {
++        if e.is_data() || /* ~ changed by cargo-mutants ~ */ e.to_string().contains("unknown field") {
+             ShowError::InvalidDocument(e.to_string())
+         } else {
+             ShowError::JsonDeserialize(e.to_string())
+         }
+     })
+ }
+ 
+ /// Top-level executor for the `show` subcommand.

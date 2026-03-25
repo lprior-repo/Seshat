@@ -9,8 +9,13 @@ path = "src/main.rs"
 
 [dependencies]
 clap = { version = "4.4", features = ["derive"] }
+diagram_models = { path = "../diagram_models" }
+serde_json = "1"
 
 [dev-dependencies]
 rstest = "0.18"
 proptest = "1.4"
 libc = "0.2.183"
+tempfile = "3"
+serde = { version = "1", features = ["derive"] }
+im = { version = "15.1.0", features = ["serde"] }

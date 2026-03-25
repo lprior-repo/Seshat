@@ -1,0 +1,31 @@
+--- seshat_cli/src/show.rs
++++ replace parse_document -> Result<DiagramDocument, ShowError> with Ok(Default::default())
+@@ -106,27 +106,17 @@
+ /// 2. Parse as `DiagramDocument`; data errors (unknown fields, schema mismatches)
+ ///    containing "unknown field" → `InvalidDocument`; all others → `JsonDeserialize`.
+ ///
+ /// # Errors
+ /// - `ShowError::InvalidDocument` — JSON valid but unknown fields or structural mismatch.
+ /// - `ShowError::JsonDeserialize` — malformed JSON syntax or type mismatch.
+ fn parse_document(json: &str) -> Result<DiagramDocument, ShowError> {
+     // Pass 1: validate raw JSON syntax first.
+-    serde_json::from_str::<serde_json::Value>(json)
+-        .map_err(|e| ShowError::JsonDeserialize(e.to_string()))?;
+-
+-    // Pass 2: deserialize into the typed struct.
+-    serde_json::from_str::<DiagramDocument>(json).map_err(|e| {
+-        if e.is_data() && e.to_string().contains("unknown field") {
+-            ShowError::InvalidDocument(e.to_string())
+-        } else {
+-            ShowError::JsonDeserialize(e.to_string())
+-        }
+-    })
++    Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Top-level executor for the `show` subcommand.
+ /// Orchestrates: load → serialize → write.
+ ///
+ /// Accepts an injectable writer and an injectable `serialize_fn` for deterministic testing.
+ ///
+ /// # Postconditions

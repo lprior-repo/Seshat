@@ -6,11 +6,18 @@ use crate::error::{Error, ExecutionError};
 /// # Errors
 /// Returns an `Error` if the command execution fails (e.g., simulated failure).
 #[allow(clippy::needless_pass_by_value)]
-pub const fn execute(cli: Cli) -> Result<(), Error> {
+pub fn execute(cli: Cli) -> Result<(), Error> {
     match cli {
         Cli::Run(Subcommand::SimulateFailure) => {
             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))
         }
+        Cli::Run(Subcommand::Show(cmd)) => crate::show::execute_show(
+            &cmd,
+            std::io::stdin(),
+            std::io::stdout(),
+            crate::show::serialize_document,
+        )
+        .map_err(|e| Error::CommandExecution(ExecutionError::Show(e))),
         Cli::Run(_) | Cli::Help | Cli::Version | Cli::Bare => Ok(()),
     }
 }

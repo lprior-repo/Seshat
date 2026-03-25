@@ -1,0 +1,25 @@
+--- seshat_cli/src/domain.rs
++++ replace Depth::try_new -> Result<Self, DepthError> with Ok(Default::default())
+@@ -38,21 +38,17 @@
+ pub struct Depth(i32);
+ 
+ impl Depth {
+     /// Attempts to create a new `Depth`, validating boundaries.
+     ///
+     /// # Errors
+     /// Returns an error if the depth is negative or exceeds the maximum (254).
+     pub const fn try_new(val: i32) -> Result<Self, DepthError> {
+-        match val {
+-            v if v < 0 => Err(DepthError::Negative),
+-            v if v > 254 => Err(DepthError::ExceedsMax),
+-            v => Ok(Self(v)),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ #[derive(Debug, PartialEq, Eq, Clone)]
+ pub enum Subcommand {
+     ValidCommand,
+     SimulateFailure,
+     ComplexState { depth: Depth },

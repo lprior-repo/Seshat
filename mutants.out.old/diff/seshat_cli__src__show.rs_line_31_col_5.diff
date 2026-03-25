@@ -1,0 +1,21 @@
+--- seshat_cli/src/show.rs
++++ replace serialize_document -> Result<String, ShowError> with Ok(String::new())
+@@ -23,17 +23,17 @@
+     }
+ }
+ 
+ /// Serializes a `DiagramDocument` to a compact JSON string.
+ ///
+ /// # Errors
+ /// - `ShowError::SerializationFailure` — `serde_json` internal error (unreachable in practice).
+ pub fn serialize_document(doc: &DiagramDocument) -> Result<String, ShowError> {
+-    serde_json::to_string(doc).map_err(|e| ShowError::SerializationFailure(e.to_string()))
++    Ok(String::new()) /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ /// Reads bytes from the filesystem and deserializes a `DiagramDocument`.
+ ///
+ /// # Errors
+ /// - `ShowError::FileNotFound`    — path does not exist or permissions denied.
+ /// - `ShowError::IoError`         — other I/O failure during read.
+ /// - `ShowError::InvalidUtf8`     — bytes are not valid UTF-8.

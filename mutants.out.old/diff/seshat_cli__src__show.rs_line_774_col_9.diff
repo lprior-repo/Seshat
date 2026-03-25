@@ -1,0 +1,31 @@
+--- seshat_cli/src/show.rs
++++ replace verification::verify_map_show_subcommand_is_structurally_total with ()
+@@ -766,27 +766,17 @@
+ mod verification {
+     use super::*;
+     use crate::domain::{ShowCommand, ShowSource};
+     use diagram_models::document::DiagramDocument;
+     use std::path::PathBuf;
+ 
+     #[kani::proof]
+     fn verify_map_show_subcommand_is_structurally_total() {
+-        let has_file: bool = kani::any();
+-        let cmd = if has_file {
+-            map_show_subcommand(Some(PathBuf::from("/bounded/path.json")))
+-        } else {
+-            map_show_subcommand(None)
+-        };
+-        if has_file {
+-            assert!(matches!(cmd.source, ShowSource::File(_)));
+-        } else {
+-            assert!(matches!(cmd.source, ShowSource::Stdin));
+-        }
++        () /* ~ changed by cargo-mutants ~ */
+     }
+ 
+     #[kani::proof]
+     fn verify_serialize_document_never_panics_for_valid_doc() {
+         let doc = DiagramDocument {
+             version: kani::any(),
+             ..DiagramDocument::default()
+         };

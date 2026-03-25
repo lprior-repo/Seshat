@@ -1,28 +1,42 @@
-seshat_cli/src/lib.rs:16:9: replace <impl std::fmt::Display for ParseError>::fmt -> std::fmt::Result with Ok(Default::default())
-seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with true in parse_depth
-seshat_cli/src/lib.rs:62:14: replace match guard v < 0 with false in parse_depth
-seshat_cli/src/lib.rs:49:9: replace <impl std::fmt::Display for Error>::fmt -> std::fmt::Result with Ok(Default::default())
-seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with true in parse_depth
-seshat_cli/src/lib.rs:33:9: replace <impl std::fmt::Display for ExecutionError>::fmt -> std::fmt::Result with Ok(Default::default())
-seshat_cli/src/lib.rs:63:14: replace match guard v > 254 with false in parse_depth
-seshat_cli/src/lib.rs:62:16: replace < with == in parse_depth
-seshat_cli/src/lib.rs:63:16: replace > with == in parse_depth
-seshat_cli/src/lib.rs:62:16: replace < with > in parse_depth
-seshat_cli/src/lib.rs:63:16: replace > with < in parse_depth
-seshat_cli/src/lib.rs:105:28: replace || with && in parse_args
-seshat_cli/src/lib.rs:105:52: replace && with || in parse_args
-seshat_cli/src/lib.rs:105:47: replace == with != in parse_args
-seshat_cli/src/lib.rs:109:23: replace > with == in parse_args
-seshat_cli/src/lib.rs:109:23: replace > with < in parse_args
-seshat_cli/src/lib.rs:109:23: replace > with >= in parse_args
-seshat_cli/src/lib.rs:121:9: delete match arm clap::error::ErrorKind::DisplayHelp in map_clap_error
-seshat_cli/src/lib.rs:122:9: delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error
-seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with String::new()
-seshat_cli/src/lib.rs:128:5: replace format_clap_error -> String with "xyzzy".into()
-seshat_cli/src/lib.rs:134:5: replace map_subcommand -> Option<Subcommand> with None
-seshat_cli/src/lib.rs:143:5: replace execute -> Result<(), Error> with Ok(())
-seshat_cli/src/lib.rs:153:5: replace get_help -> String with String::new()
-seshat_cli/src/lib.rs:153:5: replace get_help -> String with "xyzzy".into()
-seshat_cli/src/lib.rs:159:5: replace get_version -> String with String::new()
-seshat_cli/src/lib.rs:159:5: replace get_version -> String with "xyzzy".into()
 seshat_cli/src/main.rs:4:5: replace main -> ExitCode with Default::default()
+seshat_cli/src/domain.rs:47:18: replace match guard v < 0 with false in Depth::try_new
+seshat_cli/src/domain.rs:48:18: replace match guard v > 254 with true in Depth::try_new
+seshat_cli/src/domain.rs:48:18: replace match guard v > 254 with false in Depth::try_new
+seshat_cli/src/domain.rs:27:9: replace <impl std::fmt::Display for DepthError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/domain.rs:47:20: replace < with > in Depth::try_new
+seshat_cli/src/domain.rs:47:18: replace match guard v < 0 with true in Depth::try_new
+seshat_cli/src/domain.rs:47:20: replace < with == in Depth::try_new
+seshat_cli/src/domain.rs:47:20: replace < with <= in Depth::try_new
+seshat_cli/src/domain.rs:48:20: replace > with == in Depth::try_new
+seshat_cli/src/domain.rs:48:20: replace > with < in Depth::try_new
+seshat_cli/src/domain.rs:48:20: replace > with >= in Depth::try_new
+seshat_cli/src/domain.rs:78:9: replace <impl std::fmt::Display for ParseDepthError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/error.rs:24:9: replace <impl std::fmt::Display for ShowError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/error.rs:52:9: replace <impl std::fmt::Display for ParseError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/error.rs:68:9: replace <impl std::fmt::Display for ExecutionError>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/error.rs:86:9: replace <impl std::fmt::Display for Error>::fmt -> std::fmt::Result with Ok(Default::default())
+seshat_cli/src/executor.rs:10:5: replace execute -> Result<(), Error> with Ok(())
+seshat_cli/src/parser.rs:42:28: replace || with && in parse_args
+seshat_cli/src/parser.rs:42:52: replace && with || in parse_args
+seshat_cli/src/parser.rs:42:47: replace == with != in parse_args
+seshat_cli/src/parser.rs:58:9: delete match arm clap::error::ErrorKind::DisplayHelp in map_clap_error
+seshat_cli/src/parser.rs:59:9: delete match arm clap::error::ErrorKind::DisplayVersion in map_clap_error
+seshat_cli/src/parser.rs:77:5: replace get_help -> String with String::new()
+seshat_cli/src/parser.rs:77:5: replace get_help -> String with "xyzzy".into()
+seshat_cli/src/parser.rs:83:5: replace get_version -> String with String::new()
+seshat_cli/src/parser.rs:83:5: replace get_version -> String with "xyzzy".into()
+seshat_cli/src/show.rs:31:5: replace serialize_document -> Result<String, ShowError> with Ok("xyzzy".into())
+seshat_cli/src/show.rs:31:5: replace serialize_document -> Result<String, ShowError> with Ok(String::new())
+seshat_cli/src/show.rs:44:5: replace load_document_from_path -> Result<DiagramDocument, ShowError> with Ok(Default::default())
+seshat_cli/src/show.rs:55:9: delete match arm std::io::ErrorKind::NotFound | std::io::ErrorKind::PermissionDenied in map_open_error
+seshat_cli/src/show.rs:87:5: replace read_bytes_from_reader -> Result<Vec<u8>, ShowError> with Ok(vec![])
+seshat_cli/src/show.rs:73:5: replace load_document_from_reader -> Result<DiagramDocument, ShowError> with Ok(Default::default())
+seshat_cli/src/show.rs:87:5: replace read_bytes_from_reader -> Result<Vec<u8>, ShowError> with Ok(vec![0])
+seshat_cli/src/show.rs:87:5: replace read_bytes_from_reader -> Result<Vec<u8>, ShowError> with Ok(vec![1])
+seshat_cli/src/show.rs:99:5: replace decode_utf8 -> Result<String, ShowError> with Ok(String::new())
+seshat_cli/src/show.rs:99:5: replace decode_utf8 -> Result<String, ShowError> with Ok("xyzzy".into())
+seshat_cli/src/show.rs:114:5: replace parse_document -> Result<DiagramDocument, ShowError> with Ok(Default::default())
+seshat_cli/src/show.rs:119:24: replace && with || in parse_document
+seshat_cli/src/show.rs:144:5: replace execute_show -> Result<(), ShowError> with Ok(())
+seshat_cli/src/show.rs:154:5: replace load_document -> Result<DiagramDocument, ShowError> with Ok(Default::default())
+seshat_cli/src/show.rs:165:5: replace write_output -> Result<(), ShowError> with Ok(())

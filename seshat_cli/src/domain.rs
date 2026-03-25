@@ -1,4 +1,20 @@
 use std::num::ParseIntError;
+use std::path::PathBuf;
+
+/// Source for the show command — either a filesystem path or stdin.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum ShowSource {
+    /// Read from the filesystem at the given path.
+    File(PathBuf),
+    /// Read from stdin.
+    Stdin,
+}
+
+/// Domain command for the show subcommand. Data-only: no I/O handles.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ShowCommand {
+    pub source: ShowSource,
+}
 
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DepthError {
@@ -40,6 +56,7 @@ pub enum Subcommand {
     ValidCommand,
     SimulateFailure,
     ComplexState { depth: Depth },
+    Show(ShowCommand),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

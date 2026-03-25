@@ -1,0 +1,24 @@
+--- seshat_cli/src/domain.rs
++++ replace <impl std::fmt::Display for ParseDepthError>::fmt -> std::fmt::Result with Ok(Default::default())
+@@ -70,20 +70,17 @@
+ #[derive(Debug, PartialEq, Eq, Clone)]
+ pub enum ParseDepthError {
+     ParseInt(String),
+     Domain(DepthError),
+ }
+ 
+ impl std::fmt::Display for ParseDepthError {
+     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+-        match self {
+-            Self::ParseInt(e) => write!(f, "{e}"),
+-            Self::Domain(e) => write!(f, "{e}"),
+-        }
++        Ok(Default::default()) /* ~ changed by cargo-mutants ~ */
+     }
+ }
+ 
+ impl std::error::Error for ParseDepthError {}
+ 
+ /// Parses a string into a `Depth`.
+ ///
+ /// # Errors

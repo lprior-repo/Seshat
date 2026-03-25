@@ -5778,9 +5778,14 @@ name = "seshat_cli"
 version = "0.1.0"
 dependencies = [
  "clap",
+ "diagram_models",
+ "im",
  "libc",
  "proptest",
  "rstest",
+ "serde",
+ "serde_json",
+ "tempfile",
 ]
 
 [[package]]

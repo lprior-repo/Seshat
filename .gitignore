@@ -50,6 +50,7 @@ playwright-report/
 
 # Cargo-mutants output
 mutants.out/
+mutants.out.old/
 
 # Proptest regression artifacts
 **/proptest-regressions/

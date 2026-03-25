@@ -1,0 +1,22 @@
+--- seshat_cli/src/parser.rs
++++ replace get_help -> String with String::new()
+@@ -69,18 +69,17 @@
+         ClapSubcommandEnum::Show { file, json: _ } => {
+             Subcommand::Show(crate::show::map_show_subcommand(file))
+         }
+     }
+ }
+ 
+ #[must_use]
+ pub fn get_help() -> String {
+-    use clap::CommandFactory;
+-    ClapCli::command().render_help().to_string()
++    String::new() /* ~ changed by cargo-mutants ~ */
+ }
+ 
+ #[must_use]
+ pub fn get_version() -> String {
+     use clap::CommandFactory;
+     ClapCli::command().render_version()
+ }
+ 

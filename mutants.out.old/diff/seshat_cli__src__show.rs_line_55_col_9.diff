@@ -1,0 +1,23 @@
+--- seshat_cli/src/show.rs
++++ delete match arm std::io::ErrorKind::NotFound | std::io::ErrorKind::PermissionDenied in map_open_error
+@@ -47,19 +47,17 @@
+ }
+ 
+ /// Maps a `std::io::Error` from `File::open` into the correct `ShowError` variant.
+ ///
+ /// `NotFound` and `PermissionDenied` map to `FileNotFound`.
+ /// All other I/O errors map to `IoError`.
+ fn map_open_error(e: &std::io::Error, path: &std::path::Path) -> ShowError {
+     match e.kind() {
+-        std::io::ErrorKind::NotFound | std::io::ErrorKind::PermissionDenied => {
+-            ShowError::FileNotFound(path.to_path_buf())
+-        }
++         /* ~ changed by cargo-mutants ~ */
+         _ => ShowError::IoError(e.to_string()),
+     }
+ }
+ 
+ /// Reads bytes from any `Read` implementor and deserializes a `DiagramDocument`.
+ ///
+ /// # Errors
+ /// - `ShowError::IoError`         — I/O failure while reading.

@@ -10,7 +10,7 @@ struct ClapCli {
     subcommand: Option<ClapSubcommandEnum>,
 }
 
-#[derive(ClapSubcommandMacro, Clone, Copy)]
+#[derive(ClapSubcommandMacro, Clone)]
 enum ClapSubcommandEnum {
     #[command(name = "valid-command")]
     ValidCommand,
@@ -20,6 +20,15 @@ enum ClapSubcommandEnum {
     ComplexState {
         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]
         depth: Depth,
+    },
+    #[command(name = "show")]
+    Show {
+        /// Path to the diagram file. If omitted, reads from stdin.
+        #[arg(long, short = 'f')]
+        file: Option<std::path::PathBuf>,
+        /// Output as JSON (required flag for AI agent compatibility).
+        #[arg(long, required = true)]
+        json: bool,
     },
 }
 
@@ -52,11 +61,14 @@ fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {
     }
 }
 
-const fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
+fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
     match cmd {
         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,
         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,
         ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },
+        ClapSubcommandEnum::Show { file, json: _ } => {
+            Subcommand::Show(crate::show::map_show_subcommand(file))
+        }
     }
 }
 

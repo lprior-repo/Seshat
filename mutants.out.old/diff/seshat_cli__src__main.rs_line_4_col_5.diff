@@ -1,6 +1,6 @@
 --- seshat_cli/src/main.rs
 +++ replace main -> ExitCode with Default::default()
-@@ -1,26 +1,5 @@
+@@ -1,28 +1,5 @@
  use std::process::ExitCode;
  
  fn main() -> ExitCode {
@@ -14,13 +14,15 @@
 -            print!("{}", seshat_cli::get_version());
 -            ExitCode::SUCCESS
 -        }
--        Ok(cli @ seshat_cli::Cli::Run(_)) => match seshat_cli::execute(cli) {
--            Ok(()) => ExitCode::SUCCESS,
--            Err(e) => {
--                eprintln!("{e}");
--                ExitCode::FAILURE
+-        Ok(cli @ (seshat_cli::Cli::Run(_) | seshat_cli::Cli::Bare)) => {
+-            match seshat_cli::execute(cli) {
+-                Ok(()) => ExitCode::SUCCESS,
+-                Err(e) => {
+-                    eprintln!("{e}");
+-                    ExitCode::FAILURE
+-                }
 -            }
--        },
+-        }
 -        Err(e) => {
 -            eprintln!("{e}");
 -            ExitCode::from(2)
