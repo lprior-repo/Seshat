@@ -62,8 +62,8 @@ pub enum Subcommand {
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Cli {
     Run(Subcommand),
-    Help,
-    Version,
+    Help(String),
+    Version(String),
     Bare,
 }
 

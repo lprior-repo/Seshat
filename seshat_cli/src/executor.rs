@@ -18,7 +18,7 @@ pub fn execute(cli: Cli) -> Result<(), Error> {
             crate::show::serialize_document,
         )
         .map_err(|e| Error::CommandExecution(ExecutionError::Show(e))),
-        Cli::Run(_) | Cli::Help | Cli::Version | Cli::Bare => Ok(()),
+        Cli::Run(_) | Cli::Help(_) | Cli::Version(_) | Cli::Bare => Ok(()),
     }
 }
 
@@ -56,7 +56,7 @@ mod tests {
 
     #[test]
     fn execute_returns_success_when_help_state() {
-        let cli = Cli::Help;
+        let cli = Cli::Help("some help".to_string());
         let result = execute(cli);
         assert_eq!(result, Ok(()));
     }

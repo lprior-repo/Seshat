@@ -55,8 +55,8 @@ pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli,
 
 fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {
     match e.kind() {
-        clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help),
-        clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version),
+        clap::error::ErrorKind::DisplayHelp => Ok(Cli::Help(e.to_string())),
+        clap::error::ErrorKind::DisplayVersion => Ok(Cli::Version(e.to_string())),
         _ => Err(Error::ArgumentParse(ParseError::Clap(e.to_string()))),
     }
 }
@@ -72,33 +72,9 @@ fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
     }
 }
 
-#[must_use]
-pub fn get_help() -> String {
-    use clap::CommandFactory;
-    ClapCli::command().render_help().to_string()
-}
-
-#[must_use]
-pub fn get_version() -> String {
-    use clap::CommandFactory;
-    ClapCli::command().render_version()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn get_version_returns_version_string_when_called() {
-        let version = get_version();
-        assert_eq!(version, "seshat 0.1.0\n");
-    }
-
-    #[test]
-    fn get_help_returns_usage_string_when_called() {
-        let help = get_help();
-        assert_eq!(&help[0..6], "Usage:");
-    }
 
     #[test]
     fn parse_args_returns_cli_with_complex_state_when_valid_depth_provided() -> Result<(), String> {
@@ -137,16 +113,24 @@ mod tests {
     fn parse_args_returns_cli_with_help_flag_when_h_arg_passed() -> Result<(), String> {
         let args: Vec<OsString> = vec!["seshat".into(), "-h".into()];
         let result = parse_args(args.into_iter()).map_err(|e| e.to_string())?;
-        assert_eq!(result, Cli::Help);
-        Ok(())
+        if let Cli::Help(help_str) = result {
+            assert!(help_str.contains("Usage:"));
+            Ok(())
+        } else {
+            Err("Expected Cli::Help".to_string())
+        }
     }
 
     #[test]
     fn parse_args_returns_cli_with_version_flag_when_version_arg_passed() -> Result<(), String> {
         let args: Vec<OsString> = vec!["seshat".into(), "--version".into()];
         let result = parse_args(args.into_iter()).map_err(|e| e.to_string())?;
-        assert_eq!(result, Cli::Version);
-        Ok(())
+        if let Cli::Version(version_str) = result {
+            assert!(version_str.contains("seshat"));
+            Ok(())
+        } else {
+            Err("Expected Cli::Version".to_string())
+        }
     }
 
     #[test]

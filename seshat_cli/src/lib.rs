@@ -12,7 +12,7 @@ pub use domain::{
 };
 pub use error::{Error, ExecutionError, ParseError, ShowError};
 pub use executor::execute;
-pub use parser::{get_help, get_version, parse_args};
+pub use parser::parse_args;
 pub use show::{
     execute_show, load_document_from_path, load_document_from_reader, serialize_document,
 };
