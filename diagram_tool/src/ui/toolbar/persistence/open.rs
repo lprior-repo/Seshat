@@ -39,11 +39,10 @@ pub fn apply_open_document(
     let mut next_doc = current_doc.clone();
     let mut next_history = current_history.clone();
 
-    apply_import_contents(&mut next_doc, &mut next_history, contents)
-        .map_err(|e| match e {
-            ImportTransitionError::Parse(s) => OpenError::Parse(s),
-            ImportTransitionError::Validation(s) => OpenError::Validation(s),
-        })?;
+    apply_import_contents(&mut next_doc, &mut next_history, contents).map_err(|e| match e {
+        ImportTransitionError::Parse(s) => OpenError::Parse(s),
+        ImportTransitionError::Validation(s) => OpenError::Validation(s),
+    })?;
 
     let session = DocumentSession::from_file(next_doc.clone(), file_path);
 

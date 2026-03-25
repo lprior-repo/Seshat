@@ -30,7 +30,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p1_test_category_enum_is_exhaustive() {
         // Given: The TestCategory enum
         // When: Checking all variants
@@ -60,7 +60,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p1_test_category_display_names() {
         // Given: TestCategory enum
         // When: Getting display names
@@ -84,7 +84,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p2_load_existing_fixture_succeeds() {
         // Given: Known fixture file
         // When: Loading fixture
@@ -101,7 +101,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p2_load_nonexistent_fixture_returns_error() {
         // Given: Non-existent fixture name
         let name = "nonexistent_fixture_xyz123.json";
@@ -123,7 +123,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p3_valid_json_fixture_parses() {
         // Given: Known valid fixture
         // When: Loading and parsing
@@ -145,7 +145,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p4_valid_schema_version_passes() {
         // Given: Valid document with version 2
         let doc = serde_json::json!({
@@ -164,7 +164,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn p4_wrong_schema_version_fails() {
         // Given: Document with wrong version
         let doc = serde_json::json!({
@@ -193,7 +193,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q1_total_expected_tests_is_228() {
         // Given: All test categories
         let all_categories = TestCategory::all();
@@ -206,7 +206,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q1_each_category_has_expected_count() {
         // Given: Each test category
         let categories = TestCategory::all();
@@ -223,7 +223,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q2_mixed_selection_fixture_loads() {
         // Given: The mixed_selection fixture
         // When: Loading
@@ -241,7 +241,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q2_nested_subgraph_fixture_loads() {
         // Given: The nested_subgraph fixture
         // When: Loading
@@ -256,7 +256,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q3_run_category_tests_returns_report() {
         // Given: A test category
         let category = TestCategory::Sel;
@@ -273,7 +273,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q3_run_all_tests_returns_suite_report() {
         // Given: All test categories
         let categories = TestCategory::all();
@@ -297,7 +297,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_db_path_generates_unique_paths() {
         // Given: Different test names
         let path1 = test_db_path("test_one");
@@ -309,7 +309,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_db_path_includes_test_name() {
         // Given: A test name
         let test_name = "my_test";
@@ -326,7 +326,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn get_nodes_returns_nodes_object() {
         // Given: Loaded fixture
         let doc = load_fixture("mixed_selection.json")
@@ -340,7 +340,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn get_edges_returns_edges_object() {
         // Given: Loaded fixture
         let doc = load_fixture("mixed_selection.json")
@@ -354,7 +354,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn get_node_by_id_returns_node_for_valid_id() {
         // Given: Document with a node
         let doc = load_fixture("mixed_selection.json")
@@ -372,7 +372,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn get_node_by_id_returns_error_for_invalid_id() {
         // Given: Document
         let doc = load_fixture("mixed_selection.json")
@@ -390,7 +390,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn error_messages_are_actionable() {
         // Given: Various error types
         let errors = vec![
@@ -423,7 +423,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn fuzz_document_operations_is_deterministic() {
         // Given: Same seed
         let seed = 42u64;
@@ -445,7 +445,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn q4_test_results_are_serializable() {
         // Given: CategoryReport
         let report = CategoryReport {
@@ -474,7 +474,7 @@ mod test_utils_tests {
     // ============================================================================
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn generate_stress_scene_produces_5000_nodes() {
         // Given: Seed value
         let seed = 12345;
@@ -497,7 +497,7 @@ mod test_utils_tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn generate_stress_scene_is_deterministic() {
         // Given: Same seed
         let seed = 54321;

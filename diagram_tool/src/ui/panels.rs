@@ -25,7 +25,7 @@ impl Default for PanelVisibility {
 mod tests {
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_default_panel_visibility_when_created_then_sidebar_and_minimap_visible() {
         let panels = PanelVisibility::default();
         assert!(panels.sidebar);

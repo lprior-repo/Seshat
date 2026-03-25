@@ -109,21 +109,43 @@ impl EdgeRoutingMutator for DiagramDocument {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::document::{NodeId, Edge, EdgeStyle, ArrowType, EdgeId, DiagramDocument};
     use crate::document::edge::SerializedPoint;
     use crate::document::OrderedFloat;
-    #[test] fn r_test() {
+    use crate::document::{ArrowType, DiagramDocument, Edge, EdgeId, EdgeStyle, NodeId};
+    #[test]
+    fn r_test() {
         let mut doc = DiagramDocument::default();
         let e = Edge {
-            source: NodeId::new("n1".into()), target: NodeId::new("n2".into()), label: "".into(),
-            style: EdgeStyle::default(), arrow_type: ArrowType::default(), label_offset_t: OrderedFloat(0.5),
-            color: None, thickness: OrderedFloat(1.0), directed: false, bend_points: im::Vector::new(),
-            tags: im::Vector::new(), metadata: im::HashMap::new(), font_size: None, source_port: None, target_port: None,
+            source: NodeId::new("n1".into()),
+            target: NodeId::new("n2".into()),
+            label: "".into(),
+            style: EdgeStyle::default(),
+            arrow_type: ArrowType::default(),
+            label_offset_t: OrderedFloat(0.5),
+            color: None,
+            thickness: OrderedFloat(1.0),
+            directed: false,
+            bend_points: im::Vector::new(),
+            tags: im::Vector::new(),
+            metadata: im::HashMap::new(),
+            font_size: None,
+            source_port: None,
+            target_port: None,
         };
         doc.document.edges.insert(EdgeId::new("e1".into()), e);
-        let pts = im::vector![SerializedPoint { x: OrderedFloat(10.0), y: OrderedFloat(20.0) }];
-        assert!(doc.update_edge_routing(&EdgeId::new("e1".into()), pts.clone()).is_ok());
-        let mut d2 = doc.clone(); d2.document.edges.get_mut(&EdgeId::new("e1".into())).unwrap().bend_points = pts;
+        let pts = im::vector![SerializedPoint {
+            x: OrderedFloat(10.0),
+            y: OrderedFloat(20.0)
+        }];
+        assert!(doc
+            .update_edge_routing(&EdgeId::new("e1".into()), pts.clone())
+            .is_ok());
+        let mut d2 = doc.clone();
+        d2.document
+            .edges
+            .get_mut(&EdgeId::new("e1".into()))
+            .unwrap()
+            .bend_points = pts;
         assert!(d2.clear_edge_routing(&EdgeId::new("e1".into())).is_ok());
     }
 }

@@ -148,7 +148,9 @@ impl Node {
 
         let mut depth = 0;
         while let Some(parent_id) = current_parent_id {
-            if depth > 1000 { return Err("Cycle".into()); }
+            if depth > 1000 {
+                return Err("Cycle".into());
+            }
             depth += 1;
             let parent_node = nodes
                 .get(parent_id)
@@ -175,7 +177,9 @@ impl Node {
 
         let mut depth = 0;
         while let Some(parent_id) = current_parent_id {
-            if depth > 1000 { return Err("Cycle".into()); }
+            if depth > 1000 {
+                return Err("Cycle".into());
+            }
             depth += 1;
             let parent_node = nodes
                 .get(parent_id)

@@ -285,7 +285,9 @@ mod tests {
 
         bridge.reset_store_sync().expect("Failed to reset store");
 
-        let events = bridge.fetch_events_since_sync(0).expect("Failed to fetch after reset");
+        let events = bridge
+            .fetch_events_since_sync(0)
+            .expect("Failed to fetch after reset");
         assert!(events.is_empty());
 
         bridge.shutdown().expect("Failed to shutdown");

@@ -105,7 +105,7 @@ mod tests {
     use super::*;
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_apply_reset() {
         let mut viewport = ViewportState::new(800.0, 600.0);
         viewport.set_camera(100.0, 200.0);
@@ -120,7 +120,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_is_valid_zoom() {
         assert!(is_valid_zoom(1.0));
         assert!(is_valid_zoom(0.1));
@@ -134,7 +134,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_clamp_zoom() {
         assert!((clamp_zoom(1.0) - 1.0).abs() < f64::EPSILON);
         assert!((clamp_zoom(0.05) - 0.1).abs() < f64::EPSILON);
@@ -144,7 +144,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_calculate_fit_zoom() {
         let content = AABB::new(0.0, 0.0, 500.0, 400.0);
         let zoom = calculate_fit_zoom(&content, 800.0, 600.0, 20.0);

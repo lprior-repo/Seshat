@@ -5,7 +5,8 @@
 //! the full `ProposedChange` enum and additional fields.
 
 use crate::document::types::{AuthorId, EdgeId, NodeId, Revision, Timestamp};
-use crate::document::{DocumentError, Node};
+use crate::document::{DocumentError, Edge, Node, SerializedPoint};
+use serde_json::Value;
 
 /// A complete proposal submitted by an AI agent.
 ///
@@ -31,17 +32,58 @@ pub enum GhostDiffBadge {
     Delete,
 }
 
-#[derive(Clone, Debug, PartialEq, Eq)]
+#[allow(clippy::trivially_copy_pass_by_ref)]
+fn serialize_f64_allow_nan<S: serde::Serializer>(v: &f64, s: S) -> Result<S::Ok, S::Error> {
+    if v.is_nan() {
+        s.serialize_str("NaN")
+    } else {
+        s.serialize_f64(*v)
+    }
+}
+
+#[derive(Clone, Debug, PartialEq, serde::Serialize, serde::Deserialize)]
+#[serde(tag = "change_type", rename_all = "snake_case")]
 #[allow(clippy::large_enum_variant)]
 pub enum ProposedChange {
+    MoveNode {
+        node_id: NodeId,
+        #[serde(serialize_with = "serialize_f64_allow_nan")]
+        new_x: f64,
+        #[serde(serialize_with = "serialize_f64_allow_nan")]
+        new_y: f64,
+    },
+    AddNode {
+        node: Node,
+    },
+    UpdateNodeLabel {
+        node_id: NodeId,
+        new_label: String,
+    },
+    UpdateNodeProperty {
+        node_id: NodeId,
+        property: String,
+        value: Value,
+    },
+    AddEdge {
+        edge_id: EdgeId,
+        edge: Edge,
+    },
+    DeleteEdge {
+        edge_id: EdgeId,
+    },
+    UpdateEdgeRouting {
+        edge_id: EdgeId,
+        bend_points: im::Vector<SerializedPoint>,
+    },
+    UpdateEdgeLabel {
+        edge_id: EdgeId,
+        new_label: String,
+    },
     DeleteNode {
         node_id: NodeId,
         was_node_id: NodeId,
         was: Node,
     },
-    /// Placeholder variant for testing the "unsupported change variant" dispatch.
-    /// Will be removed when real variants (MoveNode, AddEdge, etc.) are added.
-    TestUnsupportedVariant,
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, thiserror::Error)]
@@ -112,7 +154,7 @@ mod tests {
                 assert_eq!(was_node_id, NodeId::new("n1".into()));
                 assert_eq!(was, node);
             }
-            ProposedChange::TestUnsupportedVariant => {}
+            _ => {}
         }
     }
 

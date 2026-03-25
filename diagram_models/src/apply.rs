@@ -127,7 +127,7 @@ fn apply_delete_node_inner(
             was_node_id,
             ..
         } => (node_id, was_node_id),
-        ProposedChange::TestUnsupportedVariant => {
+        _ => {
             return Err(ApplyError::UnsupportedChangeVariant);
         }
     };
@@ -267,7 +267,7 @@ pub fn apply_proposal(
             ProposedChange::DeleteNode { .. } => {
                 apply_delete_node(doc, change).map_err(|e| (idx, e))
             }
-            ProposedChange::TestUnsupportedVariant => {
+            _ => {
                 return Err((idx, ApplyError::UnsupportedChangeVariant));
             }
         }?;
@@ -2355,7 +2355,11 @@ mod tests {
         let proposal = proposal_at(0);
         let changes = vec![
             delete_node_change_with_independent_ids("n1"),
-            ProposedChange::TestUnsupportedVariant,
+            ProposedChange::MoveNode {
+                node_id: NodeId::new("mn1".to_string()),
+                new_x: 0.0,
+                new_y: 0.0,
+            },
         ];
         let accepted = [0, 1];
 
@@ -2393,7 +2397,11 @@ mod tests {
         let mut doc = doc_with_nodes_and_edges(vec![("n1", test_node("n1"))], vec![]);
         let proposal = proposal_at(0);
         let changes = vec![
-            ProposedChange::TestUnsupportedVariant,
+            ProposedChange::MoveNode {
+                node_id: NodeId::new("mn1".to_string()),
+                new_x: 0.0,
+                new_y: 0.0,
+            },
             delete_node_change_with_independent_ids("n1"),
         ];
         let accepted = [0, 1];

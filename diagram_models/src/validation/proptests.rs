@@ -157,7 +157,7 @@ mod proptests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn prop_validate_empty_doc_has_no_issues() {
         let doc = DiagramDocument::default();
         let issues = validate_document(&doc);

@@ -90,7 +90,7 @@ mod io_tests {
     /// When: Exporting to SVG
     /// Then: The exported image bounds match the calculated document bounds (with margin)
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_document_with_nodes_when_export_svg_then_bounds_match_with_margin(
     ) -> Result<(), anyhow::Error> {
         // Given
@@ -125,7 +125,7 @@ mod io_tests {
 
     /// IO-TEST-1b: Empty document uses default bounds
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_empty_document_when_export_svg_then_uses_default_bounds() -> Result<(), anyhow::Error>
     {
         // Given
@@ -149,7 +149,7 @@ mod io_tests {
     /// When: Exporting to SVG
     /// Then: The export completes without crash and produces valid SVG
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_node_with_rotation_metadata_when_export_svg_then_succeeds() -> Result<(), anyhow::Error>
     {
         // Given
@@ -180,7 +180,7 @@ mod io_tests {
 
     /// IO-TEST-2b: Multiple rotated items
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_multiple_rotated_nodes_when_export_svg_then_succeeds() -> Result<(), anyhow::Error> {
         // Given
         let mut doc = create_io_document();
@@ -208,7 +208,7 @@ mod io_tests {
 
     /// IO-TEST-2c: Negative rotation
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_node_with_negative_rotation_when_export_svg_then_succeeds() -> Result<(), anyhow::Error>
     {
         // Given

@@ -38,7 +38,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_rubber_band_release_when_applied_then_selection_is_committed() {
         let mut doc = DiagramDocument::default();
         let node_id = NodeId::new(String::from("n1"));
@@ -56,7 +56,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_noop_rubber_band_when_released_then_selection_is_preserved() {
         let mut doc = DiagramDocument::default();
         let node_id = NodeId::new(String::from("n1"));
@@ -76,7 +76,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn given_existing_selection_when_rubber_band_released_then_selection_is_cleared() {
         let mut doc = DiagramDocument::default();
         // Create two nodes

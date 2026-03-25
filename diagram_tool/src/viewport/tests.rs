@@ -538,70 +538,70 @@ mod property_tests {
     use proptest::prelude::*;
 
     proptest! {
-        #[cfg(kani)]
-#[kani::proof]
-        fn prop_coordinate_roundtrip(
-            screen_x in 0.0_f64..1920.0,
-            screen_y in 0.0_f64..1080.0,
-            camera_x in -1000.0_f64..1000.0,
-            camera_y in -1000.0_f64..1000.0,
-            zoom in 0.1_f64..4.0
-        ) {
-            let viewport = ViewportState::with_camera_and_zoom(
-                1920.0, 1080.0, camera_x, camera_y, zoom
-            );
+            #[cfg(kani)]
+    #[kani::proof]
+            fn prop_coordinate_roundtrip(
+                screen_x in 0.0_f64..1920.0,
+                screen_y in 0.0_f64..1080.0,
+                camera_x in -1000.0_f64..1000.0,
+                camera_y in -1000.0_f64..1000.0,
+                zoom in 0.1_f64..4.0
+            ) {
+                let viewport = ViewportState::with_camera_and_zoom(
+                    1920.0, 1080.0, camera_x, camera_y, zoom
+                );
 
-            let world = viewport.screen_to_world(screen_x, screen_y);
-            let screen_back = viewport.world_to_screen(world.x, world.y);
+                let world = viewport.screen_to_world(screen_x, screen_y);
+                let screen_back = viewport.world_to_screen(world.x, world.y);
 
-            prop_assert!((screen_back.x - screen_x).abs() < 0.001);
-            prop_assert!((screen_back.y - screen_y).abs() < 0.001);
+                prop_assert!((screen_back.x - screen_x).abs() < 0.001);
+                prop_assert!((screen_back.y - screen_y).abs() < 0.001);
+            }
+
+            #[cfg(kani)]
+    #[kani::proof]
+            fn prop_zoom_always_bounded(zoom_factor in 0.001_f64..1000.0) {
+                let mut viewport = ViewportState::new(800.0, 600.0);
+                viewport.set_zoom(1.0);
+
+                let _ = viewport.zoom_by_factor(zoom_factor);
+
+                prop_assert!(viewport.zoom() >= MIN_ZOOM);
+                prop_assert!(viewport.zoom() <= MAX_ZOOM);
+            }
+
+            #[cfg(kani)]
+    #[kani::proof]
+            fn prop_pan_keeps_finite(dx in -10000.0_f64..10000.0, dy in -10000.0_f64..10000.0) {
+                let mut viewport = ViewportState::new(800.0, 600.0);
+
+                let _ = viewport.pan(dx, dy);
+
+                prop_assert!(viewport.camera_x().is_finite());
+                prop_assert!(viewport.camera_y().is_finite());
+            }
+
+            #[cfg(kani)]
+    #[kani::proof]
+            fn prop_visible_bounds_contains_origin_after_reset(
+                camera_x in -1000.0_f64..1000.0,
+                camera_y in -1000.0_f64..1000.0,
+                zoom in 0.1_f64..4.0
+            ) {
+                let mut viewport = ViewportState::with_camera_and_zoom(
+                    800.0, 600.0, camera_x, camera_y, zoom
+                );
+
+                // After centering on origin, origin should be visible
+                viewport.center_on(0.0, 0.0);
+                let bounds = viewport.visible_world_bounds();
+
+                prop_assert!(bounds.min_x <= 0.0);
+                prop_assert!(bounds.max_x >= 0.0);
+                prop_assert!(bounds.min_y <= 0.0);
+                prop_assert!(bounds.max_y >= 0.0);
+            }
         }
-
-        #[cfg(kani)]
-#[kani::proof]
-        fn prop_zoom_always_bounded(zoom_factor in 0.001_f64..1000.0) {
-            let mut viewport = ViewportState::new(800.0, 600.0);
-            viewport.set_zoom(1.0);
-
-            let _ = viewport.zoom_by_factor(zoom_factor);
-
-            prop_assert!(viewport.zoom() >= MIN_ZOOM);
-            prop_assert!(viewport.zoom() <= MAX_ZOOM);
-        }
-
-        #[cfg(kani)]
-#[kani::proof]
-        fn prop_pan_keeps_finite(dx in -10000.0_f64..10000.0, dy in -10000.0_f64..10000.0) {
-            let mut viewport = ViewportState::new(800.0, 600.0);
-
-            let _ = viewport.pan(dx, dy);
-
-            prop_assert!(viewport.camera_x().is_finite());
-            prop_assert!(viewport.camera_y().is_finite());
-        }
-
-        #[cfg(kani)]
-#[kani::proof]
-        fn prop_visible_bounds_contains_origin_after_reset(
-            camera_x in -1000.0_f64..1000.0,
-            camera_y in -1000.0_f64..1000.0,
-            zoom in 0.1_f64..4.0
-        ) {
-            let mut viewport = ViewportState::with_camera_and_zoom(
-                800.0, 600.0, camera_x, camera_y, zoom
-            );
-
-            // After centering on origin, origin should be visible
-            viewport.center_on(0.0, 0.0);
-            let bounds = viewport.visible_world_bounds();
-
-            prop_assert!(bounds.min_x <= 0.0);
-            prop_assert!(bounds.max_x >= 0.0);
-            prop_assert!(bounds.min_y <= 0.0);
-            prop_assert!(bounds.max_y >= 0.0);
-        }
-    }
 }
 
 // ============================================================================

@@ -131,7 +131,7 @@ mod tests {
     const TOLERANCE: f64 = 1e-9;
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_screen_to_world_origin() {
         let result = screen_to_world(0.0, 0.0, 0.0, 0.0, 1.0);
         assert!((result.x - 0.0).abs() < TOLERANCE);
@@ -139,7 +139,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_screen_to_world_with_camera() {
         // Given: camera at (100, 200), zoom 2.0
         // When: convert screen (400, 300)
@@ -150,7 +150,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_world_to_screen_origin() {
         let result = world_to_screen(0.0, 0.0, 0.0, 0.0, 1.0);
         assert!((result.x - 0.0).abs() < TOLERANCE);
@@ -158,7 +158,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_world_to_screen_with_camera() {
         // Given: camera at (100, 200), zoom 2.0
         // When: convert world (300, 350)
@@ -169,7 +169,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_roundtrip_transform() {
         let screen_x = 400.0;
         let screen_y = 300.0;
@@ -185,7 +185,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_screen_to_world_invalid_zoom() {
         // Invalid zoom should use default of 1.0
         let result = screen_to_world(100.0, 100.0, 0.0, 0.0, 0.0);
@@ -199,7 +199,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_fit_scale_basic() {
         let content = AABB::new(0.0, 0.0, 100.0, 100.0);
         let scale = fit_scale(&content, 200.0, 200.0, 0.0);
@@ -207,7 +207,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_fit_scale_with_padding() {
         let content = AABB::new(0.0, 0.0, 100.0, 100.0);
         let scale = fit_scale(&content, 120.0, 120.0, 10.0);
@@ -216,7 +216,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_fit_scale_preserves_aspect() {
         let content = AABB::new(0.0, 0.0, 200.0, 100.0); // 2:1 aspect
         let scale = fit_scale(&content, 100.0, 100.0, 0.0);
@@ -227,7 +227,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_screen_to_world_uses_epsilon_threshold() {
         let result = screen_to_world(100.0, 100.0, 0.0, 0.0, f64::EPSILON / 2.0);
         assert!((result.x - 100.0).abs() < TOLERANCE);
@@ -237,7 +237,7 @@ mod tests {
     }
 
     #[cfg(kani)]
-#[kani::proof]
+    #[kani::proof]
     fn test_world_to_screen_uses_epsilon_threshold() {
         let result = world_to_screen(100.0, 100.0, 0.0, 0.0, f64::EPSILON / 2.0);
         assert!((result.x - 100.0).abs() < TOLERANCE);

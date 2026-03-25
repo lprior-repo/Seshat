@@ -57,12 +57,20 @@ pub fn start_resize_interaction(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use diagram_models::document::{Node, NodeId, OrderedFloat, NodeKind, LockState};
-    #[test] fn test_start_resize_interaction_no_selection() {
+    use diagram_models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
+    #[test]
+    fn test_start_resize_interaction_no_selection() {
         let mut vdom = dioxus::prelude::VirtualDom::new(|| {
             let doc = DiagramDocument::default();
             let mut mode = Signal::new(InteractionMode::Select);
-            start_resize_interaction(mode.clone(), Signal::new(doc), ResizeHandle::Nw, 100.0, 100.0, false);
+            start_resize_interaction(
+                mode.clone(),
+                Signal::new(doc),
+                ResizeHandle::Nw,
+                100.0,
+                100.0,
+                false,
+            );
             assert!(matches!(mode.read().clone(), InteractionMode::Select));
             rsx! { div {} }
         });

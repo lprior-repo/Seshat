@@ -179,7 +179,7 @@ Certain test files are CONTRACT TESTS and MUST NEVER be overwritten:
 
 | File | Bead | Coverage |
 |------|------|----------|
-| `diagram_tool/src/models/io_tests.rs` | seshat-4uc | IO-001 to IO-015 |
+| `diagram_models/src/io_tests.rs` | seshat-4uc | IO-001 to IO-015 |
 | `diagram_tool/src/test_infrastructure_tests.rs` | seshat-wcb | P1-P4, Q1-Q3 |
 | `diagram_tool/src/geometry/**/*.rs` (tests) | seshat-pnn | GEO-001 to GEO-030 |
 
@@ -187,7 +187,7 @@ Certain test files are CONTRACT TESTS and MUST NEVER be overwritten:
 
 ```bash
 # Verify protected tests exist
-test -f diagram_tool/src/models/io_tests.rs
+test -f diagram_models/src/io_tests.rs
 test -f diagram_tool/src/test_infrastructure_tests.rs
 grep -r "GEO-0" diagram_tool/src/geometry/ | wc -l
 ```

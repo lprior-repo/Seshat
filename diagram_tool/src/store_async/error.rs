@@ -54,7 +54,28 @@ pub enum AsyncStoreError {
 #[cfg(test)]
 mod tests {
     use super::*;
-    #[test] fn given_payload_exceeding_100mb_when_appending_then_returns_payload_too_large() { assert!(matches!(AsyncStoreError::PayloadTooLarge, AsyncStoreError::PayloadTooLarge)); }
-    #[test] fn given_gap_in_revision_sequence_when_appending_then_returns_revision_gap() { assert!(matches!(AsyncStoreError::RevisionGap{expected:2,found:4}, AsyncStoreError::RevisionGap{..})); }
-    #[test] fn given_duplicate_op_id_with_conflict_when_appending_then_returns_duplicate_with_conflict() { assert!(matches!(AsyncStoreError::DuplicateWithConflict("".into()), AsyncStoreError::DuplicateWithConflict(_))); }
+    #[test]
+    fn given_payload_exceeding_100mb_when_appending_then_returns_payload_too_large() {
+        assert!(matches!(
+            AsyncStoreError::PayloadTooLarge,
+            AsyncStoreError::PayloadTooLarge
+        ));
+    }
+    #[test]
+    fn given_gap_in_revision_sequence_when_appending_then_returns_revision_gap() {
+        assert!(matches!(
+            AsyncStoreError::RevisionGap {
+                expected: 2,
+                found: 4
+            },
+            AsyncStoreError::RevisionGap { .. }
+        ));
+    }
+    #[test]
+    fn given_duplicate_op_id_with_conflict_when_appending_then_returns_duplicate_with_conflict() {
+        assert!(matches!(
+            AsyncStoreError::DuplicateWithConflict("".into()),
+            AsyncStoreError::DuplicateWithConflict(_)
+        ));
+    }
 }
