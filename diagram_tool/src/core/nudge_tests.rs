@@ -41,7 +41,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nudge_selection_moves_unlocked_skips_locked() {
+    fn nudge_selection_moves_unlocked_skips_locked() {
         let mut doc = DiagramDocument::default();
 
         let node1_id = NodeId::new("node1".to_string());
@@ -88,7 +88,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nudge_selection_empty_does_nothing() {
+    fn nudge_selection_empty_does_nothing() {
         let mut doc = DiagramDocument::default();
         let initial_revision = doc.revision;
         let moved = nudge_selection(&mut doc, 5.0, -5.0);
@@ -97,7 +97,7 @@ mod tests {
     }
 
     #[test]
-    fn test_nudge_selection_zero_delta_does_nothing() {
+    fn nudge_selection_zero_delta_does_nothing() {
         let mut doc = DiagramDocument::default();
         let node1_id = NodeId::new("node1".to_string());
         doc.document.nodes.insert(

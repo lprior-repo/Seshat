@@ -2,6 +2,9 @@ use canvas_domain::perf::{normalize_viewport, viewport_changed};
 use dioxus::prelude::*;
 use std::time::Duration;
 
+/// Poll interval for detecting canvas resize events (~10fps is sufficient for layout changes).
+const RESIZE_POLL_INTERVAL_MS: u64 = 100;
+
 #[cfg(target_arch = "wasm32")]
 fn get_canvas_rect() -> Option<(f64, f64, f64, f64)> {
     let window = web_sys::window()?;
@@ -29,10 +32,10 @@ pub fn use_resize_handler(
 
             loop {
                 #[cfg(target_arch = "wasm32")]
-                gloo_timers::future::sleep(Duration::from_millis(100)).await;
+                gloo_timers::future::sleep(Duration::from_millis(RESIZE_POLL_INTERVAL_MS)).await;
 
                 #[cfg(not(target_arch = "wasm32"))]
-                tokio::time::sleep(Duration::from_millis(100)).await;
+                tokio::time::sleep(Duration::from_millis(RESIZE_POLL_INTERVAL_MS)).await;
 
                 if let Some((left, top, width, height)) = get_canvas_rect() {
                     if last_left.is_nan()

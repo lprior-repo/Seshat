@@ -10,7 +10,7 @@
 use crate::core::keyboard::*;
 
 #[test]
-fn test_shortcuts_do_not_fire_when_input_has_focus() {
+fn shortcuts_do_not_fire_when_input_has_focus() {
     let action = map_key_to_action("z", ModifierState::CtrlOrMeta, EditorMode::EditingText);
     assert!(matches!(action, KeyAction::None));
 
@@ -19,7 +19,7 @@ fn test_shortcuts_do_not_fire_when_input_has_focus() {
 }
 
 #[test]
-fn test_undo_and_redo_bindings() {
+fn undo_and_redo_bindings_map_correctly() {
     assert!(matches!(
         map_key_to_action("z", ModifierState::CtrlOrMeta, EditorMode::Diagram),
         KeyAction::Undo
@@ -42,7 +42,7 @@ fn test_undo_and_redo_bindings() {
 }
 
 #[test]
-fn test_clipboard_bindings() {
+fn clipboard_bindings_map_correctly() {
     assert!(matches!(
         map_key_to_action("c", ModifierState::CtrlOrMeta, EditorMode::Diagram),
         KeyAction::Copy
@@ -58,7 +58,7 @@ fn test_clipboard_bindings() {
 }
 
 #[test]
-fn test_delete_binding() {
+fn delete_and_backspace_map_to_delete_action() {
     assert!(matches!(
         map_key_to_action("Delete", ModifierState::None, EditorMode::Diagram),
         KeyAction::Delete

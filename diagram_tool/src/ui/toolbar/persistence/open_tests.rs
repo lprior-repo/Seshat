@@ -1,4 +1,4 @@
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::unwrap_used, clippy::expect_used)]
 use super::*;
 use diagram_models::document::Revision;
 
@@ -17,10 +17,9 @@ fn apply_open_document_creates_session_with_file_path() {
     let file_path = std::path::PathBuf::from("/test/diagram.json");
     let contents = make_test_json();
 
-    let result = apply_open_document(&doc, &history, &contents, file_path.clone());
+    let (_, _, session) = apply_open_document(&doc, &history, &contents, file_path.clone())
+        .expect("apply_open_document should succeed with valid JSON");
 
-    assert!(result.is_ok());
-    let (_, _, session) = result.unwrap();
     assert_eq!(session.file_path(), Some(&file_path));
     assert!(!session.is_dirty());
 }
@@ -56,9 +55,8 @@ fn apply_open_document_resets_revision_to_initial() {
     let file_path = std::path::PathBuf::from("/test/diagram.json");
     let contents = make_test_json();
 
-    let result = apply_open_document(&doc, &history, &contents, file_path);
+    let (next_doc, _, _) = apply_open_document(&doc, &history, &contents, file_path)
+        .expect("apply_open_document should succeed with valid JSON");
 
-    assert!(result.is_ok());
-    let (next_doc, _, _) = result.unwrap();
     assert_eq!(next_doc.revision, Revision::INITIAL);
 }

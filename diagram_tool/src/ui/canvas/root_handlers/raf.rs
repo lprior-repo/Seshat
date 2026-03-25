@@ -7,6 +7,9 @@ use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
 use std::time::Duration;
 
+/// Target ~60fps: flush pointer/wheel samples on every animation frame interval.
+const RAF_INTERVAL_MS: u64 = 16;
+
 pub fn use_raf_handler(
     doc_signal: Signal<DiagramDocument>,
     history_signal: Signal<History>,
@@ -19,10 +22,10 @@ pub fn use_raf_handler(
         spawn(async move {
             loop {
                 #[cfg(target_arch = "wasm32")]
-                gloo_timers::future::sleep(Duration::from_millis(16)).await;
+                gloo_timers::future::sleep(Duration::from_millis(RAF_INTERVAL_MS)).await;
 
                 #[cfg(not(target_arch = "wasm32"))]
-                tokio::time::sleep(Duration::from_millis(16)).await;
+                tokio::time::sleep(Duration::from_millis(RAF_INTERVAL_MS)).await;
 
                 if pending_pointer_sample.read().is_some() {
                     flush_pending_pointer_update(
