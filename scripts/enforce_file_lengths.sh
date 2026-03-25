@@ -20,6 +20,7 @@ is_production_rust_file() {
 	*_tests.rs) return 1 ;;
 	*/test_*.rs) return 1 ;;
 	*/tests.rs) return 1 ;;
+	*/tests_*.rs) return 1 ;;
 	*) return 0 ;;
 	esac
 }

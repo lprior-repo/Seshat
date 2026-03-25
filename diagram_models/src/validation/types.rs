@@ -118,7 +118,7 @@ pub struct ValidationIssue {
 }
 
 impl ValidationIssue {
-    /// Create a new error issue with auto-populated fix_hint.
+    /// Create a new error issue with auto-populated `fix_hint`.
     pub fn error(
         code: ValidationCode,
         message: impl Into<String>,

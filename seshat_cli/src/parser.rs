@@ -10,7 +10,7 @@ struct ClapCli {
     subcommand: Option<ClapSubcommandEnum>,
 }
 
-#[derive(ClapSubcommandMacro)]
+#[derive(ClapSubcommandMacro, Clone, Copy)]
 enum ClapSubcommandEnum {
     #[command(name = "valid-command")]
     ValidCommand,
@@ -37,11 +37,9 @@ pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli,
     ClapCli::try_parse_from(args_vec).map_or_else(
         |e| map_clap_error(&e),
         |clap_cli| {
-            if let Some(cmd) = clap_cli.subcommand {
-                Ok(Cli::Run(map_subcommand(cmd)))
-            } else {
-                Ok(Cli::Bare)
-            }
+            Ok(clap_cli
+                .subcommand
+                .map_or(Cli::Bare, |cmd| Cli::Run(map_subcommand(cmd))))
         },
     )
 }
@@ -54,7 +52,7 @@ fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {
     }
 }
 
-fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
+const fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
     match cmd {
         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,
         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,

@@ -26,7 +26,7 @@ impl Depth {
     ///
     /// # Errors
     /// Returns an error if the depth is negative or exceeds the maximum (254).
-    pub fn try_new(val: i32) -> Result<Self, DepthError> {
+    pub const fn try_new(val: i32) -> Result<Self, DepthError> {
         match val {
             v if v < 0 => Err(DepthError::Negative),
             v if v > 254 => Err(DepthError::ExceedsMax),

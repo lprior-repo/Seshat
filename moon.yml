@@ -19,7 +19,8 @@ tasks:
 
   test-rust:
     script: |
-      /usr/bin/cargo test
+      /usr/bin/cargo test --workspace --exclude seshat_cli
+      /usr/bin/cargo test -p seshat_cli
 
   test:
     script: |

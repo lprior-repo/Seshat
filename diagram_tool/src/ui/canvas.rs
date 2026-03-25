@@ -8,6 +8,7 @@ pub mod canvas_view;
 pub mod document_ops;
 pub mod domain;
 pub mod edge_layer;
+pub mod edge_types;
 pub mod grid_layer;
 pub mod node_layer;
 pub mod root_container;

@@ -81,7 +81,7 @@ pub fn check_revision_mismatch(doc: &DiagramDocument, proposal: &ProposedChanges
 // DeleteNode apply logic
 // ---------------------------------------------------------------------------
 
-/// Apply a DeleteNode proposed change to the document.
+/// Apply a `DeleteNode` proposed change to the document.
 ///
 /// Validates snapshot consistency, confirms the node exists, removes the node,
 /// cascades deletion to all connected edges, and increments the revision.
@@ -121,15 +121,13 @@ fn apply_delete_node_inner(
     change: &ProposedChange,
     remove_fn: impl FnOnce(&mut DiagramDocument, &NodeId) -> Result<(), DocumentError>,
 ) -> Result<DeleteNodeResult, ApplyError> {
-    let (node_id, was_node_id) = match change {
-        ProposedChange::DeleteNode {
-            node_id,
-            was_node_id,
-            ..
-        } => (node_id, was_node_id),
-        _ => {
-            return Err(ApplyError::UnsupportedChangeVariant);
-        }
+    let ProposedChange::DeleteNode {
+        node_id,
+        was_node_id,
+        ..
+    } = change
+    else {
+        return Err(ApplyError::UnsupportedChangeVariant);
     };
 
     // Step 1: Parametric validation — snapshot ID consistency (P1)
@@ -207,7 +205,7 @@ fn validate_and_dedup_indices(indices: &[usize], max: usize) -> Vec<usize> {
         .copied()
         .collect();
     let mut sorted = unique;
-    sorted.sort();
+    sorted.sort_unstable();
     sorted
 }
 
@@ -294,12 +292,12 @@ pub fn apply_proposal(
             let reasons = valid_indices
                 .iter()
                 .enumerate()
-                .map(|(pos, &idx)| {
-                    if pos == fail_pos {
-                        format_error_reason(idx, &fail_err)
-                    } else if pos > fail_pos {
+                .map(|(pos, &idx)| match pos.cmp(&fail_pos) {
+                    std::cmp::Ordering::Equal => format_error_reason(idx, &fail_err),
+                    std::cmp::Ordering::Greater => {
                         format!("change [{idx}]: not attempted due to prior failure")
-                    } else {
+                    }
+                    std::cmp::Ordering::Less => {
                         format!("change [{idx}]: rolled back due to subsequent failure")
                     }
                 })

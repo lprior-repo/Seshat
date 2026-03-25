@@ -87,7 +87,7 @@ fn detect_cycle(
         .and_then(|n| n.parent.as_ref())
         .is_some_and(|p| detect_cycle(nodes, p, &next))
 }
-/// Validates edge properties: dangling, label_offset_t, thickness, color, font_size.
+/// Validates edge properties: dangling, `label_offset_t`, thickness, color, `font_size`.
 fn check_edge_properties<'a>(
     edges: &'a im::HashMap<crate::document::EdgeId, crate::document::Edge>,
     nodes: &'a im::HashMap<crate::document::NodeId, crate::document::Node>,
@@ -123,7 +123,7 @@ fn check_edge_dangling(
     });
     src.into_iter().chain(tgt)
 }
-/// Validates label_offset_t is finite and in [0.0, 1.0].
+/// Validates `label_offset_t` is finite and in [0.0, 1.0].
 fn check_label_offset(
     id: &crate::document::EdgeId,
     edge: &crate::document::Edge,
@@ -170,7 +170,7 @@ fn check_color(
         })
 }
 
-/// Validates font_size is finite if present.
+/// Validates `font_size` is finite if present.
 fn check_font_size(
     id: &crate::document::EdgeId,
     edge: &crate::document::Edge,

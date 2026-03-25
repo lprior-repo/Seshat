@@ -6,7 +6,7 @@ use crate::error::{Error, ExecutionError};
 /// # Errors
 /// Returns an `Error` if the command execution fails (e.g., simulated failure).
 #[allow(clippy::needless_pass_by_value)]
-pub fn execute(cli: Cli) -> Result<(), Error> {
+pub const fn execute(cli: Cli) -> Result<(), Error> {
     match cli {
         Cli::Run(Subcommand::SimulateFailure) => {
             Err(Error::CommandExecution(ExecutionError::SimulatedFailure))

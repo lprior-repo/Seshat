@@ -11,7 +11,7 @@ pub struct DocumentSession {
 
 impl DocumentSession {
     #[must_use]
-    pub fn new(doc: DiagramDocument) -> Self {
+    pub const fn new(doc: DiagramDocument) -> Self {
         let last_saved_revision = doc.revision;
         Self {
             doc,
@@ -21,7 +21,7 @@ impl DocumentSession {
     }
 
     #[must_use]
-    pub fn from_file(doc: DiagramDocument, path: PathBuf) -> Self {
+    pub const fn from_file(doc: DiagramDocument, path: PathBuf) -> Self {
         let last_saved_revision = doc.revision;
         Self {
             doc,
@@ -45,17 +45,17 @@ impl DocumentSession {
     }
 
     #[must_use]
-    pub fn document(&self) -> &DiagramDocument {
+    pub const fn document(&self) -> &DiagramDocument {
         &self.doc
     }
 
     #[must_use]
-    pub fn file_path(&self) -> Option<&PathBuf> {
+    pub const fn file_path(&self) -> Option<&PathBuf> {
         self.file_path.as_ref()
     }
 
     #[must_use]
-    pub fn last_saved_revision(&self) -> Revision {
+    pub const fn last_saved_revision(&self) -> Revision {
         self.last_saved_revision
     }
 

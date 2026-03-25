@@ -13,6 +13,7 @@ pub mod alignment;
 pub mod clipboard;
 pub mod distribution;
 pub mod selection;
+pub mod selection_edge;
 pub mod zoom;
 pub mod zorder;
 
@@ -24,10 +25,10 @@ pub use clipboard::{
 };
 pub use distribution::{apply_distribute_selection, DistributionAxis};
 pub use selection::{
-    apply_arrow_type_to_selection, apply_clear_selection, apply_delete_selected,
-    apply_group_selection, apply_nudge_selection, apply_select_all, apply_toggle_edge_direction,
-    apply_ungroup_selection,
+    apply_clear_selection, apply_delete_selected, apply_group_selection, apply_nudge_selection,
+    apply_select_all, apply_ungroup_selection,
 };
+pub use selection_edge::{apply_arrow_type_to_selection, apply_toggle_edge_direction};
 pub use zoom::{apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset};
 pub use zorder::{
     apply_bring_forward, apply_bring_to_front, apply_send_backward, apply_send_to_back, ZOrderOp,
