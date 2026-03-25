@@ -2,18 +2,19 @@
 //!
 //! This module re-exports all command operations for easier importing.
 //! The commands are organized into submodules by functionality:
-//! - `clipboard` - Clipboard operations (copy, paste, duplicate)
-//! - `zorder` - Z-order operations (bring forward, send backward, etc.)
-//! - `selection` - Selection operations (select all, clear, delete, group, ungroup, nudge)
-//! - `alignment` - Alignment operations
-//! - `distribution` - Distribution operations
-//! - `zoom` - Zoom and undo/redo operations
+//! - `clipboard`      - Clipboard operations (copy, paste, duplicate)
+//! - `zorder`         - Z-order operations (bring forward, send backward, etc.)
+//! - `selection`      - Selection operations (select all, clear, delete, group, ungroup, nudge)
+//! - `edge_selection` - Operations on the current edge selection (toggle direction, arrow types)
+//! - `alignment`      - Alignment operations
+//! - `distribution`   - Distribution operations
+//! - `zoom`           - Zoom and undo/redo operations
 
 pub mod alignment;
 pub mod clipboard;
 pub mod distribution;
+pub mod edge_selection;
 pub mod selection;
-pub mod selection_edge;
 pub mod zoom;
 pub mod zorder;
 
@@ -24,11 +25,11 @@ pub use clipboard::{
     ClipboardData,
 };
 pub use distribution::{apply_distribute_selection, DistributionAxis};
+pub use edge_selection::{apply_arrow_type_to_selection, apply_toggle_edge_direction};
 pub use selection::{
     apply_clear_selection, apply_delete_selected, apply_group_selection, apply_nudge_selection,
     apply_select_all, apply_ungroup_selection,
 };
-pub use selection_edge::{apply_arrow_type_to_selection, apply_toggle_edge_direction};
 pub use zoom::{apply_redo, apply_undo, apply_zoom_in, apply_zoom_out, apply_zoom_reset};
 pub use zorder::{
     apply_bring_forward, apply_bring_to_front, apply_send_backward, apply_send_to_back, ZOrderOp,

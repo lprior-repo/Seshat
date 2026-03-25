@@ -38,7 +38,7 @@ fn get_edge_context(doc: &DiagramDocument, props: &EdgeLayerProps) -> EdgeContex
         camera_x: doc.editor_state.camera_x.0,
         camera_y: doc.editor_state.camera_y.0,
         zoom: doc.editor_state.zoom.0,
-        canvas_origin: *props.canvas_origin.read(),
+        canvas_origin: canvas_domain::CanvasCoord::from(*props.canvas_origin.read()),
     }
 }
 
@@ -265,7 +265,7 @@ fn handle_edge_double_click(
     let coords = evt.data().coordinates().client();
     let origin = match crate::ui::canvas::document_ops::sync_canvas_origin() {
         Some(o) => o,
-        None => ctx.canvas_origin,
+        None => (ctx.canvas_origin.0, ctx.canvas_origin.1),
     };
     let raw = canvas_domain::perf::to_canvas_coords(
         canvas_domain::ScreenCoord(coords.x - origin.0, coords.y - origin.1),

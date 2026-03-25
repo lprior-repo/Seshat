@@ -55,6 +55,7 @@ impl super::commands::Command for LayoutCommand {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
     use super::*;
     use crate::cli::commands::Command;
     use diagram_models::document::{

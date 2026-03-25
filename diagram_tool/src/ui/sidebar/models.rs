@@ -217,4 +217,5 @@ pub fn build_provider_buckets(
 }
 
 #[cfg(test)]
+#[path = "models_tests.rs"]
 mod models_tests;

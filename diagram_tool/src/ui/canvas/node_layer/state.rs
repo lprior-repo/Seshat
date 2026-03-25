@@ -160,4 +160,5 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
 }
 
 #[cfg(test)]
+#[path = "state_tests.rs"]
 mod state_tests;

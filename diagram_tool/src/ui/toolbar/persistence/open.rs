@@ -1,8 +1,7 @@
 #![allow(dead_code)]
 use crate::history::History;
-use crate::ui::editor::ToolMode;
 use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions, ToastQueue};
-use diagram_models::document::{ArrowType, DiagramDocument, DocumentSession, EdgeStyle};
+use diagram_models::document::{DiagramDocument, DocumentSession};
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
@@ -12,6 +11,10 @@ use std::fs;
 use super::common::{
     apply_import_contents, update_load_save_error, update_load_save_success, ImportTransitionError,
 };
+
+// ---------------------------------------------------------------------------
+// Public types
+// ---------------------------------------------------------------------------
 
 #[derive(Debug)]
 pub enum OpenError {
@@ -30,6 +33,24 @@ impl std::fmt::Display for OpenError {
     }
 }
 
+/// Bundles the three mutable document-state signals needed when opening a
+/// workspace. Passed as a single parameter to keep `open_workspace` within
+/// the 7-argument clippy limit.
+#[derive(Clone, Copy)]
+pub struct WorkspaceSignals {
+    pub doc: Signal<DiagramDocument>,
+    pub session: Signal<DocumentSession>,
+    pub history: Signal<History>,
+}
+
+// ---------------------------------------------------------------------------
+// Pure calculation
+// ---------------------------------------------------------------------------
+
+/// Parse and validate `contents`, returning the new document state.
+///
+/// # Errors
+/// Returns `OpenError::Parse` or `OpenError::Validation` on failure.
 pub fn apply_open_document(
     current_doc: &DiagramDocument,
     current_history: &History,
@@ -49,15 +70,194 @@ pub fn apply_open_document(
     Ok((next_doc, next_history, session))
 }
 
-#[allow(clippy::too_many_lines)]
-#[allow(clippy::too_many_arguments)]
+// ---------------------------------------------------------------------------
+// Private helpers — apply result to signals
+// ---------------------------------------------------------------------------
+
+fn commit_open_result(
+    mut signals: WorkspaceSignals,
+    next_doc: DiagramDocument,
+    next_history: History,
+    session: DocumentSession,
+) {
+    *signals.doc.write() = next_doc;
+    *signals.session.write() = session;
+    *signals.history.write() = next_history;
+}
+
+fn report_open_error(
+    toast_handle: crate::ui::toast::ToastHandle,
+    label: &'static str,
+    err: OpenError,
+) {
+    let detail = match err {
+        OpenError::Parse(s) => format!("Parse error: {s}"),
+        OpenError::Validation(s) => format!("Load validation error: {s}"),
+        OpenError::Io(s) => format!("IO error: {s}"),
+    };
+    update_load_save_error(toast_handle, label, detail);
+}
+
+// ---------------------------------------------------------------------------
+// WASM action
+// ---------------------------------------------------------------------------
+
+#[cfg(target_arch = "wasm32")]
+fn open_workspace_wasm(mut signals: WorkspaceSignals, toast_handle: crate::ui::toast::ToastHandle) {
+    spawn(async move {
+        let mut eval = document::eval(
+            r#"
+            (function() {
+                if (window.__SESHAT_E2E_IMPORT_JSON) {
+                    const contents = window.__SESHAT_E2E_IMPORT_JSON;
+                    delete window.__SESHAT_E2E_IMPORT_JSON;
+                    dioxus.send({ ok: true, contents, filename: "imported.json" });
+                    return;
+                }
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.json,application/json';
+                input.style.display = 'none';
+                let settled = false;
+                const finish = (payload) => {
+                    if (settled) return;
+                    settled = true;
+                    window.removeEventListener('focus', onFocus, true);
+                    dioxus.send(payload);
+                };
+                const onFocus = () => {
+                    setTimeout(() => {
+                        finish({ ok: false, cancelled: true });
+                    }, 150);
+                };
+                window.addEventListener('focus', onFocus, true);
+                input.addEventListener('change', () => {
+                    const file = input.files && input.files[0];
+                    if (!file) {
+                        finish({ ok: false, cancelled: true });
+                        return;
+                    }
+                    const reader = new FileReader();
+                    reader.onload = () => {
+                        finish({ ok: true, contents: String(reader.result || ''), filename: file.name });
+                    };
+                    reader.onerror = () => {
+                        finish({ ok: false, cancelled: false, error: 'read-failed' });
+                    };
+                    reader.readAsText(file);
+                });
+                input.click();
+            })();
+            "#,
+        );
+
+        match eval.recv::<serde_json::Value>().await {
+            Ok(msg) => {
+                if msg["cancelled"].as_bool().is_some_and(|v| v) {
+                    let _ = toast_handle.dismiss();
+                    return;
+                }
+                if msg["ok"].as_bool() != Some(true) {
+                    let detail = msg["error"]
+                        .as_str()
+                        .map_or_else(|| String::from("Browser file import failed"), String::from);
+                    update_load_save_error(toast_handle, "Load failed", detail);
+                    return;
+                }
+
+                let contents = msg["contents"].as_str().map_or("", |v| v);
+                let filename = msg["filename"].as_str().map_or("imported.json", |v| v);
+                let file_path = std::path::PathBuf::from(filename);
+                let current_doc = signals.doc.read().clone();
+                let current_history = signals.history.read().clone();
+
+                match apply_open_document(&current_doc, &current_history, contents, file_path) {
+                    Ok((next_doc, next_history, session)) => {
+                        commit_open_result(signals, next_doc, next_history, session);
+                        update_load_save_success(
+                            toast_handle,
+                            "Workspace loaded",
+                            String::from("Loaded from local JSON"),
+                        );
+                    }
+                    Err(err) => report_open_error(toast_handle, "Load failed", err),
+                }
+            }
+            Err(err) => update_load_save_error(
+                toast_handle,
+                "Load failed",
+                format!("Import bridge error: {err}"),
+            ),
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Native (non-WASM) action
+// ---------------------------------------------------------------------------
+
+#[cfg(not(target_arch = "wasm32"))]
+fn open_workspace_native(
+    mut signals: WorkspaceSignals,
+    toast_handle: crate::ui::toast::ToastHandle,
+    store_bridge: Option<std::sync::Arc<crate::store_bridge::StoreBridge>>,
+) {
+    spawn(async move {
+        let path = FileDialog::new()
+            .add_filter("Seshat Diagram", &["json"])
+            .pick_file();
+
+        match path {
+            None => {
+                let _ = toast_handle.dismiss();
+            }
+            Some(p) => match fs::read_to_string(&p) {
+                Err(e) => {
+                    update_load_save_error(toast_handle, "Load failed", format!("Read error: {e}"));
+                }
+                Ok(contents) => {
+                    let current_doc = signals.doc.read().clone();
+                    let current_history = signals.history.read().clone();
+
+                    match apply_open_document(&current_doc, &current_history, &contents, p.clone())
+                    {
+                        Ok((next_doc, next_history, session)) => {
+                            if let Some(bridge) = &store_bridge {
+                                if let Err(e) = bridge.reset_store_sync() {
+                                    update_load_save_error(
+                                        toast_handle,
+                                        "Load failed",
+                                        format!("Failed to reset store: {e}"),
+                                    );
+                                    return;
+                                }
+                            }
+                            commit_open_result(signals, next_doc, next_history, session);
+                            update_load_save_success(
+                                toast_handle,
+                                "Workspace loaded",
+                                format!("Loaded from {}", p.display()),
+                            );
+                        }
+                        Err(err) => report_open_error(toast_handle, "Load failed", err),
+                    }
+                }
+            },
+        }
+    });
+}
+
+// ---------------------------------------------------------------------------
+// Public entry point
+// ---------------------------------------------------------------------------
+
+/// Open a workspace document from disk (native) or a file picker (WASM).
+///
+/// `signals` bundles the three mutable document-state signals.
+/// `toasts` drives the loading/error notifications.
+/// `store_bridge` (native only) resets the local event store after load.
 pub fn open_workspace(
-    mut doc_signal: Signal<DiagramDocument>,
-    mut session_signal: Signal<DocumentSession>,
-    mut history_signal: Signal<History>,
-    tool_signal: Signal<ToolMode>,
-    edge_style_signal: Signal<EdgeStyle>,
-    arrow_type_signal: Signal<ArrowType>,
+    signals: WorkspaceSignals,
     toasts: Signal<ToastQueue>,
     store_bridge: Option<std::sync::Arc<crate::store_bridge::StoreBridge>>,
 ) {
@@ -66,196 +266,18 @@ pub fn open_workspace(
         ToastOptions::new(ToastIntent::Info, "Loading workspace")
             .with_detail("Reading persisted document..."),
     );
+
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = (
-            &tool_signal,
-            &edge_style_signal,
-            &arrow_type_signal,
-            &store_bridge,
-        );
-        spawn(async move {
-            let mut eval = document::eval(
-                r#"
-                (function() {
-                    if (window.__SESHAT_E2E_IMPORT_JSON) {
-                        const contents = window.__SESHAT_E2E_IMPORT_JSON;
-                        delete window.__SESHAT_E2E_IMPORT_JSON;
-                        dioxus.send({ ok: true, contents, filename: "imported.json" });
-                        return;
-                    }
-                    const input = document.createElement('input');
-                    input.type = 'file';
-                    input.accept = '.json,application/json';
-                    input.style.display = 'none';
-                    let settled = false;
-                    const finish = (payload) => {
-                        if (settled) return;
-                        settled = true;
-                        window.removeEventListener('focus', onFocus, true);
-                        dioxus.send(payload);
-                    };
-                    const onFocus = () => {
-                        setTimeout(() => {
-                            finish({ ok: false, cancelled: true });
-                        }, 150);
-                    };
-                    window.addEventListener('focus', onFocus, true);
-                    input.addEventListener('change', () => {
-                        const file = input.files && input.files[0];
-                        if (!file) {
-                            finish({ ok: false, cancelled: true });
-                            return;
-                        }
-
-                        const reader = new FileReader();
-                        reader.onload = () => {
-                            finish({ ok: true, contents: String(reader.result || ''), filename: file.name });
-                        };
-                        reader.onerror = () => {
-                            finish({ ok: false, cancelled: false, error: 'read-failed' });
-                        };
-                        reader.readAsText(file);
-                    });
-                    input.click();
-                })();
-                "#,
-            );
-
-            match eval.recv::<serde_json::Value>().await {
-                Ok(msg) => {
-                    if msg["cancelled"].as_bool().is_some_and(|v| v) {
-                        let _ = toast_handle.dismiss();
-                        return;
-                    }
-
-                    if msg["ok"].as_bool() != Some(true) {
-                        let detail = msg["error"].as_str().map_or_else(
-                            || String::from("Browser file import failed"),
-                            String::from,
-                        );
-                        update_load_save_error(toast_handle, "Load failed", detail);
-                        return;
-                    }
-
-                    let contents = msg["contents"].as_str().map_or("", |v| v);
-                    let filename = msg["filename"].as_str().map_or("imported.json", |v| v);
-                    let file_path = std::path::PathBuf::from(filename);
-
-                    let current_doc = doc_signal.read().clone();
-                    let current_history = history_signal.read().clone();
-
-                    match apply_open_document(&current_doc, &current_history, contents, file_path) {
-                        Ok((next_doc, next_history, session)) => {
-                            *doc_signal.write() = next_doc;
-                            *session_signal.write() = session;
-                            *history_signal.write() = next_history;
-                            update_load_save_success(
-                                toast_handle,
-                                "Workspace loaded",
-                                String::from("Loaded from local JSON"),
-                            );
-                        }
-                        Err(OpenError::Parse(err)) => {
-                            update_load_save_error(
-                                toast_handle,
-                                "Load failed",
-                                format!("Parse error: {err}"),
-                            );
-                        }
-                        Err(OpenError::Validation(code)) => {
-                            update_load_save_error(
-                                toast_handle,
-                                "Load failed",
-                                format!("Load validation error: {code}"),
-                            );
-                        }
-                        Err(OpenError::Io(err)) => {
-                            update_load_save_error(
-                                toast_handle,
-                                "Load failed",
-                                format!("IO error: {err}"),
-                            );
-                        }
-                    }
-                }
-                Err(err) => update_load_save_error(
-                    toast_handle,
-                    "Load failed",
-                    format!("Import bridge error: {err}"),
-                ),
-            }
-        });
+        let _ = &store_bridge;
+        open_workspace_wasm(signals, toast_handle);
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        let _ = (&tool_signal, &edge_style_signal, &arrow_type_signal);
-        spawn(async move {
-            let path = FileDialog::new()
-                .add_filter("Seshat Diagram", &["json"])
-                .pick_file();
-            match path {
-                None => {
-                    let _ = toast_handle.dismiss();
-                }
-                Some(p) => match fs::read_to_string(&p) {
-                    Err(e) => update_load_save_error(
-                        toast_handle,
-                        "Load failed",
-                        format!("Read error: {e}"),
-                    ),
-                    Ok(contents) => {
-                        let current_doc = doc_signal.read().clone();
-                        let current_history = history_signal.read().clone();
-
-                        match apply_open_document(
-                            &current_doc,
-                            &current_history,
-                            &contents,
-                            p.clone(),
-                        ) {
-                            Ok((next_doc, next_history, session)) => {
-                                if let Some(bridge) = &store_bridge {
-                                    if let Err(e) = bridge.reset_store_sync() {
-                                        update_load_save_error(
-                                            toast_handle,
-                                            "Load failed",
-                                            format!("Failed to reset store: {e}"),
-                                        );
-                                        return;
-                                    }
-                                }
-                                *doc_signal.write() = next_doc;
-                                *session_signal.write() = session;
-                                *history_signal.write() = next_history;
-                                update_load_save_success(
-                                    toast_handle,
-                                    "Workspace loaded",
-                                    format!("Loaded from {}", p.display()),
-                                );
-                            }
-                            Err(OpenError::Parse(e)) => update_load_save_error(
-                                toast_handle,
-                                "Load failed",
-                                format!("Parse error: {e}"),
-                            ),
-                            Err(OpenError::Validation(code)) => update_load_save_error(
-                                toast_handle,
-                                "Load failed",
-                                format!("Load validation error: {code}"),
-                            ),
-                            Err(OpenError::Io(e)) => update_load_save_error(
-                                toast_handle,
-                                "Load failed",
-                                format!("IO error: {e}"),
-                            ),
-                        }
-                    }
-                },
-            }
-        });
+        open_workspace_native(signals, toast_handle, store_bridge);
     }
 }
 
 #[cfg(test)]
+#[path = "open_tests.rs"]
 mod open_tests;

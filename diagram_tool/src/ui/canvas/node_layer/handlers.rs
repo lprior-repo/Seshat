@@ -223,4 +223,5 @@ pub fn handle_mouseup(
 }
 
 #[cfg(test)]
+#[path = "handlers_tests.rs"]
 mod handlers_tests;

@@ -119,7 +119,7 @@ fn test_edge_drawing_started() -> Result<(), CanvasError> {
             assert_eq!(from_node.as_str(), "node1");
             assert_eq!(current_pos, (10.0, 10.0));
         }
-        _ => assert!(false, "Expected DrawingEdge mode"),
+        mode => unreachable!("Expected DrawingEdge mode, got {mode:?}"),
     }
     Ok(())
 }
@@ -142,7 +142,7 @@ fn test_pan_started() -> Result<(), CanvasError> {
         InteractionMode::Panning { last_pos } => {
             assert_eq!(last_pos, (100.0, 200.0));
         }
-        _ => assert!(false, "Expected Panning mode"),
+        mode => unreachable!("Expected Panning mode, got {mode:?}"),
     }
     Ok(())
 }

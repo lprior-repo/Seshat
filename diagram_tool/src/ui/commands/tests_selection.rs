@@ -2,6 +2,7 @@
 mod tests {
     use crate::history::History;
     use crate::ui::commands::selection::*;
+    use crate::ui::commands::{apply_arrow_type_to_selection, apply_toggle_edge_direction};
     use diagram_models::document::{
         DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind, OrderedFloat,
     };

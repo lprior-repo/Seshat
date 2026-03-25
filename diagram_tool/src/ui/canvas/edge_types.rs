@@ -1,6 +1,7 @@
 //! Type definitions for edge layer components
 
 use crate::history::History;
+use canvas_domain::CanvasCoord;
 use diagram_models::document::{DiagramDocument, Edge, EdgeId, EdgeStyle, Node};
 use dioxus::prelude::*;
 
@@ -9,7 +10,7 @@ pub struct EdgeContext {
     pub camera_x: f64,
     pub camera_y: f64,
     pub zoom: f64,
-    pub canvas_origin: (f64, f64),
+    pub canvas_origin: CanvasCoord,
 }
 
 #[derive(Clone, PartialEq, Props)]

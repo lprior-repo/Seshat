@@ -125,4 +125,5 @@ pub fn center_camera_for_content(
 }
 
 #[cfg(test)]
+#[path = "transform_tests.rs"]
 mod transform_tests;
