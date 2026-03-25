@@ -4,7 +4,12 @@ use clap::{Parser, Subcommand as ClapSubcommandMacro};
 use std::ffi::OsString;
 
 #[derive(Parser)]
-#[command(name = "seshat", version, disable_colored_help = true)]
+#[command(
+    name = "seshat",
+    version,
+    disable_colored_help = true,
+    arg_required_else_help = true
+)]
 struct ClapCli {
     #[command(subcommand)]
     subcommand: Option<ClapSubcommandEnum>,
@@ -12,11 +17,11 @@ struct ClapCli {
 
 #[derive(ClapSubcommandMacro)]
 enum ClapSubcommandEnum {
-    #[command(name = "valid-command")]
+    #[command(name = "valid-command", hide = true)]
     ValidCommand,
-    #[command(name = "simulate-failure")]
+    #[command(name = "simulate-failure", hide = true)]
     SimulateFailure,
-    #[command(name = "complex-state")]
+    #[command(name = "complex-state", hide = true)]
     ComplexState {
         #[arg(long, allow_negative_numbers = true, value_parser = parse_depth)]
         depth: Depth,
@@ -38,7 +43,7 @@ pub fn parse_args(args: impl Iterator<Item = std::ffi::OsString>) -> Result<Cli,
         |e| map_clap_error(&e),
         |clap_cli| {
             if let Some(cmd) = clap_cli.subcommand {
-                Ok(Cli::Run(map_subcommand(cmd)))
+                Ok(Cli::Run(map_subcommand(&cmd)))
             } else {
                 Ok(Cli::Bare)
             }
@@ -54,11 +59,11 @@ fn map_clap_error(e: &clap::Error) -> Result<Cli, Error> {
     }
 }
 
-fn map_subcommand(cmd: ClapSubcommandEnum) -> Subcommand {
+fn map_subcommand(cmd: &ClapSubcommandEnum) -> Subcommand {
     match cmd {
         ClapSubcommandEnum::ValidCommand => Subcommand::ValidCommand,
         ClapSubcommandEnum::SimulateFailure => Subcommand::SimulateFailure,
-        ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth },
+        ClapSubcommandEnum::ComplexState { depth } => Subcommand::ComplexState { depth: *depth },
     }
 }
 
@@ -116,11 +121,15 @@ mod tests {
     }
 
     #[test]
-    fn parse_args_returns_cli_when_minimum_boundary() -> Result<(), String> {
+    fn parse_args_returns_error_when_minimum_boundary() -> Result<(), String> {
         let args: Vec<OsString> = vec!["seshat".into()];
-        let result = parse_args(args.into_iter()).map_err(|e| e.to_string())?;
-        assert_eq!(result, Cli::Bare);
-        Ok(())
+        let result = parse_args(args.into_iter());
+        if let Err(Error::ArgumentParse(ParseError::Clap(msg))) = result {
+            assert!(msg.contains("Usage: seshat"));
+            Ok(())
+        } else {
+            Err("Expected clap error".to_string())
+        }
     }
 
     #[test]

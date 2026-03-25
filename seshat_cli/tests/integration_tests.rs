@@ -7,11 +7,11 @@ fn get_bin() -> String {
 }
 
 #[test]
-fn main_returns_success_when_minimum_boundary() -> Result<(), String> {
+fn main_returns_error_when_minimum_boundary() -> Result<(), String> {
     let output = Command::new(get_bin())
         .output()
         .map_err(|e| e.to_string())?;
-    assert_eq!(output.status.code(), Some(0));
+    assert_eq!(output.status.code(), Some(2));
     Ok(())
 }
 
@@ -69,6 +69,7 @@ fn main_returns_error_when_execute_fails() -> Result<(), String> {
 #[test]
 fn main_returns_success_when_environment_limit_isolated_execution() -> Result<(), String> {
     let mut cmd = Command::new(get_bin());
+    cmd.arg("--version");
     cmd.envs((0..10000).map(|i| (format!("VAR_{i}"), "value")));
     let output = cmd.output().map_err(|e| e.to_string())?;
     assert_eq!(output.status.code(), Some(0));

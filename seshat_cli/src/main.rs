@@ -11,7 +11,7 @@ fn main() -> ExitCode {
             print!("{}", seshat_cli::get_version());
             ExitCode::SUCCESS
         }
-        Ok(cli @ seshat_cli::Cli::Run(_)) | Ok(cli @ seshat_cli::Cli::Bare) => {
+        Ok(cli @ (seshat_cli::Cli::Run(_) | seshat_cli::Cli::Bare)) => {
             match seshat_cli::execute(cli) {
                 Ok(()) => ExitCode::SUCCESS,
                 Err(e) => {
