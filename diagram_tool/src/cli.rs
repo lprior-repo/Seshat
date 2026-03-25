@@ -31,14 +31,15 @@ pub fn run_cli(cli: &Cli) {
                 emit_event(&CliEvent::finish(name, true, String::from("ok")));
             }
             Err(err) => {
-                let code = error_code(&err);
+                let err_ref: &(dyn std::error::Error + Send + Sync) = err.as_ref();
+                let code = error_code(err_ref);
                 emit_event(&CliEvent::error(
                     name.clone(),
                     code.clone(),
                     err.to_string(),
                 ));
                 emit_event(&CliEvent::finish(name, false, code));
-                std::process::exit(exit_code(&err));
+                std::process::exit(exit_code(err_ref));
             }
         }
     }

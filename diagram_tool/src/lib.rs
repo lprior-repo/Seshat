@@ -103,6 +103,9 @@
 #![forbid(unsafe_code)]
 
 pub mod app;
+pub mod cli;
+#[cfg(not(target_arch = "wasm32"))]
+pub mod cli_persistence;
 pub mod core;
 pub mod export;
 pub mod geometry;

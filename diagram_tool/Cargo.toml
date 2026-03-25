@@ -7,6 +7,10 @@ edition = "2021"
 name = "diagram_tool"
 path = "src/main.rs"
 
+[[bin]]
+name = "seshat"
+path = "src/bin/seshat.rs"
+
 [lib]
 name = "diagram_tool"
 path = "src/lib.rs"
