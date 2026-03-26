@@ -1,30 +1,30 @@
-pub(super) struct ThemeTokens {
-    bg_base: &'static str,
-    bg_surface: &'static str,
-    bg_elevated: &'static str,
-    border: &'static str,
-    border_subtle: &'static str,
-    text_main: &'static str,
-    text_muted: &'static str,
-    text_dim: &'static str,
-    accent: &'static str,
-    accent_soft: &'static str,
-    selection_rect_fill: &'static str,
-    subgraph_preview_fill: &'static str,
-    node_bg: &'static str,
-    node_bg_subgraph: &'static str,
-    node_border: &'static str,
-    grid_dot: &'static str,
-    edge_default: &'static str,
-    toolbar_bg: &'static str,
-    success: &'static str,
-    error: &'static str,
-    warning: &'static str,
-    chart_1: &'static str,
-    chart_2: &'static str,
-    chart_3: &'static str,
-    chart_4: &'static str,
-    chart_5: &'static str,
+pub(crate) struct ThemeTokens {
+    pub(crate) bg_base: &'static str,
+    pub(crate) bg_surface: &'static str,
+    pub(crate) bg_elevated: &'static str,
+    pub(crate) border: &'static str,
+    pub(crate) border_subtle: &'static str,
+    pub(crate) text_main: &'static str,
+    pub(crate) text_muted: &'static str,
+    pub(crate) text_dim: &'static str,
+    pub(crate) accent: &'static str,
+    pub(crate) accent_soft: &'static str,
+    pub(crate) selection_rect_fill: &'static str,
+    pub(crate) subgraph_preview_fill: &'static str,
+    pub(crate) node_bg: &'static str,
+    pub(crate) node_bg_subgraph: &'static str,
+    pub(crate) node_border: &'static str,
+    pub(crate) grid_dot: &'static str,
+    pub(crate) edge_default: &'static str,
+    pub(crate) toolbar_bg: &'static str,
+    pub(crate) success: &'static str,
+    pub(crate) error: &'static str,
+    pub(crate) warning: &'static str,
+    pub(crate) chart_1: &'static str,
+    pub(crate) chart_2: &'static str,
+    pub(crate) chart_3: &'static str,
+    pub(crate) chart_4: &'static str,
+    pub(crate) chart_5: &'static str,
 }
 
 const fn dark_tokens() -> ThemeTokens {
@@ -33,7 +33,7 @@ const fn dark_tokens() -> ThemeTokens {
         bg_surface: "oklch(0.15 0.005 260)",
         bg_elevated: "oklch(0.17 0.005 260)",
         border: "oklch(0.26 0.005 260)",
-        border_subtle: "oklch(0.22 0.005 260)",
+        border_subtle: "oklch(0.30 0.005 260)",
         text_main: "oklch(0.95 0 0)",
         text_muted: "oklch(0.66 0 0)",
         text_dim: "oklch(0.53 0 0)",
@@ -41,10 +41,10 @@ const fn dark_tokens() -> ThemeTokens {
         accent_soft: "color-mix(in oklch, oklch(0.72 0.14 165) 25%, transparent)",
         selection_rect_fill: "color-mix(in oklch, oklch(0.72 0.14 165) 15%, transparent)",
         subgraph_preview_fill: "color-mix(in oklch, oklch(0.72 0.14 165) 8%, transparent)",
-        node_bg: "oklch(0.19 0.005 260)",
+        node_bg: "oklch(0.22 0.005 260)",
         node_bg_subgraph: "color-mix(in oklch, oklch(0.22 0.005 260) 60%, transparent)",
-        node_border: "oklch(0.30 0.01 260)",
-        grid_dot: "oklch(0.25 0.005 260)",
+        node_border: "oklch(0.38 0.01 260)",
+        grid_dot: "oklch(0.30 0.005 260)",
         edge_default: "oklch(0.50 0.01 260)",
         toolbar_bg: "oklch(0.17 0.005 260)",
         success: "#22c55e",
@@ -177,6 +177,39 @@ impl ThemeTokens {
         )
     }
 
+    #[cfg(test)]
+    pub(crate) fn field(&self, name: &str) -> &'static str {
+        match name {
+            "bg_base" => self.bg_base,
+            "bg_surface" => self.bg_surface,
+            "bg_elevated" => self.bg_elevated,
+            "border" => self.border,
+            "border_subtle" => self.border_subtle,
+            "text_main" => self.text_main,
+            "text_muted" => self.text_muted,
+            "text_dim" => self.text_dim,
+            "accent" => self.accent,
+            "accent_soft" => self.accent_soft,
+            "selection_rect_fill" => self.selection_rect_fill,
+            "subgraph_preview_fill" => self.subgraph_preview_fill,
+            "node_bg" => self.node_bg,
+            "node_bg_subgraph" => self.node_bg_subgraph,
+            "node_border" => self.node_border,
+            "grid_dot" => self.grid_dot,
+            "edge_default" => self.edge_default,
+            "toolbar_bg" => self.toolbar_bg,
+            "success" => self.success,
+            "error" => self.error,
+            "warning" => self.warning,
+            "chart_1" => self.chart_1,
+            "chart_2" => self.chart_2,
+            "chart_3" => self.chart_3,
+            "chart_4" => self.chart_4,
+            "chart_5" => self.chart_5,
+            _ => panic!("unknown field: {name}"),
+        }
+    }
+
     /// Canvas, diagram, and chart CSS variables (11 mappings).
     pub(super) fn canvas_vars(&self) -> String {
         format!(
@@ -197,3 +230,7 @@ impl ThemeTokens {
         )
     }
 }
+
+#[cfg(test)]
+#[path = "tokens_tests.rs"]
+mod tokens_tests;
