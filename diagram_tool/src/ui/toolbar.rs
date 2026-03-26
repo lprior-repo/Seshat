@@ -102,8 +102,7 @@ pub struct IconButtonProps {
 fn IconButton(props: IconButtonProps) -> Element {
     let bg = match props.state {
         ButtonState::Active => props.variant.active_bg_class(),
-        _ => "bg-transparent hover:bg-white/5",
-    };
+        _ => "bg-transparent hover:bg-[var(--bg-elevated)]",    };
     let border = match props.state {
         ButtonState::Active => "border-[var(--accent)]",
         _ => "border-transparent",
@@ -150,8 +149,7 @@ pub struct TextButtonProps {
 fn TextButton(props: TextButtonProps) -> Element {
     let bg = match props.state {
         ButtonState::Active => "bg-[var(--accent-soft)]",
-        _ => "bg-transparent hover:bg-white/5",
-    };
+        _ => "bg-transparent hover:bg-[var(--bg-elevated)]",    };
     let border = match props.state {
         ButtonState::Active => "border-[var(--accent)]",
         _ => "border-transparent",
@@ -194,7 +192,7 @@ fn LabelButton(
     rsx! {
         button {
             "data-testid": test_id,
-            class: "h-9 px-2 flex items-center justify-center rounded-md border border-transparent bg-transparent hover:bg-white/5 cursor-pointer p-0 outline-none mx-0.5 text-foreground text-[13px] transition-colors gap-1.5",
+            class: "h-9 px-2 flex items-center justify-center rounded-md border border-transparent bg-transparent hover:bg-[var(--bg-elevated)] cursor-pointer p-0 outline-none mx-0.5 text-foreground text-[13px] transition-colors gap-1.5",
             onclick: move |evt| {
                 if let Some(handler) = &onclick {
                     handler.call(evt);

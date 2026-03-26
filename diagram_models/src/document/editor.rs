@@ -172,6 +172,7 @@ pub enum EditorTheme {
     Light,
     Dark,
     System,
+    White,
 }
 
 const fn default_theme() -> EditorTheme {
@@ -269,10 +270,35 @@ mod tests {
 
     #[test]
     fn editor_theme_all_variants_serialize() {
-        for theme in [EditorTheme::Light, EditorTheme::Dark, EditorTheme::System] {
+        for theme in [
+            EditorTheme::Light,
+            EditorTheme::Dark,
+            EditorTheme::System,
+            EditorTheme::White,
+        ] {
             let json = serde_json::to_string(&theme).unwrap();
             let parsed: EditorTheme = serde_json::from_str(&json).unwrap();
             assert_eq!(theme, parsed);
         }
+    }
+
+    #[test]
+    fn editor_theme_white_roundtrip() {
+        let json = serde_json::to_string(&EditorTheme::White).unwrap();
+        assert_eq!(json, "\"white\"");
+        let parsed: EditorTheme = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed, EditorTheme::White);
+    }
+
+    #[test]
+    fn editor_theme_white_in_editor_state() {
+        let state = EditorState {
+            theme: EditorTheme::White,
+            ..EditorState::default()
+        };
+        let json = serde_json::to_string(&state).unwrap();
+        assert!(json.contains("\"theme\":\"white\""));
+        let parsed: EditorState = serde_json::from_str(&json).unwrap();
+        assert_eq!(parsed.theme, EditorTheme::White);
     }
 }

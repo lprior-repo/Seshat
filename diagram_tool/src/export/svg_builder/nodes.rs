@@ -74,8 +74,7 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
         let iy = (node.height.0 - icon_size) / 2.0 - 5.0;
         let _ = write!(
             svg,
-            "<image href='{}' width='{icon_size}' height='{icon_size}' x='{ix}' y='{iy}' />",
-            image_href
+            "<image href='{image_href}' width='{icon_size}' height='{icon_size}' x='{ix}' y='{iy}' />",
         );
 
         fonts::render_text(svg, node.width.0 / 2.0, node.height.0 - 5.0, &node.label);

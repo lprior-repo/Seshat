@@ -37,7 +37,7 @@ pub fn SidebarGroup(
             class: "flex flex-col mb-1",
 
             button {
-                class: "w-full bg-transparent border-none py-1.5 px-2 text-foreground flex justify-between items-center cursor-pointer text-[13px] hover:bg-white/5 rounded-md transition-colors",
+                class: "w-full bg-transparent border-none py-1.5 px-2 text-foreground flex justify-between items-center cursor-pointer text-[13px] hover:bg-[var(--bg-elevated)] rounded-md transition-colors",
                 onclick: move |evt| ontoggle.call(evt),
 
                 div {

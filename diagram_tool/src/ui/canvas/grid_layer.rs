@@ -170,4 +170,27 @@ mod tests {
             "BG_BASE must reference --bg-base CSS token, got: {BG_BASE}"
         );
     }
+
+    #[test]
+    fn grid_dot_and_bg_base_are_css_variables_not_hardcoded_hex() {
+        assert!(
+            !GRID_DOT.contains('#'),
+            "GRID_DOT must not contain hardcoded hex, got: {GRID_DOT}"
+        );
+        assert!(
+            !BG_BASE.contains('#'),
+            "BG_BASE must not contain hardcoded hex, got: {BG_BASE}"
+        );
+    }
+
+    #[test]
+    fn grid_layer_compiles_with_style_attribute_css_variable_references() {
+        let pattern_step = calculate_grid_pattern(20.0, 1.0, 0.0, 0.0).0;
+        let dot_style = format!("fill: {GRID_DOT};");
+        let bg_style = format!("fill: {BG_BASE};");
+        assert!(dot_style.contains("var(--grid-dot)"));
+        assert!(bg_style.contains("var(--bg-base)"));
+        assert!(!dot_style.contains("fill: \""));
+        assert!(!bg_style.contains("fill: \""));
+    }
 }

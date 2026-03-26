@@ -55,7 +55,9 @@ fn migrate_icon_data_url(
     icon_key: Option<&str>,
 ) {
     // Data: extract whether metadata exists (pure read)
-    let has_metadata = node_obj.get("metadata").is_some_and(|v| v.is_object());
+    let has_metadata = node_obj
+        .get("metadata")
+        .is_some_and(serde_json::Value::is_object);
 
     // Data: extract icon_data_url from metadata if present, else from node level
     let (icon_data_url, target_has_existing) = if has_metadata {

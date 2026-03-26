@@ -61,7 +61,7 @@ pub fn CategoryButton(
     expanded: bool,
     onclick: EventHandler<MouseEvent>,
 ) -> Element {
-    let base_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-transparent bg-transparent text-foreground cursor-pointer text-[13px] hover:bg-white/5 transition-colors";
+    let base_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-transparent bg-transparent text-foreground cursor-pointer text-[13px] hover:bg-[var(--bg-elevated)] transition-colors";
     let active_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-[var(--accent)] bg-[oklch(0.12_0.02_165)] text-foreground cursor-pointer text-[13px] transition-colors";
 
     rsx! {

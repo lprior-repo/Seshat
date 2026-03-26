@@ -340,3 +340,29 @@ proptest! {
         prop_assert_eq!(ThemeMode::Dark.resolve(system), ThemeScheme::Dark);
     }
 }
+
+// --- B21: next() produces all 4 labels in cycle order ---
+#[test]
+fn next_cycle_produces_all_four_labels_in_order() {
+    let labels: Vec<&str> = std::iter::successors(Some(ThemeMode::System), |m| Some(m.next()))
+        .take(4)
+        .map(|m| m.label())
+        .collect();
+    assert_eq!(labels, vec!["System", "Light", "Dark", "White"]);
+}
+
+// --- B22: next() is involutive over 4 steps (m.next().next().next().next() == m) ---
+#[test]
+fn next_is_involutive_over_four_steps() {
+    let modes = [
+        ThemeMode::System,
+        ThemeMode::Light,
+        ThemeMode::Dark,
+        ThemeMode::White,
+    ];
+    let all_return = modes
+        .iter()
+        .copied()
+        .all(|m| m.next().next().next().next() == m);
+    assert!(all_return);
+}

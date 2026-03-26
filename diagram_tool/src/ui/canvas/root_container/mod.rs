@@ -207,8 +207,8 @@ pub fn RootContainer(state: CanvasState) -> Element {
 }
 
 /// Visible theme toggle button positioned at the bottom-right of the canvas.
-/// Cycles through System → Light → Dark → White → System on click.
-/// Reads/writes the theme_mode Signal provided by ThemeProvider.
+/// Cycles through `System` → `Light` → `Dark` → `White` → `System` on click.
+/// Reads/writes the `theme_mode` `Signal` provided by `ThemeProvider`.
 #[component]
 fn ThemeToggle() -> Element {
     let mut theme_mode = use_context::<Signal<ThemeMode>>();
