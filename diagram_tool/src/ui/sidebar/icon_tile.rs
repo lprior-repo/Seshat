@@ -35,7 +35,7 @@ fn handle_drag(icon: &IconMeta, dragging_icon: &mut Signal<Option<DraggedIconPay
     dragging_icon.set(Some(DraggedIconPayload {
         icon_key: icon.icon_key.to_string(),
         label: Some(icon.display_name.to_string()),
-        image_url: Some(crate::icons::icon_src(icon)),
+        image_url: crate::icons::icon_src(icon),
     }));
 }
 

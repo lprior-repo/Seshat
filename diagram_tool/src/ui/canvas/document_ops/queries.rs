@@ -87,27 +87,19 @@ pub fn fallback_icon_label(icon_key: &str) -> String {
     )
 }
 
-pub fn icon_url_for_relpath(file_relpath: &str) -> String {
-    if file_relpath.contains("..") {
-        return String::new();
+pub fn icon_url_for_relpath(file_relpath: &str) -> Option<String> {
+    if file_relpath.contains("..") || file_relpath.starts_with('/') {
+        return None;
     }
-    format!("/assets/resources/{file_relpath}")
+    Some(format!("/assets/resources/{file_relpath}"))
 }
 
 pub fn icon_url(icon_key: &str) -> Option<String> {
-    let from_index = icon_index()
+    icon_index()
         .by_key
         .get(icon_key)
-        .map(|meta| icon_url_for_relpath(&meta.file_relpath))
-        .filter(|url| !url.is_empty());
-    from_index.or_else(|| {
-        let fallback = icon_url_for_relpath(icon_key);
-        if fallback.is_empty() {
-            None
-        } else {
-            Some(fallback)
-        }
-    })
+        .and_then(|meta| icon_url_for_relpath(&meta.file_relpath))
+        .or_else(|| icon_url_for_relpath(icon_key))
 }
 
 pub fn node_image_url(node: &Node) -> Option<String> {

@@ -27,6 +27,46 @@ fn normalize_collection(
     }
 }
 
+/// Migrate `icon_data_url` → `icon_url` in a node object.
+///
+/// Handles both base64 data-URL values (converted to `/assets/resources/{icon_key}`)
+/// and plain path values (remapped as-is). Works on both metadata-level and
+/// top-level node keys. The `icon_key` parameter is the node's `icon` field,
+/// used to derive the URL path for base64 values.
+fn migrate_icon_data_url(
+    node_obj: &mut serde_json::Map<String, serde_json::Value>,
+    icon_key: Option<&str>,
+) {
+    let is_base64 = |v: &serde_json::Value| v.as_str().is_some_and(|s| s.starts_with("data:"));
+
+    let try_migrate = |target: &mut serde_json::Map<String, serde_json::Value>| {
+        if let Some(icon_data_url) = target.remove("icon_data_url") {
+            if target.contains_key("icon_url") {
+                return;
+            }
+            if is_base64(&icon_data_url) {
+                if let Some(icon) = icon_key {
+                    let _ = target.insert(
+                        "icon_url".to_string(),
+                        serde_json::Value::String(format!("/assets/resources/{icon}")),
+                    );
+                }
+            } else {
+                let _ = target.insert("icon_url".to_string(), icon_data_url);
+            }
+        }
+    };
+
+    if let Some(meta_obj) = node_obj
+        .get_mut("metadata")
+        .and_then(serde_json::Value::as_object_mut)
+    {
+        try_migrate(meta_obj);
+    } else {
+        try_migrate(node_obj);
+    }
+}
+
 fn normalize_compat_shape(root: &mut serde_json::Value) {
     let Some(document) = root
         .as_object_mut()
@@ -40,52 +80,11 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         remap_key(node_obj, "font_size", "fontSize");
         remap_key(node_obj, "fontWeight", "font_weight");
         remap_key(node_obj, "dagRank", "dag_rank");
-        // Migrate icon_data_url → icon_url, but transform base64 data-URL values
-        // into proper HTTP URL paths. Old format: "data:image/png;base64,..."
-        // New format: "/assets/resources/{icon_key}"
-        // Handle both top-level and metadata-nested icon_data_url
         let icon_key = node_obj
             .get("icon")
             .and_then(|v| v.as_str())
-            .map(ToString::to_string);
-        if let Some(meta_obj) = node_obj
-            .get_mut("metadata")
-            .and_then(serde_json::Value::as_object_mut)
-        {
-            if let Some(icon_data_url) = meta_obj.remove("icon_data_url") {
-                if icon_data_url
-                    .as_str()
-                    .is_some_and(|s| s.starts_with("data:"))
-                {
-                    if let Some(ref icon) = icon_key {
-                        if !meta_obj.contains_key("icon_url") {
-                            let _ = meta_obj.insert(
-                                "icon_url".to_string(),
-                                serde_json::Value::String(format!("/assets/resources/{icon}")),
-                            );
-                        }
-                    }
-                } else if !meta_obj.contains_key("icon_url") {
-                    let _ = meta_obj.insert("icon_url".to_string(), icon_data_url);
-                }
-            }
-        } else if let Some(icon_data_url) = node_obj.remove("icon_data_url") {
-            if icon_data_url
-                .as_str()
-                .is_some_and(|s| s.starts_with("data:"))
-            {
-                if let Some(ref icon) = icon_key {
-                    if !node_obj.contains_key("icon_url") {
-                        let _ = node_obj.insert(
-                            "icon_url".to_string(),
-                            serde_json::Value::String(format!("/assets/resources/{icon}")),
-                        );
-                    }
-                }
-            } else if !node_obj.contains_key("icon_url") {
-                let _ = node_obj.insert("icon_url".to_string(), icon_data_url);
-            }
-        }
+            .map(String::from);
+        migrate_icon_data_url(node_obj, icon_key.as_deref());
     });
 
     normalize_collection(document, "edges", |edge_obj| {

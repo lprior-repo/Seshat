@@ -1,16 +1,28 @@
-use base64::{engine::general_purpose, Engine as _};
 use diagram_models::document::DiagramDocument;
 use std::fmt::Write;
+
+#[cfg(not(target_arch = "wasm32"))]
+use base64::{engine::general_purpose, Engine as _};
 
 use crate::export::svg::fonts;
 
 /// Attempt to read an icon file and embed it as a base64 data-URL for portable SVG export.
-/// Returns `None` if the file cannot be read (graceful degradation to URL href).
+/// Only available on native targets — WASM builds use URL-only href.
+#[cfg(not(target_arch = "wasm32"))]
 fn embed_icon_as_data_url(href: &str) -> Option<String> {
-    // Extract the relative path from the URL (strip "/assets/resources/" prefix)
     let relpath = href.strip_prefix("/assets/resources/")?;
+    // Reject paths with path traversal or absolute components
+    if relpath.contains("..") || relpath.starts_with('/') {
+        return None;
+    }
     let full_path = std::path::Path::new("resources").join(relpath);
-    let bytes = std::fs::read(&full_path).ok()?;
+    // Verify the joined path stays within resources/ (defends against absolute path injection)
+    let canonical = full_path.canonicalize().ok()?;
+    let resources_dir = std::path::Path::new("resources").canonicalize().ok()?;
+    if !canonical.starts_with(&resources_dir) {
+        return None;
+    }
+    let bytes = std::fs::read(&canonical).ok()?;
 
     let ext = full_path
         .extension()
@@ -49,8 +61,12 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
             .map(str::to_owned)
             .unwrap_or_else(|| format!("/assets/resources/{}", node.icon));
 
-        // Try to embed icon as base64 data-URL for portable SVG export
-        let data_href = embed_icon_as_data_url(&href);
+        // On native targets, try to embed icon as base64 data-URL for portable SVG export.
+        // On WASM targets, always use URL-only href (no filesystem access).
+        #[cfg(not(target_arch = "wasm32"))]
+        let image_href = embed_icon_as_data_url(&href).unwrap_or(href);
+        #[cfg(target_arch = "wasm32")]
+        let image_href = href;
 
         let icon_size = 32.0;
         let ix = (node.width.0 - icon_size) / 2.0;
@@ -58,7 +74,7 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
         let _ = write!(
             svg,
             "<image href='{}' width='{icon_size}' height='{icon_size}' x='{ix}' y='{iy}' />",
-            data_href.as_deref().unwrap_or(&href)
+            image_href
         );
 
         fonts::render_text(svg, node.width.0 / 2.0, node.height.0 - 5.0, &node.label);
@@ -115,8 +131,6 @@ mod tests {
 
     #[test]
     fn render_nodes_uses_metadata_icon_url() {
-        // metadata icon_url is already a full URL path (e.g. from drag-and-drop)
-        // It must NOT be double-prefixed with /assets/resources/
         let metadata = im::HashMap::from(vec![(
             "icon_url".to_string(),
             serde_json::Value::String("/assets/resources/aws/ec2.png".to_string()),
@@ -128,41 +142,44 @@ mod tests {
             .insert(NodeId::new("n1".to_string()), node);
         let mut svg = String::new();
         render_nodes(&doc, &mut svg);
-        // Must contain the path exactly once (no double-prefix)
         assert!(
             svg.contains("/assets/resources/aws/ec2.png"),
             "SVG should contain the metadata icon_url path, got: {svg}"
         );
-        // Must NOT double-prefix
         assert!(
             !svg.contains("/assets/resources//assets/resources/"),
             "SVG must NOT double-prefix the icon URL, got: {svg}"
         );
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn embed_icon_as_data_url_returns_none_for_nonexistent_file() {
         let result = embed_icon_as_data_url("/assets/resources/nonexistent/icon.png");
         assert!(result.is_none(), "Non-existent file must return None");
     }
 
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn embed_icon_as_data_url_returns_none_for_traversal() {
+        let result = embed_icon_as_data_url("/assets/resources/../../../etc/passwd");
+        assert!(result.is_none(), "Path traversal must return None");
+    }
+
+    #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn embed_icon_as_data_url_returns_valid_data_url_for_existing_file() {
-        // Create a temp directory with resources/<path>/icon.png and change CWD into it.
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let icon_dir = tmp.path().join("resources").join("generic").join("os");
         std::fs::create_dir_all(&icon_dir).expect("create dirs");
-        // Write a minimal valid PNG (1x1 transparent pixel)
         std::fs::write(
             icon_dir.join("ubuntu.png"),
             [
-                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
-                0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
-                0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
-                0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, // IDAT chunk
-                0x54, 0x78, 0x9C, 0x62, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE5, 0x27, 0xDE, 0xFC,
-                0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, // IEND chunk
-                0x60, 0x82,
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, 0x00, 0x00, 0x00, 0x0D, 0x49, 0x48,
+                0x44, 0x52, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00,
+                0x00, 0x1F, 0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, 0x54, 0x78,
+                0x9C, 0x62, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE5, 0x27, 0xDE, 0xFC, 0x00, 0x00,
+                0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, 0x60, 0x82,
             ],
         )
         .expect("write png");
@@ -178,8 +195,6 @@ mod tests {
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
         let result = embed_icon_as_data_url("/assets/resources/generic/os/ubuntu.png");
-
-        // Guard restores CWD even if assertions panic below
         drop(guard);
 
         assert!(result.is_some(), "Existing file must return Some");
@@ -192,7 +207,6 @@ mod tests {
             .strip_prefix("data:image/png;base64,")
             .expect("should have prefix");
         assert!(!b64_part.is_empty(), "Base64 content must not be empty");
-        // Verify the base64 part actually decodes
         use base64::{engine::general_purpose, Engine as _};
         let decoded = general_purpose::STANDARD
             .decode(b64_part)

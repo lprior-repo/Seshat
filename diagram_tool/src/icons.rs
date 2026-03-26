@@ -19,8 +19,8 @@ pub fn icon_index() -> &'static IconIndex {
 }
 
 #[must_use]
-pub fn icon_src(icon: &IconMeta) -> String {
-    format!("/assets/resources/{}", icon.file_relpath)
+pub fn icon_src(icon: &IconMeta) -> Option<String> {
+    crate::ui::canvas::document_ops::queries::icon_url_for_relpath(&icon.file_relpath)
 }
 
 #[cfg(test)]
@@ -41,7 +41,7 @@ mod tests {
         };
         assert_eq!(
             icon_src(&meta),
-            "/assets/resources/aws/Analytics/athena.svg"
+            Some("/assets/resources/aws/Analytics/athena.svg".to_string())
         );
     }
 }

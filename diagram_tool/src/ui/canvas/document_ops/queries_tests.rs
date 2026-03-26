@@ -238,23 +238,26 @@ fn make_node_with_metadata(metadata: im::HashMap<String, Value>) -> Node {
 fn icon_url_for_relpath_formats_path() {
     assert_eq!(
         icon_url_for_relpath("gcp/compute/gke.png"),
-        "/assets/resources/gcp/compute/gke.png"
+        Some("/assets/resources/gcp/compute/gke.png".to_string())
     );
 }
 
 #[test]
 fn icon_url_for_relpath_empty_path() {
-    assert_eq!(icon_url_for_relpath(""), "/assets/resources/");
+    assert_eq!(
+        icon_url_for_relpath(""),
+        Some("/assets/resources/".to_string())
+    );
 }
 
 #[test]
 fn icon_url_for_relpath_blocks_path_traversal() {
-    assert_eq!(icon_url_for_relpath("../../etc/passwd"), "");
+    assert_eq!(icon_url_for_relpath("../../etc/passwd"), None);
 }
 
 #[test]
 fn icon_url_for_relpath_blocks_nested_traversal() {
-    assert_eq!(icon_url_for_relpath("aws/../../etc/passwd"), "");
+    assert_eq!(icon_url_for_relpath("aws/../../etc/passwd"), None);
 }
 
 #[test]
@@ -339,7 +342,7 @@ fn icon_url_returns_url_for_known_icon_in_index() {
 fn icon_url_for_relpath_with_trailing_slash() {
     assert_eq!(
         icon_url_for_relpath("aws/"),
-        "/assets/resources/aws/",
+        Some("/assets/resources/aws/".to_string()),
         "Trailing slash must be preserved"
     );
 }
@@ -348,8 +351,8 @@ fn icon_url_for_relpath_with_trailing_slash() {
 fn icon_url_for_relpath_with_leading_slash() {
     assert_eq!(
         icon_url_for_relpath("/etc/passwd"),
-        "/assets/resources//etc/passwd",
-        "Leading slash is preserved — this is a URL construction function, not a path sanitizer"
+        None,
+        "Leading slash must be rejected to prevent path injection"
     );
 }
 
@@ -357,7 +360,7 @@ fn icon_url_for_relpath_with_leading_slash() {
 fn icon_url_for_relpath_with_unicode() {
     assert_eq!(
         icon_url_for_relpath("émoji/icon.png"),
-        "/assets/resources/émoji/icon.png",
+        Some("/assets/resources/émoji/icon.png".to_string()),
         "Unicode characters must be preserved"
     );
 }
