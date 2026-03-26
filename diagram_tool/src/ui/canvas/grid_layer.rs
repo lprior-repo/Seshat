@@ -1,3 +1,4 @@
+use crate::ui::theme::{BG_BASE, GRID_DOT};
 use diagram_models::document::DiagramDocument;
 use dioxus::prelude::*;
 
@@ -40,7 +41,7 @@ pub fn GridLayer(
                         cx: "{pattern_step / 2.0}",
                         cy: "{pattern_step / 2.0}",
                         r: "{dot_r}",
-                        fill: "#444444",
+                        style: "fill: {GRID_DOT};",
                     }
                 }
             }
@@ -49,7 +50,7 @@ pub fn GridLayer(
                 y: "0",
                 width: "{vw.max(1.0)}",
                 height: "{vh.max(1.0)}",
-                fill: "#111111",
+                style: "fill: {BG_BASE};",
             }
             rect {
                 x: "0",
@@ -66,7 +67,7 @@ pub fn GridLayer(
                 y: "0",
                 width: "{vw.max(1.0)}",
                 height: "{vh.max(1.0)}",
-                fill: "#111111",
+                style: "fill: {BG_BASE};",
             }
         }
     }
@@ -75,6 +76,7 @@ pub fn GridLayer(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ui::theme::{BG_BASE, GRID_DOT};
 
     #[test]
     fn test_grid_pattern_alignment_with_nodes() {
@@ -107,5 +109,65 @@ mod tests {
         assert_eq!(px, 20.0);
         assert_eq!(py, 20.0);
         assert_eq!(r, 3.0);
+    }
+
+    // ── Regression: calculate_grid_pattern pure function unchanged ──
+
+    #[test]
+    fn test_grid_pattern_minimum_step_clamp() {
+        // Very small grid_size (2) and low zoom (0.5) should still produce >= 4.0 step
+        let (step, _px, _py, _r) = calculate_grid_pattern(2.0, 0.5, 0.0, 0.0);
+        assert!(step >= 4.0);
+    }
+
+    #[test]
+    fn test_grid_pattern_negative_camera() {
+        // Negative camera offset should wrap correctly via rem_euclid
+        let (step, px, py, _r) = calculate_grid_pattern(20.0, 1.0, -15.0, -15.0);
+        assert_eq!(step, 20.0);
+        // rem_euclid always returns non-negative, so px/py in [0, step)
+        assert!(px >= 0.0 && px < step);
+        assert!(py >= 0.0 && py < step);
+    }
+
+    #[test]
+    fn test_grid_pattern_zero_zoom_clamps() {
+        // zoom=0 should still produce non-negative step via max(4.0)
+        let (step, _px, _py, _r) = calculate_grid_pattern(20.0, 0.0, 0.0, 0.0);
+        assert!(step >= 4.0);
+    }
+
+    // ── Contract: theme constants are CSS variable references ──
+
+    #[test]
+    fn test_grid_dot_is_css_variable() {
+        assert!(
+            GRID_DOT.starts_with("var("),
+            "GRID_DOT must be a CSS custom property reference, got: {GRID_DOT}"
+        );
+    }
+
+    #[test]
+    fn test_bg_base_is_css_variable() {
+        assert!(
+            BG_BASE.starts_with("var("),
+            "BG_BASE must be a CSS custom property reference, got: {BG_BASE}"
+        );
+    }
+
+    #[test]
+    fn test_grid_dot_references_grid_token() {
+        assert!(
+            GRID_DOT.contains("--grid-dot"),
+            "GRID_DOT must reference --grid-dot CSS token, got: {GRID_DOT}"
+        );
+    }
+
+    #[test]
+    fn test_bg_base_references_bg_token() {
+        assert!(
+            BG_BASE.contains("--bg-base"),
+            "BG_BASE must reference --bg-base CSS token, got: {BG_BASE}"
+        );
     }
 }
