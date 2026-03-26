@@ -89,8 +89,35 @@ const fn light_tokens() -> ThemeTokens {
     }
 }
 
-fn white_tokens() -> ThemeTokens {
-    unreachable!("White tokens not yet implemented (seshat-b36)")
+const fn white_tokens() -> ThemeTokens {
+    ThemeTokens {
+        bg_base: "oklch(1 0 0)",
+        bg_surface: "oklch(1 0 0)",
+        bg_elevated: "oklch(1 0 0)",
+        border: "oklch(0.72 0.01 260)",
+        border_subtle: "oklch(0.82 0.01 260)",
+        text_main: "oklch(0.15 0.01 260)",
+        text_muted: "oklch(0.40 0.01 260)",
+        text_dim: "oklch(0.52 0.01 260)",
+        accent: "oklch(0.55 0.18 192)",
+        accent_soft: "color-mix(in oklch, oklch(0.55 0.18 192) 15%, transparent)",
+        selection_rect_fill: "color-mix(in oklch, oklch(0.55 0.18 192) 15%, transparent)",
+        subgraph_preview_fill: "color-mix(in oklch, oklch(0.55 0.18 192) 8%, transparent)",
+        node_bg: "oklch(1 0 0)",
+        node_bg_subgraph: "color-mix(in oklch, oklch(0.92 0.02 260) 50%, transparent)",
+        node_border: "oklch(0.55 0.02 260)",
+        grid_dot: "oklch(0.78 0.01 260)",
+        edge_default: "oklch(0.42 0.03 260)",
+        toolbar_bg: "oklch(1 0 0)",
+        success: "#15803d",
+        error: "#b91c1c",
+        warning: "#b45309",
+        chart_1: "oklch(0.55 0.18 192)",
+        chart_2: "oklch(0.50 0.12 184.704)",
+        chart_3: "oklch(0.40 0.09 227.392)",
+        chart_4: "oklch(0.65 0.19 84.429)",
+        chart_5: "oklch(0.60 0.19 70.08)",
+    }
 }
 
 pub(super) fn tokens_for(scheme: super::ThemeScheme) -> ThemeTokens {

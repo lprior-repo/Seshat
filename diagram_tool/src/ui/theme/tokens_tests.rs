@@ -28,6 +28,10 @@ fn light() -> ThemeTokens {
     light_tokens()
 }
 
+fn white() -> ThemeTokens {
+    white_tokens()
+}
+
 fn lightness(field_name: &str) -> f64 {
     let t = dark();
     extract_lightness(t.field(field_name))
@@ -127,4 +131,110 @@ fn test_dark_chroma_preserved() {
         let c = extract_chroma(t.field(field));
         assert!((c - 0.01).abs() < 1e-6, "{field} C = {c}, expected 0.01");
     }
+}
+
+// --- seshat-b36: White palette tests ---
+
+#[test]
+fn test_white_bg_base_is_pure_white() {
+    let t = white();
+    let val = t.bg_base;
+    assert!(
+        val.contains("oklch(1"),
+        "bg_base must be pure white oklch(1 ...), got: {val}"
+    );
+}
+
+#[test]
+fn test_white_text_main_is_dark() {
+    let t = white();
+    let l = extract_lightness(t.text_main);
+    assert!(
+        l < 0.3,
+        "text_main L* = {l}, must be < 0.3 for WCAG AA contrast on white"
+    );
+}
+
+#[test]
+fn test_white_node_border_visible() {
+    let t = white();
+    let l = extract_lightness(t.node_border);
+    // On oklch(1 0 0) background, L* <= 0.60 gives > 3:1 contrast ratio.
+    assert!(
+        (0.30..=0.60).contains(&l),
+        "node_border L* = {l}, must be in [0.30, 0.60] for 3:1 contrast on white"
+    );
+}
+
+#[test]
+fn test_white_palette_completeness() {
+    let t = white();
+    let fields = [
+        t.bg_base,
+        t.bg_surface,
+        t.bg_elevated,
+        t.border,
+        t.border_subtle,
+        t.text_main,
+        t.text_muted,
+        t.text_dim,
+        t.accent,
+        t.accent_soft,
+        t.selection_rect_fill,
+        t.subgraph_preview_fill,
+        t.node_bg,
+        t.node_bg_subgraph,
+        t.node_border,
+        t.grid_dot,
+        t.edge_default,
+        t.toolbar_bg,
+        t.success,
+        t.error,
+        t.warning,
+        t.chart_1,
+        t.chart_2,
+        t.chart_3,
+        t.chart_4,
+        t.chart_5,
+    ];
+    assert_eq!(fields.len(), 26, "expected 26 token fields");
+    for (i, val) in fields.iter().enumerate() {
+        assert!(!val.is_empty(), "token field index {i} must not be empty");
+    }
+}
+
+#[test]
+fn test_css_vars_for_white_produces_valid_output() {
+    let css = super::super::css_vars_for(super::super::ThemeScheme::White);
+    assert!(
+        !css.is_empty(),
+        "css_vars_for(White) must produce non-empty output"
+    );
+    // Every --var:value; segment must have a non-empty value before the semicolon.
+    for segment in css.split(';') {
+        let trimmed = segment.trim();
+        if trimmed.is_empty() {
+            continue;
+        }
+        assert!(
+            trimmed.contains(':'),
+            "CSS segment missing ':' delimiter: {trimmed}"
+        );
+        let colon_pos = trimmed.find(':').expect("colon checked above");
+        let value = trimmed[colon_pos + 1..].trim();
+        assert!(
+            !value.is_empty(),
+            "CSS variable has empty value in segment: {trimmed}"
+        );
+    }
+}
+
+#[test]
+fn test_white_palette_differs_from_light() {
+    let w = white();
+    let l = light();
+    assert_ne!(
+        w.bg_base, l.bg_base,
+        "White bg_base must differ from Light bg_base"
+    );
 }
