@@ -27,43 +27,86 @@ fn normalize_collection(
     }
 }
 
+/// Compute the replacement `icon_url` value from a `icon_data_url` payload.
+/// Returns `None` if no migration is needed (existing `icon_url` wins, or no icon key
+/// for base64 conversion).
+fn compute_migrated_url(
+    icon_data_url: &serde_json::Value,
+    icon_key: Option<&str>,
+    has_existing_icon_url: bool,
+) -> Option<serde_json::Value> {
+    if has_existing_icon_url {
+        return None;
+    }
+    if icon_data_url
+        .as_str()
+        .is_some_and(|s| s.starts_with("data:"))
+    {
+        icon_key.map(|icon| serde_json::Value::String(format!("/assets/resources/{icon}")))
+    } else {
+        Some(icon_data_url.clone())
+    }
+}
+
 /// Migrate `icon_data_url` → `icon_url` in a node object.
-///
-/// Handles both base64 data-URL values (converted to `/assets/resources/{icon_key}`)
-/// and plain path values (remapped as-is). Works on both metadata-level and
-/// top-level node keys. The `icon_key` parameter is the node's `icon` field,
-/// used to derive the URL path for base64 values.
+/// Handles both metadata-level and top-level node keys.
 fn migrate_icon_data_url(
     node_obj: &mut serde_json::Map<String, serde_json::Value>,
     icon_key: Option<&str>,
 ) {
-    let is_base64 = |v: &serde_json::Value| v.as_str().is_some_and(|s| s.starts_with("data:"));
+    // Data: extract whether metadata exists (pure read)
+    let has_metadata = node_obj.get("metadata").is_some_and(|v| v.is_object());
 
-    let try_migrate = |target: &mut serde_json::Map<String, serde_json::Value>| {
-        if let Some(icon_data_url) = target.remove("icon_data_url") {
-            if target.contains_key("icon_url") {
-                return;
-            }
-            if is_base64(&icon_data_url) {
-                if let Some(icon) = icon_key {
-                    let _ = target.insert(
-                        "icon_url".to_string(),
-                        serde_json::Value::String(format!("/assets/resources/{icon}")),
-                    );
-                }
-            } else {
-                let _ = target.insert("icon_url".to_string(), icon_data_url);
-            }
-        }
+    // Data: extract icon_data_url from metadata if present, else from node level
+    let (icon_data_url, target_has_existing) = if has_metadata {
+        let meta = node_obj
+            .get("metadata")
+            .and_then(|v| v.as_object())
+            .is_some_and(|m| m.contains_key("icon_url"));
+        let data = node_obj
+            .get("metadata")
+            .and_then(|v| v.get("icon_data_url"))
+            .cloned();
+        (data, meta)
+    } else {
+        let data = node_obj.get("icon_data_url").cloned();
+        let has = node_obj.contains_key("icon_url");
+        (data, has)
     };
 
-    if let Some(meta_obj) = node_obj
-        .get_mut("metadata")
-        .and_then(serde_json::Value::as_object_mut)
-    {
-        try_migrate(meta_obj);
+    let Some(url_value) = icon_data_url else {
+        return;
+    };
+
+    // Calculation: compute replacement (pure)
+    let replacement = compute_migrated_url(&url_value, icon_key, target_has_existing);
+    let Some(replacement) = replacement else {
+        // Existing icon_url wins — just remove old key
+        if has_metadata {
+            if let Some(meta) = node_obj
+                .get_mut("metadata")
+                .and_then(serde_json::Value::as_object_mut)
+            {
+                meta.remove("icon_data_url");
+            }
+        } else {
+            node_obj.remove("icon_data_url");
+        }
+        return;
+    };
+
+    // Action: apply mutation
+    if has_metadata {
+        if let Some(meta) = node_obj
+            .get_mut("metadata")
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            meta.remove("icon_data_url");
+            meta.insert("icon_url".to_string(), replacement);
+        }
     } else {
-        try_migrate(node_obj);
+        node_obj.remove("icon_data_url");
+        node_obj.insert("icon_url".to_string(), replacement);
     }
 }
 

@@ -59,7 +59,8 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
             .get("icon_url")
             .and_then(serde_json::Value::as_str)
             .map(str::to_owned)
-            .unwrap_or_else(|| format!("/assets/resources/{}", node.icon));
+            .or_else(|| crate::ui::canvas::document_ops::queries::icon_url(&node.icon))
+            .unwrap_or_default();
 
         // On native targets, try to embed icon as base64 data-URL for portable SVG export.
         // On WASM targets, always use URL-only href (no filesystem access).
