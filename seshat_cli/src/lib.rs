@@ -5,8 +5,10 @@ pub mod diff;
 pub mod domain;
 pub mod error;
 pub mod executor;
+pub mod layout;
 pub mod parser;
 pub mod patch;
+pub mod render;
 pub mod show;
 
 // Re-export public types that were originally in the root

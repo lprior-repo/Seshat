@@ -58,6 +58,22 @@ pub struct ApplyCommand {
     pub proposal: PathBuf,
 }
 
+/// Source for the render command input.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum RenderSource {
+    /// Read input from the given path.
+    File(PathBuf),
+    /// Read input from stdin.
+    Stdin,
+}
+
+/// Domain command for the render subcommand.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenderCommand {
+    pub input: RenderSource,
+    pub output: PathBuf,
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum DepthError {
     Negative,
@@ -93,6 +109,12 @@ impl Depth {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct LayoutCommand {
+    pub input: PathBuf,
+    pub output: PathBuf,
+}
+
 #[derive(Debug, PartialEq, Eq, Clone)]
 pub enum Subcommand {
     ValidCommand,
@@ -101,6 +123,8 @@ pub enum Subcommand {
     Show(ShowCommand),
     Patch(PatchCommand),
     Apply(ApplyCommand),
+    Layout(LayoutCommand),
+    Render(RenderCommand),
 }
 
 #[derive(Debug, PartialEq, Eq, Clone)]

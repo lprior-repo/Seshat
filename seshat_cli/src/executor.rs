@@ -26,6 +26,10 @@ pub fn execute(cli: Cli) -> Result<(), Error> {
             crate::apply::execute_apply(&cmd, std::io::stdin(), std::io::stdout())
                 .map_err(|e| Error::CommandExecution(ExecutionError::Apply(e)))
         }
+        Cli::Run(Subcommand::Layout(cmd)) => crate::layout::execute_layout(&cmd)
+            .map_err(|e| Error::CommandExecution(ExecutionError::Layout(e))),
+        Cli::Run(Subcommand::Render(cmd)) => crate::render::execute_render(&cmd, std::io::stdin())
+            .map_err(|e| Error::CommandExecution(ExecutionError::Render(e))),
         Cli::Run(_) | Cli::Help(_) | Cli::Version(_) | Cli::Bare => Ok(()),
     }
 }

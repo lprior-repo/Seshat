@@ -43,21 +43,46 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         // Migrate icon_data_url → icon_url, but transform base64 data-URL values
         // into proper HTTP URL paths. Old format: "data:image/png;base64,..."
         // New format: "/assets/resources/{icon_key}"
-        if let Some(icon_data_url) = node_obj.remove("icon_data_url") {
+        // Handle both top-level and metadata-nested icon_data_url
+        let icon_key = node_obj
+            .get("icon")
+            .and_then(|v| v.as_str())
+            .map(ToString::to_string);
+        if let Some(meta_obj) = node_obj
+            .get_mut("metadata")
+            .and_then(serde_json::Value::as_object_mut)
+        {
+            if let Some(icon_data_url) = meta_obj.remove("icon_data_url") {
+                if icon_data_url
+                    .as_str()
+                    .is_some_and(|s| s.starts_with("data:"))
+                {
+                    if let Some(ref icon) = icon_key {
+                        if !meta_obj.contains_key("icon_url") {
+                            let _ = meta_obj.insert(
+                                "icon_url".to_string(),
+                                serde_json::Value::String(format!("/assets/resources/{icon}")),
+                            );
+                        }
+                    }
+                } else if !meta_obj.contains_key("icon_url") {
+                    let _ = meta_obj.insert("icon_url".to_string(), icon_data_url);
+                }
+            }
+        } else if let Some(icon_data_url) = node_obj.remove("icon_data_url") {
             if icon_data_url
                 .as_str()
                 .is_some_and(|s| s.starts_with("data:"))
             {
-                // Old base64 value — derive URL from the node's icon field
-                if let Some(icon) = node_obj.get("icon").and_then(|v| v.as_str()) {
-                    let _ = node_obj.insert(
-                        "icon_url".to_string(),
-                        serde_json::Value::String(format!("/assets/resources/{icon}")),
-                    );
+                if let Some(ref icon) = icon_key {
+                    if !node_obj.contains_key("icon_url") {
+                        let _ = node_obj.insert(
+                            "icon_url".to_string(),
+                            serde_json::Value::String(format!("/assets/resources/{icon}")),
+                        );
+                    }
                 }
-                // If no icon field, just drop the stale base64 data
             } else if !node_obj.contains_key("icon_url") {
-                // Non-base64 value (shouldn't exist, but be safe)
                 let _ = node_obj.insert("icon_url".to_string(), icon_data_url);
             }
         }

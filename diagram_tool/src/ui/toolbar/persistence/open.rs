@@ -259,7 +259,9 @@ fn open_workspace_native(
 pub fn open_workspace(
     signals: WorkspaceSignals,
     toasts: Signal<ToastQueue>,
-    store_bridge: Option<std::sync::Arc<crate::store_bridge::StoreBridge>>,
+    #[cfg(not(target_arch = "wasm32"))] store_bridge: Option<
+        std::sync::Arc<crate::store_bridge::StoreBridge>,
+    >,
 ) {
     let toast_api = ToastApi::from_signal(toasts);
     let toast_handle = toast_api.toast(
@@ -269,7 +271,6 @@ pub fn open_workspace(
 
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = &store_bridge;
         open_workspace_wasm(signals, toast_handle);
     }
     #[cfg(not(target_arch = "wasm32"))]

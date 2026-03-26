@@ -133,6 +133,63 @@ impl std::fmt::Display for ApplyError {
 
 impl std::error::Error for ApplyError {}
 
+/// Errors that can occur during execution of the `layout` subcommand.
+#[derive(Debug, PartialEq, Eq)]
+pub enum LayoutError {
+    LoadFailed(String),
+    SaveFailed(String),
+}
+
+impl std::fmt::Display for LayoutError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::LoadFailed(msg) => write!(f, "error: layout: load failed: {msg}"),
+            Self::SaveFailed(msg) => write!(f, "error: layout: save failed: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for LayoutError {}
+
+/// Errors that can occur during execution of the `render` subcommand.
+#[derive(Debug, PartialEq, Eq)]
+pub enum RenderError {
+    /// The specified file path does not exist or is not accessible.
+    FileNotFound(std::path::PathBuf),
+    /// An I/O error occurred while reading or writing.
+    IoError(String),
+    /// The input bytes were not valid UTF-8.
+    InvalidUtf8,
+    /// The input was empty.
+    EmptyInput,
+    /// JSON parsing failed.
+    JsonDeserialize(String),
+    /// Format not supported
+    UnsupportedFormat(String),
+    /// Export rendering failed
+    ExportFailure(String),
+}
+
+impl std::fmt::Display for RenderError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Self::FileNotFound(path) => {
+                write!(f, "error: render: file not found: {}", path.display())
+            }
+            Self::IoError(msg) => write!(f, "error: render: I/O error: {msg}"),
+            Self::InvalidUtf8 => write!(f, "error: render: invalid utf-8 in input"),
+            Self::EmptyInput => write!(f, "error: render: empty input"),
+            Self::JsonDeserialize(msg) => write!(f, "error: render: JSON parse error: {msg}"),
+            Self::UnsupportedFormat(ext) => {
+                write!(f, "error: render: unsupported output format: {ext}")
+            }
+            Self::ExportFailure(msg) => write!(f, "error: render: export failure: {msg}"),
+        }
+    }
+}
+
+impl std::error::Error for RenderError {}
+
 /// Represents errors that occur during argument parsing.
 #[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
@@ -156,6 +213,8 @@ pub enum ExecutionError {
     Show(ShowError),
     Patch(PatchError),
     Apply(ApplyError),
+    Layout(LayoutError),
+    Render(RenderError),
 }
 
 impl std::fmt::Display for ExecutionError {
@@ -167,6 +226,8 @@ impl std::fmt::Display for ExecutionError {
             Self::Show(e) => write!(f, "{e}"),
             Self::Patch(e) => write!(f, "{e}"),
             Self::Apply(e) => write!(f, "{e}"),
+            Self::Layout(e) => write!(f, "{e}"),
+            Self::Render(e) => write!(f, "{e}"),
         }
     }
 }

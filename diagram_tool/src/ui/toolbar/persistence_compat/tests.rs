@@ -159,14 +159,14 @@ fn make_doc_with_node_metadata(
                         }}
                     }}
                 }},
-                "edges": {{}},
-                "editor_state": {{
-                    "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
-                    "snap_to_grid": false, "grid_size": {{ "x": 20.0, "y": 20.0 }},
-                    "selected_items": {{}}
-                }},
-                "revision": {{"counter": 0, "author": "test"}}
-            }}
+                "edges": {{}}
+            }},
+            "editor_state": {{
+                "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
+                "snap_to_grid": false, "grid_size": 20.0,
+                "selected_items": []
+            }},
+            "revision": 0
         }}"#,
         icon_field = icon_field,
         metadata_key = metadata_key,
@@ -181,9 +181,7 @@ fn given_icon_data_url_base64_when_migrated_then_converted_to_url_path() {
         "icon_data_url",
         "data:image/png;base64,iVBORw0KGgo=",
     );
-    let result = super::parse_diagram_document_with_compat(&json);
-    assert!(result.is_ok(), "Should parse: {:?}", result.err());
-    let doc = result.expect("should have doc");
+    let doc = super::parse_diagram_document_with_compat(&json).expect("Should parse document");
     let node = doc
         .document
         .nodes
@@ -210,15 +208,14 @@ fn given_icon_data_url_base64_when_migrated_then_converted_to_url_path() {
 
 #[test]
 fn given_icon_data_url_path_when_migrated_then_remapped_as_is() {
-    // Edge case: if somehow icon_data_url contains a path (not base64), remap it
+    // Edge case: if somehow icon_data_url contains a path (not base64), remap it.
+    // Use a path that differs from the icon-derived URL to prove the original value is kept.
     let json = make_doc_with_node_metadata(
         "aws/compute/ec2.png",
         "icon_data_url",
-        "/assets/resources/aws/compute/ec2.png",
+        "/custom/path/icon.png",
     );
-    let result = super::parse_diagram_document_with_compat(&json);
-    assert!(result.is_ok(), "Should parse: {:?}", result.err());
-    let doc = result.expect("should have doc");
+    let doc = super::parse_diagram_document_with_compat(&json).expect("Should parse document");
     let node = doc
         .document
         .nodes
@@ -232,7 +229,7 @@ fn given_icon_data_url_path_when_migrated_then_remapped_as_is() {
     );
     assert_eq!(
         node.metadata.get("icon_url").and_then(|v| v.as_str()),
-        Some("/assets/resources/aws/compute/ec2.png"),
+        Some("/custom/path/icon.png"),
         "Non-base64 value should be remapped as-is"
     );
 }
@@ -252,23 +249,21 @@ fn given_both_icon_data_url_and_icon_url_when_migrated_then_icon_url_kept() {
                     "width": 64.0, "height": 64.0,
                     "z_index": 0,
                     "metadata": {
-                        "icon_url": "/assets/resources/aws/compute/ec2.png",
+                        "icon_url": "/custom/path/icon.png",
                         "icon_data_url": "data:image/png;base64,old"
                     }
                 }
             },
-            "edges": {},
-            "editor_state": {
-                "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
-                "snap_to_grid": false, "grid_size": {"x": 20.0, "y": 20.0},
-                "selected_items": {}
-            },
-            "revision": {"counter": 0, "author": "test"}
-        }
+            "edges": {}
+        },
+        "editor_state": {
+            "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
+            "snap_to_grid": false, "grid_size": 20.0,
+            "selected_items": []
+        },
+        "revision": 0
     }"#;
-    let result = super::parse_diagram_document_with_compat(json);
-    assert!(result.is_ok(), "Should parse: {:?}", result.err());
-    let doc = result.expect("should have doc");
+    let doc = super::parse_diagram_document_with_compat(json).expect("Should parse document");
     let node = doc
         .document
         .nodes
@@ -281,7 +276,7 @@ fn given_both_icon_data_url_and_icon_url_when_migrated_then_icon_url_kept() {
     // New key preserved
     assert_eq!(
         node.metadata.get("icon_url").and_then(|v| v.as_str()),
-        Some("/assets/resources/aws/compute/ec2.png"),
+        Some("/custom/path/icon.png"),
         "Existing icon_url must be preserved, old data URL must be dropped"
     );
 }
@@ -289,9 +284,7 @@ fn given_both_icon_data_url_and_icon_url_when_migrated_then_icon_url_kept() {
 #[test]
 fn given_no_icon_metadata_when_migrated_then_no_icon_url_added() {
     let json = make_doc_with_node_metadata("aws/compute/ec2.png", "label", "EC2");
-    let result = super::parse_diagram_document_with_compat(&json);
-    assert!(result.is_ok(), "Should parse: {:?}", result.err());
-    let doc = result.expect("should have doc");
+    let doc = super::parse_diagram_document_with_compat(&json).expect("Should parse document");
     let node = doc
         .document
         .nodes
@@ -306,5 +299,204 @@ fn given_no_icon_metadata_when_migrated_then_no_icon_url_added() {
     assert!(
         node.metadata.get("icon_data_url").is_none(),
         "icon_data_url must not exist"
+    );
+}
+
+#[test]
+fn given_icon_data_url_at_node_level_without_metadata_when_migrated_then_remapped() {
+    // Node has NO metadata object at all, but icon_data_url lives as a top-level node field.
+    // The compat migration runs BEFORE deserialization, so we verify the JSON transform directly.
+    // Note: the resulting JSON cannot fully deserialize because icon_url lands on the node
+    // struct which doesn't have that field, but the migration logic itself must still run correctly.
+    let json = r#"{
+        "version": 2,
+        "document": {
+            "nodes": {
+                "test-node": {
+                    "kind": "node",
+                    "icon": "aws/compute/ec2.png",
+                    "label": "Test",
+                    "x": 0.0, "y": 0.0,
+                    "width": 64.0, "height": 64.0,
+                    "z_index": 0,
+                    "icon_data_url": "/custom/path/icon.png"
+                }
+            },
+            "edges": {}
+        },
+        "editor_state": {
+            "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
+            "snap_to_grid": false, "grid_size": 20.0,
+            "selected_items": []
+        },
+        "revision": 0
+    }"#;
+    // Parse to JSON, run normalization, inspect raw JSON (bypass full DiagramDocument deserialization)
+    let mut value: serde_json::Value = serde_json::from_str(json).expect("Should parse raw JSON");
+    super::normalize_compat_shape(&mut value);
+
+    let node = value
+        .pointer("/document/nodes/test-node")
+        .expect("node should exist");
+    let node_obj = node.as_object().expect("node should be an object");
+
+    // Old key must be removed
+    assert!(
+        !node_obj.contains_key("icon_data_url"),
+        "Old icon_data_url key must be removed from node level"
+    );
+    // Non-base64 value must be remapped to icon_url at node level
+    assert_eq!(
+        node_obj.get("icon_url").and_then(|v| v.as_str()),
+        Some("/custom/path/icon.png"),
+        "Non-base64 icon_data_url must be remapped to icon_url at node level"
+    );
+}
+
+#[test]
+fn given_base64_icon_data_url_without_node_icon_when_migrated_then_no_icon_url_added() {
+    // Node has a base64 icon_data_url but NO icon field at all — there's no icon key
+    // to derive the URL path from, so no icon_url should be added.
+    // We use raw JSON normalization to test this precisely.
+    let json = r#"{
+        "version": 2,
+        "document": {
+            "nodes": {
+                "test-node": {
+                    "kind": "node",
+                    "label": "Test",
+                    "x": 0.0, "y": 0.0,
+                    "width": 64.0, "height": 64.0,
+                    "z_index": 0,
+                    "metadata": {
+                        "icon_data_url": "data:image/png;base64,abc"
+                    }
+                }
+            },
+            "edges": {}
+        },
+        "editor_state": {
+            "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
+            "snap_to_grid": false, "grid_size": 20.0,
+            "selected_items": []
+        },
+        "revision": 0
+    }"#;
+    let mut value: serde_json::Value = serde_json::from_str(json).expect("Should parse raw JSON");
+    super::normalize_compat_shape(&mut value);
+
+    let meta = value
+        .pointer("/document/nodes/test-node/metadata")
+        .expect("metadata should exist");
+    let meta_obj = meta.as_object().expect("metadata should be an object");
+
+    assert!(
+        !meta_obj.contains_key("icon_url"),
+        "icon_url must NOT be added when there is no icon field to derive the path from"
+    );
+    assert!(
+        !meta_obj.contains_key("icon_data_url"),
+        "Old icon_data_url must be removed even when no icon_url is added"
+    );
+}
+
+#[test]
+fn given_both_non_base64_icon_data_url_and_icon_url_when_migrated_then_icon_url_preserved() {
+    // Node has BOTH icon_data_url (non-base64) and icon_url in metadata.
+    // The existing icon_url must NOT be overwritten.
+    let json = r#"{
+        "version": 2,
+        "document": {
+            "nodes": {
+                "test-node": {
+                    "kind": "node",
+                    "icon": "aws/compute/ec2.png",
+                    "label": "Test",
+                    "x": 0.0, "y": 0.0,
+                    "width": 64.0, "height": 64.0,
+                    "z_index": 0,
+                    "metadata": {
+                        "icon_url": "/assets/resources/aws/compute/ec2.png",
+                        "icon_data_url": "/custom/path/icon.png"
+                    }
+                }
+            },
+            "edges": {}
+        },
+        "editor_state": {
+            "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
+            "snap_to_grid": false, "grid_size": 20.0,
+            "selected_items": []
+        },
+        "revision": 0
+    }"#;
+    let doc = super::parse_diagram_document_with_compat(json).expect("Should parse document");
+    let node = doc
+        .document
+        .nodes
+        .values()
+        .next()
+        .expect("should have one node");
+
+    // Old key must be removed
+    assert!(
+        node.metadata.get("icon_data_url").is_none(),
+        "Old icon_data_url must be removed"
+    );
+    // icon_url must be the original, NOT overwritten by the non-base64 icon_data_url
+    assert_eq!(
+        node.metadata.get("icon_url").and_then(|v| v.as_str()),
+        Some("/assets/resources/aws/compute/ec2.png"),
+        "Existing icon_url must be preserved, not overwritten by non-base64 icon_data_url"
+    );
+}
+
+#[test]
+fn given_base64_icon_data_url_at_node_level_without_metadata_when_migrated_then_converted_to_url_path(
+) {
+    // Node has NO metadata key at all, but HAS icon_data_url = "data:..." as a top-level field.
+    // This exercises the top-level base64 conversion branch (the else-if arm in normalize_compat_shape).
+    let json = r#"{
+        "version": 2,
+        "document": {
+            "nodes": {
+                "test-node": {
+                    "kind": "node",
+                    "icon": "aws/compute/ec2.png",
+                    "label": "Test",
+                    "x": 0.0, "y": 0.0,
+                    "width": 64.0, "height": 64.0,
+                    "z_index": 0,
+                    "icon_data_url": "data:image/png;base64,abc"
+                }
+            },
+            "edges": {}
+        },
+        "editor_state": {
+            "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0,
+            "snap_to_grid": false, "grid_size": 20.0,
+            "selected_items": []
+        },
+        "revision": 0
+    }"#;
+    // Use normalize_compat_shape directly (same approach as the existing node-level test)
+    let mut value: serde_json::Value = serde_json::from_str(json).expect("Should parse raw JSON");
+    super::normalize_compat_shape(&mut value);
+
+    let node = value
+        .pointer("/document/nodes/test-node")
+        .expect("node should exist");
+    let node_obj = node.as_object().expect("node should be an object");
+
+    // Old base64 key must be removed
+    assert!(
+        !node_obj.contains_key("icon_data_url"),
+        "Old icon_data_url key must be removed from node level"
+    );
+    // Base64 value must be converted to a URL path derived from the icon field
+    assert_eq!(
+        node_obj.get("icon_url").and_then(|v| v.as_str()),
+        Some("/assets/resources/aws/compute/ec2.png"),
+        "Base64 icon_data_url at node level must be converted to /assets/resources/ URL path"
     );
 }

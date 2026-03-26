@@ -67,7 +67,7 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
 }
 
 #[cfg(test)]
-#[allow(clippy::unwrap_used)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
 mod tests {
     use super::*;
     use diagram_models::document::{LockState, Node, NodeId, NodeKind, OrderedFloat};
@@ -138,5 +138,56 @@ mod tests {
             !svg.contains("/assets/resources//assets/resources/"),
             "SVG must NOT double-prefix the icon URL, got: {svg}"
         );
+    }
+
+    #[test]
+    fn embed_icon_as_data_url_returns_none_for_nonexistent_file() {
+        let result = embed_icon_as_data_url("/assets/resources/nonexistent/icon.png");
+        assert!(result.is_none(), "Non-existent file must return None");
+    }
+
+    #[test]
+    fn embed_icon_as_data_url_returns_valid_data_url_for_existing_file() {
+        // Create a temp directory with resources/<path>/icon.png and change CWD into it.
+        let tmp = tempfile::TempDir::new().expect("tempdir");
+        let icon_dir = tmp.path().join("resources").join("generic").join("os");
+        std::fs::create_dir_all(&icon_dir).expect("create dirs");
+        // Write a minimal valid PNG (1x1 transparent pixel)
+        std::fs::write(
+            icon_dir.join("ubuntu.png"),
+            [
+                0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, // PNG signature
+                0x00, 0x00, 0x00, 0x0D, 0x49, 0x48, 0x44, 0x52, // IHDR chunk
+                0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x01, 0x08, 0x06, 0x00, 0x00, 0x00, 0x1F,
+                0x15, 0xC4, 0x89, 0x00, 0x00, 0x00, 0x0A, 0x49, 0x44, 0x41, // IDAT chunk
+                0x54, 0x78, 0x9C, 0x62, 0x00, 0x00, 0x00, 0x02, 0x00, 0x01, 0xE5, 0x27, 0xDE, 0xFC,
+                0x00, 0x00, 0x00, 0x00, 0x49, 0x45, 0x4E, 0x44, 0xAE, 0x42, // IEND chunk
+                0x60, 0x82,
+            ],
+        )
+        .expect("write png");
+
+        let prev_dir = std::env::current_dir().expect("cwd");
+        std::env::set_current_dir(tmp.path()).expect("chdir");
+
+        let result = embed_icon_as_data_url("/assets/resources/generic/os/ubuntu.png");
+
+        let _ = std::env::set_current_dir(&prev_dir);
+        assert!(result.is_some(), "Existing file must return Some");
+        let url = result.expect("should have url");
+        assert!(
+            url.starts_with("data:image/png;base64,"),
+            "Must be a base64 data URL with PNG MIME type, got: {url}"
+        );
+        let b64_part = url
+            .strip_prefix("data:image/png;base64,")
+            .expect("should have prefix");
+        assert!(!b64_part.is_empty(), "Base64 content must not be empty");
+        // Verify the base64 part actually decodes
+        use base64::{engine::general_purpose, Engine as _};
+        let decoded = general_purpose::STANDARD
+            .decode(b64_part)
+            .expect("base64 must be valid");
+        assert!(!decoded.is_empty(), "Decoded content must not be empty");
     }
 }

@@ -288,3 +288,19 @@ fn node_image_url_ignores_old_icon_data_url_key() {
         None => {} // Valid: unknown icon key with no index entry
     }
 }
+
+#[test]
+fn icon_url_returns_url_for_known_icon_in_index() {
+    // The icon index is generated from assets/resources at build time.
+    // Key format is lowercase, e.g. "aws/analytics/athena".
+    let result = icon_url("aws/analytics/athena");
+    assert!(
+        result.is_some(),
+        "Known icon key 'aws/analytics/athena' must resolve from the index"
+    );
+    let url = result.expect("should have url");
+    assert_eq!(
+        url, "/assets/resources/aws/analytics/athena.png",
+        "Icon URL must match the index file_relpath"
+    );
+}
