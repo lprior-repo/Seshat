@@ -233,7 +233,7 @@ impl ThemeTokens {
             "chart_3" => self.chart_3,
             "chart_4" => self.chart_4,
             "chart_5" => self.chart_5,
-            _ => panic!("unknown field: {name}"),
+            _ => "",
         }
     }
 
