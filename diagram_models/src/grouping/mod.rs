@@ -214,4 +214,23 @@ mod tests {
         assert_eq!(doc.editor_state.selected_items.len(), 1);
         assert!(doc.editor_state.selected_items.contains(n1_id.as_str()));
     }
+
+    #[test]
+    fn given_nodes_at_z_index_5_when_grouped_then_subgraph_gets_z_index_4() {
+        let mut doc = DiagramDocument::default();
+
+        let n1_id = NodeId::new("n1".to_string());
+        let group_id = NodeId::new("g1".to_string());
+
+        let mut node = create_test_node(0.0, 0.0, 10.0, 10.0);
+        node.z_index = 5;
+        doc.document.nodes.insert(n1_id, node);
+
+        doc.editor_state.selected_items.insert("n1".to_string());
+
+        group_selection(&mut doc, &group_id).unwrap();
+
+        let group_node = doc.document.nodes.get(&group_id).unwrap();
+        assert_eq!(group_node.z_index, 4); // min_z (5) - 1
+    }
 }

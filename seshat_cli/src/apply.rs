@@ -129,3 +129,162 @@ pub fn execute_apply(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use tempfile::tempdir;
+
+    const VALID_DOC_JSON: &str = r#"{
+        "version": 2,
+        "revision": 0,
+        "document": { "nodes": {}, "edges": {} },
+        "editor_state": { "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0 }
+    }"#;
+
+    #[test]
+    fn map_apply_subcommand_with_input_returns_file_source() {
+        let input = PathBuf::from("/tmp/input.json");
+        let proposal = PathBuf::from("/tmp/proposal.json");
+        let cmd = map_apply_subcommand(Some(input.clone()), proposal.clone());
+        assert_eq!(cmd.document, ApplySource::File(input));
+        assert_eq!(cmd.proposal, proposal);
+    }
+
+    #[test]
+    fn map_apply_subcommand_no_input_returns_stdin_source() {
+        let proposal = PathBuf::from("/tmp/proposal.json");
+        let cmd = map_apply_subcommand(None, proposal.clone());
+        assert_eq!(cmd.document, ApplySource::Stdin);
+        assert_eq!(cmd.proposal, proposal);
+    }
+
+    #[test]
+    fn execute_apply_missing_input_file() {
+        let dir = tempdir().expect("tempdir");
+        let missing_input = dir.path().join("nonexistent.json");
+        let proposal_path = dir.path().join("proposal.json");
+        std::fs::write(
+            &proposal_path,
+            r#"{ "base_revision": 0, "document": { "nodes": {}, "edges": {} } }"#,
+        )
+        .expect("write proposal");
+        let cmd = ApplyCommand {
+            document: ApplySource::File(missing_input.clone()),
+            proposal: proposal_path,
+        };
+        let err = execute_apply(&cmd, Cursor::new(""), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, ApplyError::FileNotFound(p) if p == missing_input));
+    }
+
+    #[test]
+    fn execute_apply_missing_proposal_file() {
+        let dir = tempdir().expect("tempdir");
+        let input_path = dir.path().join("input.json");
+        std::fs::write(&input_path, VALID_DOC_JSON).expect("write input");
+        let missing_proposal = dir.path().join("nonexistent_proposal.json");
+        let cmd = ApplyCommand {
+            document: ApplySource::File(input_path),
+            proposal: missing_proposal.clone(),
+        };
+        let err = execute_apply(&cmd, Cursor::new(""), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, ApplyError::FileNotFound(p) if p == missing_proposal));
+    }
+
+    #[test]
+    fn execute_apply_empty_input() {
+        let dir = tempdir().expect("tempdir");
+        let proposal_path = dir.path().join("proposal.json");
+        std::fs::write(
+            &proposal_path,
+            r#"{ "base_revision": 0, "document": { "nodes": {}, "edges": {} } }"#,
+        )
+        .expect("write proposal");
+        let cmd = ApplyCommand {
+            document: ApplySource::Stdin,
+            proposal: proposal_path,
+        };
+        let err = execute_apply(&cmd, Cursor::new(""), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, ApplyError::EmptyInput));
+    }
+
+    #[test]
+    fn execute_apply_empty_proposal() {
+        let dir = tempdir().expect("tempdir");
+        let proposal_path = dir.path().join("proposal.json");
+        std::fs::write(&proposal_path, "").expect("write empty proposal");
+        let cmd = ApplyCommand {
+            document: ApplySource::Stdin,
+            proposal: proposal_path,
+        };
+        let err =
+            execute_apply(&cmd, Cursor::new(VALID_DOC_JSON), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, ApplyError::EmptyInput));
+    }
+
+    #[test]
+    fn execute_apply_proposal_missing_base_revision() {
+        let dir = tempdir().expect("tempdir");
+        let proposal_path = dir.path().join("proposal.json");
+        std::fs::write(
+            &proposal_path,
+            r#"{ "document": { "nodes": {}, "edges": {} } }"#,
+        )
+        .expect("write proposal");
+        let cmd = ApplyCommand {
+            document: ApplySource::Stdin,
+            proposal: proposal_path,
+        };
+        let err =
+            execute_apply(&cmd, Cursor::new(VALID_DOC_JSON), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, ApplyError::InvalidProposal(_)));
+    }
+
+    #[test]
+    fn execute_apply_matching_revision_outputs_queued() {
+        let dir = tempdir().expect("tempdir");
+        let proposal_path = dir.path().join("proposal.json");
+        std::fs::write(
+            &proposal_path,
+            r#"{ "base_revision": 0, "document": { "nodes": {}, "edges": {} } }"#,
+        )
+        .expect("write proposal");
+        let cmd = ApplyCommand {
+            document: ApplySource::Stdin,
+            proposal: proposal_path,
+        };
+        let mut stdout_buf = Vec::new();
+        execute_apply(&cmd, Cursor::new(VALID_DOC_JSON), &mut stdout_buf).expect("should succeed");
+        let output_str = String::from_utf8(stdout_buf).expect("utf8");
+        let parsed: serde_json::Value =
+            serde_json::from_str(output_str.trim()).expect("valid json");
+        assert_eq!(parsed["status"], "queued");
+        assert_eq!(parsed["base_revision"], 0);
+    }
+
+    #[test]
+    fn execute_apply_mismatched_revision_outputs_rejected_with_diff() {
+        let dir = tempdir().expect("tempdir");
+        let proposal_path = dir.path().join("proposal.json");
+        // Proposal expects revision 5 but doc is at 0
+        std::fs::write(
+            &proposal_path,
+            r#"{ "base_revision": 5, "document": { "nodes": {}, "edges": {} } }"#,
+        )
+        .expect("write proposal");
+        let cmd = ApplyCommand {
+            document: ApplySource::Stdin,
+            proposal: proposal_path,
+        };
+        let mut stdout_buf = Vec::new();
+        execute_apply(&cmd, Cursor::new(VALID_DOC_JSON), &mut stdout_buf).expect("should succeed");
+        let output_str = String::from_utf8(stdout_buf).expect("utf8");
+        let parsed: serde_json::Value =
+            serde_json::from_str(output_str.trim()).expect("valid json");
+        assert_eq!(parsed["status"], "rejected");
+        assert_eq!(parsed["conflict_context"]["expected_revision"], 5);
+        assert_eq!(parsed["conflict_context"]["actual_revision"], 0);
+    }
+}

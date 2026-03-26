@@ -111,6 +111,7 @@ pub fn build_rich_diff(
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
 
@@ -137,5 +138,135 @@ mod tests {
         let entity_diff = diff.conflict_context.diff.get("node-1").unwrap();
         assert_eq!(entity_diff.human_state, Some(human));
         assert_eq!(entity_diff.ai_proposed_state, Some(ai));
+    }
+
+    #[test]
+    fn build_rich_diff_no_nodes_no_edges() {
+        let diff = build_rich_diff(1, 1, None, None, None, None);
+        assert_eq!(diff.status, "rejected");
+        assert_eq!(diff.conflict_context.expected_revision, 1);
+        assert_eq!(diff.conflict_context.actual_revision, 1);
+        assert!(diff.conflict_context.conflicting_entities.is_empty());
+        assert!(diff.conflict_context.diff.is_empty());
+    }
+
+    #[test]
+    fn build_rich_diff_only_human_nodes_no_ai_nodes() {
+        let human_nodes =
+            serde_json::Map::from_iter(vec![("n1".to_string(), serde_json::json!({"x": 10}))]);
+        let diff = build_rich_diff(1, 1, Some(&human_nodes), None, None, None);
+        assert_eq!(diff.conflict_context.conflicting_entities, vec!["n1"]);
+        let ed = diff.conflict_context.diff.get("n1").unwrap();
+        assert_eq!(ed.human_state, Some(serde_json::json!({"x": 10})));
+        assert_eq!(ed.ai_proposed_state, None);
+    }
+
+    #[test]
+    fn build_rich_diff_only_ai_nodes_no_human_nodes() {
+        let ai_nodes =
+            serde_json::Map::from_iter(vec![("n2".to_string(), serde_json::json!({"x": 20}))]);
+        let diff = build_rich_diff(1, 1, None, None, Some(&ai_nodes), None);
+        assert_eq!(diff.conflict_context.conflicting_entities, vec!["n2"]);
+        let ed = diff.conflict_context.diff.get("n2").unwrap();
+        assert_eq!(ed.human_state, None);
+        assert_eq!(ed.ai_proposed_state, Some(serde_json::json!({"x": 20})));
+    }
+
+    #[test]
+    fn build_rich_diff_matching_nodes_no_conflicts() {
+        let val = serde_json::json!({"x": 10, "y": 20});
+        let human_nodes = serde_json::Map::from_iter(vec![("n1".to_string(), val.clone())]);
+        let ai_nodes = serde_json::Map::from_iter(vec![("n1".to_string(), val)]);
+        let diff = build_rich_diff(1, 1, Some(&human_nodes), None, Some(&ai_nodes), None);
+        assert!(diff.conflict_context.conflicting_entities.is_empty());
+        assert!(diff.conflict_context.diff.is_empty());
+    }
+
+    #[test]
+    fn build_rich_diff_mixed_matching_and_differing_nodes() {
+        let shared_val = serde_json::json!({"x": 10});
+        let human_nodes = serde_json::Map::from_iter(vec![
+            ("n1".to_string(), shared_val.clone()),
+            ("n2".to_string(), serde_json::json!({"x": 20})),
+        ]);
+        let ai_nodes = serde_json::Map::from_iter(vec![
+            ("n1".to_string(), shared_val),
+            ("n3".to_string(), serde_json::json!({"x": 30})),
+        ]);
+        let diff = build_rich_diff(1, 1, Some(&human_nodes), None, Some(&ai_nodes), None);
+
+        // n1 matches → no conflict; n2 only in human → conflict; n3 only in ai → conflict
+        let mut entities = diff.conflict_context.conflicting_entities.clone();
+        entities.sort();
+        assert_eq!(entities, vec!["n2", "n3"]);
+
+        // n2: human present, ai absent
+        let ed_n2 = diff.conflict_context.diff.get("n2").unwrap();
+        assert_eq!(ed_n2.human_state, Some(serde_json::json!({"x": 20})));
+        assert_eq!(ed_n2.ai_proposed_state, None);
+
+        // n3: human absent, ai present
+        let ed_n3 = diff.conflict_context.diff.get("n3").unwrap();
+        assert_eq!(ed_n3.human_state, None);
+        assert_eq!(ed_n3.ai_proposed_state, Some(serde_json::json!({"x": 30})));
+    }
+
+    #[test]
+    fn build_rich_diff_differing_edges() {
+        let human_edges = serde_json::Map::from_iter(vec![(
+            "e1".to_string(),
+            serde_json::json!({"source": "a", "target": "b"}),
+        )]);
+        let ai_edges = serde_json::Map::from_iter(vec![(
+            "e1".to_string(),
+            serde_json::json!({"source": "a", "target": "c"}),
+        )]);
+        let diff = build_rich_diff(1, 1, None, Some(&human_edges), None, Some(&ai_edges));
+        assert_eq!(diff.conflict_context.conflicting_entities, vec!["e1"]);
+        let ed = diff.conflict_context.diff.get("e1").unwrap();
+        assert_eq!(
+            ed.human_state,
+            Some(serde_json::json!({"source": "a", "target": "b"}))
+        );
+        assert_eq!(
+            ed.ai_proposed_state,
+            Some(serde_json::json!({"source": "a", "target": "c"}))
+        );
+    }
+
+    #[test]
+    fn add_entity_diff_same_id_appears_once_in_conflicting_entities() {
+        let mut diff = RichDiff::new(1, 2);
+        diff.add_entity_diff(
+            "n1".to_string(),
+            Some(serde_json::json!({"x": 10})),
+            Some(serde_json::json!({"x": 20})),
+        );
+        diff.add_entity_diff(
+            "n1".to_string(),
+            Some(serde_json::json!({"x": 10})),
+            Some(serde_json::json!({"x": 30})),
+        );
+        // Should only appear once in conflicting_entities
+        assert_eq!(
+            diff.conflict_context.conflicting_entities,
+            vec!["n1".to_string()]
+        );
+        // But the diff should reflect the second call (overwritten)
+        let ed = diff.conflict_context.diff.get("n1").unwrap();
+        assert_eq!(ed.ai_proposed_state, Some(serde_json::json!({"x": 30})));
+    }
+
+    #[test]
+    fn rich_diff_serialization_roundtrip() {
+        let mut diff = RichDiff::new(3, 5);
+        diff.add_entity_diff(
+            "n1".to_string(),
+            Some(serde_json::json!({"x": 10})),
+            Some(serde_json::json!({"x": 20})),
+        );
+        let json_str = serde_json::to_string(&diff).expect("serialize");
+        let deserialized: RichDiff = serde_json::from_str(&json_str).expect("deserialize");
+        assert_eq!(diff, deserialized);
     }
 }

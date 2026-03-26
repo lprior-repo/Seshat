@@ -27,7 +27,7 @@ fn e2e_render_exits_zero_and_creates_svg_when_valid_file_provided() {
     let json = serde_json::to_string(&doc).expect("must serialize");
     let input = write_to_temp_file(json.as_bytes());
 
-    let output_dir = tempfile::tempdir().unwrap();
+    let output_dir = tempfile::tempdir().expect("tempdir creation");
     let output_path = output_dir.path().join("output.svg");
 
     let output = seshat_bin()
@@ -47,7 +47,7 @@ fn e2e_render_exits_zero_and_creates_svg_when_valid_file_provided() {
     );
 
     assert!(output_path.exists(), "SVG output file must be created");
-    let svg_content = std::fs::read_to_string(&output_path).unwrap();
+    let svg_content = std::fs::read_to_string(&output_path).expect("read SVG output file");
     assert!(svg_content.contains("<svg"), "Output must contain <svg tag");
 }
 
@@ -57,7 +57,7 @@ fn e2e_render_exits_zero_and_creates_png_when_valid_file_provided() {
     let json = serde_json::to_string(&doc).expect("must serialize");
     let input = write_to_temp_file(json.as_bytes());
 
-    let output_dir = tempfile::tempdir().unwrap();
+    let output_dir = tempfile::tempdir().expect("tempdir creation");
     let output_path = output_dir.path().join("output.png");
 
     let output = seshat_bin()
@@ -77,7 +77,7 @@ fn e2e_render_exits_zero_and_creates_png_when_valid_file_provided() {
     );
 
     assert!(output_path.exists(), "PNG output file must be created");
-    let png_content = std::fs::read(&output_path).unwrap();
+    let png_content = std::fs::read(&output_path).expect("read PNG output file");
     assert!(
         png_content.starts_with(&[137, 80, 78, 71, 13, 10, 26, 10]),
         "Output must have PNG signature"
@@ -90,7 +90,7 @@ fn e2e_render_exits_non_zero_for_unsupported_format() {
     let json = serde_json::to_string(&doc).expect("must serialize");
     let input = write_to_temp_file(json.as_bytes());
 
-    let output_dir = tempfile::tempdir().unwrap();
+    let output_dir = tempfile::tempdir().expect("tempdir creation");
     let output_path = output_dir.path().join("output.txt");
 
     let output = seshat_bin()
@@ -119,7 +119,7 @@ fn e2e_render_exits_non_zero_for_unsupported_format() {
 fn e2e_render_exits_non_zero_for_invalid_input() {
     let input = write_to_temp_file(b"invalid json");
 
-    let output_dir = tempfile::tempdir().unwrap();
+    let output_dir = tempfile::tempdir().expect("tempdir creation");
     let output_path = output_dir.path().join("output.svg");
 
     let output = seshat_bin()

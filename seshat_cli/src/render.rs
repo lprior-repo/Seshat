@@ -67,3 +67,112 @@ pub fn execute_render<R: Read>(cmd: &RenderCommand, mut stdin: R) -> Result<(), 
 
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use tempfile::tempdir;
+
+    const VALID_DOC_JSON: &str = r#"{
+        "version": 2,
+        "revision": 0,
+        "document": { "nodes": {}, "edges": {} },
+        "editor_state": { "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0 }
+    }"#;
+
+    #[test]
+    fn map_render_subcommand_with_input_returns_file_source() {
+        let input = PathBuf::from("/tmp/input.json");
+        let output = PathBuf::from("/tmp/out.svg");
+        let cmd = map_render_subcommand(Some(input.clone()), output);
+        assert_eq!(cmd.input, RenderSource::File(input));
+    }
+
+    #[test]
+    fn map_render_subcommand_no_input_returns_stdin_source() {
+        let output = PathBuf::from("/tmp/out.svg");
+        let cmd = map_render_subcommand(None, output);
+        assert_eq!(cmd.input, RenderSource::Stdin);
+    }
+
+    #[test]
+    fn execute_render_missing_input_file() {
+        let dir = tempdir().expect("tempdir");
+        let missing = dir.path().join("nonexistent.json");
+        let output = dir.path().join("out.svg");
+        let cmd = RenderCommand {
+            input: RenderSource::File(missing.clone()),
+            output,
+        };
+        let err = execute_render(&cmd, Cursor::new("")).expect_err("should fail");
+        assert!(matches!(err, RenderError::FileNotFound(p) if p == missing));
+    }
+
+    #[test]
+    fn execute_render_empty_stdin() {
+        let dir = tempdir().expect("tempdir");
+        let output = dir.path().join("out.svg");
+        let cmd = RenderCommand {
+            input: RenderSource::Stdin,
+            output,
+        };
+        let err = execute_render(&cmd, Cursor::new("")).expect_err("should fail");
+        assert!(matches!(err, RenderError::EmptyInput));
+    }
+
+    #[test]
+    fn execute_render_invalid_json_stdin() {
+        let dir = tempdir().expect("tempdir");
+        let output = dir.path().join("out.svg");
+        let cmd = RenderCommand {
+            input: RenderSource::Stdin,
+            output,
+        };
+        let err = execute_render(&cmd, Cursor::new("not json at all")).expect_err("should fail");
+        assert!(matches!(err, RenderError::JsonDeserialize(_)));
+    }
+
+    #[test]
+    fn execute_render_unsupported_format() {
+        let dir = tempdir().expect("tempdir");
+        let output = dir.path().join("out.bmp");
+        let cmd = RenderCommand {
+            input: RenderSource::Stdin,
+            output,
+        };
+        let err = execute_render(&cmd, Cursor::new(VALID_DOC_JSON)).expect_err("should fail");
+        assert!(matches!(err, RenderError::UnsupportedFormat(ref s) if s == "bmp"));
+    }
+
+    #[test]
+    fn execute_render_valid_doc_creates_svg() {
+        let dir = tempdir().expect("tempdir");
+        let output = dir.path().join("out.svg");
+        let cmd = RenderCommand {
+            input: RenderSource::Stdin,
+            output: output.clone(),
+        };
+        execute_render(&cmd, Cursor::new(VALID_DOC_JSON)).expect("should succeed");
+        let contents = std::fs::read_to_string(&output).expect("read output");
+        assert!(contents.starts_with("<svg"));
+        assert!(contents.contains("</svg>"));
+    }
+
+    #[test]
+    fn execute_render_valid_doc_from_file_creates_svg() {
+        let dir = tempdir().expect("tempdir");
+        let input_path = dir.path().join("input.json");
+        std::fs::write(&input_path, VALID_DOC_JSON).expect("write input");
+        let output = dir.path().join("out.svg");
+        let cmd = RenderCommand {
+            input: RenderSource::File(input_path),
+            output: output.clone(),
+        };
+        execute_render(&cmd, Cursor::new("")).expect("should succeed");
+        let contents = std::fs::read_to_string(&output).expect("read output");
+        assert!(contents.starts_with("<svg"));
+        assert!(contents.contains("</svg>"));
+    }
+}

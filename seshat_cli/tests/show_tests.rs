@@ -490,7 +490,7 @@ fn execute_show_writes_json_followed_by_newline_when_source_is_valid_file() {
 
     let content = String::from_utf8(writer.clone());
     assert!(content.is_ok(), "output must be valid UTF-8: {content:?}");
-    let content = content.unwrap();
+    let content = content.expect("output must be valid UTF-8");
     assert!(
         content.ends_with('\n'),
         "output must end with exactly one newline, got: {content:?}"
@@ -501,7 +501,10 @@ fn execute_show_writes_json_followed_by_newline_when_source_is_valid_file() {
         expected_json.is_ok(),
         "expected doc must serialize: {expected_json:?}"
     );
-    assert_eq!(json_part, expected_json.unwrap().as_str());
+    assert_eq!(
+        json_part,
+        expected_json.expect("serialize expected document").as_str()
+    );
 }
 
 #[test]

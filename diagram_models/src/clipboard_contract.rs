@@ -114,8 +114,12 @@ pub fn copy(selection: &Selection, doc: &DiagramDocument) -> Result<ClipboardDat
 pub fn cut(selection: &Selection, doc: &mut DiagramDocument) -> Result<ClipboardData, Error> {
     let clipboard = copy(selection, doc)?;
 
+    selection.nodes.iter().try_for_each(|id| {
+        doc.remove_node(id).map_err(|_| {
+            Error::PostconditionViolated(format!("Failed to remove node {id} during cut"))
+        })
+    })?;
     selection.nodes.iter().for_each(|id| {
-        let _ = doc.remove_node(id);
         doc.editor_state.selected_items.remove(id.as_str());
     });
 
@@ -186,11 +190,12 @@ pub fn calculate_paste(
     for (start_id, _) in &clipboard.nodes {
         let mut current = start_id.clone();
         path.clear();
+        path.insert(start_id.clone());
         while let Some(parent_id) = clipboard_nodes_map
             .get(&current)
             .and_then(|n| n.parent.as_ref())
         {
-            if path.contains(parent_id) || parent_id == start_id {
+            if path.contains(parent_id) {
                 return Err(Error::CyclicParentReference);
             }
             path.insert(parent_id.clone());

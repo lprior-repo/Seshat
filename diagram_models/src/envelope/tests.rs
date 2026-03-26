@@ -304,3 +304,132 @@ mod legacy_tests {
         assert_eq!(decoded, op);
     }
 }
+
+#[cfg(test)]
+mod envelope_contract_tests {
+    use crate::envelope::parse_event_envelope;
+    use crate::envelope::types::ContractError;
+
+    /// Helper: builds a valid EventEnvelope JSON string with N extra empty-object fields.
+    ///
+    /// Base envelope contributes 3 `{` chars (outer, operation, author).
+    /// Each extra field like `"x0":{}` contributes 1 additional `{`.
+    /// No `[` chars are introduced, so structural-edge count == brace count.
+    fn build_envelope_json(extra_field_count: usize) -> String {
+        let extra_fields: String = (0..extra_field_count)
+            .map(|i| format!(r#","x{}":{{}}"#, i))
+            .collect::<Vec<_>>()
+            .join("");
+        format!(
+            r#"{{"op_id":"t","operation":{{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"}},"author":{{"id":"u","name":"A"}},"timestamp":0{extra_fields}}}"#
+        )
+    }
+
+    #[test]
+    fn given_payload_with_exactly_5001_braces_when_parse_then_rejected() {
+        // 3 base `{` + 4998 extra = 5001 `{` → structural_edges > 5000 → rejected
+        let json = build_envelope_json(4998);
+        let brace_count = json.bytes().filter(|&b| b == b'{').count();
+        assert_eq!(brace_count, 5001, "Expected exactly 5001 braces");
+        let result = parse_event_envelope(&json);
+        assert!(matches!(result, Err(ContractError::InvalidPayload(_))));
+    }
+
+    #[test]
+    fn given_payload_with_5000_braces_when_parse_then_succeeds() {
+        // 3 base `{` + 4997 extra = 5000 `{` → structural_edges ≤ 5000 → accepted
+        let json = build_envelope_json(4997);
+        let brace_count = json.bytes().filter(|&b| b == b'{').count();
+        assert_eq!(brace_count, 5000, "Expected exactly 5000 braces");
+        let result = parse_event_envelope(&json);
+        assert!(result.is_ok());
+    }
+
+    #[test]
+    fn given_missing_op_id_when_parse_event_envelope_then_returns_missing_field_op_id() {
+        let json = r#"{"operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"id":"u","name":"A"},"timestamp":0}"#;
+        let result = parse_event_envelope(json);
+        assert!(matches!(result, Err(ContractError::MissingField("op_id"))));
+    }
+
+    #[test]
+    fn given_missing_author_when_parse_event_envelope_then_returns_missing_field_author() {
+        let json = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"timestamp":0}"#;
+        let result = parse_event_envelope(json);
+        assert!(matches!(result, Err(ContractError::MissingField("author"))));
+    }
+
+    #[test]
+    fn given_missing_timestamp_when_parse_event_envelope_then_returns_missing_field_timestamp() {
+        let json = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"id":"u","name":"A"}}"#;
+        let result = parse_event_envelope(json);
+        assert!(matches!(
+            result,
+            Err(ContractError::MissingField("timestamp"))
+        ));
+    }
+
+    #[test]
+    fn given_author_missing_id_when_parse_event_envelope_then_returns_invalid_author() {
+        let json = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"name":"A"},"timestamp":0}"#;
+        let result = parse_event_envelope(json);
+        assert!(matches!(result, Err(ContractError::InvalidAuthor(_))));
+    }
+
+    #[test]
+    fn given_author_missing_name_when_parse_event_envelope_then_returns_invalid_author() {
+        let json = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"id":"u"},"timestamp":0}"#;
+        let result = parse_event_envelope(json);
+        assert!(matches!(result, Err(ContractError::InvalidAuthor(_))));
+    }
+
+    #[test]
+    fn given_missing_field_timestamp_when_map_error_then_returns_missing_field_timestamp() {
+        // map_missing_field_error is private; test indirectly through parse path.
+        // A missing `timestamp` exercises the `convert_serde_error` → `map_missing_field_error("timestamp")` code path.
+        let json = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"id":"u","name":"A"}}"#;
+        let result = parse_event_envelope(json);
+        assert_eq!(
+            result.unwrap_err(),
+            ContractError::MissingField("timestamp")
+        );
+    }
+
+    #[test]
+    fn given_missing_operation_when_parse_event_envelope_then_returns_missing_field_operation() {
+        let json = r#"{"op_id":"t","author":{"id":"u","name":"A"},"timestamp":0}"#;
+        let result = parse_event_envelope(json);
+        assert_eq!(
+            result.unwrap_err(),
+            ContractError::MissingField("operation")
+        );
+    }
+
+    #[test]
+    fn given_payload_exactly_5mb_when_parse_then_rejected() {
+        let five_mb: usize = 5 * 1024 * 1024;
+        // base without closing brace, we'll add padding and closing brace
+        let base_open = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"id":"u","name":"A"},"timestamp":0"#;
+        let target_len = five_mb + 1;
+        let padding_len = target_len - base_open.len() - 1; // -1 for the closing '}'
+        let padding = " ".repeat(padding_len);
+        let json = format!("{}{}{}", base_open, padding, "}");
+        assert_eq!(json.len(), target_len);
+        let result = parse_event_envelope(&json);
+        assert!(matches!(result, Err(ContractError::InvalidPayload(_))));
+    }
+
+    #[test]
+    fn given_payload_just_under_5mb_when_parse_then_succeeds() {
+        let five_mb = 5 * 1024 * 1024;
+        let base = r#"{"op_id":"t","operation":{"op_type":"node_add","id":"n","x":0.0,"y":0.0,"width":10.0,"height":10.0,"label":"l"},"author":{"id":"u","name":"A"},"timestamp":0"#;
+        let padding_needed = five_mb - base.len() - 1; // -1 for closing brace
+        assert!(padding_needed > 0, "base JSON is too large");
+        let padding: String = " ".repeat(padding_needed);
+        let json = format!("{base}{padding}}}");
+
+        assert!(json.len() <= five_mb);
+        let result = parse_event_envelope(&json);
+        assert!(result.is_ok());
+    }
+}

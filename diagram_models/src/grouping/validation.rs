@@ -74,7 +74,7 @@ pub fn validate_selection(
     selected: &HashSet<String>,
 ) -> Result<(), GroupingError> {
     let ids: HashSet<NodeId> = selected.iter().map(|s| NodeId::new(s.clone())).collect();
-    let _ = ValidatedSelection::try_new(nodes, &ids)?;
+    ValidatedSelection::try_new(nodes, &ids)?;
     Ok(())
 }
 
@@ -117,3 +117,7 @@ pub fn validate_coordinates(min_x: f64, min_y: f64, width: f64, height: f64) -> 
         && width > 0.0
         && height > 0.0
 }
+
+#[cfg(test)]
+#[path = "validation_tests.rs"]
+mod tests;

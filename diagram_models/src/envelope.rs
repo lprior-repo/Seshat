@@ -95,32 +95,6 @@ pub fn parse_event_envelope(input: &str) -> Result<EventEnvelope, ContractError>
     deserialize_envelope(input)
 }
 
-fn validate_envelope_fields(value: &serde_json::Value) -> Result<(), ContractError> {
-    let _ = value
-        .get("op_id")
-        .ok_or(ContractError::MissingField("op_id"))?;
-    let author_value = value
-        .get("author")
-        .ok_or(ContractError::MissingField("author"))?;
-    validate_author(author_value)?;
-    let _ = value
-        .get("timestamp")
-        .ok_or(ContractError::MissingField("timestamp"))?;
-    Ok(())
-}
-
-fn validate_author(author_value: &serde_json::Value) -> Result<(), ContractError> {
-    let _ = author_value
-        .get("id")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ContractError::InvalidAuthor("missing id field".to_string()))?;
-    let _ = author_value
-        .get("name")
-        .and_then(|v| v.as_str())
-        .ok_or_else(|| ContractError::InvalidAuthor("missing name field".to_string()))?;
-    Ok(())
-}
-
 fn deserialize_envelope(input: &str) -> Result<EventEnvelope, ContractError> {
     serde_json::from_str(input).map_err(convert_serde_error)
 }
@@ -137,15 +111,12 @@ fn convert_serde_error(e: serde_json::Error) -> ContractError {
             .to_string();
         ContractError::UnknownOpType(unknown)
     } else if err_msg.contains("missing field") {
+        // Extract field name from "missing field `field_name` at ..."
+        // Split on the opening backtick, then take everything up to the closing backtick
         let field = err_msg
-            .split("missing field ")
+            .split("missing field `")
             .nth(1)
-            .unwrap_or("unknown")
-            .trim()
-            .trim_matches('\"')
-            .trim_matches('`')
-            .split_whitespace()
-            .next()
+            .and_then(|rest| rest.split('`').next())
             .unwrap_or("unknown");
         map_missing_field_error(field)
     } else {
@@ -157,9 +128,10 @@ fn map_missing_field_error(field: &str) -> ContractError {
     match field {
         "author" => ContractError::MissingField("author"),
         "timestamp" => ContractError::MissingField("timestamp"),
-        "domain_op" => ContractError::MissingField("domain_op"),
         "op_id" => ContractError::MissingField("op_id"),
         "operation" => ContractError::MissingField("operation"),
+        "id" => ContractError::InvalidAuthor("missing id field".to_string()),
+        "name" => ContractError::InvalidAuthor("missing name field".to_string()),
         _ => ContractError::MissingField("unknown"),
     }
 }

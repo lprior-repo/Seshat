@@ -1,4 +1,12 @@
-#![allow(clippy::unwrap_used, clippy::panic, clippy::module_inception, clippy::let_unit_value, clippy::redundant_pattern_matching, unused_variables, unused_imports)]
+#![allow(
+    clippy::unwrap_used,
+    clippy::panic,
+    clippy::module_inception,
+    clippy::let_unit_value,
+    clippy::redundant_pattern_matching,
+    unused_variables,
+    unused_imports
+)]
 use crate::document::{
     DiagramDocument, DocumentData, Edge, EdgeId, EditorState, LockState, Node, NodeId, NodeKind,
     OrderedFloat, Point,
@@ -610,46 +618,16 @@ fn test_p4_violation_returns_element_not_found_error() {
     test_returns_error_when_selecting_non_existent_element();
 }
 
-#[cfg(kani)]
-#[kani::proof]
-fn test_q1_violation_returns_precondition_violated() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_q2_violation_returns_element_locked() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_q3_violation_returns_element_hidden() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_q4_violation_returns_precondition_violated() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_q5_violation_returns_precondition_violated() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_precondition_element_must_be_unlocked() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_precondition_element_must_be_visible() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_postcondition_alt_click_replaces_child_with_parent() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_postcondition_right_click_replaces_selection() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_invariant_selection_never_contains_locked_elements() {}
-
-#[cfg(kani)]
-#[kani::proof]
-fn test_invariant_selection_never_contains_hidden_elements() {}
+// TODO: Kani proof stubs removed — these were empty bodies providing zero coverage.
+// Re-add with concrete harness logic when Kani proofs are implemented:
+//   test_q1_violation_returns_precondition_violated
+//   test_q2_violation_returns_element_locked
+//   test_q3_violation_returns_element_hidden
+//   test_q4_violation_returns_precondition_violated
+//   test_q5_violation_returns_precondition_violated
+//   test_precondition_element_must_be_unlocked
+//   test_precondition_element_must_be_visible
+//   test_postcondition_alt_click_replaces_child_with_parent
+//   test_postcondition_right_click_replaces_selection
+//   test_invariant_selection_never_contains_locked_elements
+//   test_invariant_selection_never_contains_hidden_elements

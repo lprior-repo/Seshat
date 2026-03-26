@@ -191,3 +191,168 @@ pub fn execute_patch(
 
     Ok(())
 }
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+    use tempfile::tempdir;
+
+    const VALID_INPUT_JSON: &str = r#"{
+        "version": 2,
+        "revision": 0,
+        "document": { "nodes": {}, "edges": {} },
+        "editor_state": { "camera_x": 0.0, "camera_y": 0.0, "zoom": 1.0 }
+    }"#;
+
+    const VALID_PATCH_JSON: &str = r#"[
+        {"op": "test", "path": "/revision", "value": 0},
+        {"op": "replace", "path": "/revision", "value": 1}
+    ]"#;
+
+    #[test]
+    fn map_patch_subcommand_all_paths() {
+        let input = PathBuf::from("/tmp/input.json");
+        let patch = PathBuf::from("/tmp/patch.json");
+        let output = PathBuf::from("/tmp/output.json");
+        let cmd = map_patch_subcommand(Some(input.clone()), patch.clone(), Some(output.clone()));
+        assert_eq!(cmd.input, PatchSource::File(input));
+        assert_eq!(cmd.patch, patch);
+        assert_eq!(cmd.output, PatchTarget::File(output));
+    }
+
+    #[test]
+    fn map_patch_subcommand_no_input_output() {
+        let patch = PathBuf::from("/tmp/patch.json");
+        let cmd = map_patch_subcommand(None, patch.clone(), None);
+        assert_eq!(cmd.input, PatchSource::Stdin);
+        assert_eq!(cmd.output, PatchTarget::Stdout);
+    }
+
+    #[test]
+    fn execute_patch_missing_input_file() {
+        let dir = tempdir().expect("tempdir");
+        let missing_input = dir.path().join("nonexistent.json");
+        let patch_path = dir.path().join("patch.json");
+        std::fs::write(&patch_path, VALID_PATCH_JSON).expect("write patch");
+        let cmd = PatchCommand {
+            input: PatchSource::File(missing_input.clone()),
+            patch: patch_path,
+            output: PatchTarget::Stdout,
+        };
+        let err = execute_patch(&cmd, Cursor::new(""), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, PatchError::FileNotFound(p) if p == missing_input));
+    }
+
+    #[test]
+    fn execute_patch_missing_patch_file() {
+        let dir = tempdir().expect("tempdir");
+        let input_path = dir.path().join("input.json");
+        std::fs::write(&input_path, VALID_INPUT_JSON).expect("write input");
+        let missing_patch = dir.path().join("nonexistent_patch.json");
+        let cmd = PatchCommand {
+            input: PatchSource::File(input_path),
+            patch: missing_patch.clone(),
+            output: PatchTarget::Stdout,
+        };
+        let err = execute_patch(&cmd, Cursor::new(""), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, PatchError::FileNotFound(p) if p == missing_patch));
+    }
+
+    #[test]
+    fn execute_patch_empty_input() {
+        let dir = tempdir().expect("tempdir");
+        let patch_path = dir.path().join("patch.json");
+        std::fs::write(&patch_path, VALID_PATCH_JSON).expect("write patch");
+        let cmd = PatchCommand {
+            input: PatchSource::Stdin,
+            patch: patch_path,
+            output: PatchTarget::Stdout,
+        };
+        let err = execute_patch(&cmd, Cursor::new(""), Vec::new()).expect_err("should fail");
+        assert!(matches!(err, PatchError::EmptyInput));
+    }
+
+    #[test]
+    fn execute_patch_empty_patch() {
+        let dir = tempdir().expect("tempdir");
+        let patch_path = dir.path().join("patch.json");
+        std::fs::write(&patch_path, "").expect("write empty patch");
+        let cmd = PatchCommand {
+            input: PatchSource::Stdin,
+            patch: patch_path,
+            output: PatchTarget::Stdout,
+        };
+        let err = execute_patch(&cmd, Cursor::new(VALID_INPUT_JSON), Vec::new())
+            .expect_err("should fail");
+        assert!(matches!(err, PatchError::EmptyInput));
+    }
+
+    #[test]
+    fn execute_patch_missing_revision_test() {
+        let dir = tempdir().expect("tempdir");
+        let patch_path = dir.path().join("patch.json");
+        // Patch with no /revision test
+        std::fs::write(
+            &patch_path,
+            r#"[{"op": "replace", "path": "/version", "value": 3}]"#,
+        )
+        .expect("write patch");
+        let cmd = PatchCommand {
+            input: PatchSource::Stdin,
+            patch: patch_path,
+            output: PatchTarget::Stdout,
+        };
+        let err = execute_patch(&cmd, Cursor::new(VALID_INPUT_JSON), Vec::new())
+            .expect_err("should fail");
+        assert!(matches!(err, PatchError::MissingRevisionTest));
+    }
+
+    #[test]
+    fn execute_patch_revision_mismatch_outputs_diff() {
+        let dir = tempdir().expect("tempdir");
+        let patch_path = dir.path().join("patch.json");
+        // Patch expects revision 5, but doc has revision 0
+        std::fs::write(
+            &patch_path,
+            r#"[
+                {"op": "test", "path": "/revision", "value": 5},
+                {"op": "replace", "path": "/revision", "value": 6}
+            ]"#,
+        )
+        .expect("write patch");
+        let cmd = PatchCommand {
+            input: PatchSource::Stdin,
+            patch: patch_path,
+            output: PatchTarget::Stdout,
+        };
+        let mut stdout_buf = Vec::new();
+        execute_patch(&cmd, Cursor::new(VALID_INPUT_JSON), &mut stdout_buf)
+            .expect("should succeed");
+        let output_str = String::from_utf8(stdout_buf).expect("utf8");
+        let parsed: serde_json::Value = serde_json::from_str(&output_str).expect("valid json");
+        assert_eq!(parsed["status"], "rejected");
+        assert_eq!(parsed["conflict_context"]["expected_revision"], 5);
+        assert_eq!(parsed["conflict_context"]["actual_revision"], 0);
+    }
+
+    #[test]
+    fn execute_patch_matching_revision_succeeds_and_increments() {
+        let dir = tempdir().expect("tempdir");
+        let patch_path = dir.path().join("patch.json");
+        let output_path = dir.path().join("output.json");
+        std::fs::write(&patch_path, VALID_PATCH_JSON).expect("write patch");
+        let cmd = PatchCommand {
+            input: PatchSource::Stdin,
+            patch: patch_path,
+            output: PatchTarget::File(output_path.clone()),
+        };
+        execute_patch(&cmd, Cursor::new(VALID_INPUT_JSON), Vec::new()).expect("should succeed");
+        let result_str = std::fs::read_to_string(&output_path).expect("read output");
+        let result: serde_json::Value = serde_json::from_str(&result_str).expect("valid json");
+        // Revision should be incremented from 0 → 1 (patch set 1, then +1 = 2)
+        // Wait: patch sets /revision to 1, then code does rev + 1 = 2
+        assert_eq!(result["revision"], 2);
+    }
+}

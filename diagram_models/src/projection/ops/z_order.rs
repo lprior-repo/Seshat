@@ -73,7 +73,7 @@ fn calculate_min_z(node_ids: &[NodeId], nodes: &NodeMap) -> i64 {
 /// Validate z-index won't overflow
 fn validate_z_bounds(node_count: usize) -> Result<(), ReplayError> {
     let max_idx = node_count.saturating_sub(1);
-    let _ = i64::try_from(max_idx).map_err(|_| ReplayError::ZIndexOverflow)?;
+    i64::try_from(max_idx).map_err(|_| ReplayError::ZIndexOverflow)?;
     Ok(())
 }
 

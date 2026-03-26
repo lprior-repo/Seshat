@@ -26,7 +26,7 @@ fn map_apply_subcommand_maps_correctly_with_files() {
 #[test]
 fn execute_apply_succeeds_when_revisions_match() {
     let doc = DiagramDocument::default();
-    let doc_json = serde_json::to_string(&doc).unwrap();
+    let doc_json = serde_json::to_string(&doc).expect("serialize document");
 
     let proposal_json = serde_json::json!({
         "base_revision": doc.revision.value(),
@@ -36,9 +36,9 @@ fn execute_apply_succeeds_when_revisions_match() {
     })
     .to_string();
 
-    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_dir = tempfile::tempdir().expect("tempdir creation");
     let proposal_path = tmp_dir.path().join("proposal.json");
-    std::fs::write(&proposal_path, proposal_json).unwrap();
+    std::fs::write(&proposal_path, proposal_json).expect("write proposal file");
 
     let cmd = ApplyCommand {
         document: ApplySource::Stdin,
@@ -51,7 +51,7 @@ fn execute_apply_succeeds_when_revisions_match() {
     let result = execute_apply(&cmd, stdin, &mut stdout);
     assert!(result.is_ok());
 
-    let output: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
+    let output: serde_json::Value = serde_json::from_slice(&stdout).expect("parse stdout json");
     assert_eq!(output["status"], "queued");
     assert_eq!(output["base_revision"], doc.revision.value());
 }
@@ -59,7 +59,7 @@ fn execute_apply_succeeds_when_revisions_match() {
 #[test]
 fn execute_apply_fails_when_revisions_mismatch() {
     let doc = DiagramDocument::default();
-    let doc_json = serde_json::to_string(&doc).unwrap();
+    let doc_json = serde_json::to_string(&doc).expect("serialize document");
 
     let proposal_json = serde_json::json!({
         "base_revision": 999,
@@ -69,9 +69,9 @@ fn execute_apply_fails_when_revisions_mismatch() {
     })
     .to_string();
 
-    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_dir = tempfile::tempdir().expect("tempdir creation");
     let proposal_path = tmp_dir.path().join("proposal.json");
-    std::fs::write(&proposal_path, proposal_json).unwrap();
+    std::fs::write(&proposal_path, proposal_json).expect("write proposal file");
 
     let cmd = ApplyCommand {
         document: ApplySource::Stdin,
@@ -84,7 +84,7 @@ fn execute_apply_fails_when_revisions_mismatch() {
     let result = execute_apply(&cmd, stdin, &mut stdout);
     assert!(result.is_ok()); // The execution succeeds, but output is "rejected"
 
-    let output: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
+    let output: serde_json::Value = serde_json::from_slice(&stdout).expect("parse stdout json");
     assert_eq!(output["status"], "rejected");
     assert_eq!(output["conflict_context"]["expected_revision"], 999);
     assert_eq!(
@@ -96,7 +96,7 @@ fn execute_apply_fails_when_revisions_mismatch() {
 #[test]
 fn execute_apply_returns_error_on_invalid_proposal() {
     let doc = DiagramDocument::default();
-    let doc_json = serde_json::to_string(&doc).unwrap();
+    let doc_json = serde_json::to_string(&doc).expect("serialize document");
 
     // Missing base_revision
     let proposal_json = serde_json::json!({
@@ -104,9 +104,9 @@ fn execute_apply_returns_error_on_invalid_proposal() {
     })
     .to_string();
 
-    let tmp_dir = tempfile::tempdir().unwrap();
+    let tmp_dir = tempfile::tempdir().expect("tempdir creation");
     let proposal_path = tmp_dir.path().join("proposal.json");
-    std::fs::write(&proposal_path, proposal_json).unwrap();
+    std::fs::write(&proposal_path, proposal_json).expect("write proposal file");
 
     let cmd = ApplyCommand {
         document: ApplySource::Stdin,

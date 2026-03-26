@@ -121,8 +121,8 @@ pub(super) fn compute_resize_scales(
     let scale_x = new_bounds.width / old_width;
     let scale_y = new_bounds.height / old_height;
 
-    let _ = to_ordered(new_bounds.x)?;
-    let _ = to_ordered(new_bounds.y)?;
+    to_ordered(new_bounds.x)?;
+    to_ordered(new_bounds.y)?;
 
     Ok((min_x, min_y, new_bounds.x, new_bounds.y, scale_x, scale_y))
 }

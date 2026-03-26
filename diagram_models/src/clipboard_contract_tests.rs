@@ -271,4 +271,138 @@ mod tests {
         let result = calculate_paste(&clipboard, &doc);
         assert!(matches!(result, Err(Error::CyclicParentReference)));
     }
+
+    // Edge selection filtering tests (mutation killers for && vs || at clipboard_contract.rs:97)
+
+    #[test]
+    fn given_edge_between_selected_and_external_when_copy_then_edge_included() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+        let e1 = EdgeId::new("e1".to_string());
+
+        doc.document.nodes.insert(n1.clone(), create_test_node());
+        doc.document.nodes.insert(n2.clone(), create_test_node());
+        doc.document
+            .edges
+            .insert(e1, create_test_edge(n1.clone(), n2));
+
+        // Only n1 is selected; n2 is external to the selection
+        let selection = Selection { nodes: vec![n1] };
+
+        let clipboard = copy(&selection, &doc).unwrap();
+        // Edge must NOT be copied: both endpoints must be in the selection (&& semantics)
+        assert!(clipboard.edges.is_empty());
+    }
+
+    #[test]
+    fn given_edge_with_both_ends_selected_when_copy_then_edge_included() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+        let e1 = EdgeId::new("e1".to_string());
+
+        doc.document.nodes.insert(n1.clone(), create_test_node());
+        doc.document.nodes.insert(n2.clone(), create_test_node());
+        doc.document
+            .edges
+            .insert(e1, create_test_edge(n1.clone(), n2.clone()));
+
+        let selection = Selection {
+            nodes: vec![n1.clone(), n2],
+        };
+
+        let clipboard = copy(&selection, &doc).unwrap();
+        assert_eq!(clipboard.edges.len(), 1);
+    }
+
+    #[test]
+    fn given_edge_with_neither_end_selected_when_copy_then_edge_excluded() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+        let n3 = NodeId::new("n3".to_string());
+        let e1 = EdgeId::new("e1".to_string());
+
+        doc.document.nodes.insert(n1.clone(), create_test_node());
+        doc.document.nodes.insert(n2.clone(), create_test_node());
+        doc.document.nodes.insert(n3.clone(), create_test_node());
+        doc.document.edges.insert(e1, create_test_edge(n1, n2));
+
+        // Only n3 is selected; the edge connects n1↔n2 (neither selected)
+        let selection = Selection { nodes: vec![n3] };
+
+        let clipboard = copy(&selection, &doc).unwrap();
+        assert!(clipboard.edges.is_empty());
+    }
+
+    // Mutation killers for calculate_paste collision check (lines 249, 252: delete !)
+
+    #[test]
+    fn given_edge_to_external_node_when_calculate_paste_then_returns_invalid_edge_reference() {
+        let mut doc = DiagramDocument::default();
+        let existing = NodeId::new("existing".to_string());
+        doc.document.nodes.insert(existing, create_test_node());
+
+        let mut clipboard = ClipboardData::empty();
+        let pasted = NodeId::new("pasted".to_string());
+        clipboard.nodes.push((pasted.clone(), create_test_node()));
+
+        let external_target = NodeId::new("nonexistent_external".to_string());
+        clipboard.edges.push((
+            EdgeId::new("e1".to_string()),
+            create_test_edge(pasted, external_target),
+        ));
+
+        let result = calculate_paste(&clipboard, &doc);
+        assert!(matches!(result, Err(Error::InvalidEdgeReference)));
+    }
+
+    #[test]
+    fn given_edge_from_external_to_pasted_when_calculate_paste_then_returns_invalid_edge_reference()
+    {
+        let mut doc = DiagramDocument::default();
+        let existing = NodeId::new("existing".to_string());
+        doc.document.nodes.insert(existing, create_test_node());
+
+        let mut clipboard = ClipboardData::empty();
+        let pasted = NodeId::new("pasted".to_string());
+        clipboard.nodes.push((pasted.clone(), create_test_node()));
+
+        let external_source = NodeId::new("nonexistent_source".to_string());
+        clipboard.edges.push((
+            EdgeId::new("e2".to_string()),
+            create_test_edge(external_source, pasted),
+        ));
+
+        let result = calculate_paste(&clipboard, &doc);
+        assert!(matches!(result, Err(Error::InvalidEdgeReference)));
+    }
+
+    // Mutation killer for cycle detection || → && at line 197
+
+    #[test]
+    fn given_three_node_chain_when_calculate_paste_then_no_cycle_detected() {
+        let doc = DiagramDocument::default();
+
+        let mut clipboard = ClipboardData::empty();
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+        let n3 = NodeId::new("n3".to_string());
+
+        let mut node1 = create_test_node();
+        node1.parent = Some(n2.clone());
+        let mut node2 = create_test_node();
+        node2.parent = Some(n3.clone());
+        let node3 = create_test_node();
+
+        clipboard.nodes.push((n1, node1));
+        clipboard.nodes.push((n2, node2));
+        clipboard.nodes.push((n3, node3));
+
+        // n1 → n2 → n3 (linear chain, no cycle)
+        let result = calculate_paste(&clipboard, &doc);
+        assert!(result.is_ok());
+        assert_eq!(result.unwrap().new_nodes.len(), 3);
+    }
 }

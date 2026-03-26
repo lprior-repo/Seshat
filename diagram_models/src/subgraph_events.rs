@@ -181,8 +181,8 @@ pub fn add_node_to_subgraph(
     subgraph_id: &NodeId,
     state: &mut DiagramState,
 ) -> Result<(), Error> {
-    let _ = get_subgraph(state, subgraph_id)?;
-    let _ = get_node(state, child_id)?;
+    get_subgraph(state, subgraph_id)?;
+    get_node(state, child_id)?;
     detect_cycle(child_id, subgraph_id, state)?;
     let nodes = update_node_parent(&state.nodes, child_id, Some(subgraph_id.clone()))?;
     state.nodes = nodes;
@@ -228,9 +228,9 @@ pub fn batch_add_nodes_to_subgraph(
     if child_ids.is_empty() {
         return Ok(());
     }
-    let _ = get_subgraph(state, subgraph_id)?;
+    get_subgraph(state, subgraph_id)?;
     child_ids.iter().try_for_each(|cid| {
-        let _ = get_node(state, cid)?;
+        get_node(state, cid)?;
         detect_cycle(cid, subgraph_id, state)
     })?;
     let nodes = child_ids.iter().try_fold(state.nodes.clone(), |acc, cid| {
@@ -251,7 +251,7 @@ pub fn remove_all_nodes_from_subgraph(
     subgraph_id: &NodeId,
     state: &mut DiagramState,
 ) -> Result<(), Error> {
-    let _ = get_subgraph(state, subgraph_id)?;
+    get_subgraph(state, subgraph_id)?;
     let children: Vec<NodeId> = state
         .nodes
         .iter()

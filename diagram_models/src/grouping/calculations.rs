@@ -219,3 +219,7 @@ pub fn calculate_edge_cleanup(
         .map(|(id, edge): (&EdgeId, &Edge)| (id.clone(), edge.clone()))
         .collect()
 }
+
+#[cfg(test)]
+#[path = "calculations_tests.rs"]
+mod tests;
