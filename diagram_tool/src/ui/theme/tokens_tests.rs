@@ -238,3 +238,48 @@ fn test_white_palette_differs_from_light() {
         "White bg_base must differ from Light bg_base"
     );
 }
+
+#[test]
+fn token_field_count_matches_match_arms() {
+    let all_fields: [&str; TOKEN_FIELD_COUNT] = [
+        "bg_base",
+        "bg_surface",
+        "bg_elevated",
+        "border",
+        "border_subtle",
+        "text_main",
+        "text_muted",
+        "text_dim",
+        "accent",
+        "accent_soft",
+        "selection_rect_fill",
+        "subgraph_preview_fill",
+        "node_bg",
+        "node_bg_subgraph",
+        "node_border",
+        "grid_dot",
+        "edge_default",
+        "toolbar_bg",
+        "success",
+        "error",
+        "warning",
+        "chart_1",
+        "chart_2",
+        "chart_3",
+        "chart_4",
+        "chart_5",
+    ];
+    assert_eq!(
+        all_fields.len(),
+        TOKEN_FIELD_COUNT,
+        "all_fields array length must equal TOKEN_FIELD_COUNT"
+    );
+    let t = dark();
+    for name in &all_fields {
+        let val = t.field(name);
+        assert!(
+            !val.is_empty(),
+            "field({name}) returned empty — missing match arm?"
+        );
+    }
+}

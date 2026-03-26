@@ -14,6 +14,10 @@ pub fn ThemeProvider(children: Element) -> Element {
     let mut theme_mode = use_context_provider(|| Signal::new(ThemeMode::System));
     #[cfg_attr(not(target_arch = "wasm32"), allow(unused_mut))]
     let mut system_theme = use_context_provider(|| Signal::new(ThemeScheme::Dark));
+    #[cfg(target_arch = "wasm32")]
+    let mut persisted = use_signal(|| false);
+    #[cfg(not(target_arch = "wasm32"))]
+    let _persisted = use_signal(|| false);
 
     #[cfg(target_arch = "wasm32")]
     use_effect(move || {
@@ -49,6 +53,7 @@ pub fn ThemeProvider(children: Element) -> Element {
                             theme_mode.set(mode);
                         }
                     }
+                    persisted.set(true);
                 } else if msg["kind"].as_str() == Some("system") {
                     if let Some(value) = msg["value"].as_str() {
                         if let Some(scheme) = ThemeScheme::from_str(value) {
@@ -63,6 +68,9 @@ pub fn ThemeProvider(children: Element) -> Element {
 
     #[cfg(target_arch = "wasm32")]
     use_effect(move || {
+        if !persisted() {
+            return;
+        }
         let mode = theme_mode.read().persisted_key().to_string();
         let _eval = document::eval(&format!(
             "try {{ localStorage.setItem(\"diagram_tool.theme_mode\", \"{mode}\"); }} catch (_) {{}}"

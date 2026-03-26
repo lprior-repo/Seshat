@@ -1,3 +1,6 @@
+#[cfg(test)]
+const TOKEN_FIELD_COUNT: usize = 26;
+
 pub(crate) struct ThemeTokens {
     pub(crate) bg_base: &'static str,
     pub(crate) bg_surface: &'static str,
@@ -47,9 +50,9 @@ const fn dark_tokens() -> ThemeTokens {
         grid_dot: "oklch(0.30 0.005 260)",
         edge_default: "oklch(0.50 0.01 260)",
         toolbar_bg: "oklch(0.17 0.005 260)",
-        success: "#22c55e",
-        error: "#ef4444",
-        warning: "#f59e0b",
+        success: "oklch(0.723 0.219 142.5)",
+        error: "oklch(0.637 0.237 25.331)",
+        warning: "oklch(0.769 0.188 70.08)",
         chart_1: "oklch(0.72 0.14 165)",
         chart_2: "oklch(0.60 0.118 184.704)",
         chart_3: "oklch(0.398 0.07 227.392)",
@@ -78,9 +81,9 @@ const fn light_tokens() -> ThemeTokens {
         grid_dot: "oklch(0.85 0.01 260)",
         edge_default: "oklch(0.56 0.02 260)",
         toolbar_bg: "oklch(0.975 0.004 260)",
-        success: "#16a34a",
-        error: "#dc2626",
-        warning: "#d97706",
+        success: "oklch(0.627 0.194 149.214)",
+        error: "oklch(0.577 0.245 27.325)",
+        warning: "oklch(0.666 0.179 58.318)",
         chart_1: "oklch(0.62 0.16 192)",
         chart_2: "oklch(0.60 0.118 184.704)",
         chart_3: "oklch(0.49 0.08 227.392)",
@@ -109,9 +112,9 @@ const fn white_tokens() -> ThemeTokens {
         grid_dot: "oklch(0.78 0.01 260)",
         edge_default: "oklch(0.42 0.03 260)",
         toolbar_bg: "oklch(1 0 0)",
-        success: "#15803d",
-        error: "#b91c1c",
-        warning: "#b45309",
+        success: "oklch(0.527 0.154 150.069)",
+        error: "oklch(0.505 0.213 27.518)",
+        warning: "oklch(0.555 0.163 48.998)",
         chart_1: "oklch(0.55 0.18 192)",
         chart_2: "oklch(0.50 0.12 184.704)",
         chart_3: "oklch(0.40 0.09 227.392)",
@@ -233,7 +236,7 @@ impl ThemeTokens {
             "chart_3" => self.chart_3,
             "chart_4" => self.chart_4,
             "chart_5" => self.chart_5,
-            _ => "",
+            _ => panic!("unknown field: {name}"),
         }
     }
 
