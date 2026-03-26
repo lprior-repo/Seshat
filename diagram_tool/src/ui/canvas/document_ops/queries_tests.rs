@@ -190,10 +190,24 @@ fn test_safe_zoom() {
 }
 
 #[test]
-fn test_fit_icon_side() {
+fn fit_icon_side_clamps_to_valid_range() {
     assert_eq!(fit_icon_side(f64::NAN), 0.0);
-    // test the clamp logic inside queries.rs
-    assert!(fit_icon_side(10.0) >= 0.0);
+    assert_eq!(fit_icon_side(f64::INFINITY), 0.0);
+
+    // Very small side: max = (0 - 8).max(0) = 0, min = 0, preferred clamped to 0
+    assert_eq!(fit_icon_side(0.0), 0.0);
+    // Side at the edge: max = (8 - 8).max(0) = 0, everything clamped to 0
+    assert_eq!(fit_icon_side(8.0), 0.0);
+    // Side 10: max = 2, min = 2, preferred = 5.2, clamped(2, 2) = 2
+    assert_eq!(fit_icon_side(10.0), 2.0);
+    // Side 20: max = 12, min = 12, preferred = 10.4, clamped(12, 12) = 12
+    assert_eq!(fit_icon_side(20.0), 12.0);
+    // Side 100: max = 92, min = 20, preferred = 52, clamped(20, 92) = 52
+    assert_eq!(fit_icon_side(100.0), 52.0);
+    // Side 1000: max = 992, min = 20, preferred = 520, clamped(20, 992) = 520
+    assert_eq!(fit_icon_side(1000.0), 520.0);
+    // Negative side: not finite? No, negative IS finite. max = (neg - 8).max(0) = 0
+    assert_eq!(fit_icon_side(-10.0), 0.0);
 }
 
 // --- Icon URL construction tests ---
@@ -272,35 +286,138 @@ fn node_image_url_ignores_old_icon_data_url_key() {
         Value::String("data:image/png;base64,abc".to_string()),
     )]);
     let node = make_node_with_metadata(metadata);
-    let result = node_image_url(&node);
-    // Must NOT return the old base64 data URL value
-    assert!(
-        result.as_deref() != Some("data:image/png;base64,abc"),
-        "Legacy icon_data_url must NOT be returned as-is; got: {result:?}"
+    assert_eq!(
+        node_image_url(&node),
+        Some("/assets/resources/".to_string()),
+        "Must fall back to icon_url for empty icon key"
     );
-    // Must fall back to icon_url(&node.icon), which returns a /assets/resources/ URL
-    // (or None if the icon key is not in the index and has no valid relpath)
-    match result {
-        Some(url) => assert!(
-            url.starts_with("/assets/resources/"),
-            "Fallback must be an /assets/resources/ URL, got: {url}"
-        ),
-        None => {} // Valid: unknown icon key with no index entry
-    }
+}
+
+#[test]
+fn node_image_url_falls_back_to_icon_url_when_metadata_missing() {
+    // No "icon_url" metadata, but icon key IS in the index → must return Some
+    let metadata = im::HashMap::new();
+    let node = Node {
+        kind: NodeKind::Node,
+        icon: "aws/analytics/athena".to_string(),
+        label: "test".to_string(),
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+        width: OrderedFloat::new_unchecked(100.0),
+        height: OrderedFloat::new_unchecked(100.0),
+        font_size: None,
+        font_weight: None,
+        lock_state: LockState::Unlocked,
+        parent: None,
+        dag_rank: None,
+        tags: im::Vector::new(),
+        metadata,
+        z_index: 0,
+        style: None,
+        collapsed: None,
+    };
+    let result = node_image_url(&node);
+    assert_eq!(
+        result,
+        Some("/assets/resources/aws/analytics/athena.png".to_string()),
+        "Must fall back to icon_url for icon key in index"
+    );
 }
 
 #[test]
 fn icon_url_returns_url_for_known_icon_in_index() {
     // The icon index is generated from assets/resources at build time.
     // Key format is lowercase, e.g. "aws/analytics/athena".
-    let result = icon_url("aws/analytics/athena");
-    assert!(
-        result.is_some(),
-        "Known icon key 'aws/analytics/athena' must resolve from the index"
-    );
-    let url = result.expect("should have url");
     assert_eq!(
-        url, "/assets/resources/aws/analytics/athena.png",
-        "Icon URL must match the index file_relpath"
+        icon_url("aws/analytics/athena"),
+        Some("/assets/resources/aws/analytics/athena.png".to_string()),
+        "Known icon key must resolve from the index"
+    );
+}
+
+#[test]
+fn icon_url_for_relpath_with_trailing_slash() {
+    assert_eq!(
+        icon_url_for_relpath("aws/"),
+        "/assets/resources/aws/",
+        "Trailing slash must be preserved"
+    );
+}
+
+#[test]
+fn icon_url_for_relpath_with_leading_slash() {
+    assert_eq!(
+        icon_url_for_relpath("/etc/passwd"),
+        "/assets/resources//etc/passwd",
+        "Leading slash is preserved — this is a URL construction function, not a path sanitizer"
+    );
+}
+
+#[test]
+fn icon_url_for_relpath_with_unicode() {
+    assert_eq!(
+        icon_url_for_relpath("émoji/icon.png"),
+        "/assets/resources/émoji/icon.png",
+        "Unicode characters must be preserved"
+    );
+}
+
+#[test]
+fn icon_url_empty_string_returns_assets_resources() {
+    assert_eq!(
+        icon_url(""),
+        Some("/assets/resources/".to_string()),
+        "Empty key must produce base path"
+    );
+}
+
+#[test]
+fn icon_url_single_segment_path() {
+    assert_eq!(
+        icon_url("athena"),
+        Some("/assets/resources/athena".to_string()),
+        "Bare name without slash must resolve directly"
+    );
+}
+
+#[test]
+fn node_image_url_empty_metadata_empty_icon() {
+    let node = make_node_with_metadata(im::HashMap::new());
+    assert_eq!(
+        node_image_url(&node),
+        Some("/assets/resources/".to_string()),
+        "Empty metadata and empty icon must fall back to base path"
+    );
+}
+
+#[test]
+fn node_image_url_with_both_metadata_and_fallback_available() {
+    let metadata = im::HashMap::from(vec![(
+        "icon_url".to_string(),
+        Value::String("/custom.png".to_string()),
+    )]);
+    let node = Node {
+        kind: NodeKind::Node,
+        icon: "aws/ec2.png".to_string(),
+        label: "test".to_string(),
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+        width: OrderedFloat::new_unchecked(100.0),
+        height: OrderedFloat::new_unchecked(100.0),
+        font_size: None,
+        font_weight: None,
+        lock_state: LockState::Unlocked,
+        parent: None,
+        dag_rank: None,
+        tags: im::Vector::new(),
+        metadata,
+        z_index: 0,
+        style: None,
+        collapsed: None,
+    };
+    assert_eq!(
+        node_image_url(&node),
+        Some("/custom.png".to_string()),
+        "Metadata icon_url must take priority over icon field fallback"
     );
 }

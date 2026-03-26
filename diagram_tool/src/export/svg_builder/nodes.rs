@@ -167,12 +167,21 @@ mod tests {
         )
         .expect("write png");
 
-        let prev_dir = std::env::current_dir().expect("cwd");
+        struct CwdGuard(std::path::PathBuf);
+        impl Drop for CwdGuard {
+            fn drop(&mut self) {
+                let _ = std::env::set_current_dir(&self.0);
+            }
+        }
+
+        let guard = CwdGuard(std::env::current_dir().expect("cwd"));
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
         let result = embed_icon_as_data_url("/assets/resources/generic/os/ubuntu.png");
 
-        let _ = std::env::set_current_dir(&prev_dir);
+        // Guard restores CWD even if assertions panic below
+        drop(guard);
+
         assert!(result.is_some(), "Existing file must return Some");
         let url = result.expect("should have url");
         assert!(
