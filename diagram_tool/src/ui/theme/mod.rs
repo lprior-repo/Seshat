@@ -101,6 +101,8 @@ pub fn css_vars_for(scheme: ThemeScheme) -> String {
 }
 
 #[cfg(test)]
+mod css_var_tests;
+#[cfg(test)]
 mod theme_mode_tests;
 #[cfg(test)]
 mod theme_scheme_tests;

@@ -8,7 +8,7 @@ use crate::ui::canvas::grid_layer::GridLayer;
 use crate::ui::canvas::node_layer::NodeLayer;
 use crate::ui::canvas::state::CanvasState;
 use crate::ui::canvas::toolbar::{SelectionPill, Toolbar};
-use crate::ui::theme::{BG_BASE, BG_ELEVATED, EDGE_DEFAULT, EDGE_SELECTED};
+use crate::ui::theme::{ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, EDGE_DEFAULT, EDGE_SELECTED};
 use canvas_domain::interaction_reducer::{InteractionMode, ResizeHandle};
 use canvas_domain::perf::to_screen_coords;
 use dioxus::html::input_data::MouseButton;
@@ -23,7 +23,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
 
     let bg_color = BG_BASE;
     let border_style = if *drag_over.read() {
-        "2px dashed #8b5cf6"
+        ACCENT_DASH_BORDER
     } else {
         "none"
     };
