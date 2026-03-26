@@ -35,7 +35,7 @@ fn handle_drag(icon: &IconMeta, dragging_icon: &mut Signal<Option<DraggedIconPay
     dragging_icon.set(Some(DraggedIconPayload {
         icon_key: icon.icon_key.to_string(),
         label: Some(icon.display_name.to_string()),
-        image_data_url: Some(icon.base64_data.to_string()),
+        image_url: Some(crate::icons::icon_src(icon)),
     }));
 }
 
@@ -70,7 +70,7 @@ pub fn IconTile(
                 dt.set_effect_allowed("copy");
                 handle_drag(&current_icon_dragstart, &mut dragging_icon);
             },
-            IconImage { src: current_icon.base64_data.to_string() }
+            IconImage { src: crate::icons::icon_src(&current_icon) }
             IconLabel { text: current_icon.display_name.to_string() }
         }
     }
@@ -92,7 +92,6 @@ mod tests {
                 file_relpath: std::sync::Arc::from("aws/Analytics/athena.svg"),
                 display_name: std::sync::Arc::from("Athena"),
                 search_terms: std::sync::Arc::from("athena aws analytics"),
-                base64_data: std::sync::Arc::from("data:image/svg+xml;base64,123"),
             });
             let dragging_icon = use_signal(|| None);
             rsx! {
@@ -102,7 +101,7 @@ mod tests {
         vdom.rebuild_in_place();
         let html = dioxus_ssr::render(&vdom);
         assert!(html.contains("Athena"));
-        assert!(html.contains("data:image/svg+xml;base64,123"));
+        assert!(html.contains("/assets/resources/aws/Analytics/athena.svg"));
         assert!(html.contains("data-testid=\"icon-item\""));
     }
 }

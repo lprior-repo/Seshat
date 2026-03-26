@@ -25,6 +25,7 @@ pub fn map_patch_subcommand(
 ///
 /// # Errors
 /// Returns `PatchError` on failure.
+#[allow(clippy::too_many_lines)]
 pub fn execute_patch(
     cmd: &PatchCommand,
     mut stdin: impl Read,
@@ -76,12 +77,14 @@ pub fn execute_patch(
         }
     }
 
-    let expected_revision = match expected_revision_opt {
-        Some(rev) => rev,
-        None => return Err(PatchError::MissingRevisionTest),
+    let Some(expected_revision) = expected_revision_opt else {
+        return Err(PatchError::MissingRevisionTest);
     };
 
-    let actual_revision = doc.get("revision").and_then(|r| r.as_u64()).unwrap_or(0);
+    let actual_revision = doc
+        .get("revision")
+        .and_then(serde_json::Value::as_u64)
+        .unwrap_or(0);
 
     if expected_revision != actual_revision {
         use crate::diff::build_rich_diff;
@@ -110,7 +113,7 @@ pub fn execute_patch(
 
         // If it applies, we extract the nodes and edges
         let (ai_nodes, ai_edges) = match json_patch::patch(&mut ai_doc, &patch_no_rev) {
-            Ok(_) => (
+            Ok(()) => (
                 ai_doc
                     .get("document")
                     .and_then(|d| d.get("nodes"))

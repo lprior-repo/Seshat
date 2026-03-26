@@ -1,6 +1,3 @@
-//(clippy::cast_precision_loss)]
-
-use base64::{engine::general_purpose, Engine as _};
 use diagram_models::{
     dag::validate_dag,
     document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind},
@@ -10,7 +7,7 @@ use uuid::Uuid;
 
 use crate::{
     geometry::hit_test_margin,
-    icons::{icon_index, ICONS},
+    icons::icon_index,
     ui::canvas::canvas_view::SCREEN_HIT_MARGIN,
     ui::grid::{snap_value, GridSize},
 };
@@ -90,39 +87,35 @@ pub fn fallback_icon_label(icon_key: &str) -> String {
     )
 }
 
-pub fn data_url_for_relpath(file_relpath: &str) -> Option<String> {
-    let file = ICONS.get_file(file_relpath)?;
-    let mime = std::path::Path::new(file_relpath)
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .map_or("image/png", |ext| {
-            if ext.eq_ignore_ascii_case("svg") {
-                "image/svg+xml"
-            } else {
-                "image/png"
-            }
-        });
-
-    Some(format!(
-        "data:{mime};base64,{}",
-        general_purpose::STANDARD.encode(file.contents())
-    ))
+pub fn icon_url_for_relpath(file_relpath: &str) -> String {
+    if file_relpath.contains("..") {
+        return String::new();
+    }
+    format!("/assets/resources/{file_relpath}")
 }
 
-pub fn icon_data_url(icon_key: &str) -> Option<String> {
-    icon_index()
+pub fn icon_url(icon_key: &str) -> Option<String> {
+    let from_index = icon_index()
         .by_key
         .get(icon_key)
-        .and_then(|meta| data_url_for_relpath(&meta.file_relpath))
-        .or_else(|| data_url_for_relpath(icon_key))
+        .map(|meta| icon_url_for_relpath(&meta.file_relpath))
+        .filter(|url| !url.is_empty());
+    from_index.or_else(|| {
+        let fallback = icon_url_for_relpath(icon_key);
+        if fallback.is_empty() {
+            None
+        } else {
+            Some(fallback)
+        }
+    })
 }
 
-pub fn node_image_data_url(node: &Node) -> Option<String> {
+pub fn node_image_url(node: &Node) -> Option<String> {
     node.metadata
-        .get("icon_data_url")
+        .get("icon_url")
         .and_then(Value::as_str)
         .map(str::to_owned)
-        .or_else(|| icon_data_url(&node.icon))
+        .or_else(|| icon_url(&node.icon))
 }
 
 pub fn edge_preserves_dag(doc: &DiagramDocument, edge: &Edge) -> bool {

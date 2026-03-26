@@ -86,8 +86,11 @@ fn execute_apply_fails_when_revisions_mismatch() {
 
     let output: serde_json::Value = serde_json::from_slice(&stdout).unwrap();
     assert_eq!(output["status"], "rejected");
-    assert_eq!(output["expected_revision"], 999);
-    assert_eq!(output["current_revision"], doc.revision.value());
+    assert_eq!(output["conflict_context"]["expected_revision"], 999);
+    assert_eq!(
+        output["conflict_context"]["actual_revision"],
+        doc.revision.value()
+    );
 }
 
 #[test]

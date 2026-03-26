@@ -12,7 +12,9 @@ use super::*;
 use crate::test_utils::builders::edge::EdgeBuilder;
 use crate::test_utils::builders::node::NodeBuilder;
 use crate::ui::grid::GridSize;
-use diagram_models::document::{DiagramDocument, EdgeId, NodeId, NodeKind, OrderedFloat};
+use diagram_models::document::{
+    DiagramDocument, EdgeId, LockState, NodeId, NodeKind, OrderedFloat,
+};
 
 fn create_test_doc() -> DiagramDocument {
     DiagramDocument::default()
@@ -192,4 +194,97 @@ fn test_fit_icon_side() {
     assert_eq!(fit_icon_side(f64::NAN), 0.0);
     // test the clamp logic inside queries.rs
     assert!(fit_icon_side(10.0) >= 0.0);
+}
+
+// --- Icon URL construction tests ---
+
+fn make_node_with_metadata(metadata: im::HashMap<String, Value>) -> Node {
+    Node {
+        kind: NodeKind::Node,
+        icon: String::new(),
+        label: "test".to_string(),
+        x: OrderedFloat::new_unchecked(0.0),
+        y: OrderedFloat::new_unchecked(0.0),
+        width: OrderedFloat::new_unchecked(100.0),
+        height: OrderedFloat::new_unchecked(100.0),
+        font_size: None,
+        font_weight: None,
+        lock_state: LockState::Unlocked,
+        parent: None,
+        dag_rank: None,
+        tags: im::Vector::new(),
+        metadata,
+        z_index: 0,
+        style: None,
+        collapsed: None,
+    }
+}
+
+#[test]
+fn icon_url_for_relpath_formats_path() {
+    assert_eq!(
+        icon_url_for_relpath("gcp/compute/gke.png"),
+        "/assets/resources/gcp/compute/gke.png"
+    );
+}
+
+#[test]
+fn icon_url_for_relpath_empty_path() {
+    assert_eq!(icon_url_for_relpath(""), "/assets/resources/");
+}
+
+#[test]
+fn icon_url_for_relpath_blocks_path_traversal() {
+    assert_eq!(icon_url_for_relpath("../../etc/passwd"), "");
+}
+
+#[test]
+fn icon_url_for_relpath_blocks_nested_traversal() {
+    assert_eq!(icon_url_for_relpath("aws/../../etc/passwd"), "");
+}
+
+#[test]
+fn icon_url_returns_none_for_traversal() {
+    assert_eq!(icon_url("../../etc/passwd"), None);
+}
+
+#[test]
+fn node_image_url_from_metadata() {
+    let metadata = im::HashMap::from(vec![(
+        "icon_url".to_string(),
+        Value::String("/assets/resources/aws/ec2.png".to_string()),
+    )]);
+    let node = make_node_with_metadata(metadata);
+    assert_eq!(
+        node_image_url(&node),
+        Some("/assets/resources/aws/ec2.png".to_string())
+    );
+}
+
+#[test]
+fn node_image_url_ignores_old_icon_data_url_key() {
+    // Old documents stored base64 data URLs in "icon_data_url" metadata.
+    // After migration, the key is remapped to "icon_url" by persistence_compat.
+    // If NOT migrated (e.g. direct metadata access), the function must ignore
+    // the old key and fall back to icon_url(&node.icon).
+    let metadata = im::HashMap::from(vec![(
+        "icon_data_url".to_string(),
+        Value::String("data:image/png;base64,abc".to_string()),
+    )]);
+    let node = make_node_with_metadata(metadata);
+    let result = node_image_url(&node);
+    // Must NOT return the old base64 data URL value
+    assert!(
+        result.as_deref() != Some("data:image/png;base64,abc"),
+        "Legacy icon_data_url must NOT be returned as-is; got: {result:?}"
+    );
+    // Must fall back to icon_url(&node.icon), which returns a /assets/resources/ URL
+    // (or None if the icon key is not in the index and has no valid relpath)
+    match result {
+        Some(url) => assert!(
+            url.starts_with("/assets/resources/"),
+            "Fallback must be an /assets/resources/ URL, got: {url}"
+        ),
+        None => {} // Valid: unknown icon key with no index entry
+    }
 }

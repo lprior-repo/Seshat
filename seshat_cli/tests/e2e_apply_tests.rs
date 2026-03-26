@@ -52,7 +52,7 @@ fn e2e_apply_exits_zero_and_returns_rejected_on_mismatch() {
         .assert()
         .success()
         .stdout(predicates::str::contains("rejected"))
-        .stdout(predicates::str::contains("conflict"));
+        .stdout(predicates::str::contains("Human Priority Block"));
 }
 
 #[test]

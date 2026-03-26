@@ -15,5 +15,5 @@ pub struct DiagramTab {
 pub struct DraggedIconPayload {
     pub icon_key: String,
     pub label: Option<String>,
-    pub image_data_url: Option<String>,
+    pub image_url: Option<String>,
 }

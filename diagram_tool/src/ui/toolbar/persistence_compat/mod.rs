@@ -40,6 +40,27 @@ fn normalize_compat_shape(root: &mut serde_json::Value) {
         remap_key(node_obj, "font_size", "fontSize");
         remap_key(node_obj, "fontWeight", "font_weight");
         remap_key(node_obj, "dagRank", "dag_rank");
+        // Migrate icon_data_url → icon_url, but transform base64 data-URL values
+        // into proper HTTP URL paths. Old format: "data:image/png;base64,..."
+        // New format: "/assets/resources/{icon_key}"
+        if let Some(icon_data_url) = node_obj.remove("icon_data_url") {
+            if icon_data_url
+                .as_str()
+                .is_some_and(|s| s.starts_with("data:"))
+            {
+                // Old base64 value — derive URL from the node's icon field
+                if let Some(icon) = node_obj.get("icon").and_then(|v| v.as_str()) {
+                    let _ = node_obj.insert(
+                        "icon_url".to_string(),
+                        serde_json::Value::String(format!("/assets/resources/{icon}")),
+                    );
+                }
+                // If no icon field, just drop the stale base64 data
+            } else if !node_obj.contains_key("icon_url") {
+                // Non-base64 value (shouldn't exist, but be safe)
+                let _ = node_obj.insert("icon_url".to_string(), icon_data_url);
+            }
+        }
     });
 
     normalize_collection(document, "edges", |edge_obj| {

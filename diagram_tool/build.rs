@@ -1,4 +1,3 @@
-use base64::{engine::general_purpose, Engine as _};
 use std::collections::BTreeMap;
 use std::env;
 use std::fs;
@@ -12,10 +11,10 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    println!("cargo:rerun-if-changed=resources/");
+    println!("cargo:rerun-if-changed=assets/resources/");
 
     let out_dir = env::var("OUT_DIR").map_err(|e| format!("OUT_DIR not set: {e}"))?;
-    let resources_path = Path::new("resources");
+    let resources_path = Path::new("assets/resources");
 
     let mut icons: Vec<IconEntry> = Vec::new();
 
@@ -63,7 +62,6 @@ struct IconEntry {
     file_relpath: String,
     display_name: String,
     search_terms: String,
-    base64_data: String,
 }
 
 #[derive(serde::Serialize)]
@@ -96,7 +94,7 @@ fn scan_resources(dir: &Path, icons: &mut Vec<IconEntry>) -> std::io::Result<()>
 }
 
 fn parse_icon_path(path: &Path) -> Option<IconEntry> {
-    let relpath = path.strip_prefix("resources").ok()?;
+    let relpath = path.strip_prefix("assets/resources").ok()?;
     let relpath_str = relpath.to_str()?;
 
     let components: Vec<&str> = relpath
@@ -129,19 +127,6 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
     )
     .to_ascii_lowercase();
 
-    let file_contents = fs::read(path).ok()?;
-    let ext = path.extension().and_then(|e| e.to_str()).unwrap_or("png");
-    let mime = if ext.eq_ignore_ascii_case("svg") {
-        "image/svg+xml"
-    } else {
-        "image/png"
-    };
-
-    let base64_data = format!(
-        "data:{mime};base64,{}",
-        general_purpose::STANDARD.encode(&file_contents)
-    );
-
     Some(IconEntry {
         icon_key,
         provider,
@@ -149,7 +134,6 @@ fn parse_icon_path(path: &Path) -> Option<IconEntry> {
         file_relpath: relpath_str.to_string(),
         display_name,
         search_terms,
-        base64_data,
     })
 }
 
@@ -189,7 +173,6 @@ pub struct IconMeta {
     pub file_relpath: std::sync::Arc<str>,
     pub display_name: std::sync::Arc<str>,
     pub search_terms: std::sync::Arc<str>,
-    pub base64_data: std::sync::Arc<str>,
 }
 
 #[derive(Debug, Clone, serde::Deserialize)]

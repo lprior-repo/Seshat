@@ -3,10 +3,6 @@
 #![deny(clippy::panic)]
 #![forbid(unsafe_code)]
 
-use include_dir::{include_dir, Dir};
-
-pub const ICONS: Dir = include_dir!("$CARGO_MANIFEST_DIR/resources");
-
 #[allow(clippy::unwrap_used)]
 #[allow(clippy::expect_used)]
 #[allow(dead_code)]
@@ -22,8 +18,30 @@ pub fn icon_index() -> &'static IconIndex {
     ICON_INDEX.get_or_init(IconIndex::load)
 }
 
-#[allow(dead_code)]
 #[must_use]
 pub fn icon_src(icon: &IconMeta) -> String {
-    format!("/resources/{}", icon.file_relpath)
+    format!("/assets/resources/{}", icon.file_relpath)
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used)]
+mod tests {
+    use super::*;
+    use std::sync::Arc;
+
+    #[test]
+    fn icon_src_returns_url_path() {
+        let meta = IconMeta {
+            icon_key: Arc::from("aws/Analytics/athena"),
+            provider: Arc::from("aws"),
+            category_path: vec![Arc::from("Analytics")],
+            file_relpath: Arc::from("aws/Analytics/athena.svg"),
+            display_name: Arc::from("Athena"),
+            search_terms: Arc::from("athena aws analytics"),
+        };
+        assert_eq!(
+            icon_src(&meta),
+            "/assets/resources/aws/Analytics/athena.svg"
+        );
+    }
 }

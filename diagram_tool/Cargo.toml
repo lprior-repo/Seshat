@@ -28,9 +28,6 @@ serde_json      = "1.0"
 # IDs
 uuid            = { version = "1.0", features = ["v4", "serde"] }
 
-# Asset embedding
-include_dir     = { version = "0.7", features = ["glob"] }
-
 # Export
 tiny-skia       = "0.11"
 base64          = "0.22"
@@ -68,7 +65,6 @@ async-db = []
 [build-dependencies]
 serde = { version = "1.0", features = ["derive", "rc"] }
 serde_json = "1.0"
-base64 = "0.22"
 
 [dev-dependencies]
 proptest = "1.10.0"

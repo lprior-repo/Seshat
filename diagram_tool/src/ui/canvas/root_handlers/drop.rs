@@ -24,7 +24,7 @@ pub fn handle_drop(
     dragging_icon.with_mut(|dragging| {
         if let Some(payload) = dragging.take() {
             let icon_key = payload.icon_key;
-            let image_data_url = payload.image_data_url;
+            let image_url = payload.image_url;
             let current = doc_signal.read().clone();
             let history = history_signal.read().clone();
             *history_signal.write() = history.push(current);
@@ -52,8 +52,8 @@ pub fn handle_drop(
                     doc.editor_state.snap_to_grid,
                     doc.editor_state.grid_size,
                 );
-                let metadata = image_data_url.clone().map_or_else(HashMap::new, |image| {
-                    HashMap::new().update("icon_data_url".to_string(), Value::String(image))
+                let metadata = image_url.clone().map_or_else(HashMap::new, |url| {
+                    HashMap::new().update("icon_url".to_string(), Value::String(url))
                 });
                 let id = NodeId::new(Uuid::new_v4().to_string());
                 let _ = doc.document.nodes.insert(

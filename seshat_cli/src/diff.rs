@@ -62,6 +62,7 @@ impl RichDiff {
     }
 }
 
+#[must_use]
 pub fn build_rich_diff(
     expected_revision: u64,
     actual_revision: u64,
@@ -83,7 +84,7 @@ pub fn build_rich_diff(
 
     if let Some(an_obj) = ai_nodes {
         for (node_id, an_val) in an_obj {
-            if human_nodes.map_or(true, |hn| !hn.contains_key(node_id)) {
+            if human_nodes.is_none_or(|hn| !hn.contains_key(node_id)) {
                 rich_diff.add_entity_diff(node_id.clone(), None, Some(an_val.clone()));
             }
         }
@@ -100,7 +101,7 @@ pub fn build_rich_diff(
 
     if let Some(ae_obj) = ai_edges {
         for (edge_id, ae_val) in ae_obj {
-            if human_edges.map_or(true, |he| !he.contains_key(edge_id)) {
+            if human_edges.is_none_or(|he| !he.contains_key(edge_id)) {
                 rich_diff.add_entity_diff(edge_id.clone(), None, Some(ae_val.clone()));
             }
         }

@@ -2,7 +2,7 @@ use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind};
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::ui::canvas::document_ops::{fit_icon_side, node_image_data_url};
+use crate::ui::canvas::document_ops::{fit_icon_side, node_image_url};
 use crate::ui::theme::TEXT_MAIN;
 
 use super::inline_edit::InlineEdit;
@@ -103,7 +103,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
         let provider_top = props.provider_top;
         let icon_w = fit_icon_side(props.width);
         let icon_h = fit_icon_side(props.height);
-        let node_image = node_image_data_url(&node);
+        let node_image = node_image_url(&node);
         rsx! {
             div {
                 "data-testid": "node-color-bar",

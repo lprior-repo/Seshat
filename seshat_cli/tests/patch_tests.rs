@@ -92,7 +92,11 @@ fn execute_patch_fails_if_test_operation_fails() {
     let mut out = Vec::new();
     let result = execute_patch(&cmd, std::io::empty(), &mut out);
 
-    assert!(matches!(result, Err(PatchError::ApplyError(_))));
+    assert!(result.is_ok());
+    let diff: serde_json::Value = serde_json::from_slice(&out).unwrap();
+    assert_eq!(diff["status"], "rejected");
+    assert_eq!(diff["conflict_context"]["expected_revision"], 2);
+    assert_eq!(diff["conflict_context"]["actual_revision"], 1);
 }
 
 #[rstest]
