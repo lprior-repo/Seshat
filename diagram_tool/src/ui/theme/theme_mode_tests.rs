@@ -241,6 +241,56 @@ fn resolve_returns_white_when_mode_is_white_and_system_is_white() {
     );
 }
 
+// --- B18: next() cycles System→Light→Dark→White→System ---
+#[test]
+fn next_cycles_system_to_light() {
+    assert_eq!(ThemeMode::System.next(), ThemeMode::Light);
+}
+
+#[test]
+fn next_cycles_light_to_dark() {
+    assert_eq!(ThemeMode::Light.next(), ThemeMode::Dark);
+}
+
+#[test]
+fn next_cycles_dark_to_white() {
+    assert_eq!(ThemeMode::Dark.next(), ThemeMode::White);
+}
+
+#[test]
+fn next_cycles_white_to_system() {
+    assert_eq!(ThemeMode::White.next(), ThemeMode::System);
+}
+
+// --- B19: full cycle from System returns to System after 4 steps ---
+#[test]
+fn full_cycle_returns_to_start() {
+    let modes = [
+        ThemeMode::System,
+        ThemeMode::Light,
+        ThemeMode::Dark,
+        ThemeMode::White,
+    ];
+    let cycled = modes
+        .iter()
+        .copied()
+        .fold(ThemeMode::System, |m, _| m.next());
+    assert_eq!(cycled, ThemeMode::System);
+}
+
+// --- B20: all 4 modes have non-empty labels ---
+#[test]
+fn all_modes_have_non_empty_labels() {
+    let modes = [
+        ThemeMode::System,
+        ThemeMode::Light,
+        ThemeMode::Dark,
+        ThemeMode::White,
+    ];
+    let all_non_empty = modes.iter().copied().all(|m| !m.label().is_empty());
+    assert!(all_non_empty);
+}
+
 // --- Proptest I1: persisted_key <-> from_persisted_key roundtrip ---
 proptest! {
     #[test]

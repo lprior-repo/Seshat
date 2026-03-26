@@ -55,6 +55,17 @@ impl ThemeMode {
         }
     }
 
+    /// Returns the next theme mode in the cycle: System → Light → Dark → White → System.
+    #[must_use]
+    pub const fn next(self) -> Self {
+        match self {
+            Self::System => Self::Light,
+            Self::Light => Self::Dark,
+            Self::Dark => Self::White,
+            Self::White => Self::System,
+        }
+    }
+
     #[must_use]
     pub const fn resolve(self, system: ThemeScheme) -> ThemeScheme {
         match self {
