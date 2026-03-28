@@ -52,3 +52,6 @@
 # - linear.api-key
 # - github.org
 # - github.repo
+
+sync:
+  git-remote: "priorlewis43/seshat-database"
