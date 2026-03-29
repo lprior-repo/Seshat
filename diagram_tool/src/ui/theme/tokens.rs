@@ -208,6 +208,7 @@ impl ThemeTokens {
     }
 
     #[cfg(test)]
+    #[allow(clippy::panic)]
     pub(crate) fn field(&self, name: &str) -> &'static str {
         match name {
             "bg_base" => self.bg_base,

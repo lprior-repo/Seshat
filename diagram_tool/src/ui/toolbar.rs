@@ -102,7 +102,8 @@ pub struct IconButtonProps {
 fn IconButton(props: IconButtonProps) -> Element {
     let bg = match props.state {
         ButtonState::Active => props.variant.active_bg_class(),
-        _ => "bg-transparent hover:bg-[var(--bg-elevated)]",    };
+        _ => "bg-transparent hover:bg-[var(--bg-elevated)]",
+    };
     let border = match props.state {
         ButtonState::Active => "border-[var(--accent)]",
         _ => "border-transparent",
@@ -149,7 +150,8 @@ pub struct TextButtonProps {
 fn TextButton(props: TextButtonProps) -> Element {
     let bg = match props.state {
         ButtonState::Active => "bg-[var(--accent-soft)]",
-        _ => "bg-transparent hover:bg-[var(--bg-elevated)]",    };
+        _ => "bg-transparent hover:bg-[var(--bg-elevated)]",
+    };
     let border = match props.state {
         ButtonState::Active => "border-[var(--accent)]",
         _ => "border-transparent",

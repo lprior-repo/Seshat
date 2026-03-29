@@ -14,7 +14,7 @@ pub mod serializer;
 #[cfg(test)]
 pub mod error_tests;
 
+pub use executor::execute_show;
+pub use loader::{load_document_from_path, load_document_from_reader};
 pub(crate) use mapper::map_show_subcommand;
 pub use serializer::serialize_document;
-pub use loader::{load_document_from_path, load_document_from_reader};
-pub use executor::execute_show;

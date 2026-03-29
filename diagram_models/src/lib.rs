@@ -1,4 +1,17 @@
-#![cfg_attr(test, allow(warnings))]
+#![cfg_attr(
+    test,
+    allow(
+        warnings,
+        clippy::all,
+        clippy::pedantic,
+        clippy::nursery,
+        clippy::expect_used,
+        clippy::panic,
+        clippy::unwrap_used,
+        clippy::similar_names,
+        clippy::redundant_clone
+    )
+)]
 //! Models module for diagram data structures
 //!
 //! Provides domain models for nodes, edges, documents, and related structures.

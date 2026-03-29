@@ -1,3 +1,4 @@
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::expect_used, clippy::panic, clippy::unwrap_used, clippy::similar_names, clippy::redundant_clone)]
 use diagram_models::document::{
     ArrowType, DiagramDocument, DocumentError, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId,
     NodeKind, OrderedFloat, ValidRect,
