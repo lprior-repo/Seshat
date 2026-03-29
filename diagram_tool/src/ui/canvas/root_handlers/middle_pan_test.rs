@@ -9,6 +9,6 @@ mod tests {
             use_middle_pan_handler();
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

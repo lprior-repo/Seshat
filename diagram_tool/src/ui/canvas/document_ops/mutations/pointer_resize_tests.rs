@@ -83,7 +83,7 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -125,7 +125,7 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -172,7 +172,7 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -218,7 +218,7 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -262,7 +262,7 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -308,7 +308,7 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -354,6 +354,6 @@ mod tests {
             }
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

@@ -55,15 +55,13 @@ fn validate_revision_sequence(
     initial_revision: u64,
     events: &[EventRecord],
 ) -> Result<(), ReplayError> {
-    let mut expected_revision = initial_revision;
-    for event in events {
+    for (expected_revision, event) in (initial_revision..).zip(events.iter()) {
         if event.revision != expected_revision {
             return Err(ReplayError::InvariantViolation(format!(
                 "revision gap: expected {}, found {}",
                 expected_revision, event.revision
             )));
         }
-        expected_revision += 1;
     }
     Ok(())
 }

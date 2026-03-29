@@ -6,9 +6,9 @@
 //! Note: Most of this module is only used in WASM32 builds. The functions are still
 //! compiled for all targets but will trigger `dead_code` warnings on non-WASM.
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 #[allow(dead_code)]

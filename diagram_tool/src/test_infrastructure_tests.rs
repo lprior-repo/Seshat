@@ -17,9 +17,9 @@
 //! - Q1: All 228 test cases have test stubs
 //! - Q2: Golden scene fixtures load and validate
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 // Include the test_utils module for testing

@@ -169,6 +169,15 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn embed_icon_as_data_url_returns_valid_data_url_for_existing_file() {
+        use base64::{engine::general_purpose, Engine as _};
+
+        struct CwdGuard(std::path::PathBuf);
+        impl Drop for CwdGuard {
+            fn drop(&mut self) {
+                let _ = std::env::set_current_dir(&self.0);
+            }
+        }
+
         let tmp = tempfile::TempDir::new().expect("tempdir");
         let icon_dir = tmp.path().join("resources").join("generic").join("os");
         std::fs::create_dir_all(&icon_dir).expect("create dirs");
@@ -183,13 +192,6 @@ mod tests {
             ],
         )
         .expect("write png");
-
-        struct CwdGuard(std::path::PathBuf);
-        impl Drop for CwdGuard {
-            fn drop(&mut self) {
-                let _ = std::env::set_current_dir(&self.0);
-            }
-        }
 
         let guard = CwdGuard(std::env::current_dir().expect("cwd"));
         std::env::set_current_dir(tmp.path()).expect("chdir");
@@ -207,7 +209,6 @@ mod tests {
             .strip_prefix("data:image/png;base64,")
             .expect("should have prefix");
         assert!(!b64_part.is_empty(), "Base64 content must not be empty");
-        use base64::{engine::general_purpose, Engine as _};
         let decoded = general_purpose::STANDARD
             .decode(b64_part)
             .expect("base64 must be valid");

@@ -1,5 +1,4 @@
-#![allow(clippy::unwrap_used, clippy::expect_used)]
-#![allow(clippy::let_underscore_future)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 //! Phase 4 Tests: Model updates for rusqlite → sqlx migration
 //! Strictly < 300 lines, EXTREMELY DRY, Code is a Liability.
 
@@ -63,12 +62,12 @@ fn test_envelope(op_id: &str, revision: i64) -> EventEnvelope {
             email: None,
         },
         operation: DomainOp::NodeAdd {
-            id: NodeId::new(format!("n-{}", revision)),
+            id: NodeId::new(format!("n-{revision}")),
             x: 10.0 * revision as f64,
             y: 20.0 * revision as f64,
             width: 80.0,
             height: 40.0,
-            label: format!("N{}", revision),
+            label: format!("N{revision}"),
         },
     }
 }
@@ -103,7 +102,7 @@ async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
     // Precondition: ceiling is 5
     for i in 2..=5 {
         assert_eq!(
-            append_test_event(&pool, &format!("op-{}", i), i, None)
+            append_test_event(&pool, &format!("op-{i}"), i, None)
                 .await?
                 .revision,
             i
@@ -121,7 +120,7 @@ async fn test_store_core_operations() -> Result<(), AsyncStoreError> {
     // 6. Very large batch
     // Precondition: ceiling is 105
     for i in 6..=105 {
-        append_test_event(&pool, &format!("op-batch-{}", i), i, None).await?;
+        append_test_event(&pool, &format!("op-batch-{i}"), i, None).await?;
     }
     let all = fetch_all_events(&pool).await?;
     assert_eq!(all.len(), 105);
@@ -137,7 +136,7 @@ async fn test_projection_replay() -> Result<(), AsyncStoreError> {
 
     // Precondition: ceiling is 3
     for i in 1..=3 {
-        append_test_event(&pool, &format!("op-{}", i), i, None).await?;
+        append_test_event(&pool, &format!("op-{i}"), i, None).await?;
     }
 
     let records = fetch_events_since(&pool, 0).await?;

@@ -1,11 +1,5 @@
-#![allow(clippy::manual_range_contains)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #[cfg(test)]
-#[allow(
-    clippy::unwrap_used,
-    clippy::expect_used,
-    clippy::module_inception,
-    clippy::manual_range_contains
-)]
 mod tests {
     use crate::perf::*;
     use crate::{CanvasCoord, ScreenCoord};
@@ -589,27 +583,15 @@ mod inp_mobile_touch_tests {
             let (cx, cy, z) = wheel_transform(input);
             assert!(
                 cx.is_finite(),
-                "Camera X should be finite for input ({}, {}, {}, {})",
-                client_x,
-                client_y,
-                dy,
-                gesture
+                "Camera X should be finite for input ({client_x}, {client_y}, {dy}, {gesture})"
             );
             assert!(
                 cy.is_finite(),
-                "Camera Y should be finite for input ({}, {}, {}, {})",
-                client_x,
-                client_y,
-                dy,
-                gesture
+                "Camera Y should be finite for input ({client_x}, {client_y}, {dy}, {gesture})"
             );
             assert!(
                 z.is_finite(),
-                "Zoom should be finite for input ({}, {}, {}, {})",
-                client_x,
-                client_y,
-                dy,
-                gesture
+                "Zoom should be finite for input ({client_x}, {client_y}, {dy}, {gesture})"
             );
             assert!(z >= canvas_math::MIN_ZOOM && z <= canvas_math::MAX_ZOOM);
         }

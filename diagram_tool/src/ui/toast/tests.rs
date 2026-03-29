@@ -34,12 +34,10 @@ fn given_toast_in_state_when_rendering_toaster_then_toast_is_displayed() {
     let html = dioxus_ssr::render(&vdom);
     assert!(
         html.contains("Test Toast Title"),
-        "Expected title in html: {}",
-        html
+        "Expected title in html: {html}"
     );
     assert!(
         html.contains("Test Toast Detail"),
-        "Expected detail in html: {}",
-        html
+        "Expected detail in html: {html}"
     );
 }

@@ -1,3 +1,4 @@
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use super::super::{
     finalize_motion_release, resize_target_ids, safe_zoom, within, InteractionMode, ResizeHandle,
 };

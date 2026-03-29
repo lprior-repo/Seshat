@@ -1,12 +1,4 @@
-#![allow(
-    clippy::unwrap_used,
-    clippy::panic,
-    clippy::module_inception,
-    clippy::let_unit_value,
-    clippy::redundant_pattern_matching,
-    unused_variables,
-    unused_imports
-)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use crate::store_async::{
     bootstrap::bootstrap_async_store,
     fetch::{fetch_all_events, fetch_events_since},

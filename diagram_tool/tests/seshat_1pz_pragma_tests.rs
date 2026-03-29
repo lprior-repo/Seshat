@@ -1,21 +1,12 @@
-#![allow(
-    clippy::unwrap_used,
-    clippy::panic,
-    clippy::module_inception,
-    clippy::let_unit_value,
-    clippy::redundant_pattern_matching,
-    unused_variables,
-    unused_imports
-)]
-#![allow(dead_code)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic, dead_code)]
 //! Integration tests for seshat-1pz: PRAGMA synchronous=NORMAL
 //!
-//! These tests verify that the async SQLite store correctly configures
+//! These tests verify that the async `SQLite` store correctly configures
 //! PRAGMA synchronous=NORMAL when using WAL mode.
 //!
-//! Run with: cargo test --package diagram_tool --test seshat_1pz_pragma_tests
+//! Run with: cargo test --package `diagram_tool` --test `seshat_1pz_pragma_tests`
 //!
-//! All tests follow the BDD pattern: given_X_when_Y_then_Z
+//! All tests follow the BDD pattern: `given_X_when_Y_then_Z`
 
 #![cfg(not(target_arch = "wasm32"))]
 
@@ -50,7 +41,7 @@ async fn create_test_pool_with_pragmas(
 // ============================================================================
 
 /// Given: A valid temporary database path
-/// When: create_async_pool(db_path) is called
+/// When: `create_async_pool(db_path)` is called
 /// Then: PRAGMA synchronous returns value 1 (NORMAL)
 #[tokio::test]
 async fn given_valid_path_when_create_async_pool_then_synchronous_is_normal() {
@@ -68,8 +59,8 @@ async fn given_valid_path_when_create_async_pool_then_synchronous_is_normal() {
 }
 
 /// Given: A valid temporary database path
-/// When: create_async_pool(db_path) is called
-/// Then: PRAGMA journal_mode returns "wal"
+/// When: `create_async_pool(db_path)` is called
+/// Then: PRAGMA `journal_mode` returns "wal"
 #[tokio::test]
 async fn given_wal_mode_when_pool_created_then_journal_mode_is_wal() {
     // Given & When: pool created
@@ -86,7 +77,7 @@ async fn given_wal_mode_when_pool_created_then_journal_mode_is_wal() {
 }
 
 /// Given: A valid temporary database path with pool created
-/// When: read_store_pragmas_async(pool) is called
+/// When: `read_store_pragmas_async(pool)` is called
 /// Then: All PRAGMA values are correct
 #[tokio::test]
 async fn given_pool_created_when_pragma_values_queried_then_all_are_correct() {
@@ -104,7 +95,7 @@ async fn given_pool_created_when_pragma_values_queried_then_all_are_correct() {
 }
 
 /// Given: A valid temporary database path
-/// When: bootstrap_async_store(db_path) completes
+/// When: `bootstrap_async_store(db_path)` completes
 /// Then: Schema version table exists and has version 1
 #[tokio::test]
 async fn given_bootstrap_store_when_init_complete_then_schema_version_set() {
@@ -130,8 +121,8 @@ async fn given_bootstrap_store_when_init_complete_then_schema_version_set() {
 // ============================================================================
 
 /// Given: An invalid path "/nonexistent/invalid/path.db"
-/// When: create_async_pool(invalid_path) is called
-/// Then: Returns Err(AsyncStoreError::Sqlx(_) or AsyncStoreError::Io(_))
+/// When: `create_async_pool(invalid_path)` is called
+/// Then: Returns `Err(AsyncStoreError::Sqlx`(_) or `AsyncStoreError::Io`(_))
 #[tokio::test]
 async fn given_invalid_path_when_create_async_pool_then_returns_error() {
     // Given: invalid path
@@ -143,14 +134,13 @@ async fn given_invalid_path_when_create_async_pool_then_returns_error() {
     // Then: should return error
     assert!(
         result.is_err(),
-        "Expected error for invalid path, got {:?}",
-        result
+        "Expected error for invalid path, got {result:?}"
     );
 }
 
-/// Given: A path to a file that exists but is not a valid SQLite database
-/// When: create_async_pool(path) is called
-/// Then: Returns Err(AsyncStoreError::Sqlx(_))
+/// Given: A path to a file that exists but is not a valid `SQLite` database
+/// When: `create_async_pool(path)` is called
+/// Then: Returns `Err(AsyncStoreError::Sqlx`(_))
 #[tokio::test]
 async fn given_corrupted_file_when_create_pool_then_connection_fails() {
     // Given: temp dir with invalid file
@@ -167,8 +157,7 @@ async fn given_corrupted_file_when_create_pool_then_connection_fails() {
     // Then: should return error
     assert!(
         result.is_err(),
-        "Expected error for corrupted file, got {:?}",
-        result
+        "Expected error for corrupted file, got {result:?}"
     );
 }
 
@@ -236,7 +225,7 @@ async fn given_pool_lifetime_when_pragmas_queried_multiple_times_then_values_sta
 // ============================================================================
 
 /// Given: A newly initialized async pool
-/// When: read_store_pragmas_async(pool) is called
+/// When: `read_store_pragmas_async(pool)` is called
 /// Then: synchronous field equals 1
 #[tokio::test]
 async fn given_pool_created_when_synchronous_queried_then_returns_one() {
@@ -250,8 +239,8 @@ async fn given_pool_created_when_synchronous_queried_then_returns_one() {
 }
 
 /// Given: A newly initialized async pool
-/// When: read_store_pragmas_async(pool) is called
-/// Then: journal_mode field equals "wal"
+/// When: `read_store_pragmas_async(pool)` is called
+/// Then: `journal_mode` field equals "wal"
 #[tokio::test]
 async fn given_pool_created_when_journal_mode_queried_then_returns_wal() {
     // Given & When
@@ -264,8 +253,8 @@ async fn given_pool_created_when_journal_mode_queried_then_returns_wal() {
 }
 
 /// Given: A newly initialized async pool
-/// When: read_store_pragmas_async(pool) is called
-/// Then: wal_autocheckpoint field equals 1000
+/// When: `read_store_pragmas_async(pool)` is called
+/// Then: `wal_autocheckpoint` field equals 1000
 #[tokio::test]
 async fn given_pool_created_when_wal_autocheckpoint_queried_then_returns_1000() {
     // Given & When
@@ -278,8 +267,8 @@ async fn given_pool_created_when_wal_autocheckpoint_queried_then_returns_1000() 
 }
 
 /// Given: A newly initialized async pool
-/// When: read_store_pragmas_async(pool) is called
-/// Then: foreign_keys field equals true
+/// When: `read_store_pragmas_async(pool)` is called
+/// Then: `foreign_keys` field equals true
 #[tokio::test]
 async fn given_pool_created_when_foreign_keys_queried_then_returns_true() {
     // Given & When
@@ -292,8 +281,8 @@ async fn given_pool_created_when_foreign_keys_queried_then_returns_true() {
 }
 
 /// Given: A newly initialized async pool
-/// When: read_store_pragmas_async(pool) is called
-/// Then: busy_timeout field equals 5000
+/// When: `read_store_pragmas_async(pool)` is called
+/// Then: `busy_timeout` field equals 5000
 #[tokio::test]
 async fn given_pool_created_when_busy_timeout_queried_then_returns_5000() {
     // Given & When
@@ -336,8 +325,8 @@ async fn given_full_synchronous_pragma_when_read_then_returns_two() {
 }
 
 /// Given: An invalid path that cannot be accessed
-/// When: create_async_pool(invalid_path) is called
-/// Then: Returns Err(AsyncStoreError::Io(_) or AsyncStoreError::Sqlx(_))
+/// When: `create_async_pool(invalid_path)` is called
+/// Then: Returns `Err(AsyncStoreError::Io`(_) or `AsyncStoreError::Sqlx`(_))
 #[tokio::test]
 async fn given_invalid_database_path_when_pool_created_then_returns_io_error() {
     // Given: invalid path with no parent permissions
@@ -385,7 +374,7 @@ async fn given_wal_mode_when_data_written_then_data_committed() {
 }
 
 /// Given: A pool with data written but not checkpointed
-/// When: PRAGMA wal_checkpoint(TRUNCATE) is executed
+/// When: PRAGMA `wal_checkpoint(TRUNCATE)` is executed
 /// Then: Checkpoint succeeds and data is persisted to main database
 #[tokio::test]
 async fn given_data_in_wal_when_checkpoint_forced_then_data_persisted() {
@@ -467,7 +456,7 @@ async fn given_pool_with_data_when_reopened_then_data_recovered() {
 // ============================================================================
 
 /// This test verifies that the async store uses synchronous=NORMAL
-/// which matches what the sync store (store_sqlx.rs) should also use.
+/// which matches what the sync store (`store_sqlx.rs`) should also use.
 #[tokio::test]
 async fn given_async_store_configuration_should_match_sync_store_contract() {
     // Given: async store configured

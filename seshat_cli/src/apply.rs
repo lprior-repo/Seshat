@@ -76,7 +76,7 @@ pub fn execute_apply(
         use crate::diff::build_rich_diff;
 
         let human_nodes = document.document.nodes.clone();
-        let human_edges = document.document.edges.clone();
+        let human_edges = document.document.edges;
 
         let ai_nodes = proposal
             .get("document")
@@ -87,16 +87,12 @@ pub fn execute_apply(
             .and_then(|d| d.get("edges"))
             .and_then(|e| e.as_object());
 
-        let human_nodes_json = match serde_json::to_value(&human_nodes) {
-            Ok(v) => v,
-            Err(_) => serde_json::json!({}),
-        };
+        let human_nodes_json =
+            serde_json::to_value(&human_nodes).unwrap_or_else(|_| serde_json::json!({}));
         let human_nodes_obj = human_nodes_json.as_object();
 
-        let human_edges_json = match serde_json::to_value(&human_edges) {
-            Ok(v) => v,
-            Err(_) => serde_json::json!({}),
-        };
+        let human_edges_json =
+            serde_json::to_value(&human_edges).unwrap_or_else(|_| serde_json::json!({}));
         let human_edges_obj = human_edges_json.as_object();
 
         let rich_diff = build_rich_diff(
@@ -108,13 +104,12 @@ pub fn execute_apply(
             ai_edges,
         );
 
-        match serde_json::to_value(rich_diff) {
-            Ok(v) => v,
-            Err(_) => serde_json::json!({
+        serde_json::to_value(rich_diff).unwrap_or_else(|_| {
+            serde_json::json!({
                 "status": "rejected",
                 "reason": "Human Priority Block"
-            }),
-        }
+            })
+        })
     };
 
     let result_json = serde_json::to_string_pretty(&result)

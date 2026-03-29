@@ -39,14 +39,14 @@ pub fn read_cargo_toml() -> Phase1Result<String> {
 }
 
 pub fn has_dependency(content: &str, dep_name: &str) -> bool {
-    let dep_pattern = format!("{} ", dep_name);
-    let dep_pattern_equals = format!("{}=", dep_name);
+    let dep_pattern = format!("{dep_name} ");
+    let dep_pattern_equals = format!("{dep_name}=");
 
     content.contains(&dep_pattern) || content.contains(&dep_pattern_equals)
 }
 
 pub fn has_feature(content: &str, package: &str, feature: &str) -> bool {
-    let dep_pattern = format!("{} = {{", package);
+    let dep_pattern = format!("{package} = {{");
     if let Some(start) = content.find(&dep_pattern) {
         let rest = &content[start..];
         if let Some(block_start) = rest.find('{') {

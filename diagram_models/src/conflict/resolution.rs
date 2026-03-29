@@ -2,9 +2,9 @@
 #![allow(dead_code)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use super::{ConflictDecision, ConflictError, ProjectionState};
@@ -90,15 +90,13 @@ pub fn evaluate_human_priority_with_projection(
         match &op.operation {
             DomainOp::NodeMove { id, .. }
             | DomainOp::NodeDelete { id }
-            | DomainOp::NodeRestore { id } => {
-                if !projection.has_node(id) {
-                    return Err(ConflictError::MissingEntity(format!("node:{}", id)));
-                }
+            | DomainOp::NodeRestore { id }
+                if !projection.has_node(id) =>
+            {
+                return Err(ConflictError::MissingEntity(format!("node:{}", id)));
             }
-            DomainOp::EdgeDisconnect { id } => {
-                if !projection.has_edge(id) {
-                    return Err(ConflictError::MissingEntity(format!("edge:{}", id)));
-                }
+            DomainOp::EdgeDisconnect { id } if !projection.has_edge(id) => {
+                return Err(ConflictError::MissingEntity(format!("edge:{}", id)));
             }
             DomainOp::EdgeConnect { source, target, .. } => {
                 if !projection.has_node(source) {

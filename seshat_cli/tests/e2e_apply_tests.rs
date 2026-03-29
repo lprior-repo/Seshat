@@ -1,3 +1,4 @@
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use assert_cmd::Command;
 use diagram_models::document::DiagramDocument;
 use std::io::Write;

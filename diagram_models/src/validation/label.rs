@@ -3,9 +3,9 @@
 //! This module provides a single canonical source of truth for label validation
 //! across the entire codebase.
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 /// Maximum allowed length for labels (node and edge).

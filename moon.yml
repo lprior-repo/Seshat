@@ -15,12 +15,12 @@ tasks:
 
   check:
     script: |
-      /usr/bin/cargo check
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo check
 
   test-rust:
     script: |
-      /usr/bin/cargo test --workspace --exclude seshat_cli
-      /usr/bin/cargo test -p seshat_cli
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo test --workspace --exclude seshat_cli
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo test -p seshat_cli
 
   test:
     script: |
@@ -77,11 +77,11 @@ tasks:
 
   clippy:
     script: |
-      /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo clippy -- -D warnings -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic
 
   clippy-source:
     script: |
-      /usr/bin/cargo clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -F unsafe_code
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo clippy --all-targets --all-features -- -D warnings -D clippy::pedantic -D clippy::nursery -D clippy::unwrap_used -D clippy::expect_used -D clippy::panic -F unsafe_code
 
   arch-audit:
     script: |
@@ -98,7 +98,7 @@ tasks:
 
   fmt:
     script: |
-      /usr/bin/cargo fmt --check
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo fmt --check
 
   build-web:
     script: |

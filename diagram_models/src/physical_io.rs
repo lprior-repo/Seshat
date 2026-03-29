@@ -120,10 +120,8 @@ fn check_depth(value: &Value, depth: usize) -> Result<(), Error> {
                 check_depth(val, depth + 1)?;
             }
         }
-        Value::Number(num) => {
-            if num.as_f64().is_some_and(|f| !f.is_finite()) {
-                return Err(Error::SerializationFailed("Non-finite float".into()));
-            }
+        Value::Number(num) if num.as_f64().is_some_and(|f| !f.is_finite()) => {
+            return Err(Error::SerializationFailed("Non-finite float".into()));
         }
         _ => {}
     }

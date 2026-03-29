@@ -1,7 +1,7 @@
 #![cfg_attr(test, allow(warnings))]
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![allow(
     clippy::assigning_clones,
     clippy::branches_sharing_code,

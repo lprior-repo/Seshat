@@ -4,9 +4,9 @@
 //! It is split into submodules for better organization and to maintain
 //! the 300-line limit per file requirement.
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 pub mod append;
@@ -18,8 +18,10 @@ pub mod revision;
 pub mod types;
 
 #[cfg(test)]
+#[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 pub mod fetch_tests;
 #[cfg(test)]
+#[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 pub mod parse_tests;
 
 // Re-export for backward compatibility

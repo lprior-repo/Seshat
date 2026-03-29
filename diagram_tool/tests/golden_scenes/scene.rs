@@ -25,9 +25,9 @@ impl Scene {
             .join("tests/fixtures")
             .join(name);
         let content = fs::read_to_string(&path)
-            .unwrap_or_else(|e| panic!("Failed to read fixture '{}': {}", name, e));
+            .unwrap_or_else(|e| panic!("Failed to read fixture '{name}': {e}"));
         let doc: Value = serde_json::from_str(&content)
-            .unwrap_or_else(|e| panic!("Failed to parse fixture '{}': {}", name, e));
+            .unwrap_or_else(|e| panic!("Failed to parse fixture '{name}': {e}"));
 
         // Boundary validation: ensure core structures exist
         assert!(doc.get("document").is_some(), "Missing document field");
@@ -62,13 +62,13 @@ impl Scene {
     pub fn node(&self, id: &str) -> &Value {
         self.nodes()
             .get(id)
-            .unwrap_or_else(|| panic!("Missing node {}", id))
+            .unwrap_or_else(|| panic!("Missing node {id}"))
     }
 
     pub fn edge(&self, id: &str) -> &Value {
         self.edges()
             .get(id)
-            .unwrap_or_else(|| panic!("Missing edge {}", id))
+            .unwrap_or_else(|| panic!("Missing edge {id}"))
     }
 
     pub fn assert_unique_ids(&self) {

@@ -36,7 +36,7 @@ where
         },
         (),
     );
-    let _ = vdom.rebuild_in_place();
+    let () = vdom.rebuild_in_place();
 }
 
 struct MockMouseData {

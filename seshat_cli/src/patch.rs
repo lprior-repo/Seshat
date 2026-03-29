@@ -137,13 +137,12 @@ pub fn execute_patch(
             ai_edges.as_ref(),
         );
 
-        let diff_val = match serde_json::to_value(rich_diff) {
-            Ok(v) => v,
-            Err(_) => serde_json::json!({
+        let diff_val = serde_json::to_value(rich_diff).unwrap_or_else(|_| {
+            serde_json::json!({
                 "status": "rejected",
                 "reason": "Human Priority Block"
-            }),
-        };
+            })
+        });
         let doc_str = match serde_json::to_string(&diff_val) {
             Ok(s) => s,
             Err(e) => return Err(PatchError::SerializationFailure(e.to_string())),
@@ -225,7 +224,7 @@ mod tests {
     #[test]
     fn map_patch_subcommand_no_input_output() {
         let patch = PathBuf::from("/tmp/patch.json");
-        let cmd = map_patch_subcommand(None, patch.clone(), None);
+        let cmd = map_patch_subcommand(None, patch, None);
         assert_eq!(cmd.input, PatchSource::Stdin);
         assert_eq!(cmd.output, PatchTarget::Stdout);
     }

@@ -4,9 +4,9 @@
 //! This module contains tests for JSON string serialization of DiagramDocument.
 //! Focus strictly on string serialization - no file system operations.
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use crate::document::{

@@ -1,5 +1,4 @@
-#![allow(dead_code)]
-#![allow(clippy::io_other_error, clippy::unnecessary_cast)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, dead_code)]
 #![cfg(not(target_arch = "wasm32"))]
 
 mod phase1;
@@ -88,8 +87,7 @@ async fn test_async_bootstrap() -> Phase1Result<()> {
         .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if revision != 0 {
         return Err(Phase1Error::Store(format!(
-            "Expected initial revision 0, got {}",
-            revision
+            "Expected initial revision 0, got {revision}"
         )));
     }
 
@@ -165,8 +163,7 @@ async fn test_async_append() -> Phase1Result<()> {
         .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if latest_revision != 1 {
         return Err(Phase1Error::Store(format!(
-            "Expected latest revision 1, got {}",
-            latest_revision
+            "Expected latest revision 1, got {latest_revision}"
         )));
     }
 
@@ -182,14 +179,14 @@ async fn test_async_append_increments_revision() -> Phase1Result<()> {
     // Precondition: ceiling is 3
     for i in 1..=3 {
         let envelope = EventEnvelope {
-            op_id: format!("test-op-{}", i),
+            op_id: format!("test-op-{i}"),
             operation: DomainOp::NodeAdd {
-                id: NodeId::new(format!("node-{}", i)),
-                x: 10.0 + (i as f64) * 10.0,
+                id: NodeId::new(format!("node-{i}")),
+                x: (i as f64).mul_add(10.0, 10.0),
                 y: 20.0,
                 width: 100.0,
                 height: 50.0,
-                label: format!("Test Node {}", i),
+                label: format!("Test Node {i}"),
             },
             author: Author {
                 id: "user-1".into(),
@@ -218,8 +215,7 @@ async fn test_async_append_increments_revision() -> Phase1Result<()> {
         .map_err(|e| Phase1Error::AsyncStore(e.to_string()))?;
     if latest_revision != 3 {
         return Err(Phase1Error::Store(format!(
-            "Expected final revision 3, got {}",
-            latest_revision
+            "Expected final revision 3, got {latest_revision}"
         )));
     }
 

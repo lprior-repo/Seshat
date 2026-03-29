@@ -3,9 +3,9 @@
 //! Consolidated test helpers for creating nodes, edges, and documents in tests.
 //! This module provides a fluent builder pattern for test data construction.
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![allow(dead_code)]
 #![allow(clippy::pedantic)]
 

@@ -1,12 +1,4 @@
-#![allow(
-    clippy::unwrap_used,
-    clippy::panic,
-    clippy::module_inception,
-    clippy::let_unit_value,
-    clippy::redundant_pattern_matching,
-    unused_variables,
-    unused_imports
-)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 #[cfg(test)]
 mod tests {
     use crate::interaction_reducer::commit::{commit_inline_edit, CommitError, LabelEditError};
@@ -81,7 +73,7 @@ mod tests {
             ));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -106,7 +98,7 @@ mod tests {
             ));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -121,7 +113,7 @@ mod tests {
             assert!(matches!(result, Ok(false)));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -139,12 +131,12 @@ mod tests {
             let history = Signal::new(History::new());
             let edit_value = Signal::new("New Label".to_string());
 
-            let result = commit_inline_edit(doc, history, Some(n1.clone()), None, edit_value, None);
+            let result = commit_inline_edit(doc, history, Some(n1), None, edit_value, None);
 
             assert!(matches!(result, Ok(true)));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -166,12 +158,12 @@ mod tests {
             let history = Signal::new(History::new());
             let edit_value = Signal::new("New Label".to_string());
 
-            let result = commit_inline_edit(doc, history, None, Some(e1.clone()), edit_value, None);
+            let result = commit_inline_edit(doc, history, None, Some(e1), edit_value, None);
 
             assert!(matches!(result, Ok(true)));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -188,12 +180,12 @@ mod tests {
             let history = Signal::new(History::new());
             let edit_value = Signal::new("Same Label".to_string());
 
-            let result = commit_inline_edit(doc, history, Some(n1.clone()), None, edit_value, None);
+            let result = commit_inline_edit(doc, history, Some(n1), None, edit_value, None);
 
             assert!(matches!(result, Ok(false)));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -214,7 +206,7 @@ mod tests {
             let history = Signal::new(History::new());
             let edit_value = Signal::new("a".repeat(1001));
 
-            let result = commit_inline_edit(doc, history, None, Some(e1.clone()), edit_value, None);
+            let result = commit_inline_edit(doc, history, None, Some(e1), edit_value, None);
 
             assert!(matches!(
                 result,
@@ -222,7 +214,7 @@ mod tests {
             ));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     use crate::interaction_reducer::commit::{

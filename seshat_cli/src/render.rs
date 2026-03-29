@@ -11,6 +11,11 @@ pub fn map_render_subcommand(input: Option<PathBuf>, output: PathBuf) -> RenderC
     }
 }
 
+/// Renders a document to SVG output.
+///
+/// # Errors
+///
+/// Returns `RenderError` if file not found, I/O fails, or rendering fails.
 pub fn execute_render<R: Read>(cmd: &RenderCommand, mut stdin: R) -> Result<(), RenderError> {
     // 1. Read document
     let doc = match &cmd.input {
@@ -48,7 +53,7 @@ pub fn execute_render<R: Read>(cmd: &RenderCommand, mut stdin: R) -> Result<(), 
         .output
         .extension()
         .and_then(|e| e.to_str())
-        .map(|s| s.to_lowercase())
+        .map(str::to_lowercase)
         .unwrap_or_default();
 
     match ext.as_str() {

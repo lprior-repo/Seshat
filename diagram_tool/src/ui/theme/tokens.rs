@@ -1,7 +1,7 @@
 #[cfg(test)]
 const TOKEN_FIELD_COUNT: usize = 26;
 
-pub(crate) struct ThemeTokens {
+pub struct ThemeTokens {
     pub(crate) bg_base: &'static str,
     pub(crate) bg_surface: &'static str,
     pub(crate) bg_elevated: &'static str,

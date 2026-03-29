@@ -36,19 +36,13 @@ fn given_app_state_when_rendering_toolbar_then_nodes_and_edges_counts_are_displa
     let html = dioxus_ssr::render(&vdom);
     assert!(
         html.contains("5 nodes"),
-        "Expected '5 nodes' in html: {}",
-        html
+        "Expected '5 nodes' in html: {html}"
     );
     assert!(
         html.contains("3 edges"),
-        "Expected '3 edges' in html: {}",
-        html
+        "Expected '3 edges' in html: {html}"
     );
-    assert!(
-        html.contains("Rev 42"),
-        "Expected 'Rev 42' in html: {}",
-        html
-    );
+    assert!(html.contains("Rev 42"), "Expected 'Rev 42' in html: {html}");
 }
 
 #[test]

@@ -74,7 +74,7 @@ mod tests {
     #[test]
     fn given_duplicate_op_id_with_conflict_when_appending_then_returns_duplicate_with_conflict() {
         assert!(matches!(
-            AsyncStoreError::DuplicateWithConflict("".into()),
+            AsyncStoreError::DuplicateWithConflict(String::new()),
             AsyncStoreError::DuplicateWithConflict(_)
         ));
     }

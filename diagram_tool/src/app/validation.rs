@@ -117,7 +117,7 @@ mod tests {
         Edge {
             source: NodeId::new(source.to_string()),
             target: NodeId::new(target.to_string()),
-            label: "".to_string(),
+            label: String::new(),
             style: Default::default(),
             arrow_type: Default::default(),
             label_offset_t: OrderedFloat(0.5),
@@ -149,7 +149,7 @@ mod tests {
             .insert(EdgeId::new("e1".to_string()), create_test_edge("n1", "n2"));
 
         let issues = collect_validation_issues(&doc);
-        assert!(issues.is_empty(), "Expected no issues, got: {:?}", issues);
+        assert!(issues.is_empty(), "Expected no issues, got: {issues:?}");
     }
 
     #[test]

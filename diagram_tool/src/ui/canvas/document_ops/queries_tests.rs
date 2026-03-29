@@ -40,7 +40,7 @@ fn test_initials() {
 
 #[test]
 fn test_icon_tags() {
-    assert_eq!(icon_tags(""), vec!["".to_string()]);
+    assert_eq!(icon_tags(""), vec![String::new()]);
     assert_eq!(icon_tags("aws"), vec!["aws".to_string()]);
     assert_eq!(
         icon_tags("aws/compute/ec2"),
@@ -83,7 +83,7 @@ fn test_ordered_node_ids() {
     );
 
     let ordered = ordered_node_ids(&doc);
-    assert_eq!(ordered, vec![sub1.clone(), n1.clone(), n2.clone()]);
+    assert_eq!(ordered, vec![sub1, n1, n2]);
 }
 
 #[test]
@@ -105,7 +105,7 @@ fn test_find_node_at_hit_margin() {
     assert_eq!(find_node_at(&doc, 4.0, 4.0), None);
 
     // Bottom-right within margin (down to 115.0)
-    assert_eq!(find_node_at(&doc, 112.0, 112.0), Some(n1.clone()));
+    assert_eq!(find_node_at(&doc, 112.0, 112.0), Some(n1));
     assert_eq!(find_node_at(&doc, 116.0, 116.0), None);
 }
 
@@ -118,7 +118,7 @@ fn test_find_node_at_z_order() {
     let n2 = NodeId::new("n2".to_string());
 
     doc.document.nodes.insert(
-        n1.clone(),
+        n1,
         NodeBuilder::new(10.0, 10.0, 100.0, 100.0)
             .with_z_index(1)
             .build(),
@@ -131,7 +131,7 @@ fn test_find_node_at_z_order() {
     );
 
     // Should return node with higher z-index (n2)
-    assert_eq!(find_node_at(&doc, 50.0, 50.0), Some(n2.clone()));
+    assert_eq!(find_node_at(&doc, 50.0, 50.0), Some(n2));
 }
 
 #[test]
@@ -157,11 +157,11 @@ fn test_edge_preserves_dag() {
         .insert(EdgeId::new("e1".to_string()), edge1);
 
     // Valid edge (n2 -> n3)
-    let edge2 = EdgeBuilder::new(n2.clone(), n3.clone()).build();
+    let edge2 = EdgeBuilder::new(n2.clone(), n3).build();
     assert!(edge_preserves_dag(&doc, &edge2));
 
     // Cycle edge (n2 -> n1)
-    let cycle_edge = EdgeBuilder::new(n2.clone(), n1.clone()).build();
+    let cycle_edge = EdgeBuilder::new(n2, n1).build();
     assert!(!edge_preserves_dag(&doc, &cycle_edge));
 }
 

@@ -22,7 +22,7 @@ mod tests {
             Node {
                 kind: NodeKind::Node,
                 icon: String::new(),
-                label: format!("Node {}", id),
+                label: format!("Node {id}"),
                 x: OrderedFloat(x),
                 y: OrderedFloat(y),
                 width: OrderedFloat(100.0),

@@ -23,7 +23,7 @@ mod tests {
             assert_eq!(clipboard_signal.read().as_ref().unwrap().nodes.len(), 1);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -60,7 +60,7 @@ mod tests {
             assert_eq!(new_node.y.0, 20.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -81,6 +81,6 @@ mod tests {
             assert_eq!(doc_read.document.nodes.len(), 2);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

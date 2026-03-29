@@ -1,6 +1,6 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use diagram_models::validation::ValidationIssue;
@@ -48,7 +48,7 @@ mod tests {
         let issue = ValidationIssue {
             severity: ValidationSeverity::Error,
             code: ValidationCode("VAL-001".into()),
-            message: "".into(),
+            message: String::new(),
             subject: None,
             fix_hint: None,
         };

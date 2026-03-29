@@ -1,4 +1,13 @@
-#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::expect_used, clippy::panic, clippy::unwrap_used, clippy::similar_names, clippy::redundant_clone)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::expect_used,
+    clippy::panic,
+    clippy::unwrap_used,
+    clippy::similar_names,
+    clippy::redundant_clone
+)]
 use diagram_models::document::LockState;
 use diagram_models::document::Node;
 use diagram_models::document::NodeKind;

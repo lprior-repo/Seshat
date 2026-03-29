@@ -1,3 +1,4 @@
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use rstest::rstest;
 use seshat_cli::domain::{PatchCommand, PatchSource, PatchTarget};
 use seshat_cli::error::PatchError;

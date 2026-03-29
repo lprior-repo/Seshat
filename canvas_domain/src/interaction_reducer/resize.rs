@@ -1,6 +1,6 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use dioxus::prelude::*;
@@ -74,6 +74,6 @@ mod tests {
             assert!(matches!(mode.read().clone(), InteractionMode::Select));
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

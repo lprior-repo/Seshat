@@ -6,9 +6,9 @@
 //! Contract: seshat-ni4
 //! Tests: HP-01, EP-01a, EP-01b
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 
 use boon::{Compiler, Schemas};
 use serde_json::{json, Value};

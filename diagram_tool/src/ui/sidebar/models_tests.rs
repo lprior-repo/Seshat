@@ -66,7 +66,7 @@ fn create_test_index(categories: &[(&str, usize)]) -> crate::icons::IconIndex {
 
     for (cat_name, count) in categories {
         for i in 0..*count {
-            let icon_key = format!("{}/{}/{}", provider_name, cat_name, i);
+            let icon_key = format!("{provider_name}/{cat_name}/{i}");
             provider_keys.push(icon_key.clone());
 
             let icon = IconMeta {

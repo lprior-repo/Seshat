@@ -116,7 +116,7 @@ fn given_atomic_save_when_complete_then_no_temp_files_remain() {
 
     let entries: Vec<_> = std::fs::read_dir(temp_dir.path())
         .expect("Failed to read temp directory")
-        .filter_map(|r| r.ok())
+        .filter_map(std::result::Result::ok)
         .collect();
 
     let has_temp_files = entries
@@ -141,8 +141,7 @@ fn given_simple_filename_when_validated_then_allowed() {
 
     assert!(
         result.is_ok(),
-        "Simple filename should be allowed: {:?}",
-        result
+        "Simple filename should be allowed: {result:?}"
     );
 }
 
@@ -201,8 +200,7 @@ fn given_valid_subpath_when_validated_then_allowed() {
 
     assert!(
         result.is_ok(),
-        "Valid subdirectory path should be allowed: {:?}",
-        result
+        "Valid subdirectory path should be allowed: {result:?}"
     );
 }
 

@@ -378,8 +378,8 @@ fn test_precondition_canvas_point_requires_finite_coordinates() {
         let result_y = CanvasPoint::new(0.0, value);
 
         // Then: All return Err(CoordinateOutOfBounds)
-        assert!(result_x.is_err(), "Expected error for x={}", value);
-        assert!(result_y.is_err(), "Expected error for y={}", value);
+        assert!(result_x.is_err(), "Expected error for x={value}");
+        assert!(result_y.is_err(), "Expected error for y={value}");
     }
 }
 
@@ -394,8 +394,8 @@ fn test_precondition_canvas_vector_requires_finite_coordinates() {
         let result_dy = CanvasVector::new(0.0, value);
 
         // Then: All return Err(CoordinateOutOfBounds)
-        assert!(result_dx.is_err(), "Expected error for dx={}", value);
-        assert!(result_dy.is_err(), "Expected error for dy={}", value);
+        assert!(result_dx.is_err(), "Expected error for dx={value}");
+        assert!(result_dy.is_err(), "Expected error for dy={value}");
     }
 }
 
@@ -435,12 +435,7 @@ fn test_invariant_no_non_finite_states() {
         let event = CanvasEvent::MouseMove { point };
         let result = transition(InteractionState::Idle, event);
 
-        assert!(
-            result.is_ok(),
-            "Transition should succeed for ({}, {})",
-            x,
-            y
-        );
+        assert!(result.is_ok(), "Transition should succeed for ({x}, {y})");
         let new_state = result.unwrap();
 
         // Verify no state contains non-finite coordinates

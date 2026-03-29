@@ -52,8 +52,8 @@ fn create_test_doc() -> DiagramDocument {
     let n1 = create_test_node("Node 1");
     let n2 = create_test_node("Node 2");
 
-    doc.document.nodes.insert(node1.clone(), n1);
-    doc.document.nodes.insert(node2.clone(), n2);
+    doc.document.nodes.insert(node1, n1);
+    doc.document.nodes.insert(node2, n2);
     doc
 }
 

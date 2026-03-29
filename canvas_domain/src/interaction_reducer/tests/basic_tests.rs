@@ -1,12 +1,4 @@
-#![allow(
-    clippy::unwrap_used,
-    clippy::panic,
-    clippy::module_inception,
-    clippy::let_unit_value,
-    clippy::redundant_pattern_matching,
-    unused_variables,
-    unused_imports
-)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use super::super::{finalize_motion_release, resize_target_ids, InteractionMode, ResizeHandle};
 use diagram_models::document::{
     DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,

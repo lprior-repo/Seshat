@@ -13,9 +13,9 @@
 //! - **P6**: Test database path is unique per test (Debug-only assert)
 //! - **P7**: Browser is available for E2E tests (Runtime Result)
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![allow(dead_code)]
 #![allow(clippy::pedantic)]
 #![allow(clippy::nursery)]

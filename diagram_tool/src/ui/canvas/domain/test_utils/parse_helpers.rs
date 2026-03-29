@@ -1,20 +1,20 @@
 //! Test helpers for parse/event tests
-#![allow(clippy::unwrap_used)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use crate::ui::canvas::domain::{
     CanvasEvent, CanvasPoint, CanvasVector, InteractionState, RawEvent, SelectionMode,
 };
 
-/// Helper to create a valid CanvasPoint
+/// Helper to create a valid `CanvasPoint`
 pub fn pt() -> CanvasPoint {
     CanvasPoint::new(0.0, 0.0).unwrap()
 }
 
-/// Helper to create a valid CanvasVector
+/// Helper to create a valid `CanvasVector`
 pub fn vec() -> CanvasVector {
     CanvasVector::new(0.0, 0.0).unwrap()
 }
 
-/// Helper to create a DragState for testing
+/// Helper to create a `DragState` for testing
 pub fn drag_state(start: CanvasPoint) -> crate::ui::canvas::domain::DragState {
     crate::ui::canvas::domain::DragState {
         start,
@@ -23,7 +23,7 @@ pub fn drag_state(start: CanvasPoint) -> crate::ui::canvas::domain::DragState {
     }
 }
 
-/// Helper to create a RawEvent with given coordinates
+/// Helper to create a `RawEvent` with given coordinates
 pub fn raw_event(x: f64, y: f64, event_type: &str) -> RawEvent {
     RawEvent {
         event_type: event_type.into(),
@@ -35,7 +35,7 @@ pub fn raw_event(x: f64, y: f64, event_type: &str) -> RawEvent {
     }
 }
 
-/// Helper to create a RawEvent with coordinates and delta
+/// Helper to create a `RawEvent` with coordinates and delta
 pub fn raw_event_with_delta(
     x: f64,
     y: f64,
@@ -54,7 +54,7 @@ pub fn raw_event_with_delta(
     }
 }
 
-/// Returns all CanvasEvent variants for exhaustive testing
+/// Returns all `CanvasEvent` variants for exhaustive testing
 pub fn all_events() -> Vec<CanvasEvent> {
     let p = pt();
     let v = vec();

@@ -1,6 +1,6 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use std::collections::HashMap;
@@ -12,7 +12,7 @@ mod tests {
     fn make_proposal(n: usize) -> PendingProposal {
         PendingProposal {
             change_count: n,
-            summary: format!("{} changes", n),
+            summary: format!("{n} changes"),
         }
     }
 
@@ -169,11 +169,11 @@ impl GhostDiffState {
         indices
     }
 
-    pub fn receive_proposal(&mut self, proposal: PendingProposal) -> Result<(), GhostDiffError> {
+    pub fn receive_proposal(&mut self, _proposal: PendingProposal) -> Result<(), GhostDiffError> {
         todo!()
     }
 
-    pub fn toggle_change(&mut self, index: usize) -> Result<(), GhostDiffError> {
+    pub fn toggle_change(&mut self, _index: usize) -> Result<(), GhostDiffError> {
         todo!()
     }
 
@@ -197,6 +197,7 @@ impl Default for GhostDiffState {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, unused_variables)]
 mod contract_tests {
     use super::*;
     use proptest::prelude::*;
@@ -212,7 +213,7 @@ mod contract_tests {
     fn make_proposal(n: usize) -> PendingProposal {
         PendingProposal {
             change_count: n,
-            summary: format!("{} changes", n),
+            summary: format!("{n} changes"),
         }
     }
 
@@ -830,7 +831,7 @@ mod fuzz_simulation {
     fn make_proposal(n: usize) -> PendingProposal {
         PendingProposal {
             change_count: n,
-            summary: format!("{} changes", n),
+            summary: format!("{n} changes"),
         }
     }
 

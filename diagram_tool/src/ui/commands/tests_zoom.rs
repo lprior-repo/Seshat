@@ -18,7 +18,7 @@ mod tests {
             assert_eq!(doc_signal.read().editor_state.zoom.0, 1.25);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -34,7 +34,7 @@ mod tests {
             assert_eq!(doc_signal.read().editor_state.zoom.0, 0.8);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -50,7 +50,7 @@ mod tests {
             assert_eq!(doc_signal.read().editor_state.zoom.0, 1.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -69,7 +69,7 @@ mod tests {
             assert_eq!(doc_signal.read().editor_state.zoom.0, 1.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -80,7 +80,7 @@ mod tests {
 
             let doc_signal = Signal::new(doc2);
             let mut history = History::new();
-            history = history.push(doc1.clone());
+            history = history.push(doc1);
             let history_signal = Signal::new(history);
 
             apply_undo(doc_signal, history_signal);
@@ -90,6 +90,6 @@ mod tests {
             assert_eq!(doc_signal.read().editor_state.zoom.0, 1.25);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

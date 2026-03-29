@@ -1,3 +1,4 @@
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use diagram_models::document::DiagramDocument;
 use seshat_cli::apply::{execute_apply, map_apply_subcommand};
 use seshat_cli::domain::{ApplyCommand, ApplySource};

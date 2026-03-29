@@ -82,12 +82,8 @@ fn setup_document() -> DiagramDocument {
 
     let mut edges = HashMap::new();
     edges.insert(
-        edge_id.clone(),
-        create_test_edge(
-            node_a_id.clone(),
-            node_b_id.clone(),
-            vec![(100.0, 50.0), (100.0, 200.0)],
-        ),
+        edge_id,
+        create_test_edge(node_a_id, node_b_id, vec![(100.0, 50.0), (100.0, 200.0)]),
     );
 
     DiagramDocument {
@@ -118,7 +114,7 @@ fn test_integration_marquee_selection_to_drag_and_drop() {
     assert!(selected_nodes.contains("node_b"));
 
     // Set selection in editor state
-    doc.editor_state.selected_items = selected_nodes.clone();
+    doc.editor_state.selected_items = selected_nodes;
 
     // Auto-select edges between selected nodes
     let final_selection = with_auto_selected_edges(&doc, &doc.editor_state.selected_items);

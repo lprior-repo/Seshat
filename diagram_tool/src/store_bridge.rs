@@ -1,6 +1,6 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use std::path::Path;
@@ -193,7 +193,7 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
-        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
+        let envelope = make_test_envelope("test-op-1", "node-1", 1_700_000_000);
 
         let result = bridge
             .append_event_sync(&envelope, None)
@@ -209,7 +209,7 @@ mod tests {
         let db_path = temp_dir.path().join("test.db");
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
-        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
+        let envelope = make_test_envelope("test-op-1", "node-1", 1_700_000_000);
 
         bridge
             .append_event_sync(&envelope, None)
@@ -232,8 +232,8 @@ mod tests {
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
 
-        let envelope1 = make_test_envelope("test-op-1", "node-1", 1700000001);
-        let envelope2 = make_test_envelope("test-op-2", "node-2", 1700000002);
+        let envelope1 = make_test_envelope("test-op-1", "node-1", 1_700_000_001);
+        let envelope2 = make_test_envelope("test-op-2", "node-2", 1_700_000_002);
 
         let result = bridge
             .append_batch_sync(&[envelope1, envelope2], None)
@@ -253,7 +253,7 @@ mod tests {
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
 
-        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
+        let envelope = make_test_envelope("test-op-1", "node-1", 1_700_000_000);
 
         let result1 = bridge
             .append_idempotent_sync(envelope.clone())
@@ -275,7 +275,7 @@ mod tests {
 
         let bridge = StoreBridge::spawn_async_pool(&db_path).expect("Failed to spawn bridge");
 
-        let envelope = make_test_envelope("test-op-1", "node-1", 1700000000);
+        let envelope = make_test_envelope("test-op-1", "node-1", 1_700_000_000);
         bridge
             .append_event_sync(&envelope, None)
             .expect("Failed to append");

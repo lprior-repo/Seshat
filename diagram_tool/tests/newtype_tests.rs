@@ -7,7 +7,7 @@
     unused_variables,
     unused_imports
 )]
-//! Tests for AuthorId and Timestamp newtypes
+//! Tests for `AuthorId` and Timestamp newtypes
 
 use diagram_models::document::{AuthorId, NodeId};
 

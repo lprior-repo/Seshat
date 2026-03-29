@@ -1,12 +1,4 @@
-#![allow(
-    clippy::unwrap_used,
-    clippy::panic,
-    clippy::module_inception,
-    clippy::let_unit_value,
-    clippy::redundant_pattern_matching,
-    unused_variables,
-    unused_imports
-)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use crate::store_async::{
     parse::{
         envelope_batch_to_bounded_batch, envelope_to_valid_event, parse_bounded_batch,
@@ -39,7 +31,7 @@ fn test_parse_valid_event_success() -> Result<(), Box<dyn std::error::Error>> {
     let timestamp = 1600000000;
     let payload = r#"{"test":true}"#.to_string();
 
-    let event = parse_valid_event(op_id.clone(), timestamp, payload.clone())?;
+    let event = parse_valid_event(op_id, timestamp, payload)?;
     assert_eq!(event.op_id.as_str(), "valid-id");
     assert_eq!(event.timestamp.get(), 1600000000);
     assert_eq!(event.payload.as_str(), r#"{"test":true}"#);
@@ -48,7 +40,7 @@ fn test_parse_valid_event_success() -> Result<(), Box<dyn std::error::Error>> {
 
 #[test]
 fn test_parse_valid_event_invalid_op_id() {
-    let result = parse_valid_event("".to_string(), 1600000000, "{}".to_string());
+    let result = parse_valid_event(String::new(), 1600000000, "{}".to_string());
     assert!(matches!(result, Err(AsyncStoreError::InvalidOperationId)));
 
     let long_id = "a".repeat(256);
@@ -111,7 +103,7 @@ fn test_bounded_batch_limits() {
     assert!(matches!(result, Err(AsyncStoreError::BatchTooLarge)));
 
     // Test happy path
-    let just_right = vec![envelope.clone()];
+    let just_right = vec![envelope];
     let result = envelope_batch_to_bounded_batch::<1, 10>(&just_right);
     assert!(result.is_ok());
 }

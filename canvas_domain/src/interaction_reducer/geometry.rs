@@ -1,6 +1,6 @@
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use std::collections::HashSet;
@@ -11,6 +11,7 @@ pub use canvas_math::{safe_zoom, within};
 use crate::selection_geometry::selected_node_ids;
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
 
+#[must_use]
 pub fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
     let selected = selected_node_ids(doc);
     let selected_set: HashSet<NodeId> = selected.iter().cloned().collect();

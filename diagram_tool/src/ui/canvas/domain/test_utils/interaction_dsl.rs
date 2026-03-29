@@ -1,5 +1,4 @@
-#![allow(clippy::unwrap_used)]
-#![allow(clippy::panic)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 use crate::ui::canvas::domain::{
     parse_event, transition, CanvasError, CanvasEvent, InteractionState, RawEvent,
 };
@@ -70,10 +69,7 @@ impl CanvasTestDsl {
         // Properly handle the Result without panicking on unwrap
         let actual = match self.last_result.as_ref() {
             Some(Ok(state)) => state,
-            Some(Err(e)) => panic!(
-                "then_expect_state called but last result was error: {:?}",
-                e
-            ),
+            Some(Err(e)) => panic!("then_expect_state called but last result was error: {e:?}"),
             None => panic!("then_expect_state called but no last_result was set"),
         };
         assert_eq!(actual, &expected);
@@ -84,10 +80,9 @@ impl CanvasTestDsl {
     pub fn then_expect_error(self, expected_err: CanvasError) -> Self {
         // Properly handle the Result without panicking on unwrap
         let actual_err = match self.last_result.as_ref() {
-            Some(Ok(state)) => panic!(
-                "then_expect_error called but last result was Ok state: {:?}",
-                state
-            ),
+            Some(Ok(state)) => {
+                panic!("then_expect_error called but last result was Ok state: {state:?}")
+            }
             Some(Err(e)) => e,
             None => panic!("then_expect_error called but no last_result was set"),
         };

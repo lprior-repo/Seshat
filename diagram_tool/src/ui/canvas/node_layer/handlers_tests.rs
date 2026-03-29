@@ -81,7 +81,7 @@ fn test_handle_mousedown_selects_node() {
 
         handle_mousedown(
             evt,
-            id.clone(),
+            id,
             false,
             ToolMode::Select,
             doc,
@@ -100,5 +100,5 @@ fn test_handle_mousedown_selects_node() {
 
         rsx! { div {} }
     });
-    let _ = vdom.rebuild_in_place();
+    let () = vdom.rebuild_in_place();
 }

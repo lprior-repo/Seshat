@@ -103,7 +103,7 @@ mod tests {
         let history = History::default();
         let history = history.push(initial_doc.clone());
 
-        let mut doc_after_add = initial_doc.clone();
+        let mut doc_after_add = initial_doc;
         doc_after_add.revision = doc_after_add.revision.increment();
         let n1 = NodeId::new("n1".to_string());
         doc_after_add
@@ -134,7 +134,7 @@ mod tests {
         let history = History::default();
         let h0 = history.push(doc0.clone());
 
-        let mut doc1 = doc0.clone();
+        let mut doc1 = doc0;
         doc1.revision = doc1.revision.increment();
         let n1 = NodeId::new("n1".to_string());
         doc1.document

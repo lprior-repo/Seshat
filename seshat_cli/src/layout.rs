@@ -20,6 +20,7 @@ pub fn execute_layout(cmd: &LayoutCommand) -> Result<(), LayoutError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
 mod tests {
     use super::*;
     use diagram_models::document::{
@@ -109,7 +110,7 @@ mod tests {
         physical_io::save_document(&input_path, &doc).unwrap();
 
         let cmd = LayoutCommand {
-            input: input_path.clone(),
+            input: input_path,
             output: output_path.clone(),
         };
         let result = execute_layout(&cmd);

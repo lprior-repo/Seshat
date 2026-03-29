@@ -346,7 +346,7 @@ proptest! {
 fn next_cycle_produces_all_four_labels_in_order() {
     let labels: Vec<&str> = std::iter::successors(Some(ThemeMode::System), |m| Some(m.next()))
         .take(4)
-        .map(|m| m.label())
+        .map(super::ThemeMode::label)
         .collect();
     assert_eq!(labels, vec!["System", "Light", "Dark", "White"]);
 }

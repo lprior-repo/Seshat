@@ -59,7 +59,7 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -78,7 +78,7 @@ mod tests {
             let mut doc_signal = Signal::new(DiagramDocument::default());
             let mut history_signal = Signal::new(History::new());
             let mut editor_state = Signal::new(EditorState::Idle);
-            let mut edit_value = Signal::new("".to_string());
+            let mut edit_value = Signal::new(String::new());
             let mut viewport_size = Signal::new((1000.0, 1000.0));
 
             let db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>> = None;
@@ -109,6 +109,6 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

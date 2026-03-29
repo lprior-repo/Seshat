@@ -30,7 +30,7 @@ mod tests {
             assert_eq!(node.z_index, 1);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -57,7 +57,7 @@ mod tests {
             assert_eq!(node.z_index, 0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -86,7 +86,7 @@ mod tests {
             assert_eq!(node.z_index, 11);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -115,6 +115,6 @@ mod tests {
             assert_eq!(node.z_index, -1);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

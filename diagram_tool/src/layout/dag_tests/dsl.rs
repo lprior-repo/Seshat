@@ -74,7 +74,7 @@ impl GraphBuilder {
         let source = self.add_node_at(from_idx);
         let target = self.add_node_at(to_idx);
 
-        let edge_id = EdgeId::new(format!("edge-{}-{}", from_idx, to_idx));
+        let edge_id = EdgeId::new(format!("edge-{from_idx}-{to_idx}"));
         let edge = Edge {
             source,
             target,

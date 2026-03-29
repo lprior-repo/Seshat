@@ -43,7 +43,7 @@ mod tests {
             assert_eq!(n2.x.0, 10.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -83,7 +83,7 @@ mod tests {
             assert_eq!(n2.y.0, 20.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -108,7 +108,7 @@ mod tests {
             assert!(!result);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -151,6 +151,6 @@ mod tests {
             assert_eq!(n2.x.0, 50.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }

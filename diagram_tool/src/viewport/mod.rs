@@ -30,9 +30,9 @@
 //! - I4: Coordinate transforms are reversible
 //! - I5: Viewport dimensions are positive
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![allow(clippy::module_name_repetitions)]
 #![allow(clippy::suboptimal_flops)]
 #![allow(clippy::doc_markdown)]

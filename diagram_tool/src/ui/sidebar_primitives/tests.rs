@@ -110,7 +110,7 @@ mod tests {
         Group {
             provider: String,
             expanded: bool,
-            children: Vec<SidebarNode>,
+            children: Vec<Self>,
         },
         Item {
             label: String,
@@ -170,8 +170,7 @@ mod tests {
             let found = toggle(&mut self.root, target_provider);
             assert!(
                 found,
-                "Target group '{}' not found to toggle",
-                target_provider
+                "Target group '{target_provider}' not found to toggle"
             );
             self
         }
@@ -197,12 +196,11 @@ mod tests {
             }
 
             let actual = find_expanded(&self.root, target_provider);
-            assert!(actual.is_some(), "Group '{}' not found", target_provider);
+            assert!(actual.is_some(), "Group '{target_provider}' not found");
             if let Some(actual) = actual {
                 assert_eq!(
                     actual, expected,
-                    "Group '{}' expansion state mismatch",
-                    target_provider
+                    "Group '{target_provider}' expansion state mismatch"
                 );
             }
             self

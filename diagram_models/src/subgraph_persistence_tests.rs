@@ -12,9 +12,9 @@
 //! These tests verify that subgraph data structures properly serialize and deserialize
 //! while preserving the critical relationships and proportions.
 
-#![deny(clippy::unwrap_used)]
-#![deny(clippy::expect_used)]
-#![deny(clippy::panic)]
+#![cfg_attr(not(test), deny(clippy::unwrap_used))]
+#![cfg_attr(not(test), deny(clippy::expect_used))]
+#![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
 use crate::document::{LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};

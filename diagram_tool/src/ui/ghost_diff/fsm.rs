@@ -69,7 +69,7 @@ mod tests {
     fn make_proposal(n: usize) -> PendingProposal {
         PendingProposal {
             change_count: n,
-            summary: format!("{} changes", n),
+            summary: format!("{n} changes"),
         }
     }
 
@@ -222,11 +222,8 @@ mod tests {
     #[test]
     fn full_cycle_idle_reviewing_applying_idle() {
         let proposal = make_proposal(3);
-        let s1 = calculate_transition(
-            &ReviewState::Idle,
-            ReviewEvent::ProposalReceived(proposal.clone()),
-        )
-        .expect("t1");
+        let s1 = calculate_transition(&ReviewState::Idle, ReviewEvent::ProposalReceived(proposal))
+            .expect("t1");
         let s2 = calculate_transition(&s1, ReviewEvent::Accept).expect("t2");
         let s3 = calculate_transition(&s2, ReviewEvent::ApplyComplete).expect("t3");
         assert_eq!(s3, ReviewState::Idle);

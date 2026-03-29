@@ -1,13 +1,13 @@
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct EntityDiff {
     pub human_state: Option<serde_json::Value>,
     pub ai_proposed_state: Option<serde_json::Value>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct ConflictContext {
     pub expected_revision: u64,
     pub actual_revision: u64,
@@ -15,7 +15,7 @@ pub struct ConflictContext {
     pub diff: HashMap<String, EntityDiff>,
 }
 
-#[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 pub struct RichDiff {
     pub status: String,
     pub reason: String,

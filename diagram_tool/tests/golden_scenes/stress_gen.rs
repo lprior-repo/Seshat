@@ -1,4 +1,4 @@
-#![allow(dead_code)]
+#![allow(clippy::all, clippy::pedantic, clippy::nursery, dead_code)]
 use serde_json::Value;
 
 pub fn generate_stress_scene_json() -> Value {
@@ -12,7 +12,7 @@ pub fn generate_stress_scene_json() -> Value {
     let mut nodes = serde_json::Map::new();
     let mut node_ids = Vec::with_capacity(node_count);
     for i in 0..node_count {
-        let id = format!("stress-node-{}", i);
+        let id = format!("stress-node-{i}");
         node_ids.push(id.clone());
         let r = next_rnd();
         let kind = if r < 0.8 {
@@ -41,7 +41,7 @@ pub fn generate_stress_scene_json() -> Value {
             tgt = (tgt + 1) % node_count;
         }
         edges.insert(
-            format!("stress-edge-{}", i),
+            format!("stress-edge-{i}"),
             serde_json::json!({
                 "source": node_ids[src], "target": node_ids[tgt],
                 "label": "", "style": "solid", "arrowType": "default", "label_offset_t": 0.5,

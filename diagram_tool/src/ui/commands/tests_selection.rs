@@ -133,7 +133,7 @@ mod tests {
             assert!(doc_signal.read().editor_state.selected_items.is_empty());
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -156,7 +156,7 @@ mod tests {
             assert_eq!(selected.len(), 3);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -192,7 +192,7 @@ mod tests {
             assert!(doc_read.editor_state.selected_items.is_empty());
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -208,7 +208,7 @@ mod tests {
             assert!(!result);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -235,7 +235,7 @@ mod tests {
             assert_eq!(node.y.0, -5.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -263,7 +263,7 @@ mod tests {
             assert_eq!(node.y.0, 0.0);
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -287,7 +287,7 @@ mod tests {
             assert!(doc_read.revision.value() > initial_rev.value());
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -331,7 +331,7 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -368,7 +368,7 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -415,7 +415,7 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -449,7 +449,7 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -477,7 +477,7 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 
     #[test]
@@ -489,7 +489,7 @@ mod tests {
                 .with_edge("e1", "n1", "n2")
                 .with_selection(&["e1"])
                 .build();
-            let mut doc_cloned = doc.clone();
+            let mut doc_cloned = doc;
             let edge_id = EdgeId::new("e1".to_string());
             // Pre-apply the arrow type so it already matches
             doc_cloned
@@ -516,6 +516,6 @@ mod tests {
 
             rsx! { div {} }
         });
-        let _ = vdom.rebuild_in_place();
+        let () = vdom.rebuild_in_place();
     }
 }
