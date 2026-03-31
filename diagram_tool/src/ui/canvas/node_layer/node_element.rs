@@ -1,13 +1,7 @@
 use dioxus::prelude::*;
 
 use crate::ui::canvas::document_ops::{initials, provider_color};
-use crate::{
-    history::History,
-    ui::{
-        editor::ToolMode,
-        theme::{ACCENT, BG_BASE, NODE_BG, NODE_BG_SUBGRAPH, NODE_BORDER},
-    },
-};
+use crate::{history::History, ui::editor::ToolMode};
 use canvas_domain::interaction_reducer::InteractionMode;
 use canvas_domain::perf::to_screen_coords;
 use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind};
@@ -87,22 +81,6 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     );
     let (width, height) = (rd.width * zoom, rd.height * zoom);
 
-    let border_width = if is_selected { "2" } else { "1" };
-    let border_base = if is_selected || is_hovered {
-        ACCENT
-    } else {
-        NODE_BORDER
-    };
-    let border_mix = if is_hovered && !is_selected {
-        "50"
-    } else {
-        "100"
-    };
-    let bg = if rd.kind == NodeKind::Subgraph {
-        NODE_BG_SUBGRAPH
-    } else {
-        NODE_BG
-    };
     let z_index = rd.z_index
         + if rd.kind == NodeKind::Subgraph {
             10
@@ -119,6 +97,23 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let provider_top = provider_color(provider);
     let node_initials = initials(&rd.label);
 
+    // CSS class determines border/background/box-shadow state.
+    // Using pre-defined classes avoids per-node color-mix() evaluation at paint time.
+    let node_state_class = if is_selected && is_hovered {
+        "diagram-node-selected-hovered"
+    } else if is_selected {
+        "diagram-node-selected"
+    } else if is_hovered {
+        "diagram-node-hovered"
+    } else {
+        "diagram-node"
+    };
+    let bg_class = if rd.kind == NodeKind::Subgraph {
+        "diagram-node-subgraph"
+    } else {
+        ""
+    };
+
     rsx! {
             div {
                 "data-testid": "node",
@@ -128,8 +123,8 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                     NodeKind::Subgraph => "subgraph",
                     NodeKind::Text => "text",
                 },
-                class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px]",
-                style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent); contain: layout style; will-change: transform;",
+                class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px {node_state_class} {bg_class}",
+                style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; contain: layout style; will-change: transform;",
 
             onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_for_enter.clone())),
             onmouseleave: move |_| {

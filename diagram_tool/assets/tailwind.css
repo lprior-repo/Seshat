@@ -1370,3 +1370,35 @@
     }
   }
 }
+
+/* ── Diagram node styles: pre-resolved to avoid per-node color-mix() at paint time ── */
+
+/* Base node (unselected, unhovered): full opacity border, no accent */
+.diagram-node {
+  border: 1px solid var(--node-border);
+  background: var(--node-bg);
+  box-shadow: 0 6px 18px oklch(0 0 0 / 0.24);
+}
+
+/* Subgraph variant */
+.diagram-node-subgraph {
+  background: var(--node-bg-subgraph);
+}
+
+/* Hovered node: 50% opacity accent border */
+.diagram-node-hovered {
+  border: 1px solid color-mix(in oklch, var(--accent) 50%, transparent);
+  box-shadow: 0 6px 18px oklch(0 0 0 / 0.24);
+}
+
+/* Selected node: full accent border */
+.diagram-node-selected {
+  border: 2px solid var(--accent);
+  box-shadow: 0 6px 18px oklch(0 0 0 / 0.24);
+}
+
+/* Hovered + selected: full accent border */
+.diagram-node-selected-hovered {
+  border: 2px solid var(--accent);
+  box-shadow: 0 6px 18px oklch(0 0 0 / 0.24);
+}

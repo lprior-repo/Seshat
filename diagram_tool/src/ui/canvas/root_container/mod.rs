@@ -148,7 +148,11 @@ pub fn RootContainer(state: CanvasState) -> Element {
                     }
                 }
 
-                GridLayer { doc_signal: state.doc_signal, viewport_size: state.viewport_size }
+                GridLayer {
+                    node_viewport_trigger: state.node_viewport_trigger,
+                    doc_signal: state.doc_signal,
+                    viewport_size: state.viewport_size,
+                }
 
                 EdgeLayer {
                     doc_signal: state.doc_signal,
@@ -163,8 +167,11 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 }
 
                 {
+                    // Subscribe to interaction_mode (mode changes should update overlays)
+                    // but peek at doc_signal — during drag, doc position changes should NOT
+                    // re-render these overlays (only mode transitions matter).
                     let mode_now = state.interaction_mode.read().clone();
-                    let doc_now = state.doc_signal.read();
+                    let doc_now = state.doc_signal.peek();
                     let edge_overlay = edge_preview_overlay(&mode_now, &doc_now, to_screen_coords);
                     let band_overlay = rubber_band_overlay(&mode_now, &doc_now, to_screen_coords);
                     let subgraph_overlay = subgraph_preview_overlay(&mode_now, &doc_now, to_screen_coords);
