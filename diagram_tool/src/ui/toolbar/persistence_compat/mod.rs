@@ -42,7 +42,7 @@ fn compute_migrated_url(
         .as_str()
         .is_some_and(|s| s.starts_with("data:"))
     {
-        icon_key.map(|icon| serde_json::Value::String(format!("/assets/resources/{icon}")))
+        icon_key.map(|icon| serde_json::Value::String(format!("/resources/{icon}")))
     } else {
         Some(icon_data_url.clone())
     }

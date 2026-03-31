@@ -101,7 +101,7 @@ mod tests {
         vdom.rebuild_in_place();
         let html = dioxus_ssr::render(&vdom);
         assert!(html.contains("Athena"));
-        assert!(html.contains("/assets/resources/aws/Analytics/athena.svg"));
+        assert!(html.contains("/resources/aws/Analytics/athena.svg"));
         assert!(html.contains("data-testid=\"icon-item\""));
     }
 }

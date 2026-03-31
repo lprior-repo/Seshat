@@ -201,8 +201,8 @@ fn given_icon_data_url_base64_when_migrated_then_converted_to_url_path() {
         .and_then(|v| v.as_str())
         .expect("icon_url should exist");
     assert_eq!(
-        icon_url, "/assets/resources/aws/compute/ec2.png",
-        "Base64 data URL must be converted to /assets/resources/ URL path"
+        icon_url, "/resources/aws/compute/ec2.png",
+        "Base64 data URL must be converted to /resources/ URL path"
     );
 }
 
@@ -416,7 +416,7 @@ fn given_both_non_base64_icon_data_url_and_icon_url_when_migrated_then_icon_url_
                     "width": 64.0, "height": 64.0,
                     "z_index": 0,
                     "metadata": {
-                        "icon_url": "/assets/resources/aws/compute/ec2.png",
+                        "icon_url": "/resources/aws/compute/ec2.png",
                         "icon_data_url": "/custom/path/icon.png"
                     }
                 }
@@ -446,7 +446,7 @@ fn given_both_non_base64_icon_data_url_and_icon_url_when_migrated_then_icon_url_
     // icon_url must be the original, NOT overwritten by the non-base64 icon_data_url
     assert_eq!(
         node.metadata.get("icon_url").and_then(|v| v.as_str()),
-        Some("/assets/resources/aws/compute/ec2.png"),
+        Some("/resources/aws/compute/ec2.png"),
         "Existing icon_url must be preserved, not overwritten by non-base64 icon_data_url"
     );
 }
@@ -496,7 +496,7 @@ fn given_base64_icon_data_url_at_node_level_without_metadata_when_migrated_then_
     // Base64 value must be converted to a URL path derived from the icon field
     assert_eq!(
         node_obj.get("icon_url").and_then(|v| v.as_str()),
-        Some("/assets/resources/aws/compute/ec2.png"),
-        "Base64 icon_data_url at node level must be converted to /assets/resources/ URL path"
+        Some("/resources/aws/compute/ec2.png"),
+        "Base64 icon_data_url at node level must be converted to /resources/ URL path"
     );
 }

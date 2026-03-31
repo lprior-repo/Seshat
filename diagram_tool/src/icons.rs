@@ -41,7 +41,7 @@ mod tests {
         };
         assert_eq!(
             icon_src(&meta),
-            Some("/assets/resources/aws/Analytics/athena.svg".to_string())
+            Some("/resources/aws/Analytics/athena.svg".to_string())
         );
     }
 }

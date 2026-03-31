@@ -91,7 +91,7 @@ pub fn icon_url_for_relpath(file_relpath: &str) -> Option<String> {
     if file_relpath.contains("..") || file_relpath.starts_with('/') {
         return None;
     }
-    Some(format!("/assets/resources/{file_relpath}"))
+    Some(format!("/resources/{file_relpath}"))
 }
 
 pub fn icon_url(icon_key: &str) -> Option<String> {

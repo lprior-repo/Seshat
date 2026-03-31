@@ -11,10 +11,10 @@ fn main() {
 }
 
 fn run() -> Result<(), String> {
-    println!("cargo:rerun-if-changed=assets/resources/");
+    println!("cargo:rerun-if-changed=public/resources/");
 
     let out_dir = env::var("OUT_DIR").map_err(|e| format!("OUT_DIR not set: {e}"))?;
-    let resources_path = Path::new("assets/resources");
+    let resources_path = Path::new("public/resources");
 
     let mut icons: Vec<IconEntry> = Vec::new();
 
@@ -94,7 +94,7 @@ fn scan_resources(dir: &Path, icons: &mut Vec<IconEntry>) -> std::io::Result<()>
 }
 
 fn parse_icon_path(path: &Path) -> Option<IconEntry> {
-    let relpath = path.strip_prefix("assets/resources").ok()?;
+    let relpath = path.strip_prefix("public/resources").ok()?;
     let relpath_str = relpath.to_str()?;
 
     let components: Vec<&str> = relpath

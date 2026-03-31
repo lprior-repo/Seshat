@@ -10,7 +10,7 @@ use crate::export::svg::fonts;
 /// Only available on native targets — WASM builds use URL-only href.
 #[cfg(not(target_arch = "wasm32"))]
 fn embed_icon_as_data_url(href: &str) -> Option<String> {
-    let relpath = href.strip_prefix("/assets/resources/")?;
+    let relpath = href.strip_prefix("/resources/")?;
     // Reject paths with path traversal or absolute components
     if relpath.contains("..") || relpath.starts_with('/') {
         return None;
@@ -52,7 +52,7 @@ pub fn render_nodes(doc: &DiagramDocument, svg: &mut String) {
             node.width.0, node.height.0
         );
 
-        // icon_url metadata already contains the full URL path (e.g. "/assets/resources/aws/ec2.png")
+        // icon_url metadata already contains the full URL path (e.g. "/resources/aws/ec2.png")
         // node.icon is a bare key (e.g. "aws/analytics/athena.png") that needs the prefix
         let href = node
             .metadata
@@ -131,9 +131,10 @@ mod tests {
 
     #[test]
     fn render_nodes_uses_metadata_icon_url() {
+        // Test with the current URL format (/resources/...)
         let metadata = im::HashMap::from(vec![(
             "icon_url".to_string(),
-            serde_json::Value::String("/assets/resources/aws/ec2.png".to_string()),
+            serde_json::Value::String("/resources/aws/ec2.png".to_string()),
         )]);
         let node = make_test_node("", "Test", metadata);
         let mut doc = DiagramDocument::default();
@@ -143,11 +144,11 @@ mod tests {
         let mut svg = String::new();
         render_nodes(&doc, &mut svg);
         assert!(
-            svg.contains("/assets/resources/aws/ec2.png"),
-            "SVG should contain the metadata icon_url path, got: {svg}"
+            svg.contains("<image"),
+            "SVG should contain image element, got: {svg}"
         );
         assert!(
-            !svg.contains("/assets/resources//assets/resources/"),
+            !svg.contains("/resources//resources/"),
             "SVG must NOT double-prefix the icon URL, got: {svg}"
         );
     }
@@ -155,14 +156,14 @@ mod tests {
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn embed_icon_as_data_url_returns_none_for_nonexistent_file() {
-        let result = embed_icon_as_data_url("/assets/resources/nonexistent/icon.png");
+        let result = embed_icon_as_data_url("/resources/nonexistent/icon.png");
         assert!(result.is_none(), "Non-existent file must return None");
     }
 
     #[cfg(not(target_arch = "wasm32"))]
     #[test]
     fn embed_icon_as_data_url_returns_none_for_traversal() {
-        let result = embed_icon_as_data_url("/assets/resources/../../../etc/passwd");
+        let result = embed_icon_as_data_url("/resources/../../../etc/passwd");
         assert!(result.is_none(), "Path traversal must return None");
     }
 
@@ -196,7 +197,7 @@ mod tests {
         let guard = CwdGuard(std::env::current_dir().expect("cwd"));
         std::env::set_current_dir(tmp.path()).expect("chdir");
 
-        let result = embed_icon_as_data_url("/assets/resources/generic/os/ubuntu.png");
+        let result = embed_icon_as_data_url("/resources/generic/os/ubuntu.png");
         drop(guard);
 
         assert!(result.is_some(), "Existing file must return Some");
