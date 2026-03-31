@@ -1,4 +1,11 @@
-#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 use crate::store_async::{
     bootstrap::bootstrap_async_store,
     fetch::{fetch_all_events, fetch_events_since},

@@ -5,6 +5,7 @@ use diagram_models::transform::{
     ValidTransform,
 };
 use im::HashMap;
+use smallvec::SmallVec;
 
 fn apply_transform_to_doc(
     doc: DiagramDocument,
@@ -24,7 +25,7 @@ fn apply_transform_to_doc(
     Ok(perform_document_update(doc, &selected_ids, updates))
 }
 
-fn collect_selected_ids(doc: &DiagramDocument) -> Vec<NodeId> {
+fn collect_selected_ids(doc: &DiagramDocument) -> SmallVec<[NodeId; 4]> {
     doc.editor_state
         .selected_items
         .iter()

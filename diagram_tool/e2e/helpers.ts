@@ -358,6 +358,42 @@ export async function freshStart(page: Page) {
   ]);
 }
 
+/**
+ * Load a document from a JSON object into the Dioxus app.
+ * Uses the `window.__seshatLoadDocument(json)` hook registered by the Rust
+ * e2e_reset module. Returns true if the document was loaded successfully.
+ *
+ * This is MUCH faster than creating nodes one-by-one via canvas clicks,
+ * making it suitable for scale benchmarks (100+ nodes).
+ */
+export async function loadDocument(
+  page: Page,
+  doc: Record<string, unknown>,
+): Promise<boolean> {
+  const json = JSON.stringify(doc);
+  return runEffect(() =>
+    page.evaluate(
+      async ({ jsonString }) => {
+        const win = window as {
+          __seshatLoadDocument?: (json: string) => Promise<boolean>;
+        };
+        if (typeof win.__seshatLoadDocument !== "function") {
+          console.error("[e2e] __seshatLoadDocument is not a function");
+          return false;
+        }
+        try {
+          const result = await win.__seshatLoadDocument(jsonString);
+          return result;
+        } catch (e) {
+          console.error("[e2e] __seshatLoadDocument threw:", e);
+          return false;
+        }
+      },
+      { jsonString: json },
+    ),
+  );
+}
+
 export async function createTextNode(
   page: Page,
   canvas: Locator,

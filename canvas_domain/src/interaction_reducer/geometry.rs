@@ -3,6 +3,7 @@
 #![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
+use smallvec::SmallVec;
 use std::collections::HashSet;
 
 // Re-export from canvas_math
@@ -12,7 +13,7 @@ use crate::selection_geometry::selected_node_ids;
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind};
 
 #[must_use]
-pub fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
+pub fn resize_target_ids(doc: &DiagramDocument) -> SmallVec<[NodeId; 4]> {
     let selected = selected_node_ids(doc);
     let selected_set: HashSet<NodeId> = selected.iter().cloned().collect();
 
@@ -47,5 +48,5 @@ pub fn resize_target_ids(doc: &DiagramDocument) -> Vec<NodeId> {
             },
         )
         .into_iter()
-        .collect::<Vec<_>>()
+        .collect::<SmallVec<[NodeId; 4]>>()
 }

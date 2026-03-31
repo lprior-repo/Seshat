@@ -9,6 +9,7 @@ pub use grid_snap::*;
 pub use mod_types::*;
 
 use crate::geometry::primitives::Point;
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ToggleState {
@@ -45,9 +46,9 @@ pub fn drag_multi_with_snap(
     drag_delta: Point,
     grid_size: f64,
     snap_mode: SnapMode,
-) -> Vec<Point> {
+) -> SmallVec<[Point; 4]> {
     if nodes.is_empty() {
-        return Vec::new();
+        return SmallVec::new();
     }
 
     if snap_mode == SnapMode::Disabled || grid_size <= 0.0 {
@@ -73,7 +74,7 @@ pub fn drag_multi_with_snap(
 }
 
 #[must_use]
-pub fn snap_multi_nodes(nodes: &[SnapNode], grid_size: f64) -> Vec<Point> {
+pub fn snap_multi_nodes(nodes: &[SnapNode], grid_size: f64) -> SmallVec<[Point; 4]> {
     if nodes.is_empty() || grid_size <= 0.0 {
         return nodes.iter().map(|n| Point::new(n.x, n.y)).collect();
     }
@@ -89,7 +90,7 @@ pub fn snap_multi_to_primary(
     nodes: &[SnapNode],
     primary_index: usize,
     grid_size: f64,
-) -> Vec<Point> {
+) -> SmallVec<[Point; 4]> {
     if nodes.is_empty() || grid_size <= 0.0 {
         return nodes.iter().map(|n| Point::new(n.x, n.y)).collect();
     }

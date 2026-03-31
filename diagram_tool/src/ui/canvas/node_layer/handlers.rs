@@ -8,8 +8,50 @@ use dioxus::prelude::*;
 use crate::history::History;
 use crate::ui::canvas::document_ops::{flush_pending_pointer_update, sync_canvas_origin};
 use crate::ui::editor::ToolMode;
+use crate::ui::interaction::{
+    drag_original_positions, select_single, toggle_selection, with_auto_selected_edges,
+};
 
 use super::state::{apply_event, CanvasError, CanvasEvent, CanvasState};
+
+/// Fast path for node selection that avoids cloning the entire document.
+/// Only modifies `selected_items` and `interaction_mode` in place.
+fn handle_node_selected_fast(
+    id: NodeId,
+    additive: bool,
+    canvas_pos: CanvasCoord,
+    client_pos: ScreenCoord,
+    mut doc_signal: Signal<DiagramDocument>,
+    mut interaction_mode: Signal<InteractionMode>,
+) {
+    // Phase 1: Read only what we need — borrow, not clone
+    let (auto_selected, original_positions) = {
+        let doc = doc_signal.read();
+        let was_selected = doc.editor_state.selected_items.contains(id.as_str());
+        let new_selected = if additive {
+            toggle_selection(&doc.editor_state.selected_items, &id.to_string())
+        } else if !was_selected {
+            select_single(id.to_string())
+        } else {
+            doc.editor_state.selected_items.clone()
+        };
+        let auto_selected = with_auto_selected_edges(&doc, &new_selected);
+        let original_positions = drag_original_positions(&doc, &auto_selected);
+        (auto_selected, original_positions)
+    };
+    // Read lock is dropped here
+
+    // Phase 2: Write only selected_items — this triggers reactive update
+    // but does NOT clone the full document (nodes, edges stay in place)
+    doc_signal.write().editor_state.selected_items = auto_selected;
+
+    interaction_mode.set(InteractionMode::DraggingSelection {
+        anchor_canvas: (canvas_pos.0, canvas_pos.1),
+        anchor_client: (client_pos.0, client_pos.1),
+        original_positions,
+        did_move: false,
+    });
+}
 
 #[allow(clippy::too_many_arguments)]
 pub fn handle_mousedown(
@@ -17,7 +59,7 @@ pub fn handle_mousedown(
     id: NodeId,
     multi_touch_active: bool,
     tool: ToolMode,
-    doc: DiagramDocument,
+    camera: (f64, f64, f64),
     additive: bool,
     canvas_origin: (f64, f64),
     mut interaction_mode: Signal<InteractionMode>,
@@ -33,7 +75,6 @@ pub fn handle_mousedown(
     let is_right = evt.data.trigger_button() == Some(MouseButton::Secondary);
 
     if space_pressed || is_middle || is_right || tool == ToolMode::Pan {
-        // Let panning events bubble up to the root container
         return;
     }
 
@@ -45,13 +86,14 @@ pub fn handle_mousedown(
     let local_y = coords.y - origin.1;
     let pos = to_canvas_coords(
         ScreenCoord(local_x, local_y),
-        CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
-        doc.editor_state.zoom.0,
+        CanvasCoord(camera.0, camera.1),
+        camera.2,
     );
 
-    let event = if is_primary {
-        if tool == ToolMode::Edge {
-            let doc_now = doc_signal.read().clone();
+    if is_primary && tool == ToolMode::Edge {
+        // Edge drawing — still uses full clone (uncommon path)
+        let event = {
+            let doc_now = doc_signal.read();
             let start_port = doc_now.document.nodes.get(&id).and_then(|src| {
                 let dx = if src.width.0 > 0.0 {
                     (pos.0 - src.x.0) / src.width.0
@@ -70,24 +112,12 @@ pub fn handle_mousedown(
                 .ok()
                 .map(diagram_models::port::PortAnchor::Custom)
             });
-            Some(CanvasEvent::EdgeDrawingStarted {
+            CanvasEvent::EdgeDrawingStarted {
                 from_node: id,
                 current_pos: CanvasCoord(pos.0, pos.1),
                 start_port,
-            })
-        } else {
-            Some(CanvasEvent::NodeSelected {
-                id,
-                additive,
-                canvas_pos: CanvasCoord(pos.0, pos.1),
-                client_pos: ScreenCoord(local_x, local_y),
-            })
-        }
-    } else {
-        None
-    };
-
-    if let Some(event) = event {
+            }
+        };
         let initial_state = CanvasState {
             document: doc_signal.read().clone(),
             interaction_mode: interaction_mode.read().clone(),
@@ -96,6 +126,16 @@ pub fn handle_mousedown(
             doc_signal.set(new_state.document);
             interaction_mode.set(new_state.interaction_mode);
         }
+    } else if is_primary {
+        // Node selection — FAST PATH: avoids cloning entire document
+        handle_node_selected_fast(
+            id,
+            additive,
+            CanvasCoord(pos.0, pos.1),
+            ScreenCoord(local_x, local_y),
+            doc_signal,
+            interaction_mode,
+        );
     }
 }
 

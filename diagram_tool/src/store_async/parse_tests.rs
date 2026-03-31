@@ -1,4 +1,11 @@
-#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 use crate::store_async::{
     parse::{
         envelope_batch_to_bounded_batch, envelope_to_valid_event, parse_bounded_batch,

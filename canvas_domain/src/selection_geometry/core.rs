@@ -1,7 +1,8 @@
 use diagram_models::document::{DiagramDocument, NodeId};
+use smallvec::SmallVec;
 
 #[must_use]
-pub fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
+pub fn selected_node_ids(doc: &DiagramDocument) -> SmallVec<[NodeId; 4]> {
     doc.editor_state
         .selected_items
         .iter()
@@ -19,14 +20,21 @@ pub fn selected_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
 
 #[must_use]
 pub fn selection_bounds(doc: &DiagramDocument) -> Option<(f64, f64, f64, f64)> {
-    let ids = selected_node_ids(doc);
-    if ids.is_empty() {
+    let selected_items = &doc.editor_state.selected_items;
+    if selected_items.is_empty() {
         return None;
     }
 
-    let (min_x, min_y, max_x, max_y) = ids
-        .into_iter()
-        .filter_map(|id| doc.document.nodes.get(&id))
+    let (min_x, min_y, max_x, max_y) = selected_items
+        .iter()
+        .filter_map(|id| {
+            let nid = NodeId::new(id.clone());
+            // Filter out locked nodes: GEO-024 (inlined from selected_node_ids to eliminate intermediate Vec)
+            doc.document
+                .nodes
+                .get(&nid)
+                .filter(|n| !n.lock_state.is_locked())
+        })
         .fold(
             (
                 f64::INFINITY,

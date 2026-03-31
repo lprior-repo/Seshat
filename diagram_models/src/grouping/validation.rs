@@ -1,5 +1,6 @@
 use crate::document::{Node, NodeId};
 use im::{HashMap, HashSet};
+use smallvec::SmallVec;
 use thiserror::Error;
 
 /// Maximum nesting depth for subgraphs
@@ -46,7 +47,7 @@ impl ValidatedSelection {
 
         let locked = find_locked_nodes(nodes, selected_ids);
         if !locked.is_empty() {
-            return Err(GroupingError::LockedNode(locked));
+            return Err(GroupingError::LockedNode(locked.into_iter().collect()));
         }
 
         if !check_nesting_depth(nodes, selected_ids) {
@@ -79,7 +80,10 @@ pub fn validate_selection(
 }
 
 /// Validate nodes are not locked - returns all locked node IDs
-fn find_locked_nodes(nodes: &HashMap<NodeId, Node>, selected: &HashSet<NodeId>) -> Vec<NodeId> {
+fn find_locked_nodes(
+    nodes: &HashMap<NodeId, Node>,
+    selected: &HashSet<NodeId>,
+) -> SmallVec<[NodeId; 2]> {
     selected
         .iter()
         .filter_map(|id| {

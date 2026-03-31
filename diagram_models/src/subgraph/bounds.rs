@@ -5,6 +5,7 @@ use crate::geometry::{Coordinate, RectMetrics};
 use crate::subgraph::LayoutConstants;
 use im::HashMap;
 use itertools::Itertools;
+use smallvec::SmallVec;
 use thiserror::Error;
 
 #[derive(Debug, Error, PartialEq, Eq)]
@@ -49,7 +50,10 @@ fn update_container_bounds(mut nodes: HashMap<NodeId, Node>, cid: NodeId) -> Has
     nodes
 }
 
-fn collect_child_metrics(nodes: &HashMap<NodeId, Node>, parent_id: &NodeId) -> Vec<RectMetrics> {
+fn collect_child_metrics(
+    nodes: &HashMap<NodeId, Node>,
+    parent_id: &NodeId,
+) -> SmallVec<[RectMetrics; 8]> {
     nodes
         .iter()
         .filter(|(_, n)| n.parent.as_ref() == Some(parent_id))

@@ -6,6 +6,7 @@
 use im::HashMap;
 
 use crate::document::{Node, NodeId, NodeKind, OrderedFloat};
+use smallvec::SmallVec;
 
 use crate::projection::types::DiagramProjection;
 use crate::projection::validation::validate_dimensions;
@@ -17,7 +18,10 @@ type NodeMap = HashMap<NodeId, Node>;
 pub(crate) const CONTAINER_PADDING: f64 = 24.0;
 
 /// Find all direct children of a container node
-pub(crate) fn find_direct_children(nodes: &NodeMap, container_id: &NodeId) -> Vec<NodeId> {
+pub(crate) fn find_direct_children(
+    nodes: &NodeMap,
+    container_id: &NodeId,
+) -> SmallVec<[NodeId; 8]> {
     nodes
         .iter()
         .filter(|(_, node)| node.parent.as_ref() == Some(container_id))
@@ -94,8 +98,8 @@ pub(crate) fn recompute_container_bounds(nodes: &NodeMap, container_id: &NodeId)
 }
 
 /// Traverse up the parent chain and collect all ancestor container IDs
-pub(crate) fn get_parent_containers(nodes: &NodeMap, node_id: &NodeId) -> Vec<NodeId> {
-    let mut ancestors = Vec::new();
+pub(crate) fn get_parent_containers(nodes: &NodeMap, node_id: &NodeId) -> SmallVec<[NodeId; 5]> {
+    let mut ancestors = SmallVec::new();
     let mut current = nodes.get(node_id).and_then(|n| n.parent.clone());
 
     while let Some(parent_id) = current {

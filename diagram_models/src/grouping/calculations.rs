@@ -8,18 +8,15 @@ pub const SUBGRAPH_PADDING: f64 = 24.0;
 
 /// Get the parent chain of a node including itself
 fn get_parent_chain(nodes: &HashMap<NodeId, Node>, id: &NodeId) -> Vec<Option<NodeId>> {
-    let mut chain = vec![Some(id.clone())];
-    let mut current = id.clone();
-    while let Some(node) = nodes.get(&current) {
-        if let Some(parent) = &node.parent {
-            chain.push(Some(parent.clone()));
-            current = parent.clone();
-        } else {
-            chain.push(None);
-            break;
-        }
-    }
-    chain.into_iter().rev().collect()
+    let mut chain: Vec<Option<NodeId>> = std::iter::successors(Some(id.clone()), |current| {
+        nodes.get(current).and_then(|n| n.parent.clone())
+    })
+    .map(Some)
+    .chain(std::iter::once(None))
+    .collect();
+    // SAFETY: in-place reverse avoids second allocation from .into_iter().rev().collect()
+    chain.reverse();
+    chain
 }
 
 /// Find Lowest Common Ancestor of selected nodes

@@ -158,6 +158,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
                     viewport_size: state.viewport_size,
                     interaction_mode: state.interaction_mode,
                     canvas_origin: state.canvas_origin,
+                    node_viewport_trigger: state.node_viewport_trigger,
                     db_tx: state.db_tx
                 }
 
@@ -184,6 +185,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 edit_value: state.edit_value,
                 viewport_size: state.viewport_size,
                 ordered_node_cache: state.ordered_node_cache,
+                node_viewport_trigger: state.node_viewport_trigger,
                 canvas_origin: state.canvas_origin,
                 shift_pressed: state.shift_pressed,
                 ctrl_pressed: state.ctrl_pressed,

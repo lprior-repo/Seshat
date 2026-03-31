@@ -1,30 +1,27 @@
-// use crate::geometry::primitives::AABB;
 use diagram_models::document::{DiagramDocument, NodeId, NodeKind, OrderedFloat};
 pub use diagram_models::grouping::calculations::SUBGRAPH_PADDING;
+use std::collections::HashSet;
 
 /// Recomputes bounds for all containers that are ancestors of the given nodes.
+///
+/// Uses `HashSet` for O(1) deduplication instead of `Vec::contains` O(k).
 ///
 /// # Returns
 /// Number of containers whose bounds were updated.
 pub fn recompute_container_bounds(doc: &mut DiagramDocument, moved_node_ids: &[NodeId]) -> usize {
-    // Find unique parent containers of the moved nodes
-    let mut containers_to_update: Vec<NodeId> = Vec::new();
-
-    for node_id in moved_node_ids {
-        if let Some(node) = doc.document.nodes.get(node_id) {
-            if let Some(parent_id) = &node.parent {
-                // Check if this parent is a subgraph container
-                if let Some(parent) = doc.document.nodes.get(parent_id) {
-                    if parent.kind == NodeKind::Subgraph {
-                        // Only add if not already in list
-                        if !containers_to_update.contains(parent_id) {
-                            containers_to_update.push(parent_id.clone());
-                        }
-                    }
-                }
-            }
-        }
-    }
+    // Find unique parent containers using HashSet for O(1) lookup
+    let containers_to_update: HashSet<NodeId> = moved_node_ids
+        .iter()
+        .filter_map(|node_id| doc.document.nodes.get(node_id))
+        .filter_map(|node| node.parent.as_ref())
+        .filter(|pid| {
+            doc.document
+                .nodes
+                .get(*pid)
+                .is_some_and(|p| p.kind == NodeKind::Subgraph)
+        })
+        .cloned()
+        .collect();
 
     // For each container, recompute bounds from children
     let mut updated_count = 0;

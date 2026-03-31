@@ -1,4 +1,5 @@
 use crate::geometry::primitives::{Point, AABB};
+use smallvec::SmallVec;
 
 // ============== GEO-005: Edge Bounds for Curved Connectors ==============
 
@@ -158,8 +159,9 @@ fn validate_edge_bounds(bounds: AABB, thickness: f64) -> Result<AABB, EdgeBounds
     ))
 }
 
-fn build_all_points(source: Point, target: Point, bend_points: &[Point]) -> Vec<Point> {
-    let mut all_points = vec![source];
+fn build_all_points(source: Point, target: Point, bend_points: &[Point]) -> SmallVec<[Point; 4]> {
+    let mut all_points = SmallVec::new();
+    all_points.push(source);
     all_points.extend(bend_points.iter().copied());
     all_points.push(target);
     all_points

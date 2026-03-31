@@ -1,4 +1,11 @@
-#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 #[cfg(test)]
 mod tests {
     use crate::interaction_reducer::commit::{commit_inline_edit, CommitError, LabelEditError};

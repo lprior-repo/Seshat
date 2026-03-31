@@ -1,4 +1,11 @@
-#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 use crate::ui::canvas::domain::{
     parse_event, transition, CanvasError, CanvasEvent, InteractionState, RawEvent,
 };

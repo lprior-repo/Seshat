@@ -1,5 +1,6 @@
 use crate::geometry::primitives::Point;
 use crate::geometry::snap::mod_types::SnapNode;
+use smallvec::SmallVec;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum AlignmentAnchor {
@@ -24,9 +25,9 @@ impl AlignmentAnchor {
 }
 
 #[must_use]
-pub fn align(nodes: &[SnapNode], anchor: AlignmentAnchor) -> Vec<Point> {
+pub fn align(nodes: &[SnapNode], anchor: AlignmentAnchor) -> SmallVec<[Point; 8]> {
     if nodes.is_empty() {
-        return Vec::new();
+        return SmallVec::new();
     }
 
     let reference_val = match anchor {
@@ -86,31 +87,31 @@ pub fn align(nodes: &[SnapNode], anchor: AlignmentAnchor) -> Vec<Point> {
 }
 
 #[must_use]
-pub fn align_left(nodes: &[SnapNode]) -> Vec<Point> {
+pub fn align_left(nodes: &[SnapNode]) -> SmallVec<[Point; 8]> {
     align(nodes, AlignmentAnchor::Left)
 }
 
 #[must_use]
-pub fn align_center(nodes: &[SnapNode]) -> Vec<Point> {
+pub fn align_center(nodes: &[SnapNode]) -> SmallVec<[Point; 8]> {
     align(nodes, AlignmentAnchor::Center)
 }
 
 #[must_use]
-pub fn align_right(nodes: &[SnapNode]) -> Vec<Point> {
+pub fn align_right(nodes: &[SnapNode]) -> SmallVec<[Point; 8]> {
     align(nodes, AlignmentAnchor::Right)
 }
 
 #[must_use]
-pub fn align_top(nodes: &[SnapNode]) -> Vec<Point> {
+pub fn align_top(nodes: &[SnapNode]) -> SmallVec<[Point; 8]> {
     align(nodes, AlignmentAnchor::Top)
 }
 
 #[must_use]
-pub fn align_middle(nodes: &[SnapNode]) -> Vec<Point> {
+pub fn align_middle(nodes: &[SnapNode]) -> SmallVec<[Point; 8]> {
     align(nodes, AlignmentAnchor::Middle)
 }
 
 #[must_use]
-pub fn align_bottom(nodes: &[SnapNode]) -> Vec<Point> {
+pub fn align_bottom(nodes: &[SnapNode]) -> SmallVec<[Point; 8]> {
     align(nodes, AlignmentAnchor::Bottom)
 }

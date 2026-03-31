@@ -12,7 +12,8 @@ use crate::ui::toast::use_toast;
 use canvas_domain::interaction_reducer::InteractionMode;
 use diagram_models::document::{ArrowType, DiagramDocument, EdgeStyle, NodeId};
 use dioxus::prelude::*;
-use std::collections::HashSet;
+use im::HashSet as ImHashSet;
+use std::collections::HashSet as StdHashSet;
 
 use super::editor_fsm::{EditorError, EditorState};
 use crate::ui::canvas::document_ops::WheelSample;
@@ -40,9 +41,13 @@ pub struct CanvasState {
     pub pending_wheel_sample: Signal<Option<WheelSample>>,
     pub multi_touch_active: Signal<bool>,
     pub captured_pointer: Signal<Option<u32>>,
-    pub active_pointers: Signal<HashSet<u32>>,
+    pub active_pointers: Signal<StdHashSet<u32>>,
     pub canvas_origin: Signal<(f64, f64)>,
     pub ordered_node_cache: Memo<Vec<NodeId>>,
+    /// Lightweight trigger Memo that extracts only the camera/selection data.
+    /// `NodeLayer` and `EdgeLayer` subscribe to this instead of the full document,
+    /// avoiding re-renders when only unrelated document fields change.
+    pub node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 }
 
@@ -71,11 +76,23 @@ pub fn use_canvas_state() -> CanvasState {
     let pending_wheel_sample = use_signal(|| Option::<WheelSample>::None);
     let multi_touch_active = use_signal(|| false);
     let captured_pointer = use_signal(|| Option::<u32>::None);
-    let active_pointers = use_signal(HashSet::<u32>::new);
+    let active_pointers = use_signal(StdHashSet::<u32>::new);
     let canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let ordered_node_cache = use_memo(move || {
         let doc = doc_signal.read();
         ordered_node_ids(&doc)
+    });
+    // Lightweight Memo: only camera_x, camera_y, zoom, selected_items.
+    // Components subscribe to THIS instead of doc_signal to avoid full-doc re-renders.
+    let node_viewport_trigger = use_memo(move || {
+        let doc = doc_signal.read();
+        let es = &doc.editor_state;
+        (
+            es.camera_x.0,
+            es.camera_y.0,
+            es.zoom.0,
+            es.selected_items.clone(),
+        )
     });
     let db_tx = use_context::<Option<Coroutine<diagram_models::envelope::EventEnvelope>>>();
 
@@ -142,6 +159,7 @@ pub fn use_canvas_state() -> CanvasState {
         active_pointers,
         canvas_origin,
         ordered_node_cache,
+        node_viewport_trigger,
         db_tx,
     }
 }

@@ -73,35 +73,44 @@ pub fn compute_selection_bounds(doc: &DiagramDocument) -> Result<SelectionBounds
         });
     }
 
-    // First pass: validate all IDs and collect results in one iteration
-    // This avoids double NodeId creation and combines validation with bounds computation
-    let mut min_x = f64::INFINITY;
-    let mut min_y = f64::INFINITY;
-    let mut max_x = f64::NEG_INFINITY;
-    let mut max_y = f64::NEG_INFINITY;
+    // Single-pass validation + reduction via try_fold (eliminates intermediate Vec + mut)
+    let (min_x, min_y, max_x, max_y) = selected_ids
+        .iter()
+        .map(|id_str| {
+            let node_id =
+                NodeId::try_new(id_str.clone()).map_err(|_| SelectionError::NodeNotFound)?;
 
-    for id_str in selected_ids.iter() {
-        let node_id = NodeId::try_new(id_str.clone()).map_err(|_| SelectionError::NodeNotFound)?;
+            let node = doc
+                .document
+                .nodes
+                .get(&node_id)
+                .ok_or(SelectionError::NodeNotFound)?;
 
-        let node = doc
-            .document
-            .nodes
-            .get(&node_id)
-            .ok_or(SelectionError::NodeNotFound)?;
-
-        let (n_min_x, n_min_y, n_max_x, n_max_y) = rotated_node_bounds(
-            node.x.0,
-            node.y.0,
-            node.width.0,
-            node.height.0,
-            get_node_rotation(node),
-        );
-
-        min_x = min_x.min(n_min_x);
-        min_y = min_y.min(n_min_y);
-        max_x = max_x.max(n_max_x);
-        max_y = max_y.max(n_max_y);
-    }
+            Ok(rotated_node_bounds(
+                node.x.0,
+                node.y.0,
+                node.width.0,
+                node.height.0,
+                get_node_rotation(node),
+            ))
+        })
+        .try_fold(
+            (
+                f64::INFINITY,
+                f64::INFINITY,
+                f64::NEG_INFINITY,
+                f64::NEG_INFINITY,
+            ),
+            |(min_x, min_y, max_x, max_y), item| {
+                let (n_min_x, n_min_y, n_max_x, n_max_y) = item?;
+                Ok((
+                    min_x.min(n_min_x),
+                    min_y.min(n_min_y),
+                    max_x.max(n_max_x),
+                    max_y.max(n_max_y),
+                ))
+            },
+        )?;
 
     if min_x.is_infinite() {
         return Ok(SelectionBounds {

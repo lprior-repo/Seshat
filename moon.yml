@@ -19,8 +19,8 @@ tasks:
 
   test-rust:
     script: |
-      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo test --workspace --exclude seshat_cli
-      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo test -p seshat_cli
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo test --workspace --exclude seshat_cli 2>&1 | tdd-guard-rust --project-root /home/lewis/src/Seshat --passthrough
+      RUSTUP_TOOLCHAIN=1.94.0 /usr/bin/cargo test -p seshat_cli 2>&1 | tdd-guard-rust --project-root /home/lewis/src/Seshat --passthrough
 
   test:
     script: |

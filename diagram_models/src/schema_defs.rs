@@ -4,6 +4,8 @@
 
 #![allow(dead_code)]
 
+use smallvec::smallvec;
+
 /// Events table schema - consolidated definition
 pub const SCHEMA_EVENTS_TABLE: &str = r"
 CREATE TABLE IF NOT EXISTS events (
@@ -49,10 +51,13 @@ CREATE TABLE IF NOT EXISTS schema_version (
 )
 ";
 
-/// All schema statements for initial setup
+/// All schema statements for initial setup.
+///
+/// Uses `SmallVec<[&'static str; 6]>` to avoid heap allocation for the
+/// fixed-size collection of exactly 6 schema statements.
 #[must_use]
-pub fn all_schema_statements() -> Vec<&'static str> {
-    vec![
+pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 6]> {
+    smallvec![
         SCHEMA_VERSION_TABLE,
         SCHEMA_EVENTS_TABLE,
         SCHEMA_EVENTS_REVISION_INDEX,

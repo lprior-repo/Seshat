@@ -2,11 +2,12 @@ use crate::document::NodeId;
 use crate::envelope::DomainOp;
 use crate::projection::ops::node_bounds::{get_parent_containers, recompute_container_bounds};
 use crate::projection::types::{DiagramProjection, ReplayError};
+use smallvec::SmallVec;
 
 use super::add_move::{apply_node_add, apply_node_move};
 use super::{build_projection, EdgeMap, NodeMap};
 
-fn get_children(node_map: &NodeMap, parent_id: &NodeId) -> Vec<NodeId> {
+fn get_children(node_map: &NodeMap, parent_id: &NodeId) -> SmallVec<[NodeId; 8]> {
     node_map
         .iter()
         .filter(|(_, node)| node.parent.as_ref() == Some(parent_id))

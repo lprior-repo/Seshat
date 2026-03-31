@@ -1,5 +1,12 @@
 //! Test helpers for parse/event tests
-#![allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#![allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 use crate::ui::canvas::domain::{
     CanvasEvent, CanvasPoint, CanvasVector, InteractionState, RawEvent, SelectionMode,
 };

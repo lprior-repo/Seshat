@@ -73,7 +73,6 @@ fn test_handle_mousedown_selects_node() {
     let mut vdom = VirtualDom::new(|| {
         let evt = create_mouse_event(100.0, 100.0, MouseButton::Primary);
         let id = NodeId::new("node1".to_string());
-        let doc = DiagramDocument::default();
 
         let interaction_mode = Signal::new(InteractionMode::Select);
         let doc_signal = Signal::new(DiagramDocument::default());
@@ -84,7 +83,7 @@ fn test_handle_mousedown_selects_node() {
             id,
             false,
             ToolMode::Select,
-            doc,
+            (0.0, 0.0, 1.0),
             false,
             (0.0, 0.0),
             interaction_mode,

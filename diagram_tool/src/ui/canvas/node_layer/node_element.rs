@@ -12,34 +12,13 @@ use canvas_domain::interaction_reducer::InteractionMode;
 use canvas_domain::perf::to_screen_coords;
 use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind};
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
-pub enum NodeInteractionState {
-    #[default]
-    Normal,
-    Hovered,
-    Selected {
-        hovered: bool,
-    },
-    Editing,
-}
+use super::render_data::{NodeInteractionState, NodeRenderData};
 
-impl NodeInteractionState {
-    pub fn is_selected(self) -> bool {
-        matches!(self, Self::Selected { .. } | Self::Editing)
-    }
-
-    pub fn is_hovered(self) -> bool {
-        matches!(self, Self::Hovered | Self::Selected { hovered: true })
-    }
-
-    pub fn is_editing(self) -> bool {
-        matches!(self, Self::Editing)
-    }
-}
-
-#[derive(Props, Clone, PartialEq)]
+#[derive(Props, Clone)]
 pub struct NodeElementProps {
     pub id: NodeId,
+    pub render_data: NodeRenderData,
+    /// Full node reference for event handlers (not used in `PartialEq` diff path).
     pub node: Node,
     pub interaction_state: NodeInteractionState,
     pub doc_signal: Signal<DiagramDocument>,
@@ -85,6 +64,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let arrow_type_default = app_state.arrow_type;
     let toast = crate::ui::toast::use_toast();
 
+    let rd = &props.render_data;
     let node = props.node;
     let id = props.id;
     let id_data_attr = id.to_string();
@@ -101,11 +81,11 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let zoom = props.zoom;
 
     let canvas_domain::ScreenCoord(left, top) = to_screen_coords(
-        canvas_domain::CanvasCoord(node.x.0, node.y.0),
+        canvas_domain::CanvasCoord(rd.x, rd.y),
         canvas_domain::CanvasCoord(camera_x, camera_y),
         zoom,
     );
-    let (width, height) = (node.width.0 * zoom, node.height.0 * zoom);
+    let (width, height) = (rd.width * zoom, rd.height * zoom);
 
     let border_width = if is_selected { "2" } else { "1" };
     let border_base = if is_selected || is_hovered {
@@ -118,39 +98,38 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     } else {
         "100"
     };
-    let bg = if node.kind == NodeKind::Subgraph {
+    let bg = if rd.kind == NodeKind::Subgraph {
         NODE_BG_SUBGRAPH
     } else {
         NODE_BG
     };
-    let z_index = node.z_index
-        + if node.kind == NodeKind::Subgraph {
+    let z_index = rd.z_index
+        + if rd.kind == NodeKind::Subgraph {
             10
         } else {
             1000
         };
-    let font_px = node.font_size.map_or(11.0, |f| f.0) * zoom;
+    let font_px = rd.font_size.map_or(11.0, |f| f) * zoom;
 
-    let fallback_provider = node.icon.split('/').next().map_or("generic", |p| p);
-    let provider = node
+    let fallback_provider = rd.icon.split('/').next().map_or("generic", |p| p);
+    let provider = rd
         .tags
         .front()
         .map_or(fallback_provider, |p: &String| p.as_str());
     let provider_top = provider_color(provider);
-    let node_initials = initials(&node.label);
+    let node_initials = initials(&rd.label);
 
     rsx! {
-        div {
-            key: "{id:?}",
-            "data-testid": "node",
-            "data-node-id": "{id_data_attr}",
-            "data-node-kind": match node.kind {
-                NodeKind::Node => "node",
-                NodeKind::Subgraph => "subgraph",
-                NodeKind::Text => "text",
-            },
-            class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px]",
-            style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent);",
+            div {
+                "data-testid": "node",
+                "data-node-id": "{id_data_attr}",
+                "data-node-kind": match rd.kind {
+                    NodeKind::Node => "node",
+                    NodeKind::Subgraph => "subgraph",
+                    NodeKind::Text => "text",
+                },
+                class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px]",
+                style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; border: {border_width}px solid color-mix(in oklch, {border_base} {border_mix}%, transparent); background: linear-gradient(180deg, color-mix(in oklch, {bg} 92%, {BG_BASE}) 0%, {bg} 100%); box-shadow: 0 6px 18px color-mix(in oklch, black 24%, transparent); contain: layout style; will-change: transform;",
 
             onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_for_enter.clone())),
             onmouseleave: move |_| {
@@ -164,14 +143,18 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
 
             onmousedown: move |evt| {
                 let tool = *tool_signal.read();
-                let doc = doc_signal.read().clone();
+                let camera = {
+                    let doc = doc_signal.read();
+                    (doc.editor_state.camera_x.0, doc.editor_state.camera_y.0, doc.editor_state.zoom.0)
+                };
+                // read lock dropped before handler call
                 let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
                 super::handlers::handle_mousedown(
                     evt,
                     id_for_down.clone(),
                     *multi_touch_active.read(),
                     tool,
-                    doc,
+                    camera,
                     additive,
                     *canvas_origin.read(),
                     interaction_mode,
@@ -198,14 +181,9 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                 );
             },
 
-            div {
-                "data-testid": "node-hitbox",
-                class: "absolute opacity-0 inset-0 pointer-events-none"
-            }
-
             {
                 let content_props = super::node_content::NodeContentProps {
-                    node: node.clone(),
+                    node,
                     id: id.clone(),
                     interaction_state,
                     font_px,

@@ -81,6 +81,16 @@ export default defineConfig({
         browserName: "chromium",
       },
     },
+    {
+      name: "perf-latency",
+      retries: 0,
+      workers: 1,
+      testMatch: /(?:interaction_latency|honest_scale|perf_observer|js_profile)\.spec/,
+      timeout: 120_000,
+      use: {
+        browserName: "chromium",
+      },
+    },
   ],
   webServer: {
     command: "moon run :serve-e2e",

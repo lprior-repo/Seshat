@@ -4,6 +4,7 @@ use crate::history::History;
 use canvas_domain::CanvasCoord;
 use diagram_models::document::{DiagramDocument, Edge, EdgeId, EdgeStyle, Node};
 use dioxus::prelude::*;
+use im::HashSet as ImHashSet;
 
 #[derive(Clone, PartialEq)]
 pub struct EdgeContext {
@@ -22,6 +23,9 @@ pub struct EdgeLayerProps {
     pub viewport_size: Signal<(f64, f64)>,
     pub interaction_mode: Signal<canvas_domain::interaction_reducer::InteractionMode>,
     pub canvas_origin: Signal<(f64, f64)>,
+    /// Lightweight trigger Memo for camera/selection data. `EdgeLayer` subscribes
+    /// to this instead of the full `doc_signal` to avoid unnecessary re-renders.
+    pub node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 }
 

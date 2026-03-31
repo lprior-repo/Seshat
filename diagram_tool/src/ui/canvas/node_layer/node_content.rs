@@ -6,7 +6,7 @@ use crate::ui::canvas::document_ops::{fit_icon_side, node_image_url};
 use crate::ui::theme::TEXT_MAIN;
 
 use super::inline_edit::InlineEdit;
-use super::node_element::NodeInteractionState;
+use super::render_data::NodeInteractionState;
 
 #[derive(Props, Clone, PartialEq)]
 pub struct NodeContentProps {

@@ -20,6 +20,12 @@
 //! - I1: Undo stack contains documents in reverse chronological order
 //! - I2: Redo stack contains documents in chronological order
 //! - I3: After push: redo stack is empty
+//!
+//! ## Performance
+//!
+//! Uses `rpds::List` for O(1) structural-sharing prepend and drop-first.
+//! Truncation uses O(n) fold to rebuild when exceeding limit — acceptable
+//! since history limit is small (100) and truncation is rare.
 
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 #![cfg_attr(not(test), deny(clippy::expect_used))]
@@ -53,7 +59,8 @@ impl Default for HistoryLimit {
     }
 }
 
-/// Persistent history using persistent data structures (rpds)
+/// Persistent history using `rpds::List` for O(1) prepend and drop-first
+/// with structural sharing (no element cloning).
 #[derive(Clone, Default)]
 pub struct History {
     undo_stack: List<DiagramDocument>,
@@ -63,44 +70,29 @@ pub struct History {
 /// Maximum number of history entries to retain
 const MAX_HISTORY: HistoryLimit = HistoryLimit(100);
 
-/// Truncate stack to the given limit (uses default limit for backward compatibility)
-fn truncate_stack_default(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    truncate_stack_with_limit(stack, MAX_HISTORY)
-}
-
-/// Truncate stack to at most `limit` entries
-fn truncate_stack_with_limit(
-    stack: &List<DiagramDocument>,
-    limit: HistoryLimit,
-) -> List<DiagramDocument> {
-    let len = stack.len();
-    if len <= limit.value() {
-        return stack.clone();
+/// Truncate a `rpds::List` to at most `limit` entries.
+///
+/// Since `rpds::List` is prepend-based, we collect into a vec,
+/// reverse to get chronological order, take the first `limit`, then
+/// fold back into a list in reverse (prepend order).
+fn truncate_stack(stack: &List<DiagramDocument>, limit: HistoryLimit) -> List<DiagramDocument> {
+    let limit_val = limit.value();
+    if stack.len() <= limit_val {
+        stack.clone()
+    } else {
+        stack
+            .iter()
+            .take(limit_val)
+            .fold(List::new(), |acc, doc| acc.push_front(doc.clone()))
     }
-    stack.iter().take(limit.value()).cloned().collect()
 }
 
-/// Drops the first element from the list
-fn drop_first(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    let len = stack.len();
-    if len <= 1 {
-        return List::new();
-    }
-    stack.iter().skip(1).cloned().collect()
-}
-
-/// Drops the first two elements from the list (used when current matches first)
+/// Drop the first two elements via sequential `drop_first`.
 fn drop_first_two(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    let len = stack.len();
-    if len <= 2 {
-        return List::new();
-    }
-    stack.iter().skip(2).cloned().collect()
-}
-
-/// Gets the second element from the list
-fn second_element(stack: &List<DiagramDocument>) -> Option<DiagramDocument> {
-    stack.iter().nth(1).cloned()
+    stack
+        .drop_first()
+        .and_then(|s| s.drop_first())
+        .unwrap_or_default()
 }
 
 impl History {
@@ -111,9 +103,6 @@ impl History {
     }
 
     /// Pure transition to push a new state
-    ///
-    /// This is the core state transition that adds a new document to history.
-    /// Postcondition Q1: After push, `redo_stack` is empty (new timeline branch)
     #[must_use]
     pub fn push(&self, doc: DiagramDocument) -> Self {
         Self {
@@ -124,19 +113,17 @@ impl History {
     }
 
     /// Pure transition to undo
-    ///
-    /// Returns the previous state from the undo stack.
-    /// If `current` matches the most recent entry (first in stack),
-    /// skips it and returns the next entry (the state before current).
     #[must_use]
     pub fn undo(&self, current: DiagramDocument) -> Option<(DiagramDocument, Self)> {
         let first = self.undo_stack.first()?;
 
-        // Check if current matches the first element (most recent state)
-        // If so, we need to return the second element (the state before current)
         if first.revision == current.revision {
-            // Current is on the stack at position 0, return the second element
-            let second = second_element(&self.undo_stack)?;
+            let second = self
+                .undo_stack
+                .drop_first()
+                .as_ref()
+                .and_then(|s| s.first())
+                .cloned()?;
             Some((
                 second,
                 Self {
@@ -146,11 +133,10 @@ impl History {
                 .tap_history_limit(),
             ))
         } else {
-            // Current is not on the stack, return the first element
             Some((
                 first.clone(),
                 Self {
-                    undo_stack: drop_first(&self.undo_stack),
+                    undo_stack: self.undo_stack.drop_first().unwrap_or_default(),
                     redo_stack: self.redo_stack.push_front(current),
                 }
                 .tap_history_limit(),
@@ -159,18 +145,17 @@ impl History {
     }
 
     /// Pure transition to redo
-    ///
-    /// Returns the next state from the redo stack.
-    /// If `current` matches the first entry in redo stack,
-    /// skips it and returns the next entry.
     #[must_use]
     pub fn redo(&self, current: DiagramDocument) -> Option<(DiagramDocument, Self)> {
         let first = self.redo_stack.first()?;
 
-        // Check if current matches the first element
         if first.revision == current.revision {
-            // Current is on the redo stack at position 0, return the second element
-            let second = second_element(&self.redo_stack)?;
+            let second = self
+                .redo_stack
+                .drop_first()
+                .as_ref()
+                .and_then(|s| s.first())
+                .cloned()?;
             Some((
                 second,
                 Self {
@@ -180,12 +165,11 @@ impl History {
                 .tap_history_limit(),
             ))
         } else {
-            // Current is not on the redo stack, return the first element
             Some((
                 first.clone(),
                 Self {
                     undo_stack: self.undo_stack.push_front(current),
-                    redo_stack: drop_first(&self.redo_stack),
+                    redo_stack: self.redo_stack.drop_first().unwrap_or_default(),
                 }
                 .tap_history_limit(),
             ))
@@ -196,8 +180,8 @@ impl History {
     #[must_use]
     pub fn tap_history_limit(self) -> Self {
         Self {
-            undo_stack: truncate_stack_with_limit(&self.undo_stack, MAX_HISTORY),
-            redo_stack: truncate_stack_with_limit(&self.redo_stack, MAX_HISTORY),
+            undo_stack: truncate_stack(&self.undo_stack, MAX_HISTORY),
+            redo_stack: truncate_stack(&self.redo_stack, MAX_HISTORY),
         }
     }
 
@@ -226,8 +210,8 @@ impl History {
     }
 }
 
-/// Re-export `truncate_stack` for tests (backward compatibility)
+/// Re-export `truncate_stack` for tests (backward compatibility).
 #[must_use]
-pub fn truncate_stack(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
-    truncate_stack_default(stack)
+pub fn truncate_stack_reexport(stack: &List<DiagramDocument>) -> List<DiagramDocument> {
+    truncate_stack(stack, MAX_HISTORY)
 }

@@ -20,7 +20,14 @@ pub fn execute_layout(cmd: &LayoutCommand) -> Result<(), LayoutError> {
 }
 
 #[cfg(test)]
-#[allow(clippy::all, clippy::pedantic, clippy::nursery, clippy::unwrap_used, clippy::expect_used, clippy::panic)]
+#[allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
 mod tests {
     use super::*;
     use diagram_models::document::{

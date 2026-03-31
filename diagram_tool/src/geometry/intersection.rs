@@ -2,6 +2,8 @@
 #![cfg_attr(not(test), deny(clippy::expect_used))]
 #![cfg_attr(not(test), deny(clippy::panic))]
 
+use smallvec::SmallVec;
+
 use crate::geometry::primitives::{Point, AABB};
 
 const EPSILON: f64 = 1e-10;
@@ -130,7 +132,7 @@ pub fn line_rect_intersects(line: LineSegment, rect: &AABB) -> bool {
 }
 
 #[must_use]
-pub fn line_rect_intersections(line: LineSegment, rect: &AABB) -> Vec<Point> {
+pub fn line_rect_intersections(line: LineSegment, rect: &AABB) -> SmallVec<[Point; 2]> {
     let top = LineSegment::new_unchecked(
         Point::new(rect.min_x, rect.min_y),
         Point::new(rect.max_x, rect.min_y),
@@ -148,7 +150,7 @@ pub fn line_rect_intersections(line: LineSegment, rect: &AABB) -> Vec<Point> {
         Point::new(rect.max_x, rect.max_y),
     );
 
-    let mut points = Vec::new();
+    let mut points: SmallVec<[Point; 2]> = SmallVec::new();
 
     if let Some(p) = line_line_intersection(line, top) {
         points.push(p);

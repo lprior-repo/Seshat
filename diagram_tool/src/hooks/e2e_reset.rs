@@ -13,6 +13,12 @@
 //!
 //! The hook also exposes `window.__seshatE2eReady` as a boolean that tests
 //! can poll to know when the WASM app has fully initialised its signals.
+//!
+//! Additionally exposes `window.__seshatLoadDocument(json)` which accepts a
+//! JSON string representing a `DiagramDocument` and loads it into the
+//! document signal.  Returns a Promise that resolves once the document is
+//! loaded and signals are reset.  Used by scale benchmarks to inject large
+//! scenes without creating nodes one-by-one.
 
 use crate::history::History;
 use crate::ui::editor::ToolMode;
@@ -62,10 +68,19 @@ pub fn use_e2e_reset_hook() {
                 });
             };
 
+            window.__seshatLoadDocument = (jsonString) => {
+                return new Promise((resolve) => {
+                    window.__seshat_e2e_load_resolve = resolve;
+                    dioxus.send({ type: "load", json: jsonString });
+                });
+            };
+
             window.__seshat_e2e_reset_cleanup = () => {
                 delete window.__seshatResetDocument;
+                delete window.__seshatLoadDocument;
                 delete window.__seshatE2eReady;
                 delete window.__seshat_e2e_reset_resolve;
+                delete window.__seshat_e2e_load_resolve;
                 delete window.__seshat_e2e_reset_cleanup;
             };
 
@@ -98,6 +113,41 @@ pub fn use_e2e_reset_hook() {
                             delete window.__seshat_e2e_reset_resolve;
                         }
                         ",
+                    );
+                } else if msg_type == "load" {
+                    let json_str = msg["json"].as_str().map_or("", |s| s);
+                    let result = serde_json::from_str::<DiagramDocument>(json_str);
+
+                    let (loaded, error_msg) = match result {
+                        Ok(doc) => {
+                            doc_signal.set(doc);
+                            dragging_icon.set(None);
+                            history_signal.set(History::new());
+                            tool_mode.set(ToolMode::Select);
+                            edge_style.set(EdgeStyle::Solid);
+                            arrow_type.set(ArrowType::Default);
+                            toast_queue.set(ToastQueue::default());
+                            toolbar_stats.set(ToolbarStats::default());
+                            viewport_size.set((1200.0, 800.0));
+                            validate_trigger.set(0);
+                            (true, String::new())
+                        }
+                        Err(e) => (false, e.to_string()),
+                    };
+
+                    let error_escaped = error_msg.replace('\\', "\\\\").replace('\'', "\\'");
+                    let _ = document::eval(
+                        &format!(
+                            "
+                            if (window.__seshat_e2e_load_resolve) {{
+                                window.__seshat_e2e_load_resolve({loaded});
+                                if (!{loaded}) {{
+                                    console.error('[e2e] __seshatLoadDocument parse error: {error_escaped}');
+                                }}
+                                delete window.__seshat_e2e_load_resolve;
+                            }}
+                            ",
+                        ),
                     );
                 }
             }

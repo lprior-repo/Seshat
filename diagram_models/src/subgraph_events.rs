@@ -252,16 +252,15 @@ pub fn remove_all_nodes_from_subgraph(
     state: &mut DiagramState,
 ) -> Result<(), Error> {
     get_subgraph(state, subgraph_id)?;
-    let children: Vec<NodeId> = state
+    // Clone before iterating to avoid borrow conflict with state.nodes
+    let nodes_snapshot = state.nodes.clone();
+    let nodes = state
         .nodes
         .iter()
         .filter(|(_, node)| node.parent.as_ref() == Some(subgraph_id))
         .map(|(id, _)| id.clone())
-        .collect();
-    let nodes = children
-        .iter()
-        .try_fold(state.nodes.clone(), |acc, child_id| {
-            update_node_parent(&acc, child_id, None)
+        .try_fold(nodes_snapshot, |acc, child_id| {
+            update_node_parent(&acc, &child_id, None)
         })?;
     state.nodes = nodes;
     let bounds = calculate_subgraph_bounds(subgraph_id, state)?;

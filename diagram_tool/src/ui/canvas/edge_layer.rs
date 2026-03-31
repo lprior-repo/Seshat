@@ -14,8 +14,20 @@ use serde_json::Value;
 #[allow(non_snake_case)]
 #[allow(clippy::needless_collect)]
 pub fn EdgeLayer(props: EdgeLayerProps) -> Element {
-    let doc = props.doc_signal.read();
-    let ctx = get_edge_context(&doc, &props);
+    // Subscribe to lightweight trigger Memo instead of full doc_signal.
+    // This avoids re-rendering all edges when only unrelated document fields change.
+    let trigger = props.node_viewport_trigger.read();
+    let (camera_x, camera_y, zoom, selected_items) = (trigger.0, trigger.1, trigger.2, &trigger.3);
+
+    // Peek at document for edge/node geometry — does NOT subscribe to doc_signal.
+    let doc = props.doc_signal.peek();
+    let canvas_origin = canvas_domain::CanvasCoord::from(*props.canvas_origin.read());
+    let ctx = EdgeContext {
+        camera_x,
+        camera_y,
+        zoom,
+        canvas_origin,
+    };
     let culling_rect = get_culling_rect(&ctx, &props);
 
     let edges: Vec<_> = get_visible_edges(&doc, culling_rect)
@@ -26,19 +38,10 @@ pub fn EdgeLayer(props: EdgeLayerProps) -> Element {
         for (id, edge, src, tgt) in edges {
             EdgeItem {
                 id: id.clone(), edge, src, tgt, ctx: ctx.clone(),
-                is_selected: doc.editor_state.selected_items.contains(id.as_str()),
+                is_selected: selected_items.contains(id.as_str()),
                 layer_props: props.clone()
             }
         }
-    }
-}
-
-fn get_edge_context(doc: &DiagramDocument, props: &EdgeLayerProps) -> EdgeContext {
-    EdgeContext {
-        camera_x: doc.editor_state.camera_x.0,
-        camera_y: doc.editor_state.camera_y.0,
-        zoom: doc.editor_state.zoom.0,
-        canvas_origin: canvas_domain::CanvasCoord::from(*props.canvas_origin.read()),
     }
 }
 

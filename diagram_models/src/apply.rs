@@ -16,6 +16,7 @@
 use crate::document::types::{EdgeId, NodeId, Revision};
 use crate::document::{DiagramDocument, DocumentError, Edge};
 use crate::proposed_changes::{ApplyError, DeleteNodeResult, ProposedChange, ProposedChanges};
+use smallvec::SmallVec;
 
 // ---------------------------------------------------------------------------
 // Data types
@@ -127,7 +128,7 @@ fn apply_delete_node_inner(
     mutate_delete_node(doc, node_id, remove_fn)?;
     Ok(DeleteNodeResult {
         deleted_node_id: node_id.clone(),
-        cascade_deleted_edge_ids,
+        cascade_deleted_edge_ids: cascade_deleted_edge_ids.into_iter().collect(),
     })
 }
 
@@ -186,7 +187,10 @@ fn mutate_delete_node(
 ///
 /// Pure read-only scan. Includes self-loops (I5). Returns empty vec if no
 /// edges reference the node (I6).
-fn collect_cascade_edge_ids(edges: &im::HashMap<EdgeId, Edge>, node_id: &NodeId) -> Vec<EdgeId> {
+fn collect_cascade_edge_ids(
+    edges: &im::HashMap<EdgeId, Edge>,
+    node_id: &NodeId,
+) -> SmallVec<[EdgeId; 4]> {
     edges
         .iter()
         .filter(|(_, edge)| edge.source == *node_id || edge.target == *node_id)
@@ -209,6 +213,7 @@ pub fn cascade_edges_for_node(doc: &DiagramDocument, node_id: &NodeId) -> Option
         .nodes
         .contains_key(node_id)
         .then(|| collect_cascade_edge_ids(&doc.document.edges, node_id))
+        .map(|sv| sv.into_iter().collect())
 }
 
 /// Validate and deduplicate accepted indices against the changes slice.
