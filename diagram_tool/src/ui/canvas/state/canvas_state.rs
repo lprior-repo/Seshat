@@ -44,6 +44,7 @@ pub struct CanvasState {
     pub active_pointers: Signal<StdHashSet<u32>>,
     pub canvas_origin: Signal<(f64, f64)>,
     pub ordered_node_cache: Memo<Vec<NodeId>>,
+    pub geometry_render_tick: Signal<u64>,
     /// Lightweight trigger Memo that extracts only the camera/selection data.
     /// `NodeLayer` and `EdgeLayer` subscribe to this instead of the full document,
     /// avoiding re-renders when only unrelated document fields change.
@@ -78,6 +79,7 @@ pub fn use_canvas_state() -> CanvasState {
     let captured_pointer = use_signal(|| Option::<u32>::None);
     let active_pointers = use_signal(StdHashSet::<u32>::new);
     let canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
+    let geometry_render_tick = use_signal(|| 0_u64);
     let ordered_node_cache = use_memo(move || {
         let doc = doc_signal.read();
         ordered_node_ids(&doc)
@@ -129,6 +131,7 @@ pub fn use_canvas_state() -> CanvasState {
         interaction_mode,
         pending_pointer_sample,
         pending_wheel_sample,
+        geometry_render_tick,
         db_tx,
     );
 
@@ -159,6 +162,7 @@ pub fn use_canvas_state() -> CanvasState {
         active_pointers,
         canvas_origin,
         ordered_node_cache,
+        geometry_render_tick,
         node_viewport_trigger,
         db_tx,
     }

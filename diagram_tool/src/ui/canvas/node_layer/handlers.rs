@@ -6,7 +6,9 @@ use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 
 use crate::history::History;
-use crate::ui::canvas::document_ops::{flush_pending_pointer_update, sync_canvas_origin};
+use crate::ui::canvas::document_ops::{
+    dispatch_drag_move_batch, flush_pending_pointer_update, sync_canvas_origin,
+};
 use crate::ui::editor::ToolMode;
 use crate::ui::interaction::{
     drag_original_positions, select_single, toggle_selection, with_auto_selected_edges,
@@ -147,6 +149,7 @@ pub fn handle_mouseup(
     mut history_signal: Signal<History>,
     mut interaction_mode: Signal<InteractionMode>,
     pending_pointer_sample: Signal<Option<(f64, f64)>>,
+    geometry_render_tick: Signal<u64>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
     mut tool_signal: Signal<ToolMode>,
     edge_style_default: EdgeStyle,
@@ -167,6 +170,7 @@ pub fn handle_mouseup(
         history_signal,
         interaction_mode,
         pending_pointer_sample,
+        geometry_render_tick,
         db_tx,
     );
     let mode = interaction_mode.read().clone();
@@ -224,8 +228,17 @@ pub fn handle_mouseup(
         InteractionMode::DraggingSelection { .. } | InteractionMode::ResizingSelection { .. } => {
             let mut doc_clone = doc_signal.read().clone();
             interaction_mode.with_mut(|mode_mut| {
+                let original_positions = match mode_mut {
+                    InteractionMode::DraggingSelection {
+                        original_positions, ..
+                    } => Some(original_positions.clone()),
+                    _ => None,
+                };
                 let did_change = finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
                 if did_change {
+                    if let Some(original_positions) = original_positions.as_ref() {
+                        dispatch_drag_move_batch(original_positions, &doc_clone, &db_tx);
+                    }
                     doc_signal.set(doc_clone);
                 }
             });

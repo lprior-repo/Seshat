@@ -1,6 +1,6 @@
 use crate::ui::canvas::document_ops::{
-    apply_rubber_band_release, edge_preserves_dag, find_node_at, flush_pending_pointer_update,
-    subgraph_release_bounds, sync_canvas_origin,
+    apply_rubber_band_release, dispatch_drag_move_batch, edge_preserves_dag, find_node_at,
+    flush_pending_pointer_update, subgraph_release_bounds, sync_canvas_origin,
 };
 use crate::ui::canvas::state::CanvasState;
 use crate::ui::editor::ToolMode;
@@ -26,6 +26,7 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
         history_signal,
         interaction_mode,
         pending_pointer_sample,
+        state.geometry_render_tick,
         db_tx,
     );
 
@@ -56,7 +57,16 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
         }
         InteractionMode::ResizingSelection { .. } | InteractionMode::DraggingSelection { .. } => {
             let mut doc_clone = doc_signal.read().clone();
+            let original_positions = match mode {
+                InteractionMode::DraggingSelection {
+                    original_positions, ..
+                } => Some(original_positions.clone()),
+                _ => None,
+            };
             if finalize_motion_release(mode, &mut doc_clone, &db_tx) {
+                if let Some(original_positions) = original_positions.as_ref() {
+                    dispatch_drag_move_batch(original_positions, &doc_clone, &db_tx);
+                }
                 doc_signal.set(doc_clone);
             }
         }

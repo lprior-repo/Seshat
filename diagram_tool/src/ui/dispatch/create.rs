@@ -94,6 +94,23 @@ pub fn create_node_resize_envelope(
     }))
 }
 
+/// Create an `EventEnvelope` for a `NodeMove` operation.
+///
+/// # Errors
+/// Returns `DispatchError::InvalidCoordinates` if coordinates are not finite.
+pub fn create_node_move_envelope(
+    id: NodeId,
+    original_x: f64,
+    original_y: f64,
+    x: f64,
+    y: f64,
+) -> Result<EventEnvelope, DispatchError> {
+    if !validate_coordinates(x, y) || !validate_coordinates(original_x, original_y) {
+        return Err(DispatchError::InvalidCoordinates);
+    }
+    Ok(wrap(DomainOp::NodeMove { id, x, y }))
+}
+
 /// Create an `EventEnvelope` for an `EdgeConnect` operation
 #[must_use]
 pub fn create_edge_connect_envelope(id: String, source: String, target: String) -> EventEnvelope {

@@ -21,7 +21,7 @@ pub fn handle_resizing(
     anchor: &(f64, f64),
     did_resize: &mut bool,
     aspect_ratio: &Option<f64>,
-) {
+) -> bool {
     let doc_for_mouse = doc_signal.read().clone();
     let canvas_domain::CanvasCoord(mx, my) = to_canvas_coords(
         canvas_domain::ScreenCoord(client_x, client_y),
@@ -148,5 +148,8 @@ pub fn handle_resizing(
                 }
             }
         });
+        return true;
     }
+
+    false
 }

@@ -157,6 +157,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 EdgeLayer {
                     doc_signal: state.doc_signal,
                     history_signal: state.history_signal,
+                    geometry_render_tick: state.geometry_render_tick,
                     editor_state: state.editor_state,
                     edit_value: state.edit_value,
                     viewport_size: state.viewport_size,
@@ -192,6 +193,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 edit_value: state.edit_value,
                 viewport_size: state.viewport_size,
                 ordered_node_cache: state.ordered_node_cache,
+                geometry_render_tick: state.geometry_render_tick,
                 node_viewport_trigger: state.node_viewport_trigger,
                 canvas_origin: state.canvas_origin,
                 shift_pressed: state.shift_pressed,

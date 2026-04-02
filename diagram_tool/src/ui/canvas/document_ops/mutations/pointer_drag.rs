@@ -15,8 +15,7 @@ pub fn handle_dragging(
     anchor_client: &(f64, f64),
     original_positions: &HashMap<diagram_models::document::NodeId, (f64, f64)>,
     did_move: &mut bool,
-    db_tx: &Option<dioxus::prelude::Coroutine<diagram_models::envelope::EventEnvelope>>,
-) {
+) -> bool {
     let doc = doc_signal.read().clone();
     let current_pos = to_canvas_coords(
         canvas_domain::ScreenCoord(client_x, client_y),
@@ -72,38 +71,12 @@ pub fn handle_dragging(
                             },
                             id.clone(),
                         );
-                        if let Some(tx) = db_tx {
-                            tx.send(diagram_models::envelope::EventEnvelope {
-                                op_id: uuid::Uuid::new_v4().to_string(),
-                                operation: diagram_models::envelope::DomainOp::NodeMove {
-                                    id: id.clone(),
-                                    x: *nx,
-                                    y: *ny,
-                                },
-                                author: diagram_models::envelope::Author {
-                                    id: "local-user".to_string(),
-                                    name: "Local User".to_string(),
-                                    email: None,
-                                },
-                                timestamp: {
-                                    #[cfg(target_arch = "wasm32")]
-                                    {
-                                        js_sys::Date::now() as i64
-                                    }
-                                    #[cfg(not(target_arch = "wasm32"))]
-                                    {
-                                        std::time::SystemTime::now()
-                                            .duration_since(std::time::UNIX_EPOCH)
-                                            .unwrap_or_default()
-                                            .as_millis()
-                                            as i64
-                                    }
-                                },
-                            });
-                        }
                     }
                 }
             });
+            return true;
         }
     }
+
+    false
 }

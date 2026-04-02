@@ -30,6 +30,7 @@ pub struct NodeElementProps {
     pub space_pan_active: Signal<bool>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
     pub pending_pointer_sample: Signal<Option<(f64, f64)>>,
+    pub geometry_render_tick: Signal<u64>,
     pub camera_x: f64,
     pub camera_y: f64,
     pub zoom: f64,
@@ -52,6 +53,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
     let space_pan_active = props.space_pan_active;
     let db_tx = props.db_tx;
     let pending_pointer_sample = props.pending_pointer_sample;
+    let geometry_render_tick = props.geometry_render_tick;
 
     let app_state = use_context::<crate::app::AppState>();
     let edge_style_default = app_state.edge_style;
@@ -124,7 +126,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                     NodeKind::Text => "text",
                 },
                 class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px {node_state_class} {bg_class}",
-                style: "left: {left}px; top: {top}px; width: {width}px; height: {height}px; z-index: {z_index}; contain: layout style; will-change: transform;",
+                style: "left: 0; top: 0; transform: translate3d({left}px, {top}px, 0); width: {width}px; height: {height}px; z-index: {z_index}; contain: layout style; will-change: transform;",
 
             onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_for_enter.clone())),
             onmouseleave: move |_| {
@@ -167,6 +169,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                     history_signal,
                     interaction_mode,
                     pending_pointer_sample,
+                    geometry_render_tick,
                     db_tx,
                     tool_signal,
                     *edge_style_default.read(),

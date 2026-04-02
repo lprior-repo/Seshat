@@ -17,6 +17,7 @@ pub fn EdgeLayer(props: EdgeLayerProps) -> Element {
     // Subscribe to lightweight trigger Memo instead of full doc_signal.
     // This avoids re-rendering all edges when only unrelated document fields change.
     let trigger = props.node_viewport_trigger.read();
+    let _geometry_tick = *props.geometry_render_tick.read();
     let (camera_x, camera_y, zoom, selected_items) = (trigger.0, trigger.1, trigger.2, &trigger.3);
 
     // Peek at document for edge/node geometry — does NOT subscribe to doc_signal.

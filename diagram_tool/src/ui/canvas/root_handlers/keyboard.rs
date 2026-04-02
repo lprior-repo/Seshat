@@ -1,4 +1,5 @@
 use crate::history::History;
+use crate::ui::canvas::document_ops::dispatch_drag_move_batch;
 use crate::ui::commands::{
     apply_clear_selection, apply_delete_selected, apply_nudge_selection, apply_zoom_in,
     apply_zoom_out, apply_zoom_reset,
@@ -108,9 +109,23 @@ pub fn process_keyboard_event(
                             let db_tx = *db_tx;
                             let mut doc_clone = doc_signal.read().clone();
                             interaction_mode.with_mut(|mode_mut| {
+                                let original_positions = match mode_mut {
+                                    InteractionMode::DraggingSelection {
+                                        original_positions,
+                                        ..
+                                    } => Some(original_positions.clone()),
+                                    _ => None,
+                                };
                                 let did_change =
                                     finalize_motion_release(mode_mut, &mut doc_clone, &db_tx);
                                 if did_change {
+                                    if let Some(original_positions) = original_positions.as_ref() {
+                                        dispatch_drag_move_batch(
+                                            original_positions,
+                                            &doc_clone,
+                                            &db_tx,
+                                        );
+                                    }
                                     doc_signal.set(doc_clone);
                                 }
                             });

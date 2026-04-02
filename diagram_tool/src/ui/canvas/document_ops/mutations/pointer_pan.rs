@@ -8,7 +8,7 @@ pub fn handle_panning(
     client_x: f64,
     client_y: f64,
     last_pos: &mut (f64, f64),
-) {
+) -> bool {
     let dx = client_x - last_pos.0;
     let dy = client_y - last_pos.1;
     *last_pos = (client_x, client_y);
@@ -18,5 +18,8 @@ pub fn handle_panning(
             doc.editor_state.camera_x = OrderedFloat(doc.editor_state.camera_x.0 - (dx / zoom));
             doc.editor_state.camera_y = OrderedFloat(doc.editor_state.camera_y.0 - (dy / zoom));
         });
+        return true;
     }
+
+    false
 }

@@ -7,12 +7,17 @@ use super::pointer_drag::handle_dragging;
 use super::pointer_pan::handle_panning;
 use super::pointer_resize::handle_resizing;
 
+fn bump_geometry_render_tick(geometry_render_tick: &mut Signal<u64>) {
+    geometry_render_tick.with_mut(|tick| *tick += 1);
+}
+
 pub fn flush_pending_pointer_update(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
     mut interaction_mode: Signal<InteractionMode>,
     mut pending_pointer_sample: Signal<Option<(f64, f64)>>,
-    db_tx: Option<dioxus::prelude::Coroutine<diagram_models::envelope::EventEnvelope>>,
+    mut geometry_render_tick: Signal<u64>,
+    _db_tx: Option<dioxus::prelude::Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) {
     let pending = pending_pointer_sample.read().as_ref().copied();
     let Some((client_x, client_y)) = pending else {
@@ -27,7 +32,7 @@ pub fn flush_pending_pointer_update(
             original_positions,
             did_move,
         } => {
-            handle_dragging(
+            if handle_dragging(
                 &mut doc_signal,
                 &mut history_signal,
                 client_x,
@@ -36,8 +41,9 @@ pub fn flush_pending_pointer_update(
                 anchor_client,
                 original_positions,
                 did_move,
-                &db_tx,
-            );
+            ) {
+                bump_geometry_render_tick(&mut geometry_render_tick);
+            }
         }
         InteractionMode::ResizingSelection {
             handle,
@@ -47,7 +53,7 @@ pub fn flush_pending_pointer_update(
             did_resize,
             aspect_ratio,
         } => {
-            handle_resizing(
+            if handle_resizing(
                 &mut doc_signal,
                 &mut history_signal,
                 client_x,
@@ -58,10 +64,14 @@ pub fn flush_pending_pointer_update(
                 anchor,
                 did_resize,
                 aspect_ratio,
-            );
+            ) {
+                bump_geometry_render_tick(&mut geometry_render_tick);
+            }
         }
         InteractionMode::Panning { last_pos } => {
-            handle_panning(&mut doc_signal, client_x, client_y, last_pos);
+            if handle_panning(&mut doc_signal, client_x, client_y, last_pos) {
+                bump_geometry_render_tick(&mut geometry_render_tick);
+            }
         }
         InteractionMode::DraggingBendPoint {
             edge_id,
@@ -94,6 +104,7 @@ pub fn flush_pending_pointer_update(
                     )
                 {
                     doc_signal.set(new_doc);
+                    bump_geometry_render_tick(&mut geometry_render_tick);
                 }
             }
         }

@@ -18,6 +18,7 @@ pub struct EdgeContext {
 pub struct EdgeLayerProps {
     pub doc_signal: Signal<DiagramDocument>,
     pub history_signal: Signal<History>,
+    pub geometry_render_tick: Signal<u64>,
     pub editor_state: Signal<crate::ui::canvas::state::EditorState>,
     pub edit_value: Signal<String>,
     pub viewport_size: Signal<(f64, f64)>,

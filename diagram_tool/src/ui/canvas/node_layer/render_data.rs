@@ -87,6 +87,7 @@ impl PartialEq for super::node_element::NodeElementProps {
             && self.multi_touch_active == other.multi_touch_active
             && self.space_pan_active == other.space_pan_active
             && self.pending_pointer_sample == other.pending_pointer_sample
+            && self.geometry_render_tick == other.geometry_render_tick
             && self.db_tx == other.db_tx
     }
 }

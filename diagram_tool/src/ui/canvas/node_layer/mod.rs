@@ -28,6 +28,7 @@ pub fn NodeLayer(
     mut edit_value: Signal<String>,
     viewport_size: Signal<(f64, f64)>,
     ordered_node_cache: Memo<Vec<NodeId>>,
+    geometry_render_tick: Signal<u64>,
     node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
     mut canvas_origin: Signal<(f64, f64)>,
     shift_pressed: Signal<bool>,
@@ -42,6 +43,7 @@ pub fn NodeLayer(
     // Subscribe to lightweight trigger Memo instead of full doc_signal.
     // This avoids re-rendering all 2000 nodes when only edges or revision changes.
     let trigger = node_viewport_trigger.read();
+    let _geometry_tick = *geometry_render_tick.read();
     let (camera_x, camera_y, zoom, selected_items) = (trigger.0, trigger.1, trigger.2, &trigger.3);
 
     // Peek at document for node geometry data — does NOT subscribe to doc_signal.
@@ -123,6 +125,7 @@ pub fn NodeLayer(
                     space_pan_active,
                     db_tx,
                     pending_pointer_sample,
+                    geometry_render_tick,
                     camera_x,
                     camera_y,
                     zoom,

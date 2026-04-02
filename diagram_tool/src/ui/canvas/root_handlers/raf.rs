@@ -14,6 +14,7 @@ pub fn use_raf_handler(
     interaction_mode: Signal<InteractionMode>,
     pending_pointer_sample: Signal<Option<(f64, f64)>>,
     pending_wheel_sample: Signal<Option<WheelSample>>,
+    geometry_render_tick: Signal<u64>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 ) {
     use_hook(move || {
@@ -34,6 +35,7 @@ pub fn use_raf_handler(
                         history_signal,
                         interaction_mode,
                         pending_pointer_sample,
+                        geometry_render_tick,
                         db_tx,
                     );
                 }

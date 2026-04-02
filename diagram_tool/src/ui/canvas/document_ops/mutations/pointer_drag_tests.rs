@@ -69,7 +69,6 @@ mod tests {
                 &(10.0, 10.0),
                 &original_positions,
                 &mut did_move,
-                &None,
             );
 
             assert!(!did_move);
@@ -111,7 +110,6 @@ mod tests {
                 &(10.0, 10.0),
                 &original_positions,
                 &mut did_move,
-                &None,
             );
 
             assert!(!did_move);
@@ -156,7 +154,6 @@ mod tests {
                 &(10.0, 10.0),
                 &original_positions,
                 &mut did_move,
-                &None,
             );
 
             assert!(did_move);
@@ -198,7 +195,6 @@ mod tests {
                 &(10.0, 10.0),
                 &original_positions,
                 &mut did_move,
-                &None,
             );
 
             assert!(did_move);
@@ -245,7 +241,6 @@ mod tests {
                 &(10.0, 10.0),
                 &original_positions,
                 &mut did_move,
-                &None,
             );
 
             let doc = doc_signal.read();
@@ -278,7 +273,6 @@ mod tests {
                 &(10.0, 10.0),
                 &original_positions,
                 &mut did_move,
-                &None,
             );
 
             assert!(!did_move);
