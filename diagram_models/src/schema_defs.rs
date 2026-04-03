@@ -64,12 +64,17 @@ CREATE TABLE IF NOT EXISTS ai_documents (
 )
 ";
 
+/// AI Documents key index for efficient lookups
+pub const SCHEMA_AI_DOCUMENTS_KEY_INDEX: &str = r"
+CREATE INDEX IF NOT EXISTS idx_ai_documents_key ON ai_documents(key)
+";
+
 /// All schema statements for initial setup.
 ///
-/// Uses `SmallVec<[&'static str; 7]>` to avoid heap allocation for the
-/// fixed-size collection of exactly 7 schema statements.
+/// Uses `SmallVec<[&'static str; 8]>` to avoid heap allocation for the
+/// fixed-size collection of schema statements.
 #[must_use]
-pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 7]> {
+pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 8]> {
     smallvec![
         SCHEMA_VERSION_TABLE,
         SCHEMA_EVENTS_TABLE,
@@ -78,5 +83,6 @@ pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 7]> {
         SCHEMA_SNAPSHOTS_TABLE,
         SCHEMA_SNAPSHOTS_REVISION_INDEX,
         SCHEMA_AI_DOCUMENTS_TABLE,
+        SCHEMA_AI_DOCUMENTS_KEY_INDEX,
     ]
 }

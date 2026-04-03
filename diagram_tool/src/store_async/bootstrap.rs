@@ -1,5 +1,10 @@
 //! Bootstrap and pool creation for the async store.
 
+use diagram_models::schema_defs::{
+    SCHEMA_AI_DOCUMENTS_KEY_INDEX, SCHEMA_AI_DOCUMENTS_TABLE, SCHEMA_EVENTS_OPERATION_ID_INDEX,
+    SCHEMA_EVENTS_TABLE, SCHEMA_EVENTS_REVISION_INDEX, SCHEMA_SNAPSHOTS_REVISION_INDEX,
+    SCHEMA_SNAPSHOTS_TABLE, SCHEMA_VERSION_TABLE,
+};
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
 use std::path::Path;
 
@@ -69,13 +74,7 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     .map_err(AsyncStoreError::Sqlx)?;
 
     if table_exists.0 == 0 {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS schema_version (
-                version INTEGER NOT NULL DEFAULT 1
-            )",
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query(SCHEMA_VERSION_TABLE).execute(pool).await?;
 
         sqlx::query("INSERT OR IGNORE INTO schema_version (version) VALUES (1)")
             .execute(pool)
@@ -89,23 +88,11 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
             .map_err(AsyncStoreError::Sqlx)?;
 
     if events_table_exists.0 == 0 {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS events (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                operation_id TEXT NOT NULL UNIQUE,
-                revision INTEGER NOT NULL,
-                payload TEXT NOT NULL,
-                timestamp TEXT NOT NULL
-            )",
-        )
-        .execute(pool)
-        .await?;
-
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision)")
+        sqlx::query(SCHEMA_EVENTS_TABLE).execute(pool).await?;
+        sqlx::query(SCHEMA_EVENTS_REVISION_INDEX)
             .execute(pool)
             .await?;
-
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_events_operation_id ON events(operation_id)")
+        sqlx::query(SCHEMA_EVENTS_OPERATION_ID_INDEX)
             .execute(pool)
             .await?;
     }
@@ -118,22 +105,10 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     .map_err(AsyncStoreError::Sqlx)?;
 
     if snapshot_table_exists.0 == 0 {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS snapshots (
-                id INTEGER NOT NULL PRIMARY KEY,
-                revision INTEGER NOT NULL UNIQUE,
-                payload TEXT NOT NULL,
-                created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
-            )",
-        )
-        .execute(pool)
-        .await?;
-
-        sqlx::query(
-            "CREATE INDEX IF NOT EXISTS idx_snapshots_revision ON snapshots(revision DESC)",
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query(SCHEMA_SNAPSHOTS_TABLE).execute(pool).await?;
+        sqlx::query(SCHEMA_SNAPSHOTS_REVISION_INDEX)
+            .execute(pool)
+            .await?;
     }
 
     let ai_documents_table_exists: (i32,) = sqlx::query_as(
@@ -144,20 +119,11 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     .map_err(AsyncStoreError::Sqlx)?;
 
     if ai_documents_table_exists.0 == 0 {
-        sqlx::query(
-            "CREATE TABLE IF NOT EXISTS ai_documents (
-                id TEXT NOT NULL PRIMARY KEY,
-                key TEXT NOT NULL,
-                json_payload TEXT NOT NULL,
-                location_type TEXT NOT NULL,
-                location_data TEXT NOT NULL,
-                created_at INTEGER NOT NULL
-            )",
-        )
-        .execute(pool)
-        .await?;
+        sqlx::query(SCHEMA_AI_DOCUMENTS_TABLE)
+            .execute(pool)
+            .await?;
 
-        sqlx::query("CREATE INDEX IF NOT EXISTS idx_ai_documents_key ON ai_documents(key)")
+        sqlx::query(SCHEMA_AI_DOCUMENTS_KEY_INDEX)
             .execute(pool)
             .await?;
     }
