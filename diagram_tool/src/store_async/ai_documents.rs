@@ -8,6 +8,23 @@ use sqlx::SqlitePool;
 use crate::store_async::error::AsyncStoreError;
 use diagram_models::schema_ai_documents::{AiDocument, AiDocumentError, LocationType};
 
+/// SQL query for inserting a new AI document.
+const INSERT_AI_DOCUMENT_QUERY: &str =
+    "INSERT INTO ai_documents (id, key, json_payload, location_type, location_data, created_at)
+     VALUES (?1, ?2, ?3, ?4, ?5, ?6)";
+
+/// SQL query for fetching a single AI document by id.
+const FETCH_AI_DOCUMENT_QUERY: &str =
+    "SELECT id, key, json_payload, location_type, location_data, created_at
+     FROM ai_documents
+     WHERE id = ?1";
+
+/// SQL query for fetching AI documents by key.
+const FETCH_AI_DOCUMENTS_BY_KEY_QUERY: &str =
+    "SELECT id, key, json_payload, location_type, location_data, created_at
+     FROM ai_documents
+     WHERE key = ?1";
+
 /// Bundles the raw fields from a database row before parsing into `AiDocument`.
 struct AiDocumentRow {
     id: String,
@@ -44,6 +61,25 @@ fn parse_ai_document_row(row: AiDocumentRow) -> Result<AiDocument, AsyncStoreErr
     })
 }
 
+/// Maps a database row tuple to a parsed `AiDocument`.
+fn map_row_to_document(
+    id: String,
+    key: String,
+    json_payload: String,
+    location_type_str: String,
+    location_data: String,
+    created_at: i64,
+) -> Result<AiDocument, AsyncStoreError> {
+    parse_ai_document_row(AiDocumentRow {
+        id,
+        key,
+        json_payload,
+        location_type_str,
+        location_data,
+        created_at,
+    })
+}
+
 /// Inserts a new AI document into the database.
 ///
 /// # Arguments
@@ -60,30 +96,28 @@ pub async fn insert_ai_document(
     pool: &SqlitePool,
     doc: &AiDocument,
 ) -> Result<String, AsyncStoreError> {
-    let result = sqlx::query(
-        "
-        INSERT INTO ai_documents (id, key, json_payload, location_type, location_data, created_at)
-        VALUES (?1, ?2, ?3, ?4, ?5, ?6)
-        ",
-    )
-    .bind(doc.id())
-    .bind(doc.key())
-    .bind(doc.json_payload())
-    .bind(doc.location_type().to_string())
-    .bind(doc.location_data())
-    .bind(doc.created_at())
-    .execute(pool)
-    .await;
+    sqlx::query(INSERT_AI_DOCUMENT_QUERY)
+        .bind(doc.id())
+        .bind(doc.key())
+        .bind(doc.json_payload())
+        .bind(doc.location_type().to_string())
+        .bind(doc.location_data())
+        .bind(doc.created_at())
+        .execute(pool)
+        .await
+        .map_err(handle_insert_error)
+        .map(|_| doc.id().to_string())
+}
 
-    match result {
-        Ok(_) => Ok(doc.id().to_string()),
-        Err(sqlx::Error::Database(db_err)) if matches!(db_err.code(), Some(c) if c == "1555") => {
-            Err(AsyncStoreError::ValidationFailed(
-                "Duplicate id".to_string(),
-            ))
+fn handle_insert_error(e: sqlx::Error) -> AsyncStoreError {
+    if let sqlx::Error::Database(db_err) = &e {
+        if let Some(c) = db_err.code() {
+            if c == "1555" {
+                return AsyncStoreError::ValidationFailed("Duplicate id".to_string());
+            }
         }
-        Err(e) => Err(AsyncStoreError::Sqlx(e)),
     }
+    AsyncStoreError::Sqlx(e)
 }
 
 /// Fetches a single AI document by id.
@@ -103,29 +137,16 @@ pub async fn fetch_ai_document(
     id: &str,
 ) -> Result<Option<AiDocument>, AsyncStoreError> {
     let row = sqlx::query_as::<_, (String, String, String, String, String, i64)>(
-        "
-        SELECT id, key, json_payload, location_type, location_data, created_at
-        FROM ai_documents
-        WHERE id = ?1
-        ",
+        FETCH_AI_DOCUMENT_QUERY,
     )
     .bind(id)
     .fetch_optional(pool)
     .await
     .map_err(AsyncStoreError::Sqlx)?;
 
-    row.map(
-        |(id, key, json_payload, location_type_str, location_data, created_at)| {
-            parse_ai_document_row(AiDocumentRow {
-                id,
-                key,
-                json_payload,
-                location_type_str,
-                location_data,
-                created_at,
-            })
-        },
-    )
+    row.map(|(id, key, json_payload, location_type_str, location_data, created_at)| {
+        map_row_to_document(id, key, json_payload, location_type_str, location_data, created_at)
+    })
     .transpose()
 }
 
@@ -145,11 +166,7 @@ pub async fn fetch_ai_documents_by_key(
     key: &str,
 ) -> Result<Vec<AiDocument>, AsyncStoreError> {
     let rows = sqlx::query_as::<_, (String, String, String, String, String, i64)>(
-        "
-        SELECT id, key, json_payload, location_type, location_data, created_at
-        FROM ai_documents
-        WHERE key = ?1
-        ",
+        FETCH_AI_DOCUMENTS_BY_KEY_QUERY,
     )
     .bind(key)
     .fetch_all(pool)
@@ -157,18 +174,9 @@ pub async fn fetch_ai_documents_by_key(
     .map_err(AsyncStoreError::Sqlx)?;
 
     rows.into_iter()
-        .map(
-            |(id, key, json_payload, location_type_str, location_data, created_at)| {
-                parse_ai_document_row(AiDocumentRow {
-                    id,
-                    key,
-                    json_payload,
-                    location_type_str,
-                    location_data,
-                    created_at,
-                })
-            },
-        )
+        .map(|(id, key, json_payload, location_type_str, location_data, created_at)| {
+            map_row_to_document(id, key, json_payload, location_type_str, location_data, created_at)
+        })
         .collect()
 }
 
