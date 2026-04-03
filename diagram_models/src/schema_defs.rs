@@ -51,12 +51,22 @@ CREATE TABLE IF NOT EXISTS schema_version (
 )
 ";
 
+/// AI Documents table schema
+pub const SCHEMA_AI_DOCUMENTS_TABLE: &str = "CREATE TABLE IF NOT EXISTS ai_documents (\
+     id TEXT PRIMARY KEY,\
+     key TEXT NOT NULL,\
+     json_payload TEXT NOT NULL,\
+     location_type TEXT NOT NULL,\
+     location_data TEXT NOT NULL,\
+     created_at INTEGER\
+ )";
+
 /// All schema statements for initial setup.
 ///
-/// Uses `SmallVec<[&'static str; 6]>` to avoid heap allocation for the
-/// fixed-size collection of exactly 6 schema statements.
+/// Uses `SmallVec<[&'static str; 7]>` to avoid heap allocation for the
+/// fixed-size collection of exactly 7 schema statements.
 #[must_use]
-pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 6]> {
+pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 7]> {
     smallvec![
         SCHEMA_VERSION_TABLE,
         SCHEMA_EVENTS_TABLE,
@@ -64,5 +74,6 @@ pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 6]> {
         SCHEMA_EVENTS_TYPE_INDEX,
         SCHEMA_SNAPSHOTS_TABLE,
         SCHEMA_SNAPSHOTS_REVISION_INDEX,
+        SCHEMA_AI_DOCUMENTS_TABLE,
     ]
 }

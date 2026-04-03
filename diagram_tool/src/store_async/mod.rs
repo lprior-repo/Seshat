@@ -9,6 +9,7 @@
 #![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
+pub mod ai_documents;
 pub mod append;
 pub mod bootstrap;
 pub mod error;
@@ -17,6 +18,16 @@ pub mod parse;
 pub mod revision;
 pub mod types;
 
+#[cfg(test)]
+#[allow(
+    clippy::all,
+    clippy::pedantic,
+    clippy::nursery,
+    clippy::unwrap_used,
+    clippy::expect_used,
+    clippy::panic
+)]
+pub mod ai_documents_crud_tests;
 #[cfg(test)]
 #[allow(
     clippy::all,

@@ -4,16 +4,22 @@
 #![forbid(unsafe_code)]
 
 use std::path::Path;
+use std::sync::{Arc, Mutex};
 
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
+use crate::store_async::ai_documents::{
+    delete_ai_document as delete_ai_document_async, fetch_ai_document, fetch_ai_documents_by_key,
+    insert_ai_document, update_ai_document,
+};
 use crate::store_async::{
     append_batch_async, append_event_async, append_idempotent_async, bootstrap_async_store,
     envelope_to_valid_event, fetch_events_since, parse_revision, reset_store_async,
     AsyncAppendResult, AsyncBatchAppendResult, AsyncStoreBootstrap, AsyncStoreError, EventRecord,
 };
 use diagram_models::envelope::EventEnvelope;
+use diagram_models::schema_ai_documents::AiDocument;
 
 #[derive(Debug, Error)]
 pub enum BridgeError {
@@ -30,8 +36,8 @@ pub enum BridgeError {
 }
 
 pub struct StoreBridge {
-    pool: Option<sqlx::SqlitePool>,
-    runtime: Runtime,
+    pool: Mutex<Option<sqlx::SqlitePool>>,
+    runtime: Arc<Runtime>,
 }
 
 impl StoreBridge {
@@ -50,20 +56,25 @@ impl StoreBridge {
             .map_err(BridgeError::AsyncStore)?;
 
         Ok(Self {
-            pool: Some(bootstrap.pool),
-            runtime,
+            pool: Mutex::new(Some(bootstrap.pool)),
+            runtime: Arc::new(runtime),
         })
     }
 
     /// Helper to run an async store operation synchronously.
-    fn run_async<F, Fut, R>(&self, f: F) -> Result<R, BridgeError>
+    ///
+    /// This is public to allow server functions to use the bridge for sync operations.
+    pub fn run_async<F, Fut, R>(&self, f: F) -> Result<R, BridgeError>
     where
         F: FnOnce(sqlx::SqlitePool) -> Fut,
         Fut: std::future::Future<Output = Result<R, AsyncStoreError>>,
     {
-        let pool = self.pool.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
+        let pool_guard = self.pool.lock().map_err(|_| BridgeError::PoolLockError)?;
+        let pool = pool_guard.as_ref().ok_or(BridgeError::PoolNotInitialized)?;
+        let pool_clone = pool.clone();
+        drop(pool_guard);
         self.runtime
-            .block_on(async { f(pool.clone()).await.map_err(BridgeError::AsyncStore) })
+            .block_on(async { f(pool_clone).await.map_err(BridgeError::AsyncStore) })
     }
 
     /// Appends an event synchronously.
@@ -137,17 +148,73 @@ impl StoreBridge {
         self.run_async(|pool| async move { reset_store_async(&pool).await })
     }
 
+    /// Inserts an AI document synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the insert fails.
+    pub fn insert_ai_document_sync(&self, doc: &AiDocument) -> Result<String, BridgeError> {
+        self.run_async({
+            let doc = doc.clone();
+            move |pool| async move { insert_ai_document(&pool, &doc).await }
+        })
+    }
+
+    /// Fetches an AI document by ID synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the fetch fails.
+    pub fn fetch_ai_document_sync(&self, id: &str) -> Result<Option<AiDocument>, BridgeError> {
+        self.run_async(|pool| async move { fetch_ai_document(&pool, id).await })
+    }
+
+    /// Fetches all AI documents with a given key synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the fetch fails.
+    pub fn fetch_ai_documents_by_key_sync(
+        &self,
+        key: &str,
+    ) -> Result<Vec<AiDocument>, BridgeError> {
+        self.run_async(|pool| async move { fetch_ai_documents_by_key(&pool, key).await })
+    }
+
+    /// Updates an existing AI document synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the update fails.
+    pub fn update_ai_document_sync(&self, doc: &AiDocument) -> Result<(), BridgeError> {
+        self.run_async({
+            let doc = doc.clone();
+            move |pool| async move { update_ai_document(&pool, &doc).await }
+        })
+    }
+
+    /// Deletes an AI document by ID synchronously.
+    ///
+    /// # Errors
+    /// Returns an error if the store is not initialized or the delete fails.
+    pub fn delete_ai_document_sync(&self, id: &str) -> Result<u64, BridgeError> {
+        self.run_async(|pool| async move { delete_ai_document_async(&pool, id).await })
+    }
+
     /// Shuts down the store bridge.
     ///
     /// # Errors
     /// Never returns an error currently, but signature is kept for symmetry.
-    pub fn shutdown(self) -> Result<(), BridgeError> {
-        self.runtime.block_on(async {
-            if let Some(pool) = self.pool {
+    pub fn shutdown(&self) -> Result<(), BridgeError> {
+        // Take the pool out of self.pool so subsequent calls get PoolNotInitialized
+        let pool = self
+            .pool
+            .lock()
+            .map_err(|_| BridgeError::PoolLockError)?
+            .take();
+        if let Some(pool) = pool {
+            let runtime = Arc::clone(&self.runtime);
+            runtime.block_on(async {
                 pool.close().await;
-            }
-            Ok(())
-        })
+            });
+        }
+        Ok(())
     }
 }
 

@@ -3,7 +3,12 @@ $schema: "https://moonrepo.dev/schemas/project.json"
 tasks:
   serve:
     script: |
-      dx serve --platform web --port 8081
+      PORT=8081
+      echo "Killing any process on port $PORT..."
+      fuser -k $PORT/tcp 2>/dev/null || true
+      sleep 1
+      echo "Starting dx serve without sccache..."
+      cd diagram_tool && env -u RUSTC_WRAPPER dx serve --platform web --port $PORT --open false
     options:
       cache: false
 

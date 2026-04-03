@@ -115,3 +115,21 @@ pub mod stress_tests;
 
 #[cfg(test)]
 pub mod marquee_tests;
+
+// =============================================================================
+// schema_ai_documents module (seshat-o7s bead)
+// =============================================================================
+
+pub mod schema_ai_documents;
+
+#[cfg(test)]
+pub mod schema_ai_documents_tests;
+
+#[cfg(test)]
+pub mod ai_document_tests;
+
+#[cfg(test)]
+pub mod schema_adversarial_tests;
+
+#[cfg(test)]
+pub mod schema_adversarial_tests2;

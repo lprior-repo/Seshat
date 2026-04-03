@@ -1,0 +1,231 @@
+//! Async CRUD operations for the `ai_documents` table.
+//!
+//! This module provides async functions for inserting, fetching, updating, and deleting
+//! AI documents in the `SQLite` database.
+
+use sqlx::SqlitePool;
+
+use crate::store_async::error::AsyncStoreError;
+use diagram_models::schema_ai_documents::{AiDocument, AiDocumentError, LocationType};
+
+/// Parses a database row into an `AiDocument`.
+///
+/// # Arguments
+///
+/// * `id` - The document id
+/// * `key` - The document key
+/// * `json_payload` - The JSON payload
+/// * `location_type_str` - The location type as a string
+/// * `location_data` - The location data
+/// * `created_at` - The creation timestamp
+///
+/// # Returns
+///
+/// * `Ok(AiDocument)` - The parsed document
+/// * `Err(AsyncStoreError::ValidationFailed(_))` - If parsing fails
+fn parse_ai_document_row(
+    id: String,
+    key: String,
+    json_payload: String,
+    location_type_str: &str,
+    location_data: String,
+    created_at: i64,
+) -> Result<AiDocument, AsyncStoreError> {
+    let location_type = LocationType::from_str(location_type_str)
+        .map_err(|e| AsyncStoreError::ValidationFailed(format!("Invalid location_type: {e:?}")))?;
+    AiDocument::new(
+        id,
+        key,
+        json_payload,
+        location_type,
+        location_data,
+        created_at,
+    )
+    .map_err(|e: AiDocumentError| {
+        AsyncStoreError::ValidationFailed(format!("Invalid document: {e:?}"))
+    })
+}
+
+/// Inserts a new AI document into the database.
+///
+/// # Arguments
+///
+/// * `pool` - The `SqlitePool` connection pool
+/// * `doc` - The AI document to insert
+///
+/// # Returns
+///
+/// * `Ok(id)` - The id of the inserted document
+/// * `Err(AsyncStoreError::ValidationFailed(_))` - If the insert fails due to duplicate id
+/// * `Err(AsyncStoreError::Sqlx(_))` - If the insert fails for other reasons
+pub async fn insert_ai_document(
+    pool: &SqlitePool,
+    doc: &AiDocument,
+) -> Result<String, AsyncStoreError> {
+    let result = sqlx::query(
+        "
+        INSERT INTO ai_documents (id, key, json_payload, location_type, location_data, created_at)
+        VALUES (?1, ?2, ?3, ?4, ?5, ?6)
+        ",
+    )
+    .bind(doc.id())
+    .bind(doc.key())
+    .bind(doc.json_payload())
+    .bind(doc.location_type().to_string())
+    .bind(doc.location_data())
+    .bind(doc.created_at())
+    .execute(pool)
+    .await;
+
+    match result {
+        Ok(_) => Ok(doc.id().to_string()),
+        Err(sqlx::Error::Database(db_err)) if matches!(db_err.code(), Some(c) if c == "1555") => {
+            Err(AsyncStoreError::ValidationFailed(
+                "Duplicate id".to_string(),
+            ))
+        }
+        Err(e) => Err(AsyncStoreError::Sqlx(e)),
+    }
+}
+
+/// Fetches a single AI document by id.
+///
+/// # Arguments
+///
+/// * `pool` - The `SqlitePool` connection pool
+/// * `id` - The document id to fetch
+///
+/// # Returns
+///
+/// * `Ok(Some(doc))` - If the document exists
+/// * `Ok(None)` - If the document does not exist
+/// * `Err(AsyncStoreError::Sqlx(_))` - If the query fails
+pub async fn fetch_ai_document(
+    pool: &SqlitePool,
+    id: &str,
+) -> Result<Option<AiDocument>, AsyncStoreError> {
+    let row = sqlx::query_as::<_, (String, String, String, String, String, i64)>(
+        "
+        SELECT id, key, json_payload, location_type, location_data, created_at
+        FROM ai_documents
+        WHERE id = ?1
+        ",
+    )
+    .bind(id)
+    .fetch_optional(pool)
+    .await
+    .map_err(AsyncStoreError::Sqlx)?;
+
+    row.map(
+        |(id, key, json_payload, location_type_str, location_data, created_at)| {
+            parse_ai_document_row(
+                id,
+                key,
+                json_payload,
+                &location_type_str,
+                location_data,
+                created_at,
+            )
+        },
+    )
+    .transpose()
+}
+
+/// Fetches all AI documents with a given key.
+///
+/// # Arguments
+///
+/// * `pool` - The `SqlitePool` connection pool
+/// * `key` - The document key to search for
+///
+/// # Returns
+///
+/// * `Ok(Vec<AiDocument>)` - All documents matching the key (may be empty)
+/// * `Err(AsyncStoreError::Sqlx(_))` - If the query fails
+pub async fn fetch_ai_documents_by_key(
+    pool: &SqlitePool,
+    key: &str,
+) -> Result<Vec<AiDocument>, AsyncStoreError> {
+    let rows = sqlx::query_as::<_, (String, String, String, String, String, i64)>(
+        "
+        SELECT id, key, json_payload, location_type, location_data, created_at
+        FROM ai_documents
+        WHERE key = ?1
+        ",
+    )
+    .bind(key)
+    .fetch_all(pool)
+    .await
+    .map_err(AsyncStoreError::Sqlx)?;
+
+    rows.into_iter()
+        .map(
+            |(id, key, json_payload, location_type_str, location_data, created_at)| {
+                parse_ai_document_row(
+                    id,
+                    key,
+                    json_payload,
+                    &location_type_str,
+                    location_data,
+                    created_at,
+                )
+            },
+        )
+        .collect()
+}
+
+/// Updates an existing AI document.
+///
+/// # Arguments
+///
+/// * `pool` - The `SqlitePool` connection pool
+/// * `doc` - The document with updated fields (id must match existing document)
+///
+/// # Returns
+///
+/// * `Ok(())` - If the update succeeds
+/// * `Err(AsyncStoreError::Sqlx(_))` - If the update fails (e.g., document not found)
+pub async fn update_ai_document(
+    pool: &SqlitePool,
+    doc: &AiDocument,
+) -> Result<(), AsyncStoreError> {
+    sqlx::query(
+        "UPDATE ai_documents SET key = ?2, json_payload = ?3, location_type = ?4, location_data = ?5, created_at = ?6 WHERE id = ?1",
+    )
+    .bind(doc.id())
+    .bind(doc.key())
+    .bind(doc.json_payload())
+    .bind(doc.location_type().to_string())
+    .bind(doc.location_data())
+    .bind(doc.created_at())
+    .execute(pool)
+    .await
+    .map_err(AsyncStoreError::Sqlx)
+    .and_then(|r| if r.rows_affected() == 0 {
+        Err(AsyncStoreError::ValidationFailed("Document not found".to_string()))
+    } else {
+        Ok(())
+    })
+}
+
+/// Deletes an AI document by id.
+///
+/// # Arguments
+///
+/// * `pool` - The `SqlitePool` connection pool
+/// * `id` - The document id to delete
+///
+/// # Returns
+///
+/// * `Ok(1)` - If the document existed and was deleted
+/// * `Ok(0)` - If the document did not exist
+/// * `Err(AsyncStoreError::Sqlx(_))` - If the delete fails
+pub async fn delete_ai_document(pool: &SqlitePool, id: &str) -> Result<u64, AsyncStoreError> {
+    let result = sqlx::query("DELETE FROM ai_documents WHERE id = ?1")
+        .bind(id)
+        .execute(pool)
+        .await
+        .map_err(AsyncStoreError::Sqlx)?;
+
+    Ok(result.rows_affected())
+}

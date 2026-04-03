@@ -13,14 +13,26 @@
 **This is a Dioxus WASM application. Use `dx` CLI (NOT `cargo run`):**
 
 ```bash
-cd diagram_tool && dx serve --port 3333 --open false   # Dev server with hot-reload
-dx bundle                                                  # Production build
+moon run :serve         # Dev server (kills port first, disables sccache)
+dx bundle               # Production build
 ```
 
 **CI / Validation:**
 ```bash
 moon run :ci-source    # Format + clippy + tests
 npx playwright test    # E2E tests
+```
+
+### sccache Workaround
+
+sccache (enabled via `RUSTC_WRAPPER=sccache` in `~/.zshrc`) causes build failures with Dioxus because:
+- sccache's compiler detection test creates temp files with CUDA preprocessor syntax (`#if defined(__NVCC__)`)
+- When system gcc tries to preprocess these files, it fails with "expected one of `!` or `[`"
+
+The `moon run :serve` task automatically disables sccache via `env -u RUSTC_WRAPPER`. If running `dx serve` directly:
+
+```bash
+env -u RUSTC_WRAPPER dx serve --port 3333 --open false
 ```
 
 To learn more about this project, refer to the core documentation in `docs/`:

@@ -34,21 +34,34 @@ Consult the following before writing code:
 **This is a Dioxus WASM application. You MUST use the Dioxus CLI:**
 
 ```bash
-# Install Dioxus CLI (if not present)
-cargo install dioxus-cli
-
-# Start the dev server with hot-reload
-cd diagram_tool && dx serve --port 3333 --open false
+# Start the dev server with hot-reload (use moon to get port killing + sccache bypass)
+moon run :serve
 
 # Build for production
 dx bundle
 ```
 
-**IMPORTANT**: Do NOT use `cargo run` for the web app. It will panic on non-wasm targets because the codebase uses `wasm-bindgen` imports. Always use `dx serve`.
+**IMPORTANT**: Do NOT use `cargo run` for the web app. It will panic on non-wasm targets because the codebase uses `wasm-bindgen` imports. Always use `moon run :serve` or `dx serve`.
 
 **Validation commands:**
 ```bash
 moon run :ci-source    # Full CI pipeline (fmt + clippy + tests)
 moon run :test         # Run unit tests
 npx playwright test    # Run E2E tests
+```
+
+### sccache Workaround (CRITICAL)
+
+sccache (enabled via `RUSTC_WRAPPER=sccache` in `~/.zshrc`) causes build failures with Dioxus because:
+- sccache's compiler detection test creates temp files with CUDA preprocessor syntax (`#if defined(__NVCC__)`)
+- When system gcc tries to preprocess these files, it fails with "expected one of `!` or `[`"
+
+**References:**
+- sccache issue #2659: https://github.com/mozilla/sccache/issues/2659
+- sccache issue #2238: https://github.com/mozilla/sccache/issues/2238 (explains nvcc cannot compile preprocessed input)
+
+The `moon run :serve` task automatically disables sccache via `env -u RUSTC_WRAPPER`. If running `dx serve` directly:
+
+```bash
+env -u RUSTC_WRAPPER dx serve --port 3333 --open false
 ```

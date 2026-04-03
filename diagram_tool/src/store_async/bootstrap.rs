@@ -136,6 +136,32 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
         .await?;
     }
 
+    let ai_documents_table_exists: (i32,) = sqlx::query_as(
+        "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='ai_documents'",
+    )
+    .fetch_one(pool)
+    .await
+    .map_err(AsyncStoreError::Sqlx)?;
+
+    if ai_documents_table_exists.0 == 0 {
+        sqlx::query(
+            "CREATE TABLE IF NOT EXISTS ai_documents (
+                id TEXT NOT NULL PRIMARY KEY,
+                key TEXT NOT NULL,
+                json_payload TEXT NOT NULL,
+                location_type TEXT NOT NULL,
+                location_data TEXT NOT NULL,
+                created_at INTEGER NOT NULL
+            )",
+        )
+        .execute(pool)
+        .await?;
+
+        sqlx::query("CREATE INDEX IF NOT EXISTS idx_ai_documents_key ON ai_documents(key)")
+            .execute(pool)
+            .await?;
+    }
+
     Ok(())
 }
 

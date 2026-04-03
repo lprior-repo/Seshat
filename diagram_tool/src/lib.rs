@@ -115,6 +115,8 @@ pub mod icons;
 pub mod layout;
 pub mod mutation;
 #[cfg(not(target_arch = "wasm32"))]
+pub mod server;
+#[cfg(not(target_arch = "wasm32"))]
 pub mod store;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod store_async;
