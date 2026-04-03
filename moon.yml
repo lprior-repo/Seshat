@@ -9,7 +9,7 @@ tasks:
 
   serve-e2e:
     script: |
-      cd diagram_tool && dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
+      cd diagram_tool && env -u RUSTC_WRAPPER dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
     options:
       cache: false
 

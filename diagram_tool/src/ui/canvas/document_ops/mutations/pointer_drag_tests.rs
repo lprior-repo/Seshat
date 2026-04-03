@@ -281,4 +281,43 @@ mod tests {
         });
         let () = vdom.rebuild_in_place();
     }
+
+    #[test]
+    fn given_drag_without_threshold_then_history_snapshot_not_created() {
+        let mut vdom = VirtualDom::new(|| {
+            let mut doc = DiagramDocument::default();
+            doc.editor_state.zoom = OrderedFloat(1.0);
+            doc.editor_state.camera_x = OrderedFloat(0.0);
+            doc.editor_state.camera_y = OrderedFloat(0.0);
+            let node_id = NodeId::new("n1".to_string());
+            doc.document.nodes = doc
+                .document
+                .nodes
+                .update(node_id.clone(), test_node(10.0, 10.0, false));
+
+            let mut doc_signal = Signal::new(doc);
+            let mut history_signal = Signal::new(History::new());
+            let mut did_move = false;
+
+            let mut original_positions = HashMap::new();
+            original_positions.insert(node_id, (10.0, 10.0));
+
+            let changed = handle_dragging(
+                &mut doc_signal,
+                &mut history_signal,
+                13.0,
+                13.0,
+                &(10.0, 10.0),
+                &(10.0, 10.0),
+                &original_positions,
+                &mut did_move,
+            );
+
+            assert!(!changed);
+            assert!(!did_move);
+            assert!(!history_signal.read().can_undo());
+            rsx! { div {} }
+        });
+        let () = vdom.rebuild_in_place();
+    }
 }

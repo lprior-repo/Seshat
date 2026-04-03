@@ -1,6 +1,6 @@
 // @perf-latency
 // Empirical drag-frame benchmark — measures rendering performance during
-// a sustained drag across a 50-node synthetic diagram.
+// a sustained drag across an edge-heavy synthetic diagram.
 //
 // Uses TWO orthogonal measurement methods:
 //   1. MutationObserver: counts DOM attribute/child mutations per drag frame
@@ -25,7 +25,6 @@
 
 import { expect, test } from "@playwright/test";
 import {
-  canvas,
   freshStart,
   loadDocument,
   runEffect,
@@ -38,11 +37,11 @@ import { attachPerfMetric, summarizeFrames } from "./perf.helpers";
 // Constants
 // ---------------------------------------------------------------------------
 
-const TOTAL_NODES = 50;
+const TOTAL_NODES = 75;
 const DRAG_STEPS = 50;
 const DRAG_STEP_PX = 5; // 250px total drag distance
 const TRIALS_PER_TEST = 5; // Repeats within a single test invocation
-const JANK_CUTOFF_MS = 20; // >20ms = dropped frame at 60fps
+const JANK_CUTOFF_MS = 8.33; // >8.33ms misses the 120fps frame budget
 
 // ---------------------------------------------------------------------------
 // Synthetic document builder
@@ -51,6 +50,7 @@ const JANK_CUTOFF_MS = 20; // >20ms = dropped frame at 60fps
 function buildSyntheticDoc(nodeCount: number) {
   const cols = Math.ceil(Math.sqrt(nodeCount * 1.2));
   const nodesObj: Record<string, unknown> = {};
+  const edgesObj: Record<string, unknown> = {};
   for (let i = 0; i < nodeCount; i++) {
     const col = i % cols;
     const row = Math.floor(i / cols);
@@ -73,11 +73,30 @@ function buildSyntheticDoc(nodeCount: number) {
       style: "box",
       collapsed: null,
     };
+    if (i > 0) {
+      edgesObj[`edge-${i - 1}-${i}`] = {
+        source: `node-${i - 1}`,
+        target: `node-${i}`,
+        label: "",
+        style: "solid",
+        arrow_type: "straight",
+        label_offset_t: 0.5,
+        color: null,
+        thickness: 1.5,
+        directed: true,
+        bend_points: [],
+        tags: [],
+        metadata: {},
+        fontSize: null,
+        source_port: i % 2 === 0 ? "right" : "bottom",
+        target_port: i % 2 === 0 ? "left" : "top",
+      };
+    }
   }
   return {
     version: 2,
     revision: 0,
-    document: { nodes: nodesObj, edges: {} },
+    document: { nodes: nodesObj, edges: edgesObj },
     editor_state: {
       camera_x: 0.0,
       camera_y: 0.0,
@@ -98,7 +117,7 @@ function buildSyntheticDoc(nodeCount: number) {
 test.describe("drag-frame — rendering performance during sustained drag", () => {
   test.describe.configure({ mode: "serial" });
 
-  test(`${TOTAL_NODES} nodes — DOM mutations and wall-clock during ${DRAG_STEPS}-step drag`, async ({
+  test(`${TOTAL_NODES} nodes + chained edges — DOM mutations and wall-clock during ${DRAG_STEPS}-step drag`, async ({
     page,
   }, testInfo) => {
     test.setTimeout(180_000);
@@ -111,14 +130,35 @@ test.describe("drag-frame — rendering performance during sustained drag", () =
     expect(loaded).toBe(true);
     await waitForNoRebuildOverlay(page);
 
-    // Verify nodes rendered
+    // At default zoom, culling may leave 0 nodes in the DOM; zoom out until
+    // the synthetic scene is mostly visible before measuring drag behavior.
     const domBefore = await page.evaluate(
       () => document.querySelectorAll('[data-testid="node"]').length,
     );
     console.log(
       `[DRAG-FRAME] ${TOTAL_NODES}n: ${domBefore} DOM nodes at default zoom`,
     );
-    expect(domBefore).toBeGreaterThanOrEqual(TOTAL_NODES);
+
+    let domVisible = domBefore;
+    for (let i = 0; i < 20 && domVisible < TOTAL_NODES * 0.9; i++) {
+      await page.keyboard.press("_");
+      await page.waitForTimeout(300);
+      domVisible = await page.evaluate(
+        () => document.querySelectorAll('[data-testid="node"]').length,
+      );
+      console.log(
+        `[DRAG-FRAME] After zoom ${i + 1}: ${domVisible} DOM nodes`,
+      );
+    }
+
+    expect(domVisible).toBeGreaterThanOrEqual(TOTAL_NODES);
+    const edgeDomBefore = await page.evaluate(
+      () => document.querySelectorAll('[data-node-kind="edge"]').length,
+    );
+    console.log(
+      `[DRAG-FRAME] ${TOTAL_NODES}n/${edgeDomBefore}e rendered at default zoom`,
+    );
+    expect(edgeDomBefore).toBeGreaterThan(0);
 
     // Warm-up: one throwaway drag to prime Dioxus reconciliation
     const warmupNode = page.getByTestId("node").first();
@@ -154,7 +194,7 @@ test.describe("drag-frame — rendering performance during sustained drag", () =
         childList: true,
         subtree: true,
         attributes: true,
-        attributeFilter: ["style", "class", "transform", "data-testid", "data-dragging"],
+        attributeFilter: ["style", "class", "transform", "d", "data-testid", "data-dragging"],
       });
       (window as Record<string, unknown>).__dragObserver = observer;
     });

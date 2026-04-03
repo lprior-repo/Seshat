@@ -5,6 +5,10 @@ use diagram_models::document::{DiagramDocument, Node, OrderedFloat};
 use dioxus::prelude::*;
 use im::HashMap;
 
+fn node_position_changed(node: &Node, next_x: f64, next_y: f64) -> bool {
+    (node.x.0 - next_x).abs() > f64::EPSILON || (node.y.0 - next_y).abs() > f64::EPSILON
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn handle_dragging(
     doc_signal: &mut Signal<DiagramDocument>,
@@ -16,15 +20,25 @@ pub fn handle_dragging(
     original_positions: &HashMap<diagram_models::document::NodeId, (f64, f64)>,
     did_move: &mut bool,
 ) -> bool {
-    let doc = doc_signal.read().clone();
+    let (camera_x, camera_y, zoom, snap_to_grid, grid_size) = doc_signal.with(|doc| {
+        (
+            doc.editor_state.camera_x.0,
+            doc.editor_state.camera_y.0,
+            doc.editor_state.zoom.0,
+            doc.editor_state.snap_to_grid,
+            doc.editor_state.grid_size,
+        )
+    });
     let current_pos = to_canvas_coords(
         canvas_domain::ScreenCoord(client_x, client_y),
-        canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
-        doc.editor_state.zoom.0,
+        canvas_domain::CanvasCoord(camera_x, camera_y),
+        zoom,
     );
 
     let has_movable_nodes = original_positions.keys().any(|id| {
-        doc.document
+        doc_signal
+            .peek()
+            .document
             .nodes
             .get(id)
             .is_some_and(|node| node.lock_state.is_movable(&node.kind))
@@ -32,7 +46,8 @@ pub fn handle_dragging(
 
     if !*did_move && has_movable_nodes && has_drag_threshold(*anchor_client, (client_x, client_y)) {
         let history = history_signal.read().clone();
-        *history_signal.write() = history.push(doc.clone());
+        let snapshot = doc_signal.read().clone();
+        *history_signal.write() = history.push(snapshot);
         *did_move = true;
     }
 
@@ -41,15 +56,18 @@ pub fn handle_dragging(
             original_positions,
             *anchor_canvas,
             (current_pos.0, current_pos.1),
-            doc.editor_state.snap_to_grid,
-            doc.editor_state.grid_size,
+            snap_to_grid,
+            grid_size,
         );
         let has_changes = positions.iter().any(|(id, (nx, ny))| {
-            doc.document.nodes.get(id).is_some_and(|node| {
-                node.lock_state.is_movable(&node.kind)
-                    && ((node.x.0 - *nx).abs() > f64::EPSILON
-                        || (node.y.0 - *ny).abs() > f64::EPSILON)
-            })
+            doc_signal
+                .peek()
+                .document
+                .nodes
+                .get(id)
+                .is_some_and(|node| {
+                    node.lock_state.is_movable(&node.kind) && node_position_changed(node, *nx, *ny)
+                })
         });
 
         if has_changes {
@@ -57,8 +75,7 @@ pub fn handle_dragging(
                 for (id, (nx, ny)) in positions.iter() {
                     let should_update = doc_mut.document.nodes.get(id).is_some_and(|node| {
                         node.lock_state.is_movable(&node.kind)
-                            && ((node.x.0 - *nx).abs() > f64::EPSILON
-                                || (node.y.0 - *ny).abs() > f64::EPSILON)
+                            && node_position_changed(node, *nx, *ny)
                     });
                     if should_update {
                         doc_mut.document.nodes = doc_mut.document.nodes.alter(

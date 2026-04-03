@@ -7,7 +7,8 @@ use dioxus::prelude::*;
 
 use crate::history::History;
 use crate::ui::canvas::document_ops::{
-    dispatch_drag_move_batch, flush_pending_pointer_update, sync_canvas_origin,
+    dispatch_drag_move_batch, flush_pending_pointer_update, snap_edge_port_toward,
+    snapped_edge_ports, sync_canvas_origin,
 };
 use crate::ui::editor::ToolMode;
 use crate::ui::interaction::{
@@ -96,24 +97,11 @@ pub fn handle_mousedown(
         // Edge drawing — still uses full clone (uncommon path)
         let event = {
             let doc_now = doc_signal.read();
-            let start_port = doc_now.document.nodes.get(&id).and_then(|src| {
-                let dx = if src.width.0 > 0.0 {
-                    (pos.0 - src.x.0) / src.width.0
-                } else {
-                    0.5
-                };
-                let dy = if src.height.0 > 0.0 {
-                    (pos.1 - src.y.0) / src.height.0
-                } else {
-                    0.5
-                };
-                diagram_models::port::NormalizedOffset::new(
-                    diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
-                    diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
-                )
-                .ok()
-                .map(diagram_models::port::PortAnchor::Custom)
-            });
+            let start_port = doc_now
+                .document
+                .nodes
+                .get(&id)
+                .map(|src| snap_edge_port_toward(src, pos.0, pos.1));
             CanvasEvent::EdgeDrawingStarted {
                 from_node: id,
                 current_pos: CanvasCoord(pos.0, pos.1),
@@ -195,24 +183,15 @@ pub fn handle_mouseup(
                 doc_now.editor_state.zoom.0,
             );
 
-            let end_port = doc_now.document.nodes.get(&id).and_then(|tgt| {
-                let dx = if tgt.width.0 > 0.0 {
-                    (pos.0 - tgt.x.0) / tgt.width.0
-                } else {
-                    0.5
-                };
-                let dy = if tgt.height.0 > 0.0 {
-                    (pos.1 - tgt.y.0) / tgt.height.0
-                } else {
-                    0.5
-                };
-                diagram_models::port::NormalizedOffset::new(
-                    diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
-                    diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
-                )
-                .ok()
-                .map(diagram_models::port::PortAnchor::Custom)
-            });
+            let (start_port, end_port) = doc_now
+                .document
+                .nodes
+                .get(&from_node)
+                .zip(doc_now.document.nodes.get(&id))
+                .map_or((start_port, None), |(source, target)| {
+                    let (snapped_start, snapped_end) = snapped_edge_ports(source, target);
+                    (Some(snapped_start), Some(snapped_end))
+                });
 
             Some(CanvasEvent::EdgeDrawingFinished {
                 from_node,

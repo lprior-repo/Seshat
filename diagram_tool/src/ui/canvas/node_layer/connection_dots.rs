@@ -1,7 +1,7 @@
 use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 
-use crate::ui::canvas::document_ops::sync_canvas_origin;
+use crate::ui::canvas::document_ops::{snap_edge_port_toward, sync_canvas_origin};
 use crate::ui::editor::ToolMode;
 use crate::ui::theme::{ACCENT, BG_BASE};
 use canvas_domain::interaction_reducer::InteractionMode;
@@ -63,15 +63,8 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
                             canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
                             doc.editor_state.zoom.0
                         );
-                        let start_port = doc.document.nodes.get(&current_id).and_then(|src| {
-                            let dx = if src.width.0 > 0.0 { (mouse_pos.0 - src.x.0) / src.width.0 } else { 0.5 };
-                            let dy = if src.height.0 > 0.0 { (mouse_pos.1 - src.y.0) / src.height.0 } else { 0.5 };
-                            diagram_models::port::NormalizedOffset::new(
-                                diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
-                                diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
-                            )
-                            .ok()
-                            .map(diagram_models::port::PortAnchor::Custom)
+                        let start_port = doc.document.nodes.get(&current_id).map(|src| {
+                            snap_edge_port_toward(src, mouse_pos.0, mouse_pos.1)
                         });
                         interaction_mode.set(InteractionMode::DrawingEdge {
                             from_node: current_id.clone(),

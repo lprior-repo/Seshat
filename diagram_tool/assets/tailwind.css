@@ -1402,3 +1402,10 @@
   border: 2px solid var(--accent);
   box-shadow: 0 6px 18px oklch(0 0 0 / 0.24);
 }
+
+.diagram-canvas--dragging .diagram-node,
+.diagram-canvas--dragging .diagram-node-hovered,
+.diagram-canvas--dragging .diagram-node-selected,
+.diagram-canvas--dragging .diagram-node-selected-hovered {
+  box-shadow: none;
+}

@@ -7,8 +7,40 @@ use super::pointer_drag::handle_dragging;
 use super::pointer_pan::handle_panning;
 use super::pointer_resize::handle_resizing;
 
+const BEND_POINT_SNAP_THRESHOLD_PX: f64 = 6.0;
+
 fn bump_geometry_render_tick(geometry_render_tick: &mut Signal<u64>) {
     geometry_render_tick.with_mut(|tick| *tick += 1);
+}
+
+fn snap_bend_point_position(
+    raw: (f64, f64),
+    snap_to_grid: bool,
+    grid_size: diagram_models::document::GridSize,
+    zoom: f64,
+) -> (f64, f64) {
+    if !snap_to_grid {
+        return raw;
+    }
+
+    let snapped = crate::ui::grid::snap_point(raw, true, grid_size);
+    let threshold_world =
+        BEND_POINT_SNAP_THRESHOLD_PX / canvas_domain::math::safe_zoom(zoom).unwrap_or(1.0);
+    let dx = (snapped.0 - raw.0).abs();
+    let dy = (snapped.1 - raw.1).abs();
+
+    (
+        if dx <= threshold_world {
+            snapped.0
+        } else {
+            raw.0
+        },
+        if dy <= threshold_world {
+            snapped.1
+        } else {
+            raw.1
+        },
+    )
 }
 
 pub fn flush_pending_pointer_update(
@@ -86,10 +118,11 @@ pub fn flush_pending_pointer_update(
                 ),
                 doc.editor_state.zoom.0,
             );
-            let snapped = crate::ui::grid::snap_point(
+            let snapped = snap_bend_point_position(
                 (raw.0, raw.1),
                 doc.editor_state.snap_to_grid,
                 doc.editor_state.grid_size,
+                doc.editor_state.zoom.0,
             );
 
             if let Some(snapped_point) =
@@ -113,4 +146,33 @@ pub fn flush_pending_pointer_update(
         | InteractionMode::DrawingEdge { .. }
         | InteractionMode::DrawingSubgraph { .. } => {}
     });
+}
+
+#[cfg(test)]
+mod tests {
+    use super::snap_bend_point_position;
+
+    #[test]
+    fn bend_point_stays_free_when_far_from_grid_intersection() {
+        let snapped = snap_bend_point_position(
+            (27.0, 27.0),
+            true,
+            diagram_models::document::GridSize(20.0),
+            1.0,
+        );
+
+        assert_eq!(snapped, (27.0, 27.0));
+    }
+
+    #[test]
+    fn bend_point_snaps_per_axis_when_close_to_grid() {
+        let snapped = snap_bend_point_position(
+            (18.0, 33.0),
+            true,
+            diagram_models::document::GridSize(20.0),
+            1.0,
+        );
+
+        assert_eq!(snapped, (20.0, 33.0));
+    }
 }

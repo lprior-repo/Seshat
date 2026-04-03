@@ -14,6 +14,7 @@ use diagram_models::document::{
     ArrowType, DiagramDocument, DocumentData, Edge, EdgeId, EdgeStyle, LockState, Node, NodeId,
     NodeKind, NodeStyle, OrderedFloat,
 };
+use diagram_models::port::PortAnchor;
 
 #[cfg(test)]
 mod core_tests {
@@ -198,6 +199,58 @@ mod core_tests {
 
         let hit = find_edge_at(&doc, 105.0, 5.0);
         assert_eq!(hit, Some(edge_a));
+    }
+
+    #[cfg(kani)]
+    #[kani::proof]
+    fn given_port_anchored_edge_when_clicking_visible_segment_then_hit_matches_rendered_arrow() {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("anchored-edge"));
+
+        let mut anchored = edge(source_id.clone(), target_id.clone());
+        anchored.source_port = Some(PortAnchor::Right);
+        anchored.target_port = Some(PortAnchor::Left);
+
+        let doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 100.0)),
+                edges: HashMap::new().update(edge_id.clone(), anchored),
+            },
+            ..DiagramDocument::default()
+        };
+
+        let hit = find_edge_at(&doc, 60.0, 55.0);
+        assert_eq!(hit, Some(edge_id));
+    }
+
+    #[cfg(kani)]
+    #[kani::proof]
+    fn given_port_anchored_edge_when_clicking_old_center_line_then_miss_if_far_from_visible_arrow()
+    {
+        let source_id = NodeId::new(String::from("source"));
+        let target_id = NodeId::new(String::from("target"));
+        let edge_id = EdgeId::new(String::from("anchored-edge"));
+
+        let mut anchored = edge(source_id.clone(), target_id.clone());
+        anchored.source_port = Some(PortAnchor::Right);
+        anchored.target_port = Some(PortAnchor::Left);
+
+        let mut doc = DiagramDocument {
+            document: DocumentData {
+                nodes: HashMap::new()
+                    .update(source_id.clone(), node_at(0.0, 0.0))
+                    .update(target_id.clone(), node_at(100.0, 100.0)),
+                edges: HashMap::new().update(edge_id, anchored),
+            },
+            ..DiagramDocument::default()
+        };
+        doc.editor_state.zoom = OrderedFloat(2.0);
+
+        let hit = find_edge_at(&doc, 50.0, 50.0);
+        assert!(hit.is_none());
     }
 }
 

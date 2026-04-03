@@ -1,6 +1,7 @@
 use diagram_models::{
     dag::validate_dag,
     document::{DiagramDocument, Edge, EdgeId, Node, NodeId, NodeKind},
+    port::PortAnchor,
 };
 use serde_json::Value;
 use uuid::Uuid;
@@ -156,6 +157,43 @@ pub fn find_node_at(doc: &DiagramDocument, x: f64, y: f64) -> Option<NodeId> {
             })
         })
         .cloned()
+}
+
+#[must_use]
+pub fn node_center(node: &Node) -> (f64, f64) {
+    (
+        node.x.0 + node.width.0 / 2.0,
+        node.y.0 + node.height.0 / 2.0,
+    )
+}
+
+#[must_use]
+pub fn snap_edge_port_toward(node: &Node, toward_x: f64, toward_y: f64) -> PortAnchor {
+    let (center_x, center_y) = node_center(node);
+    let dx = toward_x - center_x;
+    let dy = toward_y - center_y;
+
+    if dx.abs() >= dy.abs() {
+        if dx >= 0.0 {
+            PortAnchor::Right
+        } else {
+            PortAnchor::Left
+        }
+    } else if dy >= 0.0 {
+        PortAnchor::Bottom
+    } else {
+        PortAnchor::Top
+    }
+}
+
+#[must_use]
+pub fn snapped_edge_ports(source: &Node, target: &Node) -> (PortAnchor, PortAnchor) {
+    let (source_center_x, source_center_y) = node_center(source);
+    let (target_center_x, target_center_y) = node_center(target);
+    (
+        snap_edge_port_toward(source, target_center_x, target_center_y),
+        snap_edge_port_toward(target, source_center_x, source_center_y),
+    )
 }
 
 pub fn subgraph_release_bounds(

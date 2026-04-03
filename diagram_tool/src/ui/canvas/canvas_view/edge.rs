@@ -4,7 +4,7 @@
 #![forbid(unsafe_code)]
 
 use super::geometry::{interpolate_polyline_point, quadratic_bezier_point, quadratic_control};
-use diagram_models::document::{ArrowType, Edge, SerializedPoint};
+use diagram_models::document::{ArrowType, Edge, Node, SerializedPoint};
 use std::fmt::Write as _;
 
 #[must_use]
@@ -45,6 +45,14 @@ pub enum EdgeGeometry {
     Polyline(Vec<(f64, f64)>),
 }
 
+#[must_use]
+pub fn edge_endpoints(edge: &Edge, src: &Node, tgt: &Node) -> ((f64, f64), (f64, f64)) {
+    (
+        port_position(&edge.source_port, src),
+        port_position(&edge.target_port, tgt),
+    )
+}
+
 pub fn edge_geometry(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> EdgeGeometry {
     let semantics = edge_path_semantics(edge);
     if edge.bend_points.is_empty() && semantics == EdgePathSemantics::Curved {
@@ -61,6 +69,19 @@ pub fn edge_geometry(sx: f64, sy: f64, tx: f64, ty: f64, edge: &Edge) -> EdgeGeo
             &edge.bend_points,
         ))
     }
+}
+
+fn port_position(port: &Option<diagram_models::port::PortAnchor>, node: &Node) -> (f64, f64) {
+    let point = port.as_ref().map_or_else(
+        || {
+            diagram_models::geometry::Point::new(
+                node.x.0 + node.width.0 / 2.0,
+                node.y.0 + node.height.0 / 2.0,
+            )
+        },
+        |anchor| diagram_models::port::compute_port_absolute_position(node, anchor),
+    );
+    (point.x, point.y)
 }
 
 pub fn routed_polyline_points(

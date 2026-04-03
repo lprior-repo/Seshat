@@ -196,23 +196,8 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
         ToolMode::Edge => {
             let doc = doc_signal.read().clone();
             if let Some(from_node) = find_node_at(&doc, pos.0, pos.1) {
-                let start_port = doc.document.nodes.get(&from_node).and_then(|src| {
-                    let dx = if src.width.0 > 0.0 {
-                        (pos.0 - src.x.0) / src.width.0
-                    } else {
-                        0.5
-                    };
-                    let dy = if src.height.0 > 0.0 {
-                        (pos.1 - src.y.0) / src.height.0
-                    } else {
-                        0.5
-                    };
-                    diagram_models::port::NormalizedOffset::new(
-                        diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
-                        diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
-                    )
-                    .ok()
-                    .map(diagram_models::port::PortAnchor::Custom)
+                let start_port = doc.document.nodes.get(&from_node).map(|src| {
+                    crate::ui::canvas::document_ops::snap_edge_port_toward(src, pos.0, pos.1)
                 });
                 interaction_mode.set(InteractionMode::DrawingEdge {
                     from_node,

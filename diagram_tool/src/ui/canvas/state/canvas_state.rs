@@ -80,9 +80,10 @@ pub fn use_canvas_state() -> CanvasState {
     let active_pointers = use_signal(StdHashSet::<u32>::new);
     let canvas_origin = use_signal(|| (0.0_f64, 0.0_f64));
     let geometry_render_tick = use_signal(|| 0_u64);
+    let node_order_trigger = use_memo(move || doc_signal.read().revision);
     let ordered_node_cache = use_memo(move || {
-        let doc = doc_signal.read();
-        ordered_node_ids(&doc)
+        let _ = node_order_trigger.read();
+        ordered_node_ids(&doc_signal.peek())
     });
     // Lightweight Memo: only camera_x, camera_y, zoom, selected_items.
     // Components subscribe to THIS instead of doc_signal to avoid full-doc re-renders.

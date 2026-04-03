@@ -15,6 +15,7 @@ use crate::ui::grid::GridSize;
 use diagram_models::document::{
     DiagramDocument, EdgeId, LockState, NodeId, NodeKind, OrderedFloat,
 };
+use diagram_models::port::PortAnchor;
 
 fn create_test_doc() -> DiagramDocument {
     DiagramDocument::default()
@@ -187,6 +188,33 @@ fn test_safe_zoom() {
     // Tests behavior when math library evaluates
     let valid_zoom = safe_zoom(1.5);
     assert!(valid_zoom > 0.0);
+}
+
+#[test]
+fn snap_edge_port_toward_prefers_nearest_axis_aligned_side() {
+    let node = NodeBuilder::new(100.0, 200.0, 80.0, 40.0).build();
+
+    assert_eq!(
+        snap_edge_port_toward(&node, 260.0, 220.0),
+        PortAnchor::Right
+    );
+    assert_eq!(snap_edge_port_toward(&node, 20.0, 220.0), PortAnchor::Left);
+    assert_eq!(
+        snap_edge_port_toward(&node, 140.0, 320.0),
+        PortAnchor::Bottom
+    );
+    assert_eq!(snap_edge_port_toward(&node, 140.0, 120.0), PortAnchor::Top);
+}
+
+#[test]
+fn snapped_edge_ports_face_each_other() {
+    let source = NodeBuilder::new(0.0, 0.0, 100.0, 60.0).build();
+    let target = NodeBuilder::new(300.0, 20.0, 120.0, 80.0).build();
+
+    let (source_port, target_port) = snapped_edge_ports(&source, &target);
+
+    assert_eq!(source_port, PortAnchor::Right);
+    assert_eq!(target_port, PortAnchor::Left);
 }
 
 #[test]

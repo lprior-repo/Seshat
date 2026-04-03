@@ -24,10 +24,19 @@ pub fn RootContainer(state: CanvasState) -> Element {
     let mut drag_over = state.drag_over;
 
     let bg_color = BG_BASE;
+    let is_dragging_selection = matches!(
+        *state.interaction_mode.read(),
+        InteractionMode::DraggingSelection { .. }
+    );
     let border_style = if *drag_over.read() {
         ACCENT_DASH_BORDER
     } else {
         "none"
+    };
+    let canvas_drag_class = if is_dragging_selection {
+        " diagram-canvas--dragging"
+    } else {
+        ""
     };
     let cursor_style = if *state.space_pressed.read() {
         if *state.space_pan_active.read() {
@@ -71,7 +80,7 @@ pub fn RootContainer(state: CanvasState) -> Element {
 
     rsx! {
         div {
-            class: "canvas-container flex-1 relative overflow-hidden overscroll-none touch-none select-none box-border",
+            class: "canvas-container flex-1 relative overflow-hidden overscroll-none touch-none select-none box-border{canvas_drag_class}",
             "data-testid": "canvas-root",
             style: "background: radial-gradient(circle at 24% 12%, {BG_ELEVATED} 0%, {bg_color} 66%); cursor: {cursor_style}; border: {border_style};",
 

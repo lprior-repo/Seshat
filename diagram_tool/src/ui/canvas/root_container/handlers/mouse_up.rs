@@ -1,6 +1,6 @@
 use crate::ui::canvas::document_ops::{
     apply_rubber_band_release, dispatch_drag_move_batch, edge_preserves_dag, find_node_at,
-    flush_pending_pointer_update, subgraph_release_bounds, sync_canvas_origin,
+    flush_pending_pointer_update, snapped_edge_ports, subgraph_release_bounds, sync_canvas_origin,
 };
 use crate::ui::canvas::state::CanvasState;
 use crate::ui::editor::ToolMode;
@@ -100,9 +100,9 @@ fn handle_drawing_edge_release(
 
     if let Some(target_id) = target.clone() {
         if target_id != from_node {
-            let end_port = calculate_port(&doc, &target_id, pos.0, pos.1);
+            let (calculated_start_port, end_port) = calculate_ports(&doc, &from_node, &target_id);
             let candidate_edge = diagram_models::document::Edge {
-                source: from_node,
+                source: from_node.clone(),
                 target: target_id.clone(),
                 label: String::new(),
                 style: *state.edge_style_default.read(),
@@ -115,7 +115,7 @@ fn handle_drawing_edge_release(
                 tags: im::Vector::new(),
                 metadata: HashMap::new(),
                 font_size: None,
-                source_port: start_port,
+                source_port: start_port.or(calculated_start_port),
                 target_port: end_port,
             };
 
@@ -149,7 +149,7 @@ fn handle_drawing_edge_release(
 
     if *state.tool_signal.read() == ToolMode::Edge {
         if let Some(target_id) = target {
-            let end_port = calculate_port(&doc_signal.read(), &target_id, pos.0, pos.1);
+            let (_, end_port) = calculate_ports(&doc_signal.read(), &from_node, &target_id);
             return InteractionMode::DrawingEdge {
                 from_node: target_id,
                 current_pos: (pos.0, pos.1),
@@ -160,30 +160,22 @@ fn handle_drawing_edge_release(
     InteractionMode::Select
 }
 
-fn calculate_port(
+fn calculate_ports(
     doc: &diagram_models::document::DiagramDocument,
-    tgt_id: &NodeId,
-    px: f64,
-    py: f64,
-) -> Option<diagram_models::port::PortAnchor> {
-    doc.document.nodes.get(tgt_id).and_then(|tgt| {
-        let dx = if tgt.width.0 > 0.0 {
-            (px - tgt.x.0) / tgt.width.0
-        } else {
-            0.5
-        };
-        let dy = if tgt.height.0 > 0.0 {
-            (py - tgt.y.0) / tgt.height.0
-        } else {
-            0.5
-        };
-        diagram_models::port::NormalizedOffset::new(
-            diagram_models::document::OrderedFloat::new_unchecked(dx.clamp(0.0, 1.0)),
-            diagram_models::document::OrderedFloat::new_unchecked(dy.clamp(0.0, 1.0)),
-        )
-        .ok()
-        .map(diagram_models::port::PortAnchor::Custom)
-    })
+    source_id: &NodeId,
+    target_id: &NodeId,
+) -> (
+    Option<diagram_models::port::PortAnchor>,
+    Option<diagram_models::port::PortAnchor>,
+) {
+    doc.document
+        .nodes
+        .get(source_id)
+        .zip(doc.document.nodes.get(target_id))
+        .map_or((None, None), |(source, target)| {
+            let (start, end) = snapped_edge_ports(source, target);
+            (Some(start), Some(end))
+        })
 }
 
 fn handle_drawing_subgraph_release(

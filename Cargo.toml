@@ -3,7 +3,7 @@ members = ["canvas_math", "diagram_tool", "diagram_models", "canvas_domain", "se
 resolver = "2"
 
 [profile.release]
-opt-level = 'z'
+opt-level = 3
 lto = true
 strip = true
 codegen-units = 1
