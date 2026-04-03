@@ -1,31 +1,32 @@
 //! Schema definitions for `SQLite` database - single source of truth
 //!
-//! This module provides centralized schema definitions used by store.rs
+//! This module provides centralized schema definitions used by the async store.
+//! IMPORTANT: This must match the actual schema in diagram_tool/src/store_async/bootstrap.rs
 
 #![allow(dead_code)]
 
 use smallvec::smallvec;
 
 /// Events table schema - consolidated definition
+/// Columns: id (auto-increment), operation_id (unique), revision, payload (JSON), timestamp
 pub const SCHEMA_EVENTS_TABLE: &str = r"
 CREATE TABLE IF NOT EXISTS events (
-    id TEXT NOT NULL PRIMARY KEY,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_id TEXT NOT NULL UNIQUE,
     revision INTEGER NOT NULL,
-    event_type TEXT NOT NULL,
     payload TEXT NOT NULL,
-    metadata TEXT NOT NULL DEFAULT '{}',
-    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+    timestamp TEXT NOT NULL
 )
 ";
 
-/// Events revision index
+/// Events revision index for ordered retrieval
 pub const SCHEMA_EVENTS_REVISION_INDEX: &str = r"
 CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision)
 ";
 
-/// Events type index
-pub const SCHEMA_EVENTS_TYPE_INDEX: &str = r"
-CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type)
+/// Events operation_id index for idempotency checks
+pub const SCHEMA_EVENTS_OPERATION_ID_INDEX: &str = r"
+CREATE INDEX IF NOT EXISTS idx_events_operation_id ON events(operation_id)
 ";
 
 /// Snapshots table schema
@@ -52,14 +53,16 @@ CREATE TABLE IF NOT EXISTS schema_version (
 ";
 
 /// AI Documents table schema
-pub const SCHEMA_AI_DOCUMENTS_TABLE: &str = "CREATE TABLE IF NOT EXISTS ai_documents (\
-     id TEXT PRIMARY KEY,\
-     key TEXT NOT NULL,\
-     json_payload TEXT NOT NULL,\
-     location_type TEXT NOT NULL,\
-     location_data TEXT NOT NULL,\
-     created_at INTEGER\
- )";
+pub const SCHEMA_AI_DOCUMENTS_TABLE: &str = r"
+CREATE TABLE IF NOT EXISTS ai_documents (
+    id TEXT NOT NULL PRIMARY KEY,
+    key TEXT NOT NULL,
+    json_payload TEXT NOT NULL,
+    location_type TEXT NOT NULL,
+    location_data TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+)
+";
 
 /// All schema statements for initial setup.
 ///
@@ -71,7 +74,7 @@ pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 7]> {
         SCHEMA_VERSION_TABLE,
         SCHEMA_EVENTS_TABLE,
         SCHEMA_EVENTS_REVISION_INDEX,
-        SCHEMA_EVENTS_TYPE_INDEX,
+        SCHEMA_EVENTS_OPERATION_ID_INDEX,
         SCHEMA_SNAPSHOTS_TABLE,
         SCHEMA_SNAPSHOTS_REVISION_INDEX,
         SCHEMA_AI_DOCUMENTS_TABLE,

@@ -19,39 +19,85 @@ We will use **SQLite with sqlx** for persistence, configured with:
 
 ```sql
 -- Events table (append-only)
+-- Note: id is auto-incrementing INTEGER, operation_id stores the unique op_id
 CREATE TABLE events (
-    id INTEGER PRIMARY KEY,
-    document_id TEXT NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_id TEXT NOT NULL UNIQUE,
     revision INTEGER NOT NULL,
-    op_id TEXT NOT NULL,
-    author TEXT NOT NULL,
-    payload BLOB NOT NULL,
+    payload TEXT NOT NULL,
+    timestamp TEXT NOT NULL
+);
+
+-- Index for revision-ordered event retrieval
+CREATE INDEX idx_events_revision ON events(revision);
+
+-- Index for idempotency checks by operation_id
+CREATE INDEX idx_events_operation_id ON events(operation_id);
+
+-- Snapshots table for document state at given revision
+CREATE TABLE snapshots (
+    id INTEGER NOT NULL PRIMARY KEY,
+    revision INTEGER NOT NULL UNIQUE,
+    payload TEXT NOT NULL,
+    created_at INTEGER NOT NULL DEFAULT (strftime('%s', 'now'))
+);
+
+-- Index for revision-ordered snapshot retrieval (newest first)
+CREATE INDEX idx_snapshots_revision ON snapshots(revision DESC);
+
+-- AI Documents table for persistent document metadata
+CREATE TABLE ai_documents (
+    id TEXT NOT NULL PRIMARY KEY,
+    key TEXT NOT NULL,
+    json_payload TEXT NOT NULL,
+    location_type TEXT NOT NULL,
+    location_data TEXT NOT NULL,
     created_at INTEGER NOT NULL
 );
 
--- Index for document revision lookup
-CREATE INDEX idx_events_document_revision ON events(document_id, revision);
+-- Index for key-based lookups
+CREATE INDEX idx_ai_documents_key ON ai_documents(key);
 ```
 
 ## Serialization Format (EXPLICIT SPECIFICATION)
 
 ### Format: JSON
-The `payload` BLOB contains **JSON-encoded** operation data.
+The `payload` TEXT column contains **JSON-encoded** operation data representing the full `EventEnvelope`.
+
+**EventEnvelope Structure:**
+```json
+{
+  "op_id": "unique-operation-id",
+  "operation": { ... },
+  "author": { "id": "...", "name": "...", "email": null },
+  "timestamp": 1700000000
+}
+```
 
 **Justification:**
 - Schema is already defined in JSON for Dioxus serialization
 - Human-readable for debugging and audits
 - AI-friendly: easy to generate, parse, and test
 - Wide tooling support
+- The `operation` field contains the domain-specific operation (NodeAdd, EdgeConnect, etc.)
 
-**Example:**
+**Example payload:**
 ```json
 {
-  "op": "UpdateNodePosition",
-  "node_id": "node-abc123",
-  "x": 150.5,
-  "y": 200.0,
-  "revision": 42
+  "op_id": "node-move-1700000000-abc123",
+  "operation": {
+    "NodeMove": {
+      "id": "node-abc123",
+      "x": 150.5,
+      "y": 200.0
+    }
+  },
+  "author": {
+    "id": "user-1",
+    "name": "Alice",
+    "email": "alice@example.com"
+  },
+  "timestamp": 1700000000
 }
 ```
 
