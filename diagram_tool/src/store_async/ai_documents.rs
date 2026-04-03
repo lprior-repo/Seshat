@@ -62,22 +62,8 @@ fn parse_ai_document_row(row: AiDocumentRow) -> Result<AiDocument, AsyncStoreErr
 }
 
 /// Maps a database row tuple to a parsed `AiDocument`.
-fn map_row_to_document(
-    id: String,
-    key: String,
-    json_payload: String,
-    location_type_str: String,
-    location_data: String,
-    created_at: i64,
-) -> Result<AiDocument, AsyncStoreError> {
-    parse_ai_document_row(AiDocumentRow {
-        id,
-        key,
-        json_payload,
-        location_type_str,
-        location_data,
-        created_at,
-    })
+fn map_row_to_document(row: AiDocumentRow) -> Result<AiDocument, AsyncStoreError> {
+    parse_ai_document_row(row)
 }
 
 /// Inserts a new AI document into the database.
@@ -145,7 +131,7 @@ pub async fn fetch_ai_document(
     .map_err(AsyncStoreError::Sqlx)?;
 
     row.map(|(id, key, json_payload, location_type_str, location_data, created_at)| {
-        map_row_to_document(id, key, json_payload, location_type_str, location_data, created_at)
+        map_row_to_document(AiDocumentRow { id, key, json_payload, location_type_str, location_data, created_at })
     })
     .transpose()
 }
@@ -175,7 +161,7 @@ pub async fn fetch_ai_documents_by_key(
 
     rows.into_iter()
         .map(|(id, key, json_payload, location_type_str, location_data, created_at)| {
-            map_row_to_document(id, key, json_payload, location_type_str, location_data, created_at)
+            map_row_to_document(AiDocumentRow { id, key, json_payload, location_type_str, location_data, created_at })
         })
         .collect()
 }
