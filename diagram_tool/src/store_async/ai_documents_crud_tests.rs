@@ -23,33 +23,16 @@ use diagram_models::schema_ai_documents::{AiDocument, LocationType};
 use sqlx::SqlitePool;
 use tempfile::TempDir;
 
-use crate::store_async::AsyncStoreError;
+use crate::store_async::{bootstrap_async_store, AsyncStoreError};
 
 /// Creates a test pool with the ai_documents table bootstrapped.
 async fn create_test_pool() -> Result<(TempDir, SqlitePool), Box<dyn std::error::Error>> {
     let temp_dir = TempDir::new()?;
     let db_path = temp_dir.path().join("test_ai_docs.db");
 
-    // Create pool directly using sqlx
-    let pool = SqlitePool::connect(&format!("sqlite:{}?mode=rwc", db_path.display())).await?;
+    let bootstrap = bootstrap_async_store(&db_path).await?;
 
-    // Create the ai_documents table
-    sqlx::query(
-        r#"
-        CREATE TABLE IF NOT EXISTS ai_documents (
-            id TEXT PRIMARY KEY,
-            key TEXT NOT NULL,
-            json_payload TEXT NOT NULL,
-            location_type TEXT NOT NULL,
-            location_data TEXT NOT NULL,
-            created_at INTEGER NOT NULL
-        )
-        "#,
-    )
-    .execute(&pool)
-    .await?;
-
-    Ok((temp_dir, pool))
+    Ok((temp_dir, bootstrap.pool))
 }
 
 /// Helper to create a valid AiDocument for testing.
