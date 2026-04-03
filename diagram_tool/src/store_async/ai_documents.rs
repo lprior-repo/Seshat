@@ -8,38 +8,36 @@ use sqlx::SqlitePool;
 use crate::store_async::error::AsyncStoreError;
 use diagram_models::schema_ai_documents::{AiDocument, AiDocumentError, LocationType};
 
+/// Bundles the raw fields from a database row before parsing into `AiDocument`.
+struct AiDocumentRow {
+    id: String,
+    key: String,
+    json_payload: String,
+    location_type_str: String,
+    location_data: String,
+    created_at: i64,
+}
+
 /// Parses a database row into an `AiDocument`.
 ///
 /// # Arguments
 ///
-/// * `id` - The document id
-/// * `key` - The document key
-/// * `json_payload` - The JSON payload
-/// * `location_type_str` - The location type as a string
-/// * `location_data` - The location data
-/// * `created_at` - The creation timestamp
+/// * `row` - The bundled row fields
 ///
 /// # Returns
 ///
 /// * `Ok(AiDocument)` - The parsed document
 /// * `Err(AsyncStoreError::ValidationFailed(_))` - If parsing fails
-fn parse_ai_document_row(
-    id: String,
-    key: String,
-    json_payload: String,
-    location_type_str: &str,
-    location_data: String,
-    created_at: i64,
-) -> Result<AiDocument, AsyncStoreError> {
-    let location_type = LocationType::from_str(location_type_str)
+fn parse_ai_document_row(row: AiDocumentRow) -> Result<AiDocument, AsyncStoreError> {
+    let location_type = LocationType::from_str(&row.location_type_str)
         .map_err(|e| AsyncStoreError::ValidationFailed(format!("Invalid location_type: {e:?}")))?;
     AiDocument::new(
-        id,
-        key,
-        json_payload,
+        row.id,
+        row.key,
+        row.json_payload,
         location_type,
-        location_data,
-        created_at,
+        row.location_data,
+        row.created_at,
     )
     .map_err(|e: AiDocumentError| {
         AsyncStoreError::ValidationFailed(format!("Invalid document: {e:?}"))
@@ -118,14 +116,14 @@ pub async fn fetch_ai_document(
 
     row.map(
         |(id, key, json_payload, location_type_str, location_data, created_at)| {
-            parse_ai_document_row(
+            parse_ai_document_row(AiDocumentRow {
                 id,
                 key,
                 json_payload,
-                &location_type_str,
+                location_type_str,
                 location_data,
                 created_at,
-            )
+            })
         },
     )
     .transpose()
@@ -161,14 +159,14 @@ pub async fn fetch_ai_documents_by_key(
     rows.into_iter()
         .map(
             |(id, key, json_payload, location_type_str, location_data, created_at)| {
-                parse_ai_document_row(
+                parse_ai_document_row(AiDocumentRow {
                     id,
                     key,
                     json_payload,
-                    &location_type_str,
+                    location_type_str,
                     location_data,
                     created_at,
-                )
+                })
             },
         )
         .collect()
