@@ -1,5 +1,5 @@
 #![allow(dead_code)]
-use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions, ToastQueue};
+use crate::ui::toast::{ToastApi, ToastHandle, ToastIntent, ToastOptions, ToastQueue};
 use diagram_models::document::{DiagramDocument, DocumentSession};
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
@@ -9,7 +9,7 @@ use std::path::PathBuf;
 #[cfg(not(target_arch = "wasm32"))]
 use super::common::{update_load_save_error, update_load_save_success};
 #[cfg(not(target_arch = "wasm32"))]
-use crate::cli_persistence::{save_workspace_atomic, CliPersistenceError};
+use crate::cli_persistence::{save_workspace_atomic, validate_safe_path, CliPersistenceError};
 
 #[derive(Debug)]
 pub enum SaveError {
@@ -34,6 +34,18 @@ pub fn apply_save_document(
     session: &DocumentSession,
     file_path: &PathBuf,
 ) -> Result<DocumentSession, SaveError> {
+    // Validate path before saving - prevents path traversal attacks
+    // Use parent directory as base (or cwd if no parent) since we write to parent
+    let base_dir = file_path
+        .parent()
+        .unwrap_or_else(|| std::path::Path::new("."));
+    validate_safe_path(file_path, base_dir).map_err(|e| match e {
+        CliPersistenceError::PathTraversalDenied { path } => {
+            SaveError::Io(format!("Path traversal denied: {path}"))
+        }
+        CliPersistenceError::IoError(e) => SaveError::Io(e.to_string()),
+        _ => SaveError::Io(String::from("Path validation failed")),
+    })?;
     save_workspace_atomic(doc, file_path).map_err(|e| match e {
         CliPersistenceError::IoError(e) => SaveError::Io(e.to_string()),
         CliPersistenceError::ValidationError(e) => SaveError::Serialize(e),
@@ -84,67 +96,51 @@ pub fn save_workspace(
         let doc_snapshot = doc_signal.read().clone();
         let session_snapshot = session_signal.read().clone();
         spawn(async move {
-            match session_snapshot.file_path() {
+            let path_opt = session_snapshot.file_path().map(PathBuf::from);
+            let chosen_path = path_opt.or_else(|| {
+                FileDialog::new()
+                    .add_filter("Seshat Diagram", &["json"])
+                    .set_file_name("diagram.json")
+                    .save_file()
+            });
+            match chosen_path {
                 None => {
                     let _ = toast_handle.dismiss();
-                    let path = FileDialog::new()
-                        .add_filter("Seshat Diagram", &["json"])
-                        .set_file_name("diagram.json")
-                        .save_file();
-                    match path {
-                        None => {}
-                        Some(p) => {
-                            match apply_save_document(&doc_snapshot, &session_snapshot, &p) {
-                                Ok(saved_session) => {
-                                    *session_signal.write() = saved_session;
-                                    update_load_save_success(
-                                        toast_handle,
-                                        "Workspace saved",
-                                        format!("Saved to {}", p.display()),
-                                    );
-                                }
-                                Err(SaveError::Io(e)) => update_load_save_error(
-                                    toast_handle,
-                                    "Save failed",
-                                    format!("Save error: {e}"),
-                                ),
-                                Err(SaveError::Serialize(e)) => update_load_save_error(
-                                    toast_handle,
-                                    "Save failed",
-                                    format!("Serialize error: {e}"),
-                                ),
-                                Err(SaveError::NoFilePath) => {
-                                    let _ = toast_handle.dismiss();
-                                }
-                            }
-                        }
-                    }
                 }
-                Some(path) => match apply_save_document(&doc_snapshot, &session_snapshot, path) {
-                    Ok(saved_session) => {
-                        *session_signal.write() = saved_session;
-                        update_load_save_success(
-                            toast_handle,
-                            "Workspace saved",
-                            format!("Saved to {}", path.display()),
-                        );
-                    }
-                    Err(SaveError::Io(e)) => update_load_save_error(
-                        toast_handle,
-                        "Save failed",
-                        format!("Save error: {e}"),
-                    ),
-                    Err(SaveError::Serialize(e)) => update_load_save_error(
-                        toast_handle,
-                        "Save failed",
-                        format!("Serialize error: {e}"),
-                    ),
-                    Err(SaveError::NoFilePath) => {
-                        let _ = toast_handle.dismiss();
-                    }
-                },
+                Some(p) => {
+                    let result = apply_save_document(&doc_snapshot, &session_snapshot, &p);
+                    handle_save_result(result, &p, &mut session_signal, toast_handle);
+                }
             }
         });
+    }
+}
+
+/// Handles the result of a save operation, updating signals and toasts.
+fn handle_save_result(
+    result: Result<DocumentSession, SaveError>,
+    path: &PathBuf,
+    session_signal: &mut Signal<DocumentSession>,
+    toast_handle: ToastHandle,
+) {
+    match result {
+        Ok(saved_session) => {
+            *session_signal.write() = saved_session;
+            update_load_save_success(
+                toast_handle,
+                "Workspace saved",
+                format!("Saved to {}", path.display()),
+            );
+        }
+        Err(SaveError::Io(e)) => {
+            update_load_save_error(toast_handle, "Save failed", format!("Save error: {e}"))
+        }
+        Err(SaveError::Serialize(e)) => {
+            update_load_save_error(toast_handle, "Save failed", format!("Serialize error: {e}"))
+        }
+        Err(SaveError::NoFilePath) => {
+            let _ = toast_handle.dismiss();
+        }
     }
 }
 

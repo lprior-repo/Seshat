@@ -53,19 +53,23 @@ pub fn apply_import_contents(
 }
 
 pub fn update_load_save_success(toast_handle: ToastHandle, title: &str, detail: String) {
-    let _ = toast_handle.update(ToastUpdate {
+    if !toast_handle.update(ToastUpdate {
         title: Some(title.to_string()),
         detail: Some(Some(detail)),
         intent: Some(ToastIntent::Success),
         action: None,
-    });
+    }) {
+        eprintln!("Failed to update success toast");
+    }
 }
 
 pub fn update_load_save_error(toast_handle: ToastHandle, title: &str, detail: String) {
-    let _ = toast_handle.update(ToastUpdate {
+    if !toast_handle.update(ToastUpdate {
         title: Some(title.to_string()),
         detail: Some(Some(detail)),
         intent: Some(ToastIntent::Error),
         action: None,
-    });
+    }) {
+        eprintln!("Failed to update error toast");
+    }
 }

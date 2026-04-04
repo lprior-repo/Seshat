@@ -122,17 +122,25 @@ pub async fn fetch_ai_document(
     pool: &SqlitePool,
     id: &str,
 ) -> Result<Option<AiDocument>, AsyncStoreError> {
-    let row = sqlx::query_as::<_, (String, String, String, String, String, i64)>(
-        FETCH_AI_DOCUMENT_QUERY,
-    )
-    .bind(id)
-    .fetch_optional(pool)
-    .await
-    .map_err(AsyncStoreError::Sqlx)?;
+    let row =
+        sqlx::query_as::<_, (String, String, String, String, String, i64)>(FETCH_AI_DOCUMENT_QUERY)
+            .bind(id)
+            .fetch_optional(pool)
+            .await
+            .map_err(AsyncStoreError::Sqlx)?;
 
-    row.map(|(id, key, json_payload, location_type_str, location_data, created_at)| {
-        map_row_to_document(AiDocumentRow { id, key, json_payload, location_type_str, location_data, created_at })
-    })
+    row.map(
+        |(id, key, json_payload, location_type_str, location_data, created_at)| {
+            map_row_to_document(AiDocumentRow {
+                id,
+                key,
+                json_payload,
+                location_type_str,
+                location_data,
+                created_at,
+            })
+        },
+    )
     .transpose()
 }
 
@@ -160,9 +168,18 @@ pub async fn fetch_ai_documents_by_key(
     .map_err(AsyncStoreError::Sqlx)?;
 
     rows.into_iter()
-        .map(|(id, key, json_payload, location_type_str, location_data, created_at)| {
-            map_row_to_document(AiDocumentRow { id, key, json_payload, location_type_str, location_data, created_at })
-        })
+        .map(
+            |(id, key, json_payload, location_type_str, location_data, created_at)| {
+                map_row_to_document(AiDocumentRow {
+                    id,
+                    key,
+                    json_payload,
+                    location_type_str,
+                    location_data,
+                    created_at,
+                })
+            },
+        )
         .collect()
 }
 

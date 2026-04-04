@@ -2,7 +2,7 @@
 
 use diagram_models::schema_defs::{
     SCHEMA_AI_DOCUMENTS_KEY_INDEX, SCHEMA_AI_DOCUMENTS_TABLE, SCHEMA_EVENTS_OPERATION_ID_INDEX,
-    SCHEMA_EVENTS_TABLE, SCHEMA_EVENTS_REVISION_INDEX, SCHEMA_SNAPSHOTS_REVISION_INDEX,
+    SCHEMA_EVENTS_REVISION_INDEX, SCHEMA_EVENTS_TABLE, SCHEMA_SNAPSHOTS_REVISION_INDEX,
     SCHEMA_SNAPSHOTS_TABLE, SCHEMA_VERSION_TABLE,
 };
 use sqlx::{sqlite::SqlitePoolOptions, SqlitePool};
@@ -119,9 +119,7 @@ async fn run_async_schema_migration(pool: &SqlitePool) -> Result<(), AsyncStoreE
     .map_err(AsyncStoreError::Sqlx)?;
 
     if ai_documents_table_exists.0 == 0 {
-        sqlx::query(SCHEMA_AI_DOCUMENTS_TABLE)
-            .execute(pool)
-            .await?;
+        sqlx::query(SCHEMA_AI_DOCUMENTS_TABLE).execute(pool).await?;
 
         sqlx::query(SCHEMA_AI_DOCUMENTS_KEY_INDEX)
             .execute(pool)

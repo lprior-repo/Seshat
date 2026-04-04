@@ -53,9 +53,10 @@ pub enum CliPersistenceError {
 /// Validates that a path stays within the allowed base directory.
 ///
 /// This function prevents path traversal attacks by:
-/// 1. Canonicalizing the input path (resolves `..`, symlinks, relative paths)
-/// 2. Canonicalizing the base directory
-/// 3. Ensuring the canonicalized path starts with the base directory
+/// 1. Rejecting paths with ".." components
+/// 2. Resolving relative paths against the base directory
+/// 3. Canonicalizing to resolve symlinks
+/// 4. Ensuring the canonicalized path starts with the base directory
 ///
 /// # Errors
 ///
@@ -64,88 +65,117 @@ pub enum CliPersistenceError {
 /// - The path is an absolute path outside the cwd
 /// - Canonicalization fails for any reason
 pub fn validate_safe_path(path: &Path, base_dir: &Path) -> Result<PathBuf, CliPersistenceError> {
-    // Reject paths with parent directory references that could escape
-    // This is a defense-in-depth measure before any canonicalization
+    reject_dotted_components(path)?;
+    let resolved = resolve_against_base(path, base_dir);
+    let canonical = canonicalize_with_fallback(&resolved, base_dir)?;
+    verify_within_base(&canonical, base_dir)
+}
+
+/// Rejects paths containing parent directory references that could escape.
+/// This is defense-in-depth before any canonicalization.
+fn reject_dotted_components(path: &Path) -> Result<(), CliPersistenceError> {
     let path_str = path.to_string_lossy();
     if path_str.contains("..") {
         return Err(CliPersistenceError::PathTraversalDenied {
-            path: path.to_string_lossy().to_string(),
+            path: path_str.to_string(),
         });
     }
+    Ok(())
+}
 
-    // For relative paths, resolve against base_dir
-    // For absolute paths, check directly
-    let resolved = if path.is_absolute() {
+/// Resolves a path against a base directory.
+fn resolve_against_base(path: &Path, base_dir: &Path) -> PathBuf {
+    if path.is_absolute() {
         path.to_path_buf()
     } else {
         base_dir.join(path)
-    };
+    }
+}
 
-    // Canonicalize to resolve symlinks - handle non-existent files securely
-    let canonical = match std::fs::canonicalize(&resolved) {
-        Ok(c) => c,
+/// Canonicalizes a path, handling the case where the file doesn't exist yet.
+/// For output files that don't exist, we verify the parent directory is safe.
+fn canonicalize_with_fallback(
+    resolved: &Path,
+    base_dir: &Path,
+) -> Result<PathBuf, CliPersistenceError> {
+    match std::fs::canonicalize(resolved) {
+        Ok(c) => Ok(c),
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            // File or parent directory doesn't exist yet - this is valid for output files
-            // Get the directory to check (file itself or its parent)
-            let dir_to_check: PathBuf = if resolved.is_dir() {
-                resolved.clone()
-            } else if let Some(parent) = resolved.parent() {
-                if parent.as_os_str().is_empty() {
-                    // No parent directory, use base_dir
-                    base_dir.to_path_buf()
-                } else {
-                    parent.to_path_buf()
-                }
-            } else {
-                base_dir.to_path_buf()
-            };
+            handle_nonexistent_path(resolved, base_dir)
+        }
+        Err(e) => Err(CliPersistenceError::IoError(e)),
+    }
+}
 
-            // Try to canonicalize the directory
-            match std::fs::canonicalize(&dir_to_check) {
-                Ok(canonical_dir) => {
-                    let canonical_base = std::fs::canonicalize(base_dir)?;
-                    let dir_str = canonical_dir.to_string_lossy();
-                    let base_str = canonical_base.to_string_lossy();
-                    if !dir_str.starts_with(base_str.as_ref()) && dir_str != base_str {
-                        return Err(CliPersistenceError::PathTraversalDenied {
-                            path: path.to_string_lossy().to_string(),
-                        });
-                    }
-                    // Return the resolved path (verified directory is safe)
-                    return Ok(resolved);
-                }
-                Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-                    // Parent directory doesn't exist - check if the path components could escape
-                    // by verifying the resolved path is still within base_dir
-                    let resolved_str = resolved.to_string_lossy();
-                    // For relative paths without ".." we can be reasonably sure they're safe
-                    if !resolved_str.contains("..") {
-                        return Ok(resolved);
-                    }
-                    return Err(CliPersistenceError::PathTraversalDenied {
-                        path: path.to_string_lossy().to_string(),
-                    });
-                }
-                Err(e) => return Err(CliPersistenceError::IoError(e)),
+/// Handles the case where the path doesn't exist yet (valid for output files).
+/// We verify the parent directory is within the allowed base directory.
+fn handle_nonexistent_path(
+    resolved: &Path,
+    base_dir: &Path,
+) -> Result<PathBuf, CliPersistenceError> {
+    let dir_to_check = parent_dir_or_base(resolved, base_dir);
+    match std::fs::canonicalize(&dir_to_check) {
+        Ok(canonical_dir) => {
+            verify_dir_within_base(&canonical_dir, base_dir)?;
+            Ok(resolved.to_path_buf())
+        }
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
+            // Parent doesn't exist - verify resolved path is safe
+            let resolved_str = resolved.to_string_lossy();
+            if !resolved_str.contains("..") {
+                Ok(resolved.to_path_buf())
+            } else {
+                Err(CliPersistenceError::PathTraversalDenied {
+                    path: resolved_str.to_string(),
+                })
             }
         }
-        Err(e) => return Err(CliPersistenceError::IoError(e)),
-    };
+        Err(e) => Err(CliPersistenceError::IoError(e)),
+    }
+}
 
-    // Canonicalize base_dir for comparison - MUST SUCCEED
+/// Returns the parent directory of a path, or base_dir if no parent.
+fn parent_dir_or_base(path: &Path, base_dir: &Path) -> PathBuf {
+    if path.is_dir() {
+        path.to_path_buf()
+    } else if let Some(parent) = path.parent() {
+        if parent.as_os_str().is_empty() {
+            base_dir.to_path_buf()
+        } else {
+            parent.to_path_buf()
+        }
+    } else {
+        base_dir.to_path_buf()
+    }
+}
+
+/// Verifies a directory is within the base directory.
+fn verify_dir_within_base(
+    canonical_dir: &Path,
+    base_dir: &Path,
+) -> Result<(), CliPersistenceError> {
     let canonical_base = std::fs::canonicalize(base_dir)?;
-
-    // Check if canonical path starts with canonical base
-    let canonical_str = canonical.to_string_lossy();
+    let dir_str = canonical_dir.to_string_lossy();
     let base_str = canonical_base.to_string_lossy();
-
-    if !canonical_str.starts_with(base_str.as_ref()) && canonical_str != base_str {
+    if !dir_str.starts_with(base_str.as_ref()) && dir_str != base_str {
         return Err(CliPersistenceError::PathTraversalDenied {
-            path: path.to_string_lossy().to_string(),
+            path: dir_str.to_string(),
         });
     }
+    Ok(())
+}
 
-    Ok(canonical)
+/// Verifies the canonical path is within the base directory.
+fn verify_within_base(canonical: &Path, base_dir: &Path) -> Result<PathBuf, CliPersistenceError> {
+    let canonical_base = std::fs::canonicalize(base_dir)?;
+    let canonical_str = canonical.to_string_lossy();
+    let base_str = canonical_base.to_string_lossy();
+    if !canonical_str.starts_with(base_str.as_ref()) && canonical_str != base_str {
+        return Err(CliPersistenceError::PathTraversalDenied {
+            path: canonical_str.to_string(),
+        });
+    }
+    Ok(canonical.to_path_buf())
 }
 
 /// Details for stage event emissions.

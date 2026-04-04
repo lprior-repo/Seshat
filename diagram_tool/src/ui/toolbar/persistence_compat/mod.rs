@@ -2,6 +2,9 @@
 use diagram_models::document::DiagramDocument;
 
 fn remap_key(obj: &mut serde_json::Map<String, serde_json::Value>, from: &str, to: &str) {
+    if from == to {
+        return;
+    }
     if obj.contains_key(to) {
         let _ = obj.remove(from);
     } else if let Some(value) = obj.remove(from) {

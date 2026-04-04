@@ -229,8 +229,7 @@ fn open_workspace_native(
                             transform,
                         ) {
                             Ok(next_doc) => {
-                                let next_history =
-                                    current_history.push(current_doc.clone());
+                                let next_history = current_history.push(current_doc.clone());
                                 let session =
                                     DocumentSession::from_file(next_doc.clone(), p.clone());
 
@@ -244,12 +243,7 @@ fn open_workspace_native(
                                         return;
                                     }
                                 }
-                                commit_open_result(
-                                    signals,
-                                    next_doc,
-                                    next_history,
-                                    session,
-                                );
+                                commit_open_result(signals, next_doc, next_history, session);
                                 update_load_save_success(
                                     toast_handle,
                                     "Workspace loaded",
@@ -276,7 +270,11 @@ fn open_workspace_native(
                         );
                     }
                     Err(e) => {
-                        report_open_error(toast_handle, "Load failed", OpenError::Io(e.to_string()));
+                        report_open_error(
+                            toast_handle,
+                            "Load failed",
+                            OpenError::Io(e.to_string()),
+                        );
                     }
                 }
             }

@@ -9,19 +9,19 @@
           "state": "failed",
           "errors": [
             {
-              "message": ":tests::apply_error_display_empty_input ... ok"
+              "message": ":tests::apply_error_display_file_not_found ... ok"
             },
             {
-              "message": ":tests::apply_error_display_file_not_found ... ok"
+              "message": ":tests::apply_error_display_empty_input ... ok"
             },
             {
               "message": ":tests::apply_error_display_invalid_document ... ok"
             },
             {
-              "message": ":tests::apply_error_display_invalid_utf8 ... ok"
+              "message": ":tests::apply_error_display_invalid_proposal ... ok"
             },
             {
-              "message": ":tests::apply_error_display_invalid_proposal ... ok"
+              "message": ":tests::apply_error_display_invalid_utf8 ... ok"
             },
             {
               "message": ":tests::apply_error_display_io_error ... ok"
@@ -57,19 +57,19 @@
               "message": ":tests::execution_error_display_delegates_layout ... ok"
             },
             {
-              "message": ":tests::execution_error_display_delegates_patch ... ok"
-            },
-            {
               "message": ":tests::execution_error_display_delegates_render ... ok"
             },
             {
-              "message": ":tests::execution_error_display_delegates_show ... ok"
+              "message": ":tests::execution_error_display_delegates_patch ... ok"
             },
             {
               "message": ":tests::execution_error_implements_std_error ... ok"
             },
             {
               "message": ":tests::layout_error_display_load_failed ... ok"
+            },
+            {
+              "message": ":tests::execution_error_display_delegates_show ... ok"
             },
             {
               "message": ":tests::layout_error_display_save_failed ... ok"
