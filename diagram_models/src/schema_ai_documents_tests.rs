@@ -45,23 +45,23 @@ fn schema_ai_documents_constant_exists_and_is_non_empty_when_accessed() {
 fn schema_ai_documents_starts_with_create_table_when_accessed() {
     // Given: The SCHEMA_AI_DOCUMENTS_TABLE constant is defined
     // When: The constant is accessed
-    let schema = SCHEMA_AI_DOCUMENTS_TABLE;
-    // Then: It starts with "CREATE TABLE"
+    let schema = SCHEMA_AI_DOCUMENTS_TABLE.trim();
+    // Then: It starts with "CREATE TABLE IF NOT EXISTS"
     assert!(
-        schema.starts_with("CREATE TABLE"),
-        "SCHEMA_AI_DOCUMENTS_TABLE should start with 'CREATE TABLE', got: {}",
+        schema.starts_with("CREATE TABLE IF NOT EXISTS"),
+        "SCHEMA_AI_DOCUMENTS_TABLE should start with 'CREATE TABLE IF NOT EXISTS', got: {}",
         schema
     );
 }
 
 #[test]
-fn schema_ai_documents_contains_id_text_primary_key() {
+fn schema_ai_documents_contains_id_text_not_null_primary_key() {
     // Given: SCHEMA_AI_DOCUMENTS_TABLE constant
     let schema = SCHEMA_AI_DOCUMENTS_TABLE;
-    // Then: It contains `id TEXT PRIMARY KEY`
+    // Then: It contains `id TEXT NOT NULL PRIMARY KEY`
     assert!(
-        schema.contains("id TEXT PRIMARY KEY"),
-        "Schema should contain 'id TEXT PRIMARY KEY', got: {}",
+        schema.contains("id TEXT NOT NULL PRIMARY KEY"),
+        "Schema should contain 'id TEXT NOT NULL PRIMARY KEY', got: {}",
         schema
     );
 }

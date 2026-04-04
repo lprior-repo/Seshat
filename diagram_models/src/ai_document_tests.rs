@@ -20,6 +20,7 @@
 //! but fail at test execution time because the types don't exist yet.
 
 use crate::schema_ai_documents::AiDocument;
+use crate::schema_ai_documents::AiDocumentError;
 use crate::schema_ai_documents::LocationType;
 
 // =============================================================================
@@ -342,4 +343,21 @@ fn ai_document_stores_url_with_query_parameters() {
 
     // Then: Location data is preserved exactly
     assert_eq!(doc.location_data(), &location_data);
+}
+
+#[test]
+fn ai_document_rejects_empty_location_data() {
+    // Given: An empty location_data string
+    let doc = AiDocument::new(
+        "id".to_string(),
+        "key".to_string(),
+        "{}".to_string(),
+        LocationType::Gps,
+        "".to_string(),
+        0,
+    );
+
+    // Then: Creation fails with EmptyLocationData error
+    assert!(doc.is_err());
+    assert!(matches!(doc, Err(AiDocumentError::EmptyLocationData)));
 }

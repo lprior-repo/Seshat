@@ -26,7 +26,7 @@ impl JsonPayload {
     ///
     /// * `Ok(Self)` always - any string is valid
     #[must_use]
-    pub fn new(data: String) -> Self {
+    pub const fn new(data: String) -> Self {
         Self(data)
     }
 
@@ -121,11 +121,8 @@ impl LocationData {
     /// Accepts "line:col 42:10" or "42:10" format.
     fn validate_document_position_format(data: &str) -> bool {
         let data = data.trim();
-        if let Some(stripped) = data.strip_prefix("line:col ") {
-            Self::validate_line_col(stripped)
-        } else {
-            Self::validate_line_col(data)
-        }
+        data.strip_prefix("line:col ")
+            .map_or_else(|| Self::validate_line_col(data), Self::validate_line_col)
     }
 
     /// Validates line:col format.
@@ -244,7 +241,7 @@ impl AiDocument {
 
     /// Returns the location type.
     #[must_use]
-    pub fn location_type(&self) -> &LocationType {
+    pub const fn location_type(&self) -> &LocationType {
         &self.location_type
     }
 
@@ -256,7 +253,7 @@ impl AiDocument {
 
     /// Returns the creation timestamp.
     #[must_use]
-    pub fn created_at(&self) -> &i64 {
+    pub const fn created_at(&self) -> &i64 {
         &self.created_at
     }
 }

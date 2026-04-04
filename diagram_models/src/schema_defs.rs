@@ -1,14 +1,14 @@
 //! Schema definitions for `SQLite` database - single source of truth
 //!
 //! This module provides centralized schema definitions used by the async store.
-//! IMPORTANT: This must match the actual schema in diagram_tool/src/store_async/bootstrap.rs
+//! IMPORTANT: This must match the actual schema in `diagram_tool/src/store_async/bootstrap.rs`
 
 #![allow(dead_code)]
 
 use smallvec::smallvec;
 
 /// Events table schema - consolidated definition
-/// Columns: id (auto-increment), operation_id (unique), revision, payload (JSON), timestamp
+/// Columns: id (auto-increment), `operation_id` (unique), revision, payload (JSON), timestamp
 pub const SCHEMA_EVENTS_TABLE: &str = r"
 CREATE TABLE IF NOT EXISTS events (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -24,7 +24,7 @@ pub const SCHEMA_EVENTS_REVISION_INDEX: &str = r"
 CREATE INDEX IF NOT EXISTS idx_events_revision ON events(revision)
 ";
 
-/// Events operation_id index for idempotency checks
+/// Events `operation_id` index for idempotency checks
 pub const SCHEMA_EVENTS_OPERATION_ID_INDEX: &str = r"
 CREATE INDEX IF NOT EXISTS idx_events_operation_id ON events(operation_id)
 ";
