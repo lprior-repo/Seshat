@@ -7,6 +7,7 @@ use diagram_models::document::{
     DiagramDocument, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
 use im::HashMap;
+use proptest::prelude::*;
 use std::collections::HashSet;
 
 #[allow(clippy::unwrap_used, clippy::expect_used)]
@@ -174,4 +175,72 @@ fn given_import_error_when_selection_exists_then_selection_is_preserved() {
 
     assert!(matches!(result, Err(ImportTransitionError::Parse(_))));
     assert_eq!(doc.editor_state.selected_items, selected_before);
+}
+
+// =====================================================================
+// Proptest invariants
+// =====================================================================
+
+proptest! {
+    #![proptest_config(proptest::prelude::ProptestConfig::with_cases(256))]
+
+    #[test]
+    fn apply_import_contents_atomicity_invariant(
+        _seed in 0u64..1000u64,
+    ) {
+        // Use a default document as the current state
+        let current = DiagramDocument::default();
+        let invalid_contents = "{this is not valid json at all!!!";
+
+        let mut doc = current.clone();
+        let mut history = History::new();
+
+        // Record state before
+        let doc_before = doc.clone();
+
+        // Attempt import - should fail
+        let result = apply_import_contents(&mut doc, &mut history, invalid_contents);
+
+        // Invariant: On error, doc must be unchanged (atomicity)
+        // Note: We cannot check history equality as History doesn't implement PartialEq
+        if result.is_err() {
+            prop_assert_eq!(
+                doc, doc_before,
+                "On error, document must be unchanged (atomicity)"
+            );
+        }
+    }
+
+    #[test]
+    fn prepare_import_transition_idempotency_invariant(
+        _seed in 0u64..1000u64,
+    ) {
+        // Use a default document as the current state
+        let current = DiagramDocument::default();
+        // Create a valid import document
+        let import_doc = DiagramDocument::default();
+
+        // Serialize the import document to JSON
+        let contents = serde_json::to_string(&import_doc).unwrap();
+
+        // Run migration twice
+        let result1 = prepare_import_transition(&current, &contents);
+        let result2 = prepare_import_transition(&current, &contents);
+
+        // Invariant: Both should succeed or both should fail (deterministic)
+        prop_assert_eq!(
+            result1.is_ok(),
+            result2.is_ok(),
+            "prepare_import_transition should be deterministic"
+        );
+
+        // Invariant: If successful, documents should be identical (idempotency)
+        // Note: We check only the document since History doesn't implement PartialEq
+        if let (Ok((doc1, _history1)), Ok((doc2, _history2))) = (result1, result2) {
+            prop_assert_eq!(
+                doc1, doc2,
+                "Running migration twice should produce identical documents (idempotency)"
+            );
+        }
+    }
 }

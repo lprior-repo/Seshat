@@ -79,4 +79,20 @@ pub enum CliPersistenceError {
 
 ---
 
+## Error Mapping (CliPersistenceError → SaveError)
+
+The `apply_save_document()` function calls `save_workspace_atomic()` which returns `CliPersistenceError`. These errors are mapped to `SaveError` variants:
+
+| CliPersistenceError | Maps To | Rationale |
+|---------------------|---------|-----------|
+| `IoError(_)` | `SaveError::Io(_)` | OS-level I/O failures (permission denied, disk full, etc.) |
+| `ParseError(_)` | `SaveError::Serialize(_)` | JSON serialization failures |
+| `ValidationError(_)` | `SaveError::Serialize(_)` | Document validation failures |
+| `TempFileError(_)` | `SaveError::Io(_)` | Temp file creation failures are I/O at their core |
+| `AtomicRenameError{..}` | `SaveError::Io(_)` | Atomic rename failures are I/O at their core |
+| `NoValidDocument(_)` | Not reachable | Only used during load, not save |
+| `PathTraversalDenied{..}` | `SaveError::Io(_)` | Path traversal is rejected before I/O |
+
+---
+
 *This contract is the authoritative source for public function signatures. Any discrepancy between this and implementation is a bug.*

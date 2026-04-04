@@ -149,6 +149,7 @@ mod tests {
     #![allow(clippy::unwrap_used, clippy::expect_used)]
     use super::*;
     use diagram_models::document::Revision;
+    use proptest::prelude::*;
 
     fn make_test_doc() -> DiagramDocument {
         DiagramDocument::default()
@@ -288,5 +289,192 @@ mod tests {
             Some(&PathBuf::from("/original.json")),
             "session should preserve original file path, not the save path"
         );
+    }
+
+    // =====================================================================
+    // Proptest invariants
+    // =====================================================================
+
+    proptest! {
+        #![proptest_config(proptest::prelude::ProptestConfig::with_cases(256))]
+
+        #[cfg(not(target_arch = "wasm32"))]
+        #[test]
+        fn apply_save_document_revision_sync_invariant(doc_rev in 0u64..1000u64) {
+            let mut doc = make_test_doc();
+            doc.revision = Revision::new(doc_rev);
+            let session = DocumentSession::new(doc.clone());
+            let temp = tempfile::NamedTempFile::new().unwrap();
+            let path = temp.path().to_path_buf();
+
+            let result = apply_save_document(&doc, &session, &path);
+
+            prop_assert!(result.is_ok(), "apply_save_document should succeed for valid doc");
+            let saved_session = result.unwrap();
+            // Invariant: last_saved_revision must equal the saved document's revision
+            prop_assert_eq!(
+                saved_session.last_saved_revision(),
+                doc.revision,
+                "last_saved_revision should match the document's revision after save"
+            );
+            // Invariant: dirty flag must be cleared after saving current document
+            prop_assert!(
+                !saved_session.is_dirty(),
+                "session should not be dirty after saving"
+            );
+        }
+    }
+}
+
+// =============================================================================
+// Integration tests for save_workspace expected behavior
+// =============================================================================
+//
+// save_workspace() is an async UI action that:
+//   1. Shows a "Saving workspace" toast with "Preparing data..." detail
+//   2. On native: uses FileDialog to pick a save location (or uses existing path)
+//   3. On WASM: shows "Save not available" error toast, dismisses loading toast
+//   4. On success: updates session signal, dismisses saving toast, shows success toast
+//   5. On error: shows error toast with details from SaveError variant
+//
+// These tests document the expected behavior and test the pure functions
+// that save_workspace calls internally (apply_save_document, handle_save_result).
+//
+// Note: Testing save_workspace directly requires async infrastructure and
+// FileDialog mocking. The tests below verify the core save logic.
+
+#[cfg(test)]
+mod save_workspace_integration_tests {
+    #![allow(clippy::unwrap_used, clippy::expect_used)]
+
+    use super::*;
+    use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions};
+    use diagram_models::document::Revision;
+    use dioxus::prelude::{rsx, Component, Element, VirtualDom};
+
+    fn make_test_doc() -> DiagramDocument {
+        DiagramDocument::default()
+    }
+
+    /// Verifies apply_save_document writes file and clears dirty flag.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn apply_save_document_clears_dirty_flag_on_success() {
+        let mut doc = make_test_doc();
+        doc.revision = Revision::new(5);
+        let session = DocumentSession::new(doc.clone());
+        let temp = tempfile::NamedTempFile::new().expect("temp file should be created");
+        let path = temp.path().to_path_buf();
+
+        // Perform save
+        let result = apply_save_document(&doc, &session, &path);
+        assert!(result.is_ok(), "save should succeed");
+
+        let saved_session = result.unwrap();
+        assert!(
+            !saved_session.is_dirty(),
+            "session should not be dirty after save"
+        );
+        assert_eq!(
+            saved_session.last_saved_revision(),
+            doc.revision,
+            "last saved revision should match document revision"
+        );
+    }
+
+    /// Test that apply_save_document correctly rejects path traversal attempts.
+    #[cfg(not(target_arch = "wasm32"))]
+    #[test]
+    fn apply_save_document_rejects_path_traversal_attack() {
+        let mut doc = make_test_doc();
+        doc.revision = Revision::new(5);
+        let session = DocumentSession::new(doc.clone());
+
+        // Attempt path traversal - should be rejected by validate_safe_path
+        let malicious_path = PathBuf::from("/tmp/../../../etc/passwd");
+        let result = apply_save_document(&doc, &session, &malicious_path);
+
+        assert!(
+            matches!(result, Err(SaveError::Io(ref msg)) if msg.contains("traversal") || msg.contains("denied")),
+            "Path traversal should be rejected with appropriate error, got: {result:?}"
+        );
+    }
+
+    /// Test that update_load_save_success updates toast to success state.
+    #[test]
+    fn update_load_save_success_updates_toast_to_success() {
+        #[component]
+        fn TestComponent() -> Element {
+            let state = crate::app::AppState::provide();
+            let toast_api = ToastApi::from_signal(state.toasts);
+            let toast_handle = toast_api.toast(
+                ToastOptions::new(ToastIntent::Info, "Saving..."),
+            );
+
+            let path = PathBuf::from("/tmp/test.json");
+
+            // This would be called by handle_save_result on success
+            update_load_save_success(
+                toast_handle,
+                "Workspace saved",
+                format!("Saved to {}", path.display()),
+            );
+
+            // Verify toast was updated
+            let queue = state.toasts.read();
+            let toast = queue.items().iter().find(|t| t.title == "Workspace saved");
+            assert!(
+                toast.is_some(),
+                "Toast with title 'Workspace saved' should exist"
+            );
+            assert_eq!(
+                toast.as_ref().unwrap().intent,
+                ToastIntent::Success,
+                "Toast intent should be Success"
+            );
+
+            rsx! { "test" }
+        }
+
+        let mut vdom = VirtualDom::new(TestComponent);
+        vdom.rebuild_in_place();
+    }
+
+    /// Test that update_load_save_error updates toast to error state.
+    #[test]
+    fn update_load_save_error_updates_toast_to_error() {
+        #[component]
+        fn TestComponent() -> Element {
+            let state = crate::app::AppState::provide();
+            let toast_api = ToastApi::from_signal(state.toasts);
+            let toast_handle = toast_api.toast(
+                ToastOptions::new(ToastIntent::Info, "Saving..."),
+            );
+
+            // This would be called by handle_save_result on IO error
+            update_load_save_error(
+                toast_handle,
+                "Save failed",
+                String::from("Save error: Permission denied"),
+            );
+
+            // Verify toast was updated
+            let queue = state.toasts.read();
+            let toast = queue.items().iter().find(|t| t.title == "Save failed");
+            assert!(
+                toast.is_some(),
+                "Toast with title 'Save failed' should exist"
+            );
+            assert_eq!(
+                toast.as_ref().unwrap().intent,
+                ToastIntent::Error,
+                "Toast intent should be Error"
+            );
+
+            rsx! { "test" }
+        }
+
+        let mut vdom = VirtualDom::new(TestComponent);
+        vdom.rebuild_in_place();
     }
 }
