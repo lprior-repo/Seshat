@@ -1,18 +1,15 @@
 #![allow(dead_code)]
-use crate::ui::editor::ToolMode;
 use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions, ToastQueue};
-#[cfg(not(target_arch = "wasm32"))]
-use diagram_models::canonical_json::to_canonical_pretty_json;
-use diagram_models::document::{ArrowType, DiagramDocument, DocumentSession, EdgeStyle};
+use diagram_models::document::{DiagramDocument, DocumentSession};
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
-#[cfg(not(target_arch = "wasm32"))]
-use std::fs;
 use std::path::PathBuf;
 
 #[cfg(not(target_arch = "wasm32"))]
 use super::common::{update_load_save_error, update_load_save_success};
+#[cfg(not(target_arch = "wasm32"))]
+use crate::cli_persistence::{save_workspace_atomic, CliPersistenceError};
 
 #[derive(Debug)]
 pub enum SaveError {
@@ -37,9 +34,19 @@ pub fn apply_save_document(
     session: &DocumentSession,
     file_path: &PathBuf,
 ) -> Result<DocumentSession, SaveError> {
-    let json_str =
-        to_canonical_pretty_json(doc).map_err(|e| SaveError::Serialize(e.to_string()))?;
-    fs::write(file_path, json_str.as_bytes()).map_err(|e| SaveError::Io(e.to_string()))?;
+    save_workspace_atomic(doc, file_path).map_err(|e| match e {
+        CliPersistenceError::IoError(e) => SaveError::Io(e.to_string()),
+        CliPersistenceError::ValidationError(e) => SaveError::Serialize(e),
+        CliPersistenceError::TempFileError(e) => SaveError::Io(e),
+        CliPersistenceError::AtomicRenameError { from: _, to: _ } => {
+            SaveError::Io(String::from("Atomic rename failed"))
+        }
+        CliPersistenceError::NoValidDocument(e) => SaveError::Io(e),
+        CliPersistenceError::PathTraversalDenied { path } => {
+            SaveError::Io(format!("Path traversal denied: {path}"))
+        }
+        CliPersistenceError::ParseError(e) => SaveError::Serialize(e.to_string()),
+    })?;
     Ok(session.with_document(doc.clone()).mark_saved())
 }
 
@@ -55,9 +62,6 @@ pub fn apply_save_document(
 pub fn save_workspace(
     doc_signal: Signal<DiagramDocument>,
     mut session_signal: Signal<DocumentSession>,
-    _tool_signal: Signal<ToolMode>,
-    _edge_style_signal: Signal<EdgeStyle>,
-    _arrow_type_signal: Signal<ArrowType>,
     toasts: Signal<ToastQueue>,
 ) {
     let toast_api = ToastApi::from_signal(toasts);

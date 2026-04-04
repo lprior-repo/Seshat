@@ -3,6 +3,7 @@ use crate::history::History;
 use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
 use crate::ui::toast::{ToastHandle, ToastIntent, ToastUpdate};
 use diagram_models::document::{DiagramDocument, Revision};
+use diagram_models::schema::validate_schema;
 
 #[derive(Debug)]
 pub enum ImportTransitionError {
@@ -17,6 +18,10 @@ pub fn prepare_import_transition(
     let mut loaded_doc =
         super::super::persistence_compat::parse_diagram_document_with_compat(contents)
             .map_err(ImportTransitionError::Parse)?;
+
+    validate_schema(&loaded_doc)
+        .map_err(|e| ImportTransitionError::Validation(format!("Schema validation failed: {e}")))?;
+
     loaded_doc.revision = Revision::INITIAL;
 
     run_mutation_with_policy(

@@ -1,12 +1,14 @@
 #![allow(dead_code)]
 use crate::history::History;
+use crate::mutation::pipeline::{run_mutation_with_policy, RevisionPolicy, ValidationPolicy};
 use crate::ui::toast::{ToastApi, ToastIntent, ToastOptions, ToastQueue};
-use diagram_models::document::{DiagramDocument, DocumentSession};
+use diagram_models::document::{DiagramDocument, DocumentSession, Revision};
 use dioxus::prelude::*;
 #[cfg(not(target_arch = "wasm32"))]
 use rfd::FileDialog;
+
 #[cfg(not(target_arch = "wasm32"))]
-use std::fs;
+use crate::cli_persistence::{load_workspace_with_lkg, CliPersistenceError};
 
 use super::common::{
     apply_import_contents, update_load_save_error, update_load_save_success, ImportTransitionError,
@@ -211,38 +213,73 @@ fn open_workspace_native(
             None => {
                 let _ = toast_handle.dismiss();
             }
-            Some(p) => match fs::read_to_string(&p) {
-                Err(e) => {
-                    update_load_save_error(toast_handle, "Load failed", format!("Read error: {e}"));
-                }
-                Ok(contents) => {
-                    let current_doc = signals.doc.read().clone();
-                    let current_history = signals.history.read().clone();
+            Some(p) => {
+                let current_doc = signals.doc.read().clone();
+                let current_history = signals.history.read().clone();
 
-                    match apply_open_document(&current_doc, &current_history, &contents, p.clone())
-                    {
-                        Ok((next_doc, next_history, session)) => {
-                            if let Some(bridge) = &store_bridge {
-                                if let Err(e) = bridge.reset_store_sync() {
-                                    update_load_save_error(
-                                        toast_handle,
-                                        "Load failed",
-                                        format!("Failed to reset store: {e}"),
-                                    );
-                                    return;
+                match load_workspace_with_lkg(&p) {
+                    Ok(mut loaded_doc) => {
+                        loaded_doc.revision = Revision::INITIAL;
+
+                        let transform = |_: &DiagramDocument| Ok(loaded_doc);
+                        match run_mutation_with_policy(
+                            &current_doc,
+                            RevisionPolicy::Preserve,
+                            ValidationPolicy::default(),
+                            transform,
+                        ) {
+                            Ok(next_doc) => {
+                                let next_history =
+                                    current_history.push(current_doc.clone());
+                                let session =
+                                    DocumentSession::from_file(next_doc.clone(), p.clone());
+
+                                if let Some(bridge) = &store_bridge {
+                                    if let Err(e) = bridge.reset_store_sync() {
+                                        update_load_save_error(
+                                            toast_handle,
+                                            "Load failed",
+                                            format!("Failed to reset store: {e}"),
+                                        );
+                                        return;
+                                    }
                                 }
+                                commit_open_result(
+                                    signals,
+                                    next_doc,
+                                    next_history,
+                                    session,
+                                );
+                                update_load_save_success(
+                                    toast_handle,
+                                    "Workspace loaded",
+                                    format!("Loaded from {}", p.display()),
+                                );
                             }
-                            commit_open_result(signals, next_doc, next_history, session);
-                            update_load_save_success(
-                                toast_handle,
-                                "Workspace loaded",
-                                format!("Loaded from {}", p.display()),
-                            );
+                            Err(e) => {
+                                report_open_error(
+                                    toast_handle,
+                                    "Load failed",
+                                    OpenError::Validation(e.to_string()),
+                                );
+                            }
                         }
-                        Err(err) => report_open_error(toast_handle, "Load failed", err),
+                    }
+                    Err(CliPersistenceError::NoValidDocument(primary_err)) => {
+                        report_open_error(
+                            toast_handle,
+                            "Load failed",
+                            OpenError::Io(format!(
+                                "Cannot open file: {}. Backup also unavailable.",
+                                primary_err
+                            )),
+                        );
+                    }
+                    Err(e) => {
+                        report_open_error(toast_handle, "Load failed", OpenError::Io(e.to_string()));
                     }
                 }
-            },
+            }
         }
     });
 }
