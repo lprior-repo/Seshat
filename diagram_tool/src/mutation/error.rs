@@ -6,7 +6,7 @@
 use diagram_models::validation::ValidationIssue;
 use thiserror::Error;
 
-#[derive(Debug, Error)]
+#[derive(Clone, Debug, Error, PartialEq, Eq)]
 pub enum MutationError {
     #[error("schema error: {0}")]
     Schema(String),
