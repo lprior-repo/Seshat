@@ -69,12 +69,52 @@ pub const SCHEMA_AI_DOCUMENTS_KEY_INDEX: &str = r"
 CREATE INDEX IF NOT EXISTS idx_ai_documents_key ON ai_documents(key)
 ";
 
+pub const SCHEMA_SAGA_OPERATIONS_TABLE: &str = r"
+CREATE TABLE IF NOT EXISTS saga_operations (
+    operation_id TEXT NOT NULL PRIMARY KEY,
+    state TEXT NOT NULL DEFAULT 'started',
+    current_step INTEGER NOT NULL DEFAULT 0,
+    total_steps INTEGER NOT NULL,
+    started_at INTEGER NOT NULL,
+    completed_at INTEGER,
+    final_revision INTEGER,
+    error_message TEXT,
+    author_id TEXT NOT NULL DEFAULT '',
+    description TEXT NOT NULL DEFAULT ''
+)
+";
+
+pub const SCHEMA_SAGA_OPERATIONS_STATE_INDEX: &str = r"
+CREATE INDEX IF NOT EXISTS idx_saga_operations_state ON saga_operations(state)
+";
+
+pub const SCHEMA_STEP_JOURNAL_TABLE: &str = r"
+CREATE TABLE IF NOT EXISTS step_journal (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    operation_id TEXT NOT NULL,
+    step_index INTEGER NOT NULL,
+    step_name TEXT NOT NULL,
+    status TEXT NOT NULL DEFAULT 'pending',
+    event_revision INTEGER,
+    created_at INTEGER NOT NULL,
+    started_at INTEGER,
+    completed_at INTEGER,
+    error_message TEXT,
+    FOREIGN KEY (operation_id) REFERENCES saga_operations(operation_id),
+    UNIQUE(operation_id, step_index)
+)
+";
+
+pub const SCHEMA_STEP_JOURNAL_OPERATION_INDEX: &str = r"
+CREATE INDEX IF NOT EXISTS idx_step_journal_operation ON step_journal(operation_id, step_index)
+";
+
 /// All schema statements for initial setup.
 ///
 /// Uses `SmallVec<[&'static str; 8]>` to avoid heap allocation for the
 /// fixed-size collection of schema statements.
 #[must_use]
-pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 8]> {
+pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 12]> {
     smallvec![
         SCHEMA_VERSION_TABLE,
         SCHEMA_EVENTS_TABLE,
@@ -84,5 +124,9 @@ pub fn all_schema_statements() -> smallvec::SmallVec<[&'static str; 8]> {
         SCHEMA_SNAPSHOTS_REVISION_INDEX,
         SCHEMA_AI_DOCUMENTS_TABLE,
         SCHEMA_AI_DOCUMENTS_KEY_INDEX,
+        SCHEMA_SAGA_OPERATIONS_TABLE,
+        SCHEMA_SAGA_OPERATIONS_STATE_INDEX,
+        SCHEMA_STEP_JOURNAL_TABLE,
+        SCHEMA_STEP_JOURNAL_OPERATION_INDEX,
     ]
 }
