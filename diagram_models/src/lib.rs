@@ -133,3 +133,13 @@ pub mod schema_adversarial_tests;
 
 #[cfg(test)]
 pub mod schema_adversarial_tests2;
+
+// =============================================================================
+// Kani proof modules (seshat-cmu bead)
+// =============================================================================
+
+#[cfg(any(test, kani))]
+pub mod export;
+
+#[cfg(any(test, kani))]
+pub mod cli_persistence;
