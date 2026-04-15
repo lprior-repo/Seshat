@@ -405,4 +405,156 @@ mod tests {
         assert!(result.is_ok());
         assert_eq!(result.unwrap().new_nodes.len(), 3);
     }
+
+    #[test]
+    fn test_clp006_duplicate_shortcut_creates_copy_with_new_ids_and_offset() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        let mut node1 = create_test_node();
+        node1.x = OrderedFloat(100.0);
+        node1.y = OrderedFloat(100.0);
+        doc.document.nodes.insert(n1.clone(), node1);
+
+        let selection = Selection {
+            nodes: vec![n1.clone()],
+        };
+
+        let clipboard = copy(&selection, &mut doc).unwrap();
+        assert_eq!(clipboard.nodes.len(), 1);
+        assert_eq!(clipboard.paste_serial, 0);
+
+        let paste_res = calculate_paste(&clipboard, &doc).unwrap();
+        assert_eq!(paste_res.new_nodes.len(), 1);
+        let (new_id, pasted_node) = &paste_res.new_nodes[0];
+
+        assert_ne!(new_id, &n1);
+        assert_eq!(pasted_node.x.0, 120.0);
+        assert_eq!(pasted_node.y.0, 120.0);
+    }
+
+    #[test]
+    fn test_clp007_multi_paste_idempotency_produces_consistent_results() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        doc.document.nodes.insert(n1.clone(), create_test_node());
+
+        let selection = Selection { nodes: vec![n1] };
+        let clipboard = copy(&selection, &doc).unwrap();
+
+        let paste1 = calculate_paste(&clipboard, &doc).unwrap();
+        assert_eq!(paste1.new_nodes.len(), 1);
+        let first_paste_id = &paste1.new_nodes[0].0.clone();
+
+        let mut doc_with_first_paste = doc.clone();
+        doc_with_first_paste.document.nodes.extend(paste1.new_nodes);
+        doc_with_first_paste.document.edges.extend(paste1.new_edges);
+
+        let mut clipboard2 = clipboard.clone();
+        clipboard2.paste_serial = 1;
+        let paste2 = calculate_paste(&clipboard2, &doc_with_first_paste).unwrap();
+        assert_eq!(paste2.new_nodes.len(), 1);
+        let second_paste_id = &paste2.new_nodes[0].0;
+
+        assert_ne!(first_paste_id, second_paste_id);
+        assert!(!doc_with_first_paste
+            .document
+            .nodes
+            .contains_key(second_paste_id));
+    }
+
+    #[test]
+    fn test_clp008_empty_clipboard_copy_returns_error() {
+        let doc = DiagramDocument::default();
+        let result = copy(&Selection::empty(), &doc);
+        assert!(matches!(result, Err(Error::EmptySelection)));
+    }
+
+    #[test]
+    fn test_clp009_id_remapping_preserves_all_copied_edges_on_paste() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        let n2 = NodeId::new("n2".to_string());
+        let n3 = NodeId::new("n3".to_string());
+        let e1 = EdgeId::new("e1".to_string());
+        let e2 = EdgeId::new("e2".to_string());
+
+        let mut node1 = create_test_node();
+        node1.x = OrderedFloat(0.0);
+        let mut node2 = create_test_node();
+        node2.x = OrderedFloat(100.0);
+        let mut node3 = create_test_node();
+        node3.x = OrderedFloat(200.0);
+
+        doc.document.nodes.insert(n1.clone(), node1);
+        doc.document.nodes.insert(n2.clone(), node2);
+        doc.document.nodes.insert(n3.clone(), node3);
+        doc.document
+            .edges
+            .insert(e1.clone(), create_test_edge(n1.clone(), n2.clone()));
+        doc.document
+            .edges
+            .insert(e2.clone(), create_test_edge(n2.clone(), n3.clone()));
+
+        let selection = Selection {
+            nodes: vec![n1.clone(), n2.clone(), n3.clone()],
+        };
+
+        let clipboard = copy(&selection, &doc).unwrap();
+        let paste_res = calculate_paste(&clipboard, &doc).unwrap();
+
+        assert_eq!(paste_res.new_nodes.len(), 3);
+        assert_eq!(paste_res.new_edges.len(), 2);
+
+        let new_node_ids: std::collections::HashSet<_> =
+            paste_res.new_nodes.iter().map(|(id, _)| id).collect();
+
+        for (_, edge) in &paste_res.new_edges {
+            assert!(
+                new_node_ids.contains(&edge.source),
+                "Edge source should be from pasted nodes"
+            );
+            assert!(
+                new_node_ids.contains(&edge.target),
+                "Edge target should be from pasted nodes"
+            );
+            assert_ne!(
+                &edge.source, &n1,
+                "Edge source should be remapped to new ID"
+            );
+            assert_ne!(
+                &edge.target, &n2,
+                "Edge target should be remapped to new ID"
+            );
+        }
+    }
+
+    #[test]
+    fn test_clp010_paste_offset_increases_with_each_paste_serial() {
+        let mut doc = DiagramDocument::default();
+        let n1 = NodeId::new("n1".to_string());
+        let mut node1 = create_test_node();
+        node1.x = OrderedFloat(0.0);
+        node1.y = OrderedFloat(0.0);
+        doc.document.nodes.insert(n1.clone(), node1);
+
+        let selection = Selection { nodes: vec![n1] };
+
+        let mut clipboard = copy(&selection, &doc).unwrap();
+
+        clipboard.paste_serial = 0;
+        let paste0 = calculate_paste(&clipboard, &doc).unwrap();
+        let offset0_x = paste0.new_nodes[0].1.x.0;
+
+        clipboard.paste_serial = 1;
+        let paste1 = calculate_paste(&clipboard, &doc).unwrap();
+        let offset1_x = paste1.new_nodes[0].1.x.0;
+
+        clipboard.paste_serial = 5;
+        let paste5 = calculate_paste(&clipboard, &doc).unwrap();
+        let offset5_x = paste5.new_nodes[0].1.x.0;
+
+        assert_eq!(offset0_x, 20.0);
+        assert_eq!(offset1_x, 40.0);
+        assert_eq!(offset5_x, 120.0);
+    }
 }
