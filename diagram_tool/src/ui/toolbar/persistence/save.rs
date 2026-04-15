@@ -117,6 +117,7 @@ pub fn save_workspace(
 }
 
 /// Handles the result of a save operation, updating signals and toasts.
+#[cfg(not(target_arch = "wasm32"))]
 fn handle_save_result(
     result: Result<DocumentSession, SaveError>,
     path: &PathBuf,
@@ -402,6 +403,7 @@ mod save_workspace_integration_tests {
 
     /// Test that update_load_save_success updates toast to success state.
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn update_load_save_success_updates_toast_to_success() {
         #[component]
         fn TestComponent() -> Element {
@@ -442,6 +444,7 @@ mod save_workspace_integration_tests {
 
     /// Test that update_load_save_error updates toast to error state.
     #[test]
+    #[cfg(not(target_arch = "wasm32"))]
     fn update_load_save_error_updates_toast_to_error() {
         #[component]
         fn TestComponent() -> Element {

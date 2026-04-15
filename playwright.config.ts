@@ -85,7 +85,7 @@ export default defineConfig({
       name: "perf-latency",
       retries: 0,
       workers: 1,
-      testMatch: /(?:interaction_latency|honest_scale|perf_observer|js_profile|drag_frame_perf)\.spec/,
+      testMatch: /(?:interaction_latency|honest_scale|perf_observer|js_profile|drag_frame_perf|baseline_3000)\.spec/,
       timeout: 120_000,
       use: {
         browserName: "chromium",
