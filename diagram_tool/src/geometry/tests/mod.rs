@@ -61,6 +61,7 @@ pub mod mul_002_mixed_rotation_combine;
 pub mod mul_003_rotate_bound_edges_survive;
 pub mod mul_004_rotate_360_no_drift;
 pub mod mul_005_rotate_undoredo;
+pub mod mul_016_rotate_asymmetric_selection;
 pub mod path_tests;
 pub mod property_based_tests;
 pub mod property_based_tests_for_mul;
