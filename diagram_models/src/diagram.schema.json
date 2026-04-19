@@ -86,7 +86,7 @@
           "type": ["string", "null"],
           "enum": ["normal", "bold", null]
         },
-        "lock_state": {
+        "locked": {
           "type": "boolean"
         },
         "parent": {

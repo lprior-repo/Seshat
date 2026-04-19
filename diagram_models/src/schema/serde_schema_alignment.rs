@@ -297,18 +297,18 @@ fn schema_editor_state_contains_edit_mode_target_property() {
 }
 
 #[test]
-fn schema_node_uses_lock_state_key_matching_serde_output() {
+fn schema_node_uses_locked_key_matching_serde_output() {
     let schema = load_schema_value();
     let node_props = schema
         .pointer("/$defs/node/properties")
         .expect("$defs/node/properties must exist");
     assert!(
-        node_props.get("lock_state").is_some(),
-        "Node properties must contain 'lock_state' (serde field name, no rename attr)"
+        node_props.get("locked").is_some(),
+        "Node properties must contain 'locked' (serde rename output)"
     );
     assert!(
-        node_props.get("locked").is_none(),
-        "Node properties must NOT contain 'locked' (serde outputs 'lock_state')"
+        node_props.get("lock_state").is_none(),
+        "Node properties must NOT contain 'lock_state' (serde outputs 'locked')"
     );
 }
 
