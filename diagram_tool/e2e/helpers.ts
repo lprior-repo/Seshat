@@ -47,10 +47,13 @@ export async function runEffectsSequential(
 }
 
 export async function waitForUiReady(page: Page) {
+  // 1. Wait for rebuild overlay to disappear (compilation might take >60s on fresh boot)
+  await waitForNoRebuildOverlay(page);
+  // 2. Now the app should be mounted, so we can ensure deterministic UI
   await ensureDeterministicUi(page);
+  // 3. Wait for actual app elements
   await expect(canvas(page)).toBeVisible({ timeout: 30_000 });
   await expect(page.locator(SELECTOR_COUNTER_NODES).first()).toBeVisible({ timeout: 30_000 });
-  await waitForNoRebuildOverlay(page);
 }
 
 export function canvas(page: Page): Locator {
@@ -141,7 +144,8 @@ export async function waitForNoRebuildOverlay(page: Page) {
   const rebuilding = page.getByRole("heading", {
     name: "Your app is being rebuilt.",
   });
-  await expect.poll(async () => rebuilding.count(), { timeout: 60_000 }).toBe(0);
+  // Give it up to 120s for the initial Rust WASM compilation
+  await expect.poll(async () => rebuilding.count(), { timeout: 120_000 }).toBe(0);
 }
 
 export function trapPageErrors(page: Page) {

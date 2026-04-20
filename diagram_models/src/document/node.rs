@@ -107,12 +107,13 @@ pub struct Node {
     pub y: OrderedFloat,
     pub width: OrderedFloat,
     pub height: OrderedFloat,
-    #[serde(default, rename = "fontSize")]
+    #[serde(default, rename = "fontSize", alias = "font_size")]
     pub font_size: Option<OrderedFloat>,
     #[serde(default)]
     pub font_weight: Option<FontWeight>,
     #[serde(
         default,
+        rename = "locked",
         serialize_with = "lock_state_serde::serialize",
         deserialize_with = "lock_state_serde::deserialize"
     )]

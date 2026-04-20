@@ -9,16 +9,16 @@
           "state": "failed",
           "errors": [
             {
-              "message": ":tests::apply_error_display_file_not_found ... ok"
-            },
-            {
-              "message": ":tests::apply_error_display_invalid_proposal ... ok"
-            },
-            {
               "message": ":tests::apply_error_display_empty_input ... ok"
             },
             {
+              "message": ":tests::apply_error_display_file_not_found ... ok"
+            },
+            {
               "message": ":tests::apply_error_display_invalid_document ... ok"
+            },
+            {
+              "message": ":tests::apply_error_display_invalid_proposal ... ok"
             },
             {
               "message": ":tests::apply_error_display_invalid_utf8 ... ok"
@@ -54,10 +54,10 @@
               "message": ":tests::execution_error_display_delegates_apply ... ok"
             },
             {
-              "message": ":tests::execution_error_display_delegates_patch ... ok"
+              "message": ":tests::execution_error_display_delegates_layout ... ok"
             },
             {
-              "message": ":tests::execution_error_display_delegates_layout ... ok"
+              "message": ":tests::execution_error_display_delegates_patch ... ok"
             },
             {
               "message": ":tests::execution_error_display_delegates_render ... ok"
@@ -81,10 +81,10 @@
               "message": ":tests::parse_error_display_no_arguments ... ok"
             },
             {
-              "message": ":tests::patch_error_display_apply_error ... ok"
+              "message": ":tests::parse_error_implements_std_error ... ok"
             },
             {
-              "message": ":tests::parse_error_implements_std_error ... ok"
+              "message": ":tests::patch_error_display_apply_error ... ok"
             },
             {
               "message": ":tests::patch_error_display_empty_input ... ok"
@@ -114,31 +114,7 @@
               "message": ":tests::patch_error_implements_std_error ... ok"
             },
             {
-              "message": ":tests::show_error_display_file_not_found ... ok"
-            },
-            {
-              "message": ":tests::show_error_display_invalid_document ... ok"
-            },
-            {
-              "message": ":tests::show_error_display_invalid_utf8 ... ok"
-            },
-            {
               "message": ":tests::render_error_display_empty_input ... ok"
-            },
-            {
-              "message": ":tests::show_error_display_json_deserialize ... ok"
-            },
-            {
-              "message": ":tests::show_error_display_serialization_failure ... ok"
-            },
-            {
-              "message": ":tests::show_error_display_io_error ... ok"
-            },
-            {
-              "message": ":tests::show_error_display_stdout_write_failure ... ok"
-            },
-            {
-              "message": ":tests::show_error_implements_std_error ... ok"
             },
             {
               "message": ":tests::render_error_display_export_failure ... ok"
@@ -163,6 +139,30 @@
             },
             {
               "message": ":tests::show_error_display_empty_input ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_file_not_found ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_invalid_document ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_invalid_utf8 ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_io_error ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_json_deserialize ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_serialization_failure ... ok"
+            },
+            {
+              "message": ":tests::show_error_implements_std_error ... ok"
+            },
+            {
+              "message": ":tests::show_error_display_stdout_write_failure ... ok"
             }
           ]
         }

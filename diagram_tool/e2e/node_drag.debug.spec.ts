@@ -9,12 +9,17 @@ import {
 } from "./helpers";
 
 test("node can be dragged @baseline", async ({ page }) => {
+  page.on("console", msg => console.log("BROWSER:", msg.text()));
   const pageErrors = trapPageErrors(page);
   await freshStart(page);
 
   const canvasArea = canvas(page);
   await createTextNode(page, canvasArea, 200, 200);
   await expectNodeCount(page, 1);
+
+  // Ensure select tool is active
+  await page.locator('[data-testid="tool-select"]').first().click();
+  await page.waitForTimeout(200);
 
   // Get the initial position of the node
   const node = page.getByTestId("node").first();

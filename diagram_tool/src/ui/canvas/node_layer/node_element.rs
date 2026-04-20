@@ -125,7 +125,7 @@ pub fn NodeElement(props: NodeElementProps) -> Element {
                     NodeKind::Subgraph => "subgraph",
                     NodeKind::Text => "text",
                 },
-                class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px {node_state_class} {bg_class}",
+                class: "absolute flex flex-col items-center justify-center cursor-inherit rounded-[10px] {node_state_class} {bg_class}",
                 style: "left: 0; top: 0; transform: translate3d({left}px, {top}px, 0); width: {width}px; height: {height}px; z-index: {z_index}; contain: layout style; will-change: transform;",
 
             onmouseenter: move |_| editor_state.set(crate::ui::canvas::state::EditorState::HoveringNode(id_for_enter.clone())),

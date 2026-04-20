@@ -24,7 +24,7 @@ pub fn use_raf_handler(
                 // This eliminates timer drift and synchronizes with the display refresh
                 // rate (60/120/144Hz), producing smoother drag feedback.
                 #[cfg(target_arch = "wasm32")]
-                wait_for_animation_frame().await;
+                gloo_timers::future::sleep(std::time::Duration::from_millis(16)).await;
 
                 #[cfg(not(target_arch = "wasm32"))]
                 tokio::time::sleep(std::time::Duration::from_millis(16)).await;
@@ -60,27 +60,11 @@ async fn wait_for_animation_frame() {
     use wasm_bindgen::JsCast;
 
     let (tx, rx) = futures_channel::oneshot::channel::<()>();
-    // Closure::wrap requires a Box<dyn FnMut>. We wrap tx in Option and .take() it
-    // on the first invocation so the closure is technically `FnMut` (subsequent calls
-    // are no-ops, which is correct — oneshot ignores extra sends).
-    let cb = wasm_bindgen::prelude::Closure::wrap(Box::new({
-        let mut tx = Some(tx);
-        move || {
-            if let Some(tx) = tx.take() {
-                let _ = tx.send(());
-            }
-        }
-    }) as Box<dyn FnMut()>);
-    // Forget the closure so it isn't dropped before rAF fires.
-    // This is safe: rAF invokes the callback exactly once (or not at all if the
-    // tab is hidden), after which the JS GC reclaims it. The closure captures only
-    // the oneshot `tx` sender, so forgetting it here is a deliberate resource transfer.
-    // SAFETY: The Closure is converted to a raw JS function pointer via `into_js_value`.
-    // The browser holds the reference until rAF invokes it, then drops it. We must
-    // not reclaim it in Rust, hence `forget`.
-    let cb_fn: js_sys::Function = cb.into_js_value().unchecked_into();
+    let cb = wasm_bindgen::prelude::Closure::once_into_js(move || {
+        let _ = tx.send(());
+    });
     if let Some(window) = web_sys::window() {
-        let _ = window.request_animation_frame(&cb_fn);
+        let _ = window.request_animation_frame(cb.unchecked_ref());
     }
     let _ = rx.await;
 }

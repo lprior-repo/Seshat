@@ -15,6 +15,7 @@ import {
   waitForNoRebuildOverlay,
   waitForUiReady,
   zoomPercent,
+  loadDocument,
 } from "../helpers";
 
 async function recoverFromRebuildOverlay(page: Page): Promise<void> {
@@ -198,11 +199,9 @@ async function importScene(page: Page, sceneName: SceneName): Promise<void> {
   const importOnce = async () => {
     await runEffectsSequential([
       () => waitForUiReady(page),
-      () => page.evaluate((jsonPayload) => {
-        (window as { __SESHAT_E2E_IMPORT_JSON?: string }).__SESHAT_E2E_IMPORT_JSON = jsonPayload;
-      }, payload),
-      () => expect(page.getByTestId("toolbar-open")).toBeEnabled({ timeout: 15_000 }),
-      () => page.getByTestId("toolbar-open").click(),
+      async () => {
+         await loadDocument(page, JSON.parse(payload));
+      },
       () => waitForNoRebuildOverlay(page),
     ]);
 

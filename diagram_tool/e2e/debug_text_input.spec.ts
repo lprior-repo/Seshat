@@ -3,7 +3,7 @@ import { test, expect } from "@playwright/test";
 async function waitForApp(page: any) {
   for (let i = 0; i < 40; i++) {
     try {
-      await page.goto("http://localhost:3333", { waitUntil: "commit", timeout: 5000 });
+      await page.goto("/", { waitUntil: "commit", timeout: 5000 });
       if (!(await page.content()).includes('Dioxus Build')) {
         await page.waitForSelector('[data-testid="canvas-root"]', { timeout: 5000 });
         await page.waitForTimeout(1000);

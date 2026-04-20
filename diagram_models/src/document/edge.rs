@@ -109,7 +109,7 @@ pub struct Edge {
     pub tags: im::Vector<String>,
     #[serde(default)]
     pub metadata: HashMap<String, Value>,
-    #[serde(default, rename = "fontSize")]
+    #[serde(default, rename = "fontSize", alias = "font_size")]
     pub font_size: Option<OrderedFloat>,
     #[serde(default)]
     pub source_port: Option<crate::port::PortAnchor>,

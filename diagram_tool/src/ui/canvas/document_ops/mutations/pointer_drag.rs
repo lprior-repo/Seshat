@@ -44,7 +44,11 @@ pub fn handle_dragging(
             .is_some_and(|node| node.lock_state.is_movable(&node.kind))
     });
 
-    if !*did_move && has_movable_nodes && has_drag_threshold(*anchor_client, (client_x, client_y)) {
+    let exceeds = has_drag_threshold(*anchor_client, (client_x, client_y));
+    #[cfg(target_arch = "wasm32")]
+    web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(&format!("DraggingSelection threshold check: did_move={} has_movable={} exceeds={} anchor={:?} client=({:?},{:?})", *did_move, has_movable_nodes, exceeds, anchor_client, client_x, client_y)));
+
+    if !*did_move && has_movable_nodes && exceeds {
         let history = history_signal.read().clone();
         let snapshot = doc_signal.read().clone();
         *history_signal.write() = history.push(snapshot);
@@ -71,6 +75,9 @@ pub fn handle_dragging(
         });
 
         if has_changes {
+            #[cfg(target_arch = "wasm32")]
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str("DraggingSelection has_changes = true"));
+            
             doc_signal.with_mut(|doc_mut| {
                 for (id, (nx, ny)) in positions.iter() {
                     let should_update = doc_mut.document.nodes.get(id).is_some_and(|node| {
@@ -92,6 +99,9 @@ pub fn handle_dragging(
                 }
             });
             return true;
+        } else {
+            #[cfg(target_arch = "wasm32")]
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str("DraggingSelection has_changes = false"));
         }
     }
 

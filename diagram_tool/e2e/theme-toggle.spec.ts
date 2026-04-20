@@ -75,6 +75,7 @@ test.describe("theme toggle @baseline", () => {
 
     await page.reload({ waitUntil: "domcontentloaded" });
     await waitForNoRebuildOverlay(page);
+    await import("./helpers").then(m => m.waitForE2eReady(page));
 
     await expect
       .poll(() => getThemeLabel(page), { timeout: 10_000 })

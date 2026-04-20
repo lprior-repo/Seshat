@@ -64,7 +64,7 @@ pub fn flush_pending_pointer_update(
             original_positions,
             did_move,
         } => {
-            if handle_dragging(
+            let moved = handle_dragging(
                 &mut doc_signal,
                 &mut history_signal,
                 client_x,
@@ -73,7 +73,11 @@ pub fn flush_pending_pointer_update(
                 anchor_client,
                 original_positions,
                 did_move,
-            ) {
+            );
+            #[cfg(target_arch = "wasm32")]
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(&format!("DraggingSelection flushed. moved: {}", moved)));
+            
+            if moved {
                 bump_geometry_render_tick(&mut geometry_render_tick);
             }
         }
