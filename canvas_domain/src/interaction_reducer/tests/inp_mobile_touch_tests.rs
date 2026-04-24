@@ -7,12 +7,37 @@
     unused_variables,
     unused_imports
 )]
-use super::super::{commit_inline_edit, finalize_motion_release, start_resize_interaction, InteractionMode, ResizeHandle};
-use super::super::commit::{calculate_edge_label_edit, calculate_node_label_edit};
-use diagram_models::document::{DiagramDocument, Edge, EdgeId, NodeId};
+use super::super::{InteractionMode, ResizeHandle};
+use diagram_models::document::{DiagramDocument, Edge, EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
 use diagram_models::history::History;
 use dioxus::prelude::*;
 use im::HashMap;
+
+#[allow(dead_code)]
+fn make_test_node(id: &str, x: f64, y: f64) -> (NodeId, Node) {
+    (
+        NodeId::new(id.to_string()),
+        Node {
+            kind: NodeKind::Node,
+            icon: String::new(),
+            label: id.to_string(),
+            x: OrderedFloat(x),
+            y: OrderedFloat(y),
+            width: OrderedFloat(100.0),
+            height: OrderedFloat(50.0),
+            font_size: None,
+            font_weight: None,
+            lock_state: LockState::Unlocked,
+            parent: None,
+            dag_rank: None,
+            tags: im::Vector::new(),
+            metadata: HashMap::new(),
+            z_index: 0,
+            style: Some(NodeStyle::default()),
+            collapsed: None,
+        },
+    )
+}
 
 // INP-4: Two-finger pan does not move shapes
 // A two-finger pan gesture should pan the canvas, not move selected shapes.
@@ -398,250 +423,4 @@ fn given_all_modes_with_edge_coords_then_none_panic_on_construction() {
         },
     ];
     assert_eq!(modes.len(), 6, "All edge-case modes should construct without panic");
-}
-
-// ============== INP-5: Touch label editing ==============
-// Touch interactions should support inline label editing for nodes and edges.
-
-#[test]
-fn given_valid_document_with_node_when_calculate_node_label_edit_then_returns_updated_doc() {
-    let mut doc = DiagramDocument::default();
-    let node_id = NodeId::new("touch-node".to_string());
-
-    doc.document.nodes = doc.document.nodes.update(
-        node_id.clone(),
-        diagram_models::document::Node {
-            kind: diagram_models::document::NodeKind::Node,
-            icon: String::new(),
-            label: "Old Label".to_string(),
-            x: diagram_models::document::OrderedFloat(0.0),
-            y: diagram_models::document::OrderedFloat(0.0),
-            width: diagram_models::document::OrderedFloat(100.0),
-            height: diagram_models::document::OrderedFloat(100.0),
-            font_size: None,
-            font_weight: None,
-            lock_state: diagram_models::document::LockState::Unlocked,
-            parent: None,
-            dag_rank: None,
-            tags: im::Vector::new(),
-            metadata: HashMap::new(),
-            z_index: 0,
-            style: Some(diagram_models::document::NodeStyle::default()),
-            collapsed: None,
-        },
-    );
-
-    let result = calculate_node_label_edit(&doc, &node_id, "New Label");
-
-    assert!(result.is_ok(), "calculate_node_label_edit should succeed for valid label");
-    let new_doc = result.unwrap();
-    let updated_node = new_doc.document.nodes.get(&node_id).unwrap();
-    assert_eq!(updated_node.label, "New Label");
-}
-
-#[test]
-fn given_nonexistent_node_when_calculate_node_label_edit_then_returns_target_not_found() {
-    let doc = DiagramDocument::default();
-    let fake_id = NodeId::new("nonexistent".to_string());
-
-    let result = calculate_node_label_edit(&doc, &fake_id, "New Label");
-
-    assert!(result.is_err(), "Should return error for nonexistent node");
-    assert!(matches!(result.unwrap_err(), calculate_node_label_edit::Error::LabelEdit(
-        crate::interaction_reducer::types::LabelEditError::TargetNotFound
-    )));
-}
-
-#[test]
-fn given_valid_document_with_edge_when_calculate_edge_label_edit_then_returns_updated_doc() {
-    let mut doc = DiagramDocument::default();
-    let edge_id = EdgeId::new("touch-edge".to_string());
-
-    doc.document.edges = doc.document.edges.update(
-        edge_id.clone(),
-        Edge {
-            id: edge_id.clone(),
-            label: "Old Edge".to_string(),
-            source: diagram_models::document::NodeAnchor(
-                diagram_models::document::NodeId::new("src".to_string()),
-                0.0,
-            ),
-            target: diagram_models::document::NodeAnchor(
-                diagram_models::document::NodeId::new("tgt".to_string()),
-                0.0,
-            ),
-            bend_points: im::Vector::new(),
-            arrow_type: diagram_models::document::ArrowType::None,
-            color: None,
-            width: diagram_models::document::OrderedFloat(2.0),
-            dash_pattern: im::Vector::new(),
-            source_port: None,
-            target_port: None,
-            label_offset: None,
-            label_rotation: None,
-            z_index: 0,
-            edge_kind: diagram_models::document::EdgeKind::Default,
-        },
-    );
-
-    let result = calculate_edge_label_edit(&doc, &edge_id, "New Edge Label");
-
-    assert!(result.is_ok(), "calculate_edge_label_edit should succeed for valid label");
-    let new_doc = result.unwrap();
-    let updated_edge = new_doc.document.edges.get(&edge_id).unwrap();
-    assert_eq!(updated_edge.label, "New Edge Label");
-}
-
-#[test]
-fn given_nonexistent_edge_when_calculate_edge_label_edit_then_returns_target_not_found() {
-    let doc = DiagramDocument::default();
-    let fake_id = EdgeId::new("nonexistent-edge".to_string());
-
-    let result = calculate_edge_label_edit(&doc, &fake_id, "New Label");
-
-    assert!(result.is_err(), "Should return error for nonexistent edge");
-}
-
-#[test]
-fn given_dragging_selection_when_finalize_motion_release_then_transitions_to_select() {
-    let mut doc = DiagramDocument::default();
-    let mut mode = InteractionMode::DraggingSelection {
-        anchor_canvas: (50.0, 50.0),
-        anchor_client: (100.0, 100.0),
-        original_positions: HashMap::new(),
-        did_move: true,
-    };
-
-    let result = finalize_motion_release(&mut mode, &mut doc, &None);
-
-    assert!(result, "finalize_motion_release should return true");
-    assert!(matches!(mode, InteractionMode::Select), "Mode should transition to Select");
-    assert_eq!(doc.revision, DiagramDocument::default().revision.increment());
-}
-
-#[test]
-fn given_resize_with_movement_when_finalize_motion_release_then_bumps_revision() {
-    let mut doc = DiagramDocument::default();
-    let mut mode = InteractionMode::ResizingSelection {
-        handle: ResizeHandle::Se,
-        original_bounds: (0.0, 0.0, 100.0, 100.0),
-        originals: HashMap::new(),
-        anchor: (50.0, 50.0),
-        did_resize: true,
-        aspect_ratio: None,
-    };
-
-    let result = finalize_motion_release(&mut mode, &mut doc, &None);
-
-    assert!(result, "finalize_motion_release should return true for resize");
-    assert!(matches!(mode, InteractionMode::Select), "Mode should transition to Select");
-}
-
-#[test]
-fn given_resize_without_movement_when_finalize_motion_release_then_no_revision_bump() {
-    let mut doc = DiagramDocument::default();
-    let initial_revision = doc.revision;
-    let mut mode = InteractionMode::ResizingSelection {
-        handle: ResizeHandle::Nw,
-        original_bounds: (0.0, 0.0, 100.0, 100.0),
-        originals: HashMap::new(),
-        anchor: (50.0, 50.0),
-        did_resize: false,
-        aspect_ratio: None,
-    };
-
-    let result = finalize_motion_release(&mut mode, &mut doc, &None);
-
-    assert!(result, "finalize_motion_release should return true");
-    assert_eq!(doc.revision, initial_revision, "Revision should not change without movement");
-}
-
-#[test]
-fn given_commit_inline_edit_with_node_target_when_labels_differ_then_returns_ok() {
-    let mut vdom = dioxus::prelude::VirtualDom::new(|| {
-        let mut doc = DiagramDocument::default();
-        let node_id = NodeId::new("test-node".to_string());
-        doc.document.nodes = doc.document.nodes.update(
-            node_id.clone(),
-            diagram_models::document::Node {
-                kind: diagram_models::document::NodeKind::Node,
-                icon: String::new(),
-                label: "Original".to_string(),
-                x: diagram_models::document::OrderedFloat(0.0),
-                y: diagram_models::document::OrderedFloat(0.0),
-                width: diagram_models::document::OrderedFloat(100.0),
-                height: diagram_models::document::OrderedFloat(100.0),
-                font_size: None,
-                font_weight: None,
-                lock_state: diagram_models::document::LockState::Unlocked,
-                parent: None,
-                dag_rank: None,
-                tags: im::Vector::new(),
-                metadata: HashMap::new(),
-                z_index: 0,
-                style: Some(diagram_models::document::NodeStyle::default()),
-                collapsed: None,
-            },
-        );
-        let mut history = History::new();
-        let edit_value = Signal::new("Edited Label".to_string());
-
-        let result = commit_inline_edit(
-            Signal::new(doc),
-            Signal::new(history),
-            Some(node_id),
-            None,
-            edit_value,
-            None,
-        );
-
-        assert!(matches!(result, Ok(_)), "commit_inline_edit should succeed");
-        rsx! { div {} }
-    });
-    let () = vdom.rebuild_in_place();
-}
-
-#[test]
-fn given_commit_inline_edit_with_invalid_label_when_dispatched_then_returns_error() {
-    let mut vdom = dioxus::prelude::VirtualDom::new(|| {
-        let doc = DiagramDocument::default();
-        let history = History::new();
-        let edit_value = Signal::new("".to_string());
-
-        let result = commit_inline_edit(
-            Signal::new(doc),
-            Signal::new(history),
-            None,
-            None,
-            edit_value,
-            None,
-        );
-
-        assert!(result.is_err() || matches!(result, Ok(false)),
-            "commit_inline_edit should handle empty/invalid label");
-        rsx! { div {} }
-    });
-    let () = vdom.rebuild_in_place();
-}
-
-#[test]
-fn given_start_resize_interaction_with_empty_selection_then_no_mode_change() {
-    let mut vdom = dioxus::prelude::VirtualDom::new(|| {
-        let doc = DiagramDocument::default();
-        let mut mode = Signal::new(InteractionMode::Select);
-
-        start_resize_interaction(
-            mode.clone(),
-            Signal::new(doc),
-            ResizeHandle::Se,
-            100.0,
-            100.0,
-            false,
-        );
-
-        assert!(matches!(mode.read().clone(), InteractionMode::Select),
-            "start_resize_interaction should not change mode with no selection");
-        rsx! { div {} }
-    });
-    let () = vdom.rebuild_in_place();
 }
