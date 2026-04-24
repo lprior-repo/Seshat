@@ -52,5 +52,9 @@ pub fn selection_bounds(doc: &DiagramDocument) -> Option<(f64, f64, f64, f64)> {
             },
         );
 
-    Some((min_x, min_y, max_x - min_x, max_y - min_y))
+    if min_x.is_infinite() {
+        None
+    } else {
+        Some((min_x, min_y, max_x - min_x, max_y - min_y))
+    }
 }
