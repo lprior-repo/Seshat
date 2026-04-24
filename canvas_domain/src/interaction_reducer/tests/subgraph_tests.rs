@@ -668,6 +668,72 @@ fn given_container_with_children_when_selected_then_children_included_in_resize_
     );
 }
 
+// ============== SUB-006: Locked children excluded from resize targets ==============
+
+/// Given a container with both locked and unlocked children,
+/// when the container is selected for resize,
+/// then only unlocked children are included in resize targets (GEO-024).
+#[test]
+fn given_container_with_locked_and_unlocked_children_when_resize_then_only_unlocked_included() {
+    let mut doc = DiagramDocument::default();
+
+    // Create an UNLOCKED container
+    let (container_id, container) =
+        make_subgraph_node("container", 100.0, 100.0, 300.0, 200.0, false, None, None);
+    doc.document.nodes.insert(container_id.clone(), container);
+
+    // Create an UNLOCKED child inside container
+    let (unlocked_child_id, unlocked_child) = make_child_node(
+        "unlocked_child",
+        120.0,
+        130.0,
+        60.0,
+        30.0,
+        false, // unlocked
+        Some(container_id.clone()),
+    );
+    doc.document.nodes.insert(unlocked_child_id.clone(), unlocked_child);
+
+    // Create a LOCKED child inside container
+    let (locked_child_id, locked_child) = make_child_node(
+        "locked_child",
+        200.0,
+        180.0,
+        60.0,
+        30.0,
+        true, // LOCKED
+        Some(container_id.clone()),
+    );
+    doc.document.nodes.insert(locked_child_id.clone(), locked_child);
+
+    // Select the container
+    let _ = doc
+        .editor_state
+        .selected_items
+        .insert(container_id.to_string());
+
+    // Get resize targets
+    let targets = resize_target_ids(&doc);
+
+    // Verify container is included
+    assert!(
+        targets.contains(&container_id),
+        "Container should be in resize targets"
+    );
+
+    // Verify unlocked child IS included
+    assert!(
+        targets.contains(&unlocked_child_id),
+        "Unlocked child inside container should be in resize targets"
+    );
+
+    // Verify LOCKED child is NOT included (this is the bug fix - GEO-024)
+    assert!(
+        !targets.contains(&locked_child_id),
+        "Locked child inside container should NOT be in resize targets"
+    );
+}
+
 /// Given a container with children,
 /// when the container is selected for resize,
 /// then the parent references of children remain intact.

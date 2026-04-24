@@ -38,7 +38,7 @@ pub fn resize_target_ids(doc: &DiagramDocument) -> SmallVec<[NodeId; 4]> {
                 let included = selected_subgraphs
                     .iter()
                     .any(|subgraph_rect| within(*subgraph_rect, node_rect));
-                if included {
+                if included && !node.lock_state.is_locked() {
                     let mut updated = acc;
                     let _ = updated.insert(id.clone());
                     updated
