@@ -14,9 +14,9 @@ mod resize;
 #[path = "interaction_reducer/types.rs"]
 mod types;
 
-pub(crate) use commit::commit_inline_edit;
-pub(crate) use release::finalize_motion_release;
-pub(crate) use resize::start_resize_interaction;
+pub use commit::commit_inline_edit;
+pub use release::finalize_motion_release;
+pub use resize::start_resize_interaction;
 pub use types::{InteractionMode, ResizeHandle};
 
 #[cfg(test)]

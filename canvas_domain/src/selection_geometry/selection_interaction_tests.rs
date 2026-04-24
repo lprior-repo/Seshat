@@ -8,8 +8,8 @@ use diagram_models::history::History;
 
 // ============== SEL-002: Selection persists across pan/zoom ==============
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg(test)]
+#[test]
 fn given_selected_items_when_camera_transforms_then_selection_remains_unchanged() {
     let mut doc = DiagramDocument::default();
     let node_id = NodeId::new(String::from("test_node"));
@@ -50,8 +50,8 @@ fn given_selected_items_when_camera_transforms_then_selection_remains_unchanged(
 
 // ============== SEL-003: Selection box after undo/redo ==============
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg(test)]
+#[test]
 fn given_selection_history_when_undo_redo_then_selection_restored() {
     let mut doc = DiagramDocument::default();
     let n1 = NodeId::new(String::from("n1"));
@@ -112,8 +112,8 @@ fn given_selection_history_when_undo_redo_then_selection_restored() {
 
 // ============== SEL-005: Selection state for edit mode ==============
 
-#[cfg(kani)]
-#[kani::proof]
+#[cfg(test)]
+#[test]
 fn given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiable() {
     let mut doc = DiagramDocument::default();
     let editable_id = NodeId::new(String::from("editable"));
@@ -156,7 +156,7 @@ fn given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiab
 
     let node = doc.document.nodes.get(&editable_id).expect("node exists");
     assert!(
-        !node.label.is_empty() || node.label.is_empty(),
-        "Label is accessible for editing"
+        !node.label.is_empty(),
+        "Label should be accessible for editing"
     );
 }

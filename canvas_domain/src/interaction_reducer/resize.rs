@@ -11,7 +11,7 @@ use super::types::{InteractionMode, ResizeHandle};
 use crate::selection_geometry::selection_bounds;
 use diagram_models::document::DiagramDocument;
 
-pub(crate) fn start_resize_interaction(
+pub fn start_resize_interaction(
     mut interaction_mode: Signal<InteractionMode>,
     doc_signal: Signal<DiagramDocument>,
     handle: ResizeHandle,

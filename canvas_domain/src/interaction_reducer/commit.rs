@@ -22,7 +22,7 @@ pub use super::types::{CommitError, LabelEditError};
 /// # Errors
 ///
 /// Returns `CommitError` if the target is not found or dispatch fails.
-pub(crate) fn commit_inline_edit(
+pub fn commit_inline_edit(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
     node_target: Option<NodeId>,
@@ -112,7 +112,7 @@ fn dispatch_label_to_db(
         .ok();
 }
 
-pub(crate) fn calculate_node_label_edit(
+pub fn calculate_node_label_edit(
     doc: &DiagramDocument,
     node_id: &NodeId,
     new_label: &str,
@@ -210,7 +210,7 @@ fn commit_edge_edit(
     Ok(true)
 }
 
-pub(crate) fn calculate_edge_label_edit(
+pub fn calculate_edge_label_edit(
     doc: &DiagramDocument,
     edge_id: &EdgeId,
     new_label: &str,

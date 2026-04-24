@@ -12,7 +12,7 @@ use diagram_models::envelope::EventEnvelope;
 
 use super::types::InteractionMode;
 
-pub(crate) fn finalize_motion_release(
+pub fn finalize_motion_release(
     mode: &mut InteractionMode,
     doc: &mut DiagramDocument,
     db_tx: &Option<Coroutine<EventEnvelope>>,

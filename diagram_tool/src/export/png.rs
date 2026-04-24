@@ -15,20 +15,7 @@ use tiny_skia::{Pixmap, Transform};
 /// # Errors
 /// Returns an error if SVG generation or PNG encoding fails.
 pub fn export_png(doc: &DiagramDocument, path: impl AsRef<Path>) -> Result<()> {
-    let svg_data = generate_svg_string(doc);
-
-    let mut opt = usvg::Options::default();
-    opt.fontdb_mut().load_system_fonts();
-
-    let tree = usvg::Tree::from_str(&svg_data, &opt).context("Failed to parse SVG")?;
-
-    let size = tree.size().to_int_size();
-    let mut pixmap = Pixmap::new(size.width(), size.height()).context("Failed to create pixmap")?;
-
-    resvg::render(&tree, Transform::identity(), &mut pixmap.as_mut());
-
-    pixmap.save_png(path).context("Failed to save PNG")?;
-    Ok(())
+    Ok(()) /* ~ changed by cargo-mutants ~ */
 }
 
 #[cfg(test)]
