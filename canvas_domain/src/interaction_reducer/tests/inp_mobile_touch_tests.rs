@@ -424,3 +424,16 @@ fn given_all_modes_with_edge_coords_then_none_panic_on_construction() {
     ];
     assert_eq!(modes.len(), 6, "All edge-case modes should construct without panic");
 }
+
+#[test]
+fn given_test_node_helper_when_called_then_returns_node_with_correct_properties() {
+    let (node_id, node) = make_test_node("test-node", 10.0, 20.0);
+    assert_eq!(node_id.as_str(), "test-node");
+    assert_eq!(node.label, "test-node");
+    assert_eq!(node.x, OrderedFloat(10.0));
+    assert_eq!(node.y, OrderedFloat(20.0));
+    assert_eq!(node.width, OrderedFloat(100.0));
+    assert_eq!(node.height, OrderedFloat(50.0));
+    assert_eq!(node.kind, NodeKind::Node);
+    assert_eq!(node.lock_state, LockState::Unlocked);
+}
