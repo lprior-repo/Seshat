@@ -4,5 +4,6 @@
   "dolt_database": "Seshat",
   "dolt_mode": "server",
   "dolt_server_host": "127.0.0.1",
-  "dolt_server_port": 3307
+  "dolt_server_port": 3307,
+  "project_id": "b9b33db6-c52d-4843-945d-1c917502dd84"
 }

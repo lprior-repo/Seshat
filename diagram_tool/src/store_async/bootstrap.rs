@@ -53,6 +53,8 @@ pub async fn bootstrap_async_store(db_path: &Path) -> Result<AsyncStoreBootstrap
 
     run_async_schema_migration(&pool).await?;
 
+    super::saga_journal::ensure_saga_tables(&pool).await?;
+
     let schema_version = sqlx::query_scalar::<_, i32>("SELECT version FROM schema_version")
         .fetch_one(&pool)
         .await

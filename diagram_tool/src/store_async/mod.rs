@@ -16,6 +16,8 @@ pub mod error;
 pub mod fetch;
 pub mod parse;
 pub mod revision;
+pub mod saga_executor;
+pub mod saga_journal;
 pub mod types;
 
 #[cfg(test)]
