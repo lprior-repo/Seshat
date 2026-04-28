@@ -69,12 +69,14 @@ fn given_selection_history_when_undo_redo_then_selection_restored() {
 
     assert!(doc.editor_state.selected_items.is_empty());
 
-    history = history.push(doc.clone());
     let _ = doc.editor_state.selected_items.insert(n1.to_string());
-
+    doc.revision = doc.revision.increment();
     history = history.push(doc.clone());
+
     doc.editor_state.selected_items.clear();
     let _ = doc.editor_state.selected_items.insert(n2.to_string());
+    doc.revision = doc.revision.increment();
+    history = history.push(doc.clone());
 
     assert_eq!(doc.editor_state.selected_items.len(), 1);
     assert!(doc.editor_state.selected_items.contains("n2"));
