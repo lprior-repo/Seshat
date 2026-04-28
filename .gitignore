@@ -55,6 +55,9 @@ mutants.out.old/
 # Proptest regression artifacts
 **/proptest-regressions/
 
+# Agent runtime lock files
+.runtime/
+
 # Local scratch workspaces
 dont-fuck-up/
 
