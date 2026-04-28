@@ -4,10 +4,7 @@
 #![forbid(unsafe_code)]
 
 use crate::mutation::error::MutationError;
-use crate::mutation::pipeline_stages::{
-    apply::apply_stage, conflict_resolution::resolve_conflicts_stage, history_append::append_stage,
-    validation::validate_stage,
-};
+use crate::mutation::orchestrator::run_pipeline;
 use diagram_models::document::DiagramDocument;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -55,13 +52,8 @@ pub fn run_mutation_with_policy<F>(
 where
     F: FnOnce(&DiagramDocument) -> Result<DiagramDocument, MutationError>,
 {
-    resolve_conflicts_stage(current)?;
-
-    let next = apply_stage(current, transform)?;
-
-    validate_stage(&next, validation_policy)?;
-
-    Ok(append_stage(next, current, revision_policy))
+    let outcome = run_pipeline(current, revision_policy, validation_policy, transform);
+    outcome.result
 }
 
 /// Run a mutation without validation.

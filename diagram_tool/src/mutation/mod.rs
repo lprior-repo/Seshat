@@ -27,6 +27,7 @@
 
 pub mod error;
 pub mod ops;
+pub mod orchestrator;
 pub mod pipeline;
 pub mod pipeline_stages;
 pub mod ui_helpers;
