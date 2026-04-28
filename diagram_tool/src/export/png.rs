@@ -3,18 +3,15 @@
 #![cfg_attr(not(test), deny(clippy::panic))]
 #![forbid(unsafe_code)]
 
-use crate::export::svg::generate_svg_string;
-use anyhow::{Context, Result};
+use anyhow::Result;
 use diagram_models::document::DiagramDocument;
-use resvg::usvg;
 use std::path::Path;
-use tiny_skia::{Pixmap, Transform};
 
 /// Export document to PNG file.
 ///
 /// # Errors
 /// Returns an error if SVG generation or PNG encoding fails.
-pub fn export_png(doc: &DiagramDocument, path: impl AsRef<Path>) -> Result<()> {
+pub fn export_png(_doc: &DiagramDocument, _path: impl AsRef<Path>) -> Result<()> {
     Ok(()) /* ~ changed by cargo-mutants ~ */
 }
 

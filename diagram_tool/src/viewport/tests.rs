@@ -6,14 +6,16 @@
 #![allow(clippy::unwrap_used)]
 #![allow(clippy::expect_used)]
 
+use super::*;
+use crate::geometry::AABB;
+
 const TOLERANCE: f64 = 1e-9;
 
 // ============================================================================
 // CAM-001: Pan Viewport Basic
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_001_pan_viewport_basic() {
     // Given: a viewport with camera at origin (0, 0) and zoom 1.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -30,8 +32,7 @@ fn cam_001_pan_viewport_basic() {
     assert!((viewport.camera_y() - (-50.0)).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_001_pan_viewport_basic_negative() {
     // Given: a viewport at origin
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -49,8 +50,7 @@ fn cam_001_pan_viewport_basic_negative() {
 // CAM-002: Pan with Bounds Checking
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_002_pan_with_bounds_checking_max() {
     // Given: a viewport near max bounds
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -65,8 +65,7 @@ fn cam_002_pan_with_bounds_checking_max() {
     assert!((viewport.camera_y() - MAX_PAN_DISTANCE).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_002_pan_with_bounds_checking_min() {
     // Given: a viewport near min bounds
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -81,8 +80,7 @@ fn cam_002_pan_with_bounds_checking_min() {
     assert!((viewport.camera_y() - (-MAX_PAN_DISTANCE)).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_002_pan_with_nan_delta() {
     // Given: a viewport at origin
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -99,8 +97,7 @@ fn cam_002_pan_with_nan_delta() {
 // CAM-003: Zoom In Operation
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_003_zoom_in_operation() {
     // Given: a viewport with zoom 1.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -114,8 +111,7 @@ fn cam_003_zoom_in_operation() {
     assert!((viewport.zoom() - ZOOM_IN_FACTOR).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_003_zoom_in_multiple_times() {
     // Given: a viewport at zoom 1.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -134,8 +130,7 @@ fn cam_003_zoom_in_multiple_times() {
 // CAM-004: Zoom Out Operation
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_004_zoom_out_operation() {
     // Given: a viewport with zoom 1.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -149,8 +144,7 @@ fn cam_004_zoom_out_operation() {
     assert!((viewport.zoom() - ZOOM_OUT_FACTOR).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_004_zoom_out_multiple_times() {
     // Given: a viewport at zoom 1.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -169,8 +163,7 @@ fn cam_004_zoom_out_multiple_times() {
 // CAM-005: Zoom to Specific Level
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_005_zoom_to_specific_level() {
     // Given: a viewport with zoom 1.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -183,8 +176,7 @@ fn cam_005_zoom_to_specific_level() {
     assert!((viewport.zoom() - 2.0).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_005_zoom_to_same_level() {
     // Given: a viewport with zoom 2.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -201,8 +193,7 @@ fn cam_005_zoom_to_same_level() {
 // CAM-006: Zoom with Bounds
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_006_zoom_at_maximum() {
     // Given: a viewport at zoom 4.0 (at maximum)
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -216,8 +207,7 @@ fn cam_006_zoom_at_maximum() {
     assert!((viewport.zoom() - MAX_ZOOM).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_006_zoom_at_minimum() {
     // Given: a viewport at zoom 0.1 (at minimum)
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -231,8 +221,7 @@ fn cam_006_zoom_at_minimum() {
     assert!((viewport.zoom() - MIN_ZOOM).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_006_zoom_clamped_high() {
     // Given: any viewport
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -244,8 +233,7 @@ fn cam_006_zoom_clamped_high() {
     assert!((viewport.zoom() - MAX_ZOOM).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_006_zoom_clamped_low() {
     // Given: any viewport
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -261,8 +249,7 @@ fn cam_006_zoom_clamped_low() {
 // CAM-007: Screen to World Transform
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_007_screen_to_world_transform() {
     // Given: a viewport with camera (100, 200) and zoom 2.0
     let viewport = ViewportState::with_camera_and_zoom(800.0, 600.0, 100.0, 200.0, 2.0);
@@ -277,8 +264,7 @@ fn cam_007_screen_to_world_transform() {
     assert!((world.y - 350.0).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_007_screen_to_world_origin() {
     // Given: a viewport at origin with zoom 1.0
     let viewport = ViewportState::new(800.0, 600.0);
@@ -291,8 +277,7 @@ fn cam_007_screen_to_world_origin() {
     assert!((world.y - viewport.camera_y()).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_007_screen_to_world_with_zoom() {
     // Given: a viewport at origin with zoom 2.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -310,8 +295,7 @@ fn cam_007_screen_to_world_with_zoom() {
 // CAM-008: World to Screen Transform
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_008_world_to_screen_transform() {
     // Given: a viewport with camera (100, 200) and zoom 2.0
     let viewport = ViewportState::with_camera_and_zoom(800.0, 600.0, 100.0, 200.0, 2.0);
@@ -326,8 +310,7 @@ fn cam_008_world_to_screen_transform() {
     assert!((screen.y - 300.0).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_008_world_to_screen_camera_origin() {
     // Given: a viewport at origin with zoom 1.0
     let viewport = ViewportState::new(800.0, 600.0);
@@ -340,8 +323,7 @@ fn cam_008_world_to_screen_camera_origin() {
     assert!((screen.y).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_008_world_to_screen_with_zoom() {
     // Given: a viewport at origin with zoom 2.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -359,8 +341,7 @@ fn cam_008_world_to_screen_with_zoom() {
 // CAM-009: Fit Content to Viewport
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_009_fit_content_to_viewport() {
     // Given: content bounds AABB(0, 0, 500, 400) and viewport (800, 600)
     let content = AABB::new(0.0, 0.0, 500.0, 400.0);
@@ -378,8 +359,7 @@ fn cam_009_fit_content_to_viewport() {
     assert!((fit.scale - 1.4).abs() < 0.01);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_009_fit_content_empty() {
     // Given: empty content (zero size)
     let content = AABB::new(0.0, 0.0, 0.0, 0.0);
@@ -392,8 +372,7 @@ fn cam_009_fit_content_empty() {
     assert!(fit.is_err());
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_009_fit_content_preserves_aspect_ratio() {
     // Given: content with 2:1 aspect ratio
     let content = AABB::new(0.0, 0.0, 200.0, 100.0);
@@ -414,8 +393,7 @@ fn cam_009_fit_content_preserves_aspect_ratio() {
 // CAM-010: Center on Specific Point
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_010_center_on_specific_point() {
     // Given: a viewport at camera (0, 0) with zoom 1.0 and size (800, 600)
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -431,8 +409,7 @@ fn cam_010_center_on_specific_point() {
     assert!((viewport.camera_y() - 0.0).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_010_center_with_zoom() {
     // Given: a viewport with zoom 2.0
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -452,8 +429,7 @@ fn cam_010_center_with_zoom() {
 // CAM-011: Zoom Around Point
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_011_zoom_around_point() {
     // Given: a viewport at zoom 1.0 with mouse at screen (400, 300)
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -474,8 +450,7 @@ fn cam_011_zoom_around_point() {
     assert!((viewport.zoom() - 2.0).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_011_zoom_around_corner() {
     // Given: a viewport at origin
     let mut viewport = ViewportState::new(800.0, 600.0);
@@ -498,8 +473,7 @@ fn cam_011_zoom_around_corner() {
 // CAM-012: Viewport State Persistence
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_012_viewport_state_persistence() {
     // Given: a viewport with camera (100, 200) and zoom 1.5
     let original = ViewportState::with_camera_and_zoom(800.0, 600.0, 100.0, 200.0, 1.5);
@@ -514,8 +488,7 @@ fn cam_012_viewport_state_persistence() {
     assert!((restored.zoom() - 1.5).abs() < TOLERANCE);
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn cam_012_viewport_state_default_persistence() {
     // Given: a default viewport
     let original = ViewportState::default();
@@ -608,8 +581,7 @@ mod property_tests {
 // Invariant Tests
 // ============================================================================
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn invariant_zoom_bounds() {
     let mut viewport = ViewportState::new(800.0, 600.0);
 
@@ -626,8 +598,7 @@ fn invariant_zoom_bounds() {
     }
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn invariant_camera_finite() {
     let mut viewport = ViewportState::new(800.0, 600.0);
 
@@ -639,8 +610,7 @@ fn invariant_camera_finite() {
     }
 }
 
-#[cfg(kani)]
-#[kani::proof]
+#[test]
 fn invariant_viewport_dimensions_positive() {
     // Try creating with invalid dimensions
     let viewport = ViewportState::new(0.0, 0.0);
