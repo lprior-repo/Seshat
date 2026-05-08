@@ -4,8 +4,11 @@
 #![forbid(unsafe_code)]
 
 pub mod auto_save;
-mod persistence;
+pub mod persistence;
 mod persistence_compat;
+
+// Re-export persistence functions for use by other modules (e.g., keyboard shortcuts)
+pub use persistence::{open_workspace, save_workspace, WorkspaceSignals};
 
 #[cfg(test)]
 mod tests;
@@ -19,7 +22,6 @@ use crate::ui::commands::{
 use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
 use crate::ui::theme::ACCENT;
-use diagram_models::envelope::EventEnvelope;
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -211,8 +213,8 @@ fn LabelButton(
 #[component]
 pub fn Toolbar() -> Element {
     let app_state = use_context::<AppState>();
-    let db_tx = use_context::<Option<Coroutine<EventEnvelope>>>();
     let mut doc_signal = app_state.document;
+    let session_signal = app_state.session;
     let history_signal = app_state.history;
     let mut tool_signal = app_state.tool_mode;
     let mut arrow_type_signal = app_state.arrow_type;
@@ -227,7 +229,20 @@ pub fn Toolbar() -> Element {
     let doc = doc_signal.read();
     let zoom_percent = (doc.editor_state.zoom.0 * 100.0).round();
     let show_grid = doc.editor_state.show_grid;
+    let is_dirty = session_signal.read().is_dirty();
     drop(doc);
+
+    // Update window title with dirty indicator
+    #[cfg(target_arch = "wasm32")]
+    {
+        use_effect(move || {
+            let dirty = session_signal.read().is_dirty();
+            let title = if dirty { "Seshat *" } else { "Seshat" };
+            let _eval = document::eval(&format!(
+                r#"(function() {{ window.document.title = "{title}"; }})()"#
+            ));
+        });
+    }
 
     rsx! {
         div {
@@ -343,7 +358,7 @@ pub fn Toolbar() -> Element {
                                 .map(|id| id.to_string())
                                 .collect()
                         };
-                        let dispatch_result = crate::ui::dispatch::dispatch_node_delete_batch(&db_tx, &selected_nodes);
+                        let dispatch_result = crate::ui::dispatch::dispatch_node_delete_batch(&None, &selected_nodes);
                         match dispatch_result {
                             Ok(_) => crate::ui::commands::apply_clear_selection(doc_signal),
                             Err(_) => {
@@ -398,39 +413,36 @@ pub fn Toolbar() -> Element {
                 }
             }
 
-            // Right section: Export/Stats
-            div {
-                class: "flex items-center gap-2",
-
+                // Right section: Export/Stats
                 div {
-                    class: "flex items-center",
-                    IconButton {
-                        test_id: "toolbar-export",
-                        state: ButtonState::Default,
-                        onclick: move |_| {
-                            let _ = crate::ui::toast::ToastApi::from_signal(toasts).show(
-                                crate::ui::toast::ToastIntent::Info,
-                                "Coming Soon",
-                                Some("Save and export functionality is not implemented yet.".to_string())
-                            );
-                        },
-                        icon: IconKind::Upload, // Map export to Upload icon (arrow pointing up from bracket)
-                        variant: ButtonVariant::Tool { title: "Export" }
+                    class: "flex items-center gap-2",
+
+                    div {
+                        class: "flex items-center",
+                        IconButton {
+                            test_id: "toolbar-export",
+                            state: if is_dirty { ButtonState::Active } else { ButtonState::Default },
+                            onclick: move |_| {
+                                save_workspace(doc_signal, session_signal, toasts);
+                            },
+                            icon: IconKind::Upload,
+                            variant: ButtonVariant::Tool { title: "Export (Ctrl+S)" }
+                        }
+                        IconButton {
+                            test_id: "toolbar-import",
+                            state: ButtonState::Default,
+                            onclick: move |_| {
+                                let signals = WorkspaceSignals {
+                                    doc: doc_signal,
+                                    session: session_signal,
+                                    history: history_signal,
+                                };
+                                open_workspace(signals, toasts);
+                            },
+                            icon: IconKind::Download,
+                            variant: ButtonVariant::Tool { title: "Import (Ctrl+O)" }
+                        }
                     }
-                    IconButton {
-                        test_id: "toolbar-import",
-                        state: ButtonState::Default,
-                        onclick: move |_| {
-                            let _ = crate::ui::toast::ToastApi::from_signal(toasts).show(
-                                crate::ui::toast::ToastIntent::Info,
-                                "Coming Soon",
-                                Some("Load and import functionality is not implemented yet.".to_string())
-                            );
-                        },
-                        icon: IconKind::Download, // Map import to Download icon (arrow pointing down to bracket)
-                        variant: ButtonVariant::Tool { title: "Import" }
-                    }
-                }
 
                 div {
                     class: "w-[1px] h-6 bg-[var(--border-subtle)] ml-1 mr-3"

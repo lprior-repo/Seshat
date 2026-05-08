@@ -5,7 +5,6 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
-mod async_sync;
 mod autosave_hooks;
 mod state;
 mod types;
@@ -35,14 +34,8 @@ pub fn App() -> Element {
     let doc_signal = state.document;
     let mut toolbar_stats = state.toolbar_stats;
 
-    let keyboard_db_tx = async_sync::provide_db_event_context();
-    use_global_keyboard(keyboard_db_tx);
+    use_global_keyboard();
     use_e2e_reset_hook();
-
-    async_sync::use_conflict_toast_effect();
-
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    async_sync::use_store_sync_loop(doc_signal);
 
     #[cfg(target_arch = "wasm32")]
     autosave_hooks::use_auto_save(doc_signal);

@@ -75,8 +75,11 @@ pub fn flush_pending_pointer_update(
                 did_move,
             );
             #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(&format!("DraggingSelection flushed. moved: {}", moved)));
-            
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(&format!(
+                "DraggingSelection flushed. moved: {}",
+                moved
+            )));
+
             if moved {
                 bump_geometry_render_tick(&mut geometry_render_tick);
             }

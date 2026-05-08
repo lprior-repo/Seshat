@@ -202,7 +202,6 @@ fn open_workspace_wasm(mut signals: WorkspaceSignals, toast_handle: crate::ui::t
 fn open_workspace_native(
     mut signals: WorkspaceSignals,
     toast_handle: crate::ui::toast::ToastHandle,
-    store_bridge: Option<std::sync::Arc<crate::store_bridge::StoreBridge>>,
 ) {
     spawn(async move {
         let path = FileDialog::new()
@@ -232,17 +231,6 @@ fn open_workspace_native(
                                 let next_history = current_history.push(current_doc.clone());
                                 let session =
                                     DocumentSession::from_file(next_doc.clone(), p.clone());
-
-                                if let Some(bridge) = &store_bridge {
-                                    if let Err(e) = bridge.reset_store_sync() {
-                                        update_load_save_error(
-                                            toast_handle,
-                                            "Load failed",
-                                            format!("Failed to reset store: {e}"),
-                                        );
-                                        return;
-                                    }
-                                }
                                 commit_open_result(signals, next_doc, next_history, session);
                                 update_load_save_success(
                                     toast_handle,
@@ -264,8 +252,7 @@ fn open_workspace_native(
                             toast_handle,
                             "Load failed",
                             OpenError::Io(format!(
-                                "Cannot open file: {}. Backup also unavailable.",
-                                primary_err
+                                "Cannot open file: {primary_err}. Backup also unavailable."
                             )),
                         );
                     }
@@ -290,14 +277,7 @@ fn open_workspace_native(
 ///
 /// `signals` bundles the three mutable document-state signals.
 /// `toasts` drives the loading/error notifications.
-/// `store_bridge` (native only) resets the local event store after load.
-pub fn open_workspace(
-    signals: WorkspaceSignals,
-    toasts: Signal<ToastQueue>,
-    #[cfg(not(target_arch = "wasm32"))] store_bridge: Option<
-        std::sync::Arc<crate::store_bridge::StoreBridge>,
-    >,
-) {
+pub fn open_workspace(signals: WorkspaceSignals, toasts: Signal<ToastQueue>) {
     let toast_api = ToastApi::from_signal(toasts);
     let toast_handle = toast_api.toast(
         ToastOptions::new(ToastIntent::Info, "Loading workspace")
@@ -310,7 +290,7 @@ pub fn open_workspace(
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
-        open_workspace_native(signals, toast_handle, store_bridge);
+        open_workspace_native(signals, toast_handle);
     }
 }
 

@@ -47,7 +47,7 @@
 //! ## Internal Modules
 //!
 //! The following modules are internal and not part of the public API:
-//! - `app`, `hooks`, `icons`, `layout`, `mutation`, `store`, `ui`
+//! - `app`, `hooks`, `icons`, `layout`, `mutation`, `ui`
 
 #![cfg_attr(not(test), deny(clippy::unwrap_used))]
 #![cfg_attr(not(test), deny(clippy::expect_used))]
@@ -103,7 +103,6 @@
 #![forbid(unsafe_code)]
 
 pub mod app;
-pub mod cli;
 #[cfg(not(target_arch = "wasm32"))]
 pub mod cli_persistence;
 pub mod core;
@@ -114,14 +113,6 @@ pub mod hooks;
 pub mod icons;
 pub mod layout;
 pub mod mutation;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod server;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod store;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod store_async;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod store_bridge;
 pub mod ui;
 pub mod viewport;
 

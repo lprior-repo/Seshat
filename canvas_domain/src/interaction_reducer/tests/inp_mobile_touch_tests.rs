@@ -8,7 +8,9 @@
     unused_imports
 )]
 use super::super::{InteractionMode, ResizeHandle};
-use diagram_models::document::{EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat};
+use diagram_models::document::{
+    EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
+};
 use im::HashMap;
 
 #[allow(dead_code)]
@@ -230,7 +232,10 @@ fn given_dragging_bend_point_when_constructed_then_fields_are_accessible() {
     };
 
     match mode {
-        InteractionMode::DraggingBendPoint { edge_id, bend_index } => {
+        InteractionMode::DraggingBendPoint {
+            edge_id,
+            bend_index,
+        } => {
             assert_eq!(edge_id.as_str(), "edge-42");
             assert_eq!(bend_index, 3);
         }

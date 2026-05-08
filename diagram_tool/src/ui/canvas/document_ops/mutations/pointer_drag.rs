@@ -76,8 +76,10 @@ pub fn handle_dragging(
 
         if has_changes {
             #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str("DraggingSelection has_changes = true"));
-            
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(
+                "DraggingSelection has_changes = true",
+            ));
+
             doc_signal.with_mut(|doc_mut| {
                 for (id, (nx, ny)) in positions.iter() {
                     let should_update = doc_mut.document.nodes.get(id).is_some_and(|node| {
@@ -101,7 +103,9 @@ pub fn handle_dragging(
             return true;
         } else {
             #[cfg(target_arch = "wasm32")]
-            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str("DraggingSelection has_changes = false"));
+            web_sys::console::log_1(&wasm_bindgen::JsValue::from_str(
+                "DraggingSelection has_changes = false",
+            ));
         }
     }
 

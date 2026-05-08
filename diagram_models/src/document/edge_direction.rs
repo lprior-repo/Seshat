@@ -514,7 +514,11 @@ mod tests {
         let d1 = determine_current_direction(e1).unwrap();
         let d2 = determine_current_direction(e2).unwrap();
         assert_eq!(d1, d2, "Both edges should have same direction after toggle");
-        assert_eq!(d1, Direction::ZeroWay, "Primary (e1) was 1-way, so target is 0-way");
+        assert_eq!(
+            d1,
+            Direction::ZeroWay,
+            "Primary (e1) was 1-way, so target is 0-way"
+        );
         assert_ne!(doc, original, "Document should be modified");
     }
 
@@ -524,13 +528,16 @@ mod tests {
         let sel = NonEmptyVec::try_from(vec!["e1".to_string()]).unwrap();
 
         toggle_edge_directions(&mut doc, &sel).unwrap();
-        verify_0_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap()).unwrap();
+        verify_0_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap())
+            .unwrap();
 
         toggle_edge_directions(&mut doc, &sel).unwrap();
-        verify_2_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap()).unwrap();
+        verify_2_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap())
+            .unwrap();
 
         toggle_edge_directions(&mut doc, &sel).unwrap();
-        verify_1_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap()).unwrap();
+        verify_1_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -573,7 +580,11 @@ mod tests {
             .build();
 
         let dir = determine_current_direction(&edge).unwrap();
-        assert_eq!(dir, Direction::OneWay, "bidirectional=false with directed=true should be OneWay");
+        assert_eq!(
+            dir,
+            Direction::OneWay,
+            "bidirectional=false with directed=true should be OneWay"
+        );
     }
 
     #[test]
@@ -635,8 +646,11 @@ mod tests {
             .build();
         let original = doc.clone();
         let selection = NonEmptyVec::try_from(vec![
-            "e1".to_string(), "e2".to_string(), "e1".to_string(),
-            "e2".to_string(), "e1".to_string(),
+            "e1".to_string(),
+            "e2".to_string(),
+            "e1".to_string(),
+            "e2".to_string(),
+            "e1".to_string(),
         ])
         .unwrap();
 
@@ -656,21 +670,39 @@ mod tests {
 
     #[test]
     fn test_expl_determine_next_direction_all_variants() {
-        assert_eq!(determine_next_direction(Direction::OneWay), Direction::ZeroWay);
-        assert_eq!(determine_next_direction(Direction::ZeroWay), Direction::TwoWay);
-        assert_eq!(determine_next_direction(Direction::TwoWay), Direction::OneWay);
+        assert_eq!(
+            determine_next_direction(Direction::OneWay),
+            Direction::ZeroWay
+        );
+        assert_eq!(
+            determine_next_direction(Direction::ZeroWay),
+            Direction::TwoWay
+        );
+        assert_eq!(
+            determine_next_direction(Direction::TwoWay),
+            Direction::OneWay
+        );
     }
 
     #[test]
     fn test_expl_determine_current_direction_all_valid_states() {
         let one_way = build_1_way_edge();
-        assert_eq!(determine_current_direction(&one_way).unwrap(), Direction::OneWay);
+        assert_eq!(
+            determine_current_direction(&one_way).unwrap(),
+            Direction::OneWay
+        );
 
         let zero_way = build_0_way_edge();
-        assert_eq!(determine_current_direction(&zero_way).unwrap(), Direction::ZeroWay);
+        assert_eq!(
+            determine_current_direction(&zero_way).unwrap(),
+            Direction::ZeroWay
+        );
 
         let two_way = build_2_way_edge();
-        assert_eq!(determine_current_direction(&two_way).unwrap(), Direction::TwoWay);
+        assert_eq!(
+            determine_current_direction(&two_way).unwrap(),
+            Direction::TwoWay
+        );
     }
 
     #[test]
@@ -733,7 +765,9 @@ mod tests {
     fn test_expl_verify_unselected_edges_new_edge_in_doc2() {
         let doc1 = DocBuilder::new().add_edge("e1", build_1_way_edge()).build();
         let mut doc2 = doc1.clone();
-        doc2.document.edges.insert(EdgeId::new("e2".into()), build_0_way_edge());
+        doc2.document
+            .edges
+            .insert(EdgeId::new("e2".into()), build_0_way_edge());
 
         let selection = NonEmptyVec::try_from(vec!["e1".to_string()]).unwrap();
         verify_unselected_edges_unaltered(&doc1, &doc2, &selection).unwrap();
@@ -766,7 +800,10 @@ mod tests {
         toggle_edge_directions(&mut doc, &selection).unwrap();
 
         let edge = doc.document.edges.get(&EdgeId::new("e1".into())).unwrap();
-        assert!(!edge.metadata.contains_key("bidirectional"), "bidirectional key must be removed on 2way→1way");
+        assert!(
+            !edge.metadata.contains_key("bidirectional"),
+            "bidirectional key must be removed on 2way→1way"
+        );
         verify_1_way_postcondition(edge).unwrap();
     }
 
@@ -783,7 +820,11 @@ mod tests {
 
         let toggled = doc.document.edges.get(&EdgeId::new("e1".into())).unwrap();
         verify_2_way_postcondition(toggled).unwrap();
-        assert_eq!(toggled.metadata.get("extra").unwrap(), &json!("data"), "extra metadata preserved");
+        assert_eq!(
+            toggled.metadata.get("extra").unwrap(),
+            &json!("data"),
+            "extra metadata preserved"
+        );
     }
 
     #[test]
@@ -792,11 +833,13 @@ mod tests {
         let sel1 = NonEmptyVec::try_from(vec!["e1".to_string()]).unwrap();
 
         toggle_edge_directions(&mut doc, &sel1).unwrap();
-        verify_0_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap()).unwrap();
+        verify_0_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap())
+            .unwrap();
 
         let sel2 = NonEmptyVec::try_from(vec!["e1".to_string()]).unwrap();
         toggle_edge_directions(&mut doc, &sel2).unwrap();
-        verify_2_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap()).unwrap();
+        verify_2_way_postcondition(doc.document.edges.get(&EdgeId::new("e1".into())).unwrap())
+            .unwrap();
     }
 
     #[test]
@@ -834,7 +877,11 @@ mod tests {
             .with_metadata("bidirectional", json!(false))
             .build();
         let dir = determine_current_direction(&edge).unwrap();
-        assert_eq!(dir, Direction::ZeroWay, "directed=false + bidirectional=false should be ZeroWay");
+        assert_eq!(
+            dir,
+            Direction::ZeroWay,
+            "directed=false + bidirectional=false should be ZeroWay"
+        );
         verify_invariants(&edge).unwrap();
     }
 }

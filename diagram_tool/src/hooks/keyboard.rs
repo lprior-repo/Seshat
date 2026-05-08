@@ -7,18 +7,20 @@ use crate::ui::commands::{
     apply_copy_selection, apply_duplicate_selection, apply_group_selection, apply_paste_selection,
     apply_redo, apply_select_all, apply_undo, apply_ungroup_selection,
 };
-use diagram_models::envelope::EventEnvelope;
+use crate::ui::toolbar::{open_workspace, save_workspace, WorkspaceSignals};
 use dioxus::prelude::*;
 
 /// Global keyboard hook that handles document-wide modifier shortcuts.
 ///
 /// Must be called inside a component that has `Signal<DiagramDocument>` and
 /// `Signal<History>` in context (i.e. after the context providers in `App`).
-pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
+pub fn use_global_keyboard() {
     let app_state = use_context::<crate::app::AppState>();
     let doc_signal = app_state.document;
+    let session_signal = app_state.session;
     let history_signal = app_state.history;
     let clipboard_signal = app_state.clipboard;
+    let toasts = app_state.toasts;
     let toast_api = crate::ui::toast::ToastApi::from_signal(app_state.toasts);
 
     use_effect(move || {
@@ -46,7 +48,9 @@ pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
                     key === 'x' ||
                     key === 'v' ||
                     key === 'd' ||
-                    key === 'g'
+                    key === 'g' ||
+                    key === 's' ||
+                    key === 'o'
                 );
                 if (handled) {
                     e.preventDefault();
@@ -63,7 +67,6 @@ pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
         );
 
         spawn(async move {
-            let db_tx = db_tx;
             while let Ok(json) = eval.recv::<serde_json::Value>().await {
                 let key = json["key"].as_str().map_or("", |s| s);
                 let modifier = json["modifier"].as_bool().is_some_and(|b| b);
@@ -123,10 +126,21 @@ pub fn use_global_keyboard(db_tx: Option<Coroutine<EventEnvelope>>) {
                             );
                         }
                         (true, "g") => {
-                            let _ = apply_ungroup_selection(doc_signal, history_signal, db_tx);
+                            let _ = apply_ungroup_selection(doc_signal, history_signal, None);
                         }
                         (false, "g") => {
-                            let _ = apply_group_selection(doc_signal, history_signal, db_tx);
+                            let _ = apply_group_selection(doc_signal, history_signal, None);
+                        }
+                        (_, "s") => {
+                            save_workspace(doc_signal, session_signal, toasts);
+                        }
+                        (_, "o") => {
+                            let signals = WorkspaceSignals {
+                                doc: doc_signal,
+                                session: session_signal,
+                                history: history_signal,
+                            };
+                            open_workspace(signals, toasts);
                         }
                         _ => {}
                     }

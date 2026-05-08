@@ -134,10 +134,10 @@ fn handle_save_result(
             );
         }
         Err(SaveError::Io(e)) => {
-            update_load_save_error(toast_handle, "Save failed", format!("Save error: {e}"))
+            update_load_save_error(toast_handle, "Save failed", format!("Save error: {e}"));
         }
         Err(SaveError::Serialize(e)) => {
-            update_load_save_error(toast_handle, "Save failed", format!("Serialize error: {e}"))
+            update_load_save_error(toast_handle, "Save failed", format!("Serialize error: {e}"));
         }
         Err(SaveError::NoFilePath) => {
             let _ = toast_handle.dismiss();
@@ -409,9 +409,7 @@ mod save_workspace_integration_tests {
         fn TestComponent() -> Element {
             let state = crate::app::AppState::provide();
             let toast_api = ToastApi::from_signal(state.toasts);
-            let toast_handle = toast_api.toast(
-                ToastOptions::new(ToastIntent::Info, "Saving..."),
-            );
+            let toast_handle = toast_api.toast(ToastOptions::new(ToastIntent::Info, "Saving..."));
 
             let path = PathBuf::from("/tmp/test.json");
 
@@ -450,9 +448,7 @@ mod save_workspace_integration_tests {
         fn TestComponent() -> Element {
             let state = crate::app::AppState::provide();
             let toast_api = ToastApi::from_signal(state.toasts);
-            let toast_handle = toast_api.toast(
-                ToastOptions::new(ToastIntent::Info, "Saving..."),
-            );
+            let toast_handle = toast_api.toast(ToastOptions::new(ToastIntent::Info, "Saving..."));
 
             // This would be called by handle_save_result on IO error
             update_load_save_error(

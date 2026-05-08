@@ -122,19 +122,19 @@ fn handle_nonexistent_path(
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             // Parent doesn't exist - verify resolved path is safe
             let resolved_str = resolved.to_string_lossy();
-            if !resolved_str.contains("..") {
-                Ok(resolved.to_path_buf())
-            } else {
+            if resolved_str.contains("..") {
                 Err(CliPersistenceError::PathTraversalDenied {
                     path: resolved_str.to_string(),
                 })
+            } else {
+                Ok(resolved.to_path_buf())
             }
         }
         Err(e) => Err(CliPersistenceError::IoError(e)),
     }
 }
 
-/// Returns the parent directory of a path, or base_dir if no parent.
+/// Returns the parent directory of a path, or `base_dir` if no parent.
 fn parent_dir_or_base(path: &Path, base_dir: &Path) -> PathBuf {
     if path.is_dir() {
         path.to_path_buf()

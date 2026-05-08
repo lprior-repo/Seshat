@@ -439,7 +439,9 @@ mod tests {
         clipboard.nodes.push((n2.clone(), create_test_node()));
 
         let e_id = EdgeId::new("same_edge_id".to_string());
-        clipboard.edges.push((e_id.clone(), create_test_edge(n1.clone(), n2.clone())));
+        clipboard
+            .edges
+            .push((e_id.clone(), create_test_edge(n1.clone(), n2.clone())));
         clipboard.edges.push((e_id, create_test_edge(n2, n1)));
 
         let result = calculate_paste(&clipboard, &doc);
@@ -480,13 +482,24 @@ mod tests {
 
         doc.document.nodes.insert(n1.clone(), create_test_node());
         doc.document.nodes.insert(n2.clone(), create_test_node());
-        doc.document.edges.insert(e1.clone(), create_test_edge(n1.clone(), n2.clone()));
+        doc.document
+            .edges
+            .insert(e1.clone(), create_test_edge(n1.clone(), n2.clone()));
 
-        let selection = Selection { nodes: vec![n1, n2] };
+        let selection = Selection {
+            nodes: vec![n1, n2],
+        };
         let clipboard = cut(&selection, &mut doc).unwrap();
 
-        assert_eq!(clipboard.edges.len(), 1, "clipboard should contain the edge");
-        assert!(!doc.document.edges.contains_key(&e1), "edge should be removed from doc after cut");
+        assert_eq!(
+            clipboard.edges.len(),
+            1,
+            "clipboard should contain the edge"
+        );
+        assert!(
+            !doc.document.edges.contains_key(&e1),
+            "edge should be removed from doc after cut"
+        );
     }
 
     #[test]
@@ -497,7 +510,9 @@ mod tests {
         doc.document.nodes.insert(n1.clone(), create_test_node());
         doc.document.nodes.insert(n2.clone(), create_test_node());
 
-        let selection = Selection { nodes: vec![n1, n2] };
+        let selection = Selection {
+            nodes: vec![n1, n2],
+        };
         let clipboard = copy(&selection, &doc).unwrap();
         let paste_res = calculate_paste(&clipboard, &doc).unwrap();
 
@@ -516,14 +531,21 @@ mod tests {
 
         doc.document.nodes.insert(n1.clone(), create_test_node());
         doc.document.nodes.insert(n2.clone(), create_test_node());
-        doc.document.edges.insert(e1, create_test_edge(n1.clone(), n2.clone()));
+        doc.document
+            .edges
+            .insert(e1, create_test_edge(n1.clone(), n2.clone()));
 
-        let selection = Selection { nodes: vec![n1.clone(), n2.clone()] };
+        let selection = Selection {
+            nodes: vec![n1.clone(), n2.clone()],
+        };
         let clipboard = copy(&selection, &doc).unwrap();
         let paste_res = calculate_paste(&clipboard, &doc).unwrap();
 
-        let new_node_ids: std::collections::HashSet<_> =
-            paste_res.new_nodes.iter().map(|(id, _)| id.clone()).collect();
+        let new_node_ids: std::collections::HashSet<_> = paste_res
+            .new_nodes
+            .iter()
+            .map(|(id, _)| id.clone())
+            .collect();
 
         let (_, pasted_edge) = &paste_res.new_edges[0];
         assert!(
@@ -543,7 +565,9 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let doc_parent = NodeId::new("doc_parent".to_string());
         let clip_child = NodeId::new("clip_child".to_string());
-        doc.document.nodes.insert(doc_parent.clone(), create_test_node());
+        doc.document
+            .nodes
+            .insert(doc_parent.clone(), create_test_node());
 
         let mut clipboard = ClipboardData::empty();
         let mut child_node = create_test_node();
@@ -567,19 +591,16 @@ mod tests {
         let n1 = NodeId::new("n1".to_string());
         doc.document.nodes.insert(n1, create_test_node());
 
-        let selection = Selection { nodes: vec![NodeId::new("n1".to_string())] };
+        let selection = Selection {
+            nodes: vec![NodeId::new("n1".to_string())],
+        };
         let mut clipboard = copy(&selection, &doc).unwrap();
 
         clipboard.paste_serial = 9;
         let paste = calculate_paste(&clipboard, &doc).unwrap();
+        assert_eq!(paste.new_nodes[0].1.x.0, 200.0, "offset = 20 * (9+1) = 200");
         assert_eq!(
-            paste.new_nodes[0].1.x.0,
-            200.0,
-            "offset = 20 * (9+1) = 200"
-        );
-        assert_eq!(
-            paste.new_nodes[0].1.y.0,
-            200.0,
+            paste.new_nodes[0].1.y.0, 200.0,
             "y offset should match x offset"
         );
     }
@@ -594,10 +615,14 @@ mod tests {
         let c = NodeId::new("c".to_string());
         let d = NodeId::new("d".to_string());
 
-        let mut na = create_test_node(); na.parent = Some(b.clone());
-        let mut nb = create_test_node(); nb.parent = Some(c.clone());
-        let mut nc = create_test_node(); nc.parent = Some(d.clone());
-        let mut nd = create_test_node(); nd.parent = Some(a.clone());
+        let mut na = create_test_node();
+        na.parent = Some(b.clone());
+        let mut nb = create_test_node();
+        nb.parent = Some(c.clone());
+        let mut nc = create_test_node();
+        nc.parent = Some(d.clone());
+        let mut nd = create_test_node();
+        nd.parent = Some(a.clone());
 
         clipboard.nodes.push((a, na));
         clipboard.nodes.push((b, nb));
@@ -632,7 +657,9 @@ mod tests {
         node.z_index = 5;
         doc.document.nodes.insert(n1, node);
 
-        let selection = Selection { nodes: vec![NodeId::new("n1".to_string())] };
+        let selection = Selection {
+            nodes: vec![NodeId::new("n1".to_string())],
+        };
         let clipboard = copy(&selection, &doc).unwrap();
         let paste_res = calculate_paste(&clipboard, &doc).unwrap();
 
@@ -648,8 +675,12 @@ mod tests {
         let mut doc = DiagramDocument::default();
         let existing_a = NodeId::new("existing_a".to_string());
         let existing_b = NodeId::new("existing_b".to_string());
-        doc.document.nodes.insert(existing_a.clone(), create_test_node());
-        doc.document.nodes.insert(existing_b.clone(), create_test_node());
+        doc.document
+            .nodes
+            .insert(existing_a.clone(), create_test_node());
+        doc.document
+            .nodes
+            .insert(existing_b.clone(), create_test_node());
 
         let mut clipboard = ClipboardData::empty();
         let clip_node = NodeId::new("clip_node".to_string());
@@ -661,7 +692,10 @@ mod tests {
         ));
 
         let result = calculate_paste(&clipboard, &doc);
-        assert!(result.is_ok(), "edge between existing doc nodes should be valid");
+        assert!(
+            result.is_ok(),
+            "edge between existing doc nodes should be valid"
+        );
         let paste_res = result.unwrap();
         assert_eq!(paste_res.new_edges.len(), 1);
         let (_, edge) = &paste_res.new_edges[0];
@@ -675,7 +709,9 @@ mod tests {
         let n1 = NodeId::new("n1".to_string());
         doc.document.nodes.insert(n1, create_test_node());
 
-        let selection = Selection { nodes: vec![NodeId::new("n1".to_string())] };
+        let selection = Selection {
+            nodes: vec![NodeId::new("n1".to_string())],
+        };
         let clipboard = copy(&selection, &doc).unwrap();
 
         let paste1 = calculate_paste(&clipboard, &doc).unwrap();

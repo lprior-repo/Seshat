@@ -110,7 +110,7 @@ pub fn calculate_transition(
 impl PipelineEvent {
     fn into_failed_phase(self) -> PipelinePhase {
         match self {
-            PipelineEvent::Failed(f) => PipelinePhase::Failed(f),
+            Self::Failed(f) => PipelinePhase::Failed(f),
             _ => {
                 PipelinePhase::Failed(PipelineFailure::Apply(MutationError::Schema(String::new())))
             }
@@ -211,9 +211,11 @@ fn advance(
 
 fn extract_failure(phase: &PipelinePhase) -> Result<DiagramDocument, MutationError> {
     match phase {
-        PipelinePhase::Failed(PipelineFailure::ConflictResolution(e))
-        | PipelinePhase::Failed(PipelineFailure::Apply(e))
-        | PipelinePhase::Failed(PipelineFailure::Validation(e)) => Err(e.clone()),
+        PipelinePhase::Failed(
+            PipelineFailure::ConflictResolution(e)
+            | PipelineFailure::Apply(e)
+            | PipelineFailure::Validation(e),
+        ) => Err(e.clone()),
         _ => Err(MutationError::Schema("unexpected pipeline state".into())),
     }
 }

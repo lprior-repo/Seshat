@@ -67,12 +67,6 @@ mod hooks;
 mod icons;
 mod layout;
 mod mutation;
-#[cfg(not(target_arch = "wasm32"))]
-pub mod store;
-#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub mod store_async;
-#[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-pub mod store_bridge;
 mod test_utils;
 mod ui;
 
@@ -87,26 +81,8 @@ fn main() {
         }));
     }
 
-    #[cfg(not(all(feature = "async-db", not(target_arch = "wasm32"))))]
     let builder =
         dioxus::LaunchBuilder::new().with_context(server_only! { ServeConfig::builder() });
-
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    let mut builder =
-        dioxus::LaunchBuilder::new().with_context(server_only! { ServeConfig::builder() });
-
-    #[cfg(all(feature = "async-db", not(target_arch = "wasm32")))]
-    {
-        let db_path = std::path::PathBuf::from("diagram.db");
-        let bridge = match crate::store_bridge::StoreBridge::spawn_async_pool(&db_path) {
-            Ok(b) => std::sync::Arc::new(b),
-            Err(e) => {
-                eprintln!("ERROR: Failed to spawn async pool: {e}");
-                std::process::exit(1);
-            }
-        };
-        builder = builder.with_context(bridge);
-    }
 
     builder.launch(App);
 }

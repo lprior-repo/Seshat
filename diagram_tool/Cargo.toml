@@ -7,10 +7,6 @@ edition = "2021"
 name = "diagram_tool"
 path = "src/main.rs"
 
-[[bin]]
-name = "seshat"
-path = "src/bin/seshat.rs"
-
 [lib]
 name = "diagram_tool"
 path = "src/lib.rs"
@@ -33,9 +29,6 @@ tiny-skia       = "0.11"
 base64          = "0.22"
 resvg           = "0.44"
 
-# CLI
-clap            = { version = "4.0", features = ["derive"] }
-
 # Utilities
 anyhow          = "1.0"
 smallvec        = "1.15"
@@ -56,13 +49,10 @@ tower = { version = "0.5.3", features = ["util"] }
 gloo-timers = { version = "0.3.0", features = ["futures"] }
 
 [features]
-default = ["web", "sync-db", "async-db"]
+default = ["web", "sync-db"]
 web = ["dioxus/web"]
 desktop = ["dioxus/desktop"]
-server = ["dioxus/server"]
-fullstack = ["web", "server"]
 sync-db = []
-async-db = []
 
 [build-dependencies]
 serde = { version = "1.0", features = ["derive", "rc"] }
@@ -85,11 +75,7 @@ web-sys = { version = "0.3", features = ["Window", "Document", "Element", "DomRe
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 rfd = "0.15"
-fs2 = "0.4"
-notify = "7.0"
-sqlx = { version = "0.8", features = ["runtime-tokio", "sqlite"] }
-tokio = { version = "1.1", features = ["rt", "sync", "macros", "rt-multi-thread"] }
-axum = "0.8.8"
+tokio = { version = "1", features = ["time"] }
 
 [lints.rust]
 unexpected_cfgs = { level = "warn", check-cfg = ['cfg(kani)'] }

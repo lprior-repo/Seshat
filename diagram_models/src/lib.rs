@@ -140,6 +140,3 @@ pub mod schema_adversarial_tests2;
 
 #[cfg(any(test, kani))]
 pub mod export;
-
-#[cfg(any(test, kani))]
-pub mod cli_persistence;

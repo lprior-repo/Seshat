@@ -1,9 +1,10 @@
 #![allow(unused)]
 mod common;
-mod open;
+pub mod open;
 mod save;
 
 pub use open::open_workspace;
+pub use open::WorkspaceSignals;
 pub use save::save_workspace;
 
 #[cfg(test)]
