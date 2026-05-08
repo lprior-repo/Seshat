@@ -6,7 +6,6 @@ use dioxus::prelude::*;
 use rfd::FileDialog;
 use std::path::PathBuf;
 
-#[cfg(not(target_arch = "wasm32"))]
 use super::common::{update_load_save_error, update_load_save_success};
 #[cfg(not(target_arch = "wasm32"))]
 use crate::cli_persistence::{save_workspace_atomic, validate_safe_path, CliPersistenceError};
@@ -64,11 +63,136 @@ pub fn apply_save_document(
 
 #[cfg(target_arch = "wasm32")]
 pub fn apply_save_document(
-    _doc: &DiagramDocument,
+    doc: &DiagramDocument,
     _session: &DocumentSession,
     _file_path: &PathBuf,
-) -> Result<DocumentSession, SaveError> {
-    Err(SaveError::Io(String::from("Save not available in WASM")))
+) -> Result<DiagramDocument, SaveError> {
+    use diagram_models::canonical_json::to_canonical_pretty_json;
+    to_canonical_pretty_json(doc).map_err(|e| SaveError::Serialize(e.to_string()))?;
+    Ok(doc.clone())
+}
+
+#[cfg(target_arch = "wasm32")]
+fn commit_save_wasm(session_signal: &mut Signal<DocumentSession>, new_session: DocumentSession) {
+    *session_signal.write() = new_session;
+}
+
+#[cfg(target_arch = "wasm32")]
+fn save_workspace_wasm(
+    doc: DiagramDocument,
+    session: DocumentSession,
+    toasts: Signal<ToastQueue>,
+    toast_handle: ToastHandle,
+    mut session_signal: Signal<DocumentSession>,
+) {
+    spawn(async move {
+        use diagram_models::canonical_json::to_canonical_pretty_json;
+
+        let json = match to_canonical_pretty_json(&doc) {
+            Ok(j) => j,
+            Err(e) => {
+                update_load_save_error(toast_handle, "Save failed", format!("Serialize error: {e}"));
+                return;
+            }
+        };
+
+        let session_snapshot = session.clone();
+        let suggested_name = session_snapshot
+            .file_path()
+            .map(|p| {
+                p.file_stem()
+                    .and_then(|s| s.to_str())
+                    .unwrap_or("diagram")
+                    .to_string()
+            })
+            .unwrap_or_else(|| "diagram".to_string());
+
+        let js = format!(
+            r#"
+            (async function() {{
+                const filename = "{name}.json";
+                const content = `{json}`;
+                let saved = false;
+
+                // Try File System Access API first (Chrome/Edge)
+                if (window.showSaveFilePicker) {{
+                    try {{
+                        const handle = await window.showSaveFilePicker({{
+                            suggestedName: filename,
+                            types: [{{
+                                description: "Seshat Diagram",
+                                accept: {{ "application/json": [".json"] }}
+                            }}]
+                        }});
+                        const writable = await handle.createWritable();
+                        await writable.write(content);
+                        await writable.close();
+                        saved = true;
+                        dioxus.send({{ ok: true, filename: handle.name }});
+                        return;
+                    }} catch (e) {{
+                        if (e.name !== 'AbortError') {{
+                            console.warn('showSaveFilePicker failed:', e);
+                        }}
+                    }}
+                }}
+
+                // Fallback: download via blob + link click
+                try {{
+                    const blob = new Blob([content], {{ type: "application/json" }});
+                    const url = URL.createObjectURL(blob);
+                    const a = document.createElement("a");
+                    a.href = url;
+                    a.download = filename;
+                    a.style.display = "none";
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                    URL.revokeObjectURL(url);
+                    saved = true;
+                    dioxus.send({{ ok: true, filename: filename }});
+                }} catch (e2) {{
+                    dioxus.send({{ ok: false, error: String(e2) }});
+                }}
+            }})()
+            "#,
+            name = suggested_name,
+            json = json.replace("`", "\\`").replace("${", "\\${")
+        );
+
+        let mut eval = dioxus::document::eval(&js);
+
+        match eval.recv::<serde_json::Value>().await {
+            Ok(msg) => {
+                if msg.get("ok").and_then(|v| v.as_bool()) == Some(true) {
+                    let saved_filename = msg
+                        .get("filename")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("diagram.json");
+                    let new_session = session.mark_saved();
+                    commit_save_wasm(&mut session_signal, new_session);
+                    update_load_save_success(
+                        toast_handle,
+                        "Workspace saved",
+                        format!("Saved as {}", saved_filename),
+                    );
+                } else {
+                    let error = msg
+                        .get("error")
+                        .and_then(|v| v.as_str())
+                        .unwrap_or("Save was cancelled or failed");
+                    update_load_save_error(toast_handle, "Save failed", error.to_string());
+                }
+            }
+            Err(e) => {
+                update_load_save_error(
+                    toast_handle,
+                    "Save failed",
+                    format!("JS bridge error: {e}"),
+                );
+            }
+        }
+    });
 }
 
 pub fn save_workspace(
@@ -82,14 +206,9 @@ pub fn save_workspace(
     );
     #[cfg(target_arch = "wasm32")]
     {
-        let _ = doc_signal;
-        let _ = session_signal;
-        let _ = toast_handle.dismiss();
-        let toast_api = ToastApi::from_signal(toasts);
-        let _ = toast_api.toast(
-            ToastOptions::new(ToastIntent::Error, "Save not available")
-                .with_detail("Backend has been decommissioned"),
-        );
+        let doc = doc_signal.read().clone();
+        let session = session_signal.read().clone();
+        save_workspace_wasm(doc, session, toasts, toast_handle, session_signal);
     }
     #[cfg(not(target_arch = "wasm32"))]
     {
