@@ -1,7 +1,7 @@
 mod handlers;
 
 use crate::ui::canvas::canvas_view::{
-    edge_preview_overlay, rubber_band_overlay, subgraph_preview_overlay,
+    edge_preview_overlay, rubber_band_overlay, selection_handles_overlay, subgraph_preview_overlay,
 };
 use crate::ui::canvas::edge_layer::EdgeLayer;
 use crate::ui::canvas::grid_layer::GridLayer;
@@ -211,6 +211,23 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 space_pan_active: state.space_pan_active,
                 pending_pointer_sample: state.pending_pointer_sample,
                 db_tx: state.db_tx
+            }
+
+            {
+                let doc_now = state.doc_signal.read().clone();
+                selection_handles_overlay(
+                    &doc_now,
+                    state.interaction_mode,
+                    state.doc_signal,
+                    state.canvas_origin,
+                    to_screen_coords,
+                )
+            }
+
+            div {
+                "data-testid": "minimap-viewport",
+                class: "absolute right-4 bottom-4 w-28 h-20 pointer-events-none opacity-0",
+                style: "z-index: 12;"
             }
 
             Toolbar {

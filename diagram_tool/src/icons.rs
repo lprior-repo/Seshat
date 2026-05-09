@@ -43,7 +43,7 @@ mod tests {
             icon_src(&meta),
             Some(format!(
                 "{}/resources/aws/Analytics/athena.svg",
-                env!("SESHAT_BASE_PATH")
+                crate::ui::canvas::document_ops::queries::SESHAT_BASE_PATH
             ))
         );
     }

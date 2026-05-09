@@ -7,7 +7,7 @@ pub mod render_data;
 pub mod state;
 
 use canvas_domain::interaction_reducer::InteractionMode;
-use diagram_models::document::{DiagramDocument, Node, NodeId};
+use diagram_models::document::{DiagramDocument, Node, NodeId, NodeKind};
 use dioxus::prelude::*;
 use im::HashSet as ImHashSet;
 
@@ -29,7 +29,7 @@ pub fn NodeLayer(
     viewport_size: Signal<(f64, f64)>,
     ordered_node_cache: Memo<Vec<NodeId>>,
     geometry_render_tick: Signal<u64>,
-    node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
+    node_viewport_trigger: Memo<(u64, f64, f64, f64, ImHashSet<String>)>,
     mut canvas_origin: Signal<(f64, f64)>,
     shift_pressed: Signal<bool>,
     ctrl_pressed: Signal<bool>,
@@ -44,7 +44,7 @@ pub fn NodeLayer(
     // This avoids re-rendering all 2000 nodes when only edges or revision changes.
     let trigger = node_viewport_trigger.read();
     let _geometry_tick = *geometry_render_tick.read();
-    let (camera_x, camera_y, zoom, selected_items) = (trigger.0, trigger.1, trigger.2, &trigger.3);
+    let (camera_x, camera_y, zoom, selected_items) = (trigger.1, trigger.2, trigger.3, &trigger.4);
 
     // Peek at document for node geometry data — does NOT subscribe to doc_signal.
     let doc_for_nodes = doc_signal.peek();
@@ -66,7 +66,7 @@ pub fn NodeLayer(
     };
 
     #[allow(clippy::needless_collect)]
-    let node_rows = ordered_node_cache
+    let (regular_rows, subgraph_rows): (Vec<_>, Vec<_>) = ordered_node_cache
         .read()
         .iter()
         .filter_map(|id: &NodeId| {
@@ -84,6 +84,10 @@ pub fn NodeLayer(
                 visible.then(|| (id.clone(), node.clone()))
             })
         })
+        .partition(|(_, node)| node.kind != NodeKind::Subgraph);
+    let node_rows = regular_rows
+        .into_iter()
+        .chain(subgraph_rows)
         .collect::<Vec<_>>();
 
     rsx! {

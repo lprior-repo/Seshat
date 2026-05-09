@@ -263,7 +263,7 @@ fn make_node_with_metadata(metadata: im::HashMap<String, Value>) -> Node {
 }
 
 fn resource_url(path: &str) -> String {
-    format!("{}/resources/{path}", env!("SESHAT_BASE_PATH"))
+    format!("{SESHAT_BASE_PATH}/resources/{path}")
 }
 
 #[test]

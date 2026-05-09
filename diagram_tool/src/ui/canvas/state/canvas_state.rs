@@ -45,10 +45,10 @@ pub struct CanvasState {
     pub canvas_origin: Signal<(f64, f64)>,
     pub ordered_node_cache: Memo<Vec<NodeId>>,
     pub geometry_render_tick: Signal<u64>,
-    /// Lightweight trigger Memo that extracts only the camera/selection data.
+    /// Lightweight trigger Memo that extracts revision plus camera/selection data.
     /// `NodeLayer` and `EdgeLayer` subscribe to this instead of the full document,
     /// avoiding re-renders when only unrelated document fields change.
-    pub node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
+    pub node_viewport_trigger: Memo<(u64, f64, f64, f64, ImHashSet<String>)>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 }
 
@@ -86,12 +86,13 @@ pub fn use_canvas_state() -> CanvasState {
         let _ = node_order_trigger.read();
         ordered_node_ids(&doc_signal.peek())
     });
-    // Lightweight Memo: only camera_x, camera_y, zoom, selected_items.
-    // Components subscribe to THIS instead of doc_signal to avoid full-doc re-renders.
+    // Revision keeps optimized canvas layers in sync after undo/redo without
+    // reading the full document during high-frequency drag writes.
     let node_viewport_trigger = use_memo(move || {
         let doc = doc_signal.read();
         let es = &doc.editor_state;
         (
+            doc.revision.value(),
             es.camera_x.0,
             es.camera_y.0,
             es.zoom.0,

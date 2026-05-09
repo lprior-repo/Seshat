@@ -70,7 +70,7 @@ pub fn NodeContent(props: NodeContentProps) -> Element {
         rsx! {
             div {
                 "data-testid": "subgraph-header",
-                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] border-b border-[var(--border)] bg-[color-mix(in_oklch,var(--node-bg-subgraph)_80%,transparent)]",
+                class: "absolute top-0 left-0 right-0 h-[32px] flex items-center px-[12px] rounded-t-[9px] border-b border-[var(--border)] bg-[color-mix(in_oklch,var(--node-bg-subgraph)_80%,transparent)] pointer-events-auto",
                 ondoubleclick: {
                     let id_edit_subgraph = props.id.clone();
                     let mut editor_state = props.editor_state;

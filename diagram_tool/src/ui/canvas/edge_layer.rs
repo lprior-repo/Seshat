@@ -19,7 +19,7 @@ pub fn EdgeLayer(props: EdgeLayerProps) -> Element {
     let trigger = props.node_viewport_trigger.read();
     let _geometry_tick = *props.geometry_render_tick.read();
     let _document_revision = props.doc_signal.read().revision;
-    let (camera_x, camera_y, zoom, selected_items) = (trigger.0, trigger.1, trigger.2, &trigger.3);
+    let (camera_x, camera_y, zoom, selected_items) = (trigger.1, trigger.2, trigger.3, &trigger.4);
 
     // Peek at document for edge/node geometry after the revision subscription above.
     let doc = props.doc_signal.peek();

@@ -6,7 +6,10 @@ use diagram_models::{
 use serde_json::Value;
 use uuid::Uuid;
 
-const SESHAT_BASE_PATH: &str = env!("SESHAT_BASE_PATH");
+pub(crate) const SESHAT_BASE_PATH: &str = match option_env!("SESHAT_BASE_PATH") {
+    Some(path) => path,
+    None => "/Seshat",
+};
 
 use crate::{
     geometry::hit_test_margin,

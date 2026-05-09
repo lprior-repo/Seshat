@@ -13,6 +13,7 @@ pub use edge_preview::*;
 pub use hit_test::*;
 pub use markers::*;
 pub use rubber_band::*;
+pub use selection_handles::*;
 pub use subgraph_preview::*;
 pub use touch::*;
 

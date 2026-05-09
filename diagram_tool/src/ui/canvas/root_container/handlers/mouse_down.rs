@@ -94,7 +94,12 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
 
     if tool == ToolMode::Select {
         let doc = doc_signal.read().clone();
-        if let Some(node_id) = find_node_at(&doc, pos.0, pos.1) {
+        if let Some(node_id) = find_node_at(&doc, pos.0, pos.1).filter(|id| {
+            doc.document
+                .nodes
+                .get(id)
+                .is_none_or(|node| node.kind != NodeKind::Subgraph)
+        }) {
             let additive = *shift_pressed.read() || *ctrl_pressed.read() || *meta_pressed.read();
             doc_signal.with_mut(|d| {
                 d.editor_state.selected_items = if additive {

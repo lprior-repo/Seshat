@@ -26,7 +26,7 @@ pub struct EdgeLayerProps {
     pub canvas_origin: Signal<(f64, f64)>,
     /// Lightweight trigger Memo for camera/selection data. `EdgeLayer` subscribes
     /// to this instead of the full `doc_signal` to avoid unnecessary re-renders.
-    pub node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
+    pub node_viewport_trigger: Memo<(u64, f64, f64, f64, ImHashSet<String>)>,
     pub db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
 }
 

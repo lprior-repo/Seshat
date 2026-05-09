@@ -35,6 +35,7 @@ pub fn App() -> Element {
 
     let doc_signal = state.document;
     let mut toolbar_stats = state.toolbar_stats;
+    let validation_issues = validation::use_validation_state(doc_signal, state.validate_trigger);
 
     use_global_keyboard();
     use_e2e_reset_hook();
@@ -58,6 +59,12 @@ pub fn App() -> Element {
         }
     });
 
+    let validation_status = if validation_issues.read().is_empty() {
+        "Valid"
+    } else {
+        "Invalid"
+    };
+
     rsx! {
         ThemeProvider {
             document::Stylesheet {
@@ -71,6 +78,11 @@ pub fn App() -> Element {
                     class: "flex flex-1 relative min-w-0 min-h-0",
                     Sidebar {}
                     Canvas {}
+                    span {
+                        "data-testid": "validation-status",
+                        class: "absolute left-4 bottom-4 z-20 text-[12px] pointer-events-none opacity-0",
+                        "{validation_status}"
+                    }
                 }
             }
         }

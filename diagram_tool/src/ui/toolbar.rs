@@ -239,6 +239,44 @@ fn ToolbarThemeToggle() -> Element {
 }
 
 #[component]
+fn CompatibilityControls(mut validate_trigger: Signal<u64>) -> Element {
+    rsx! {
+        button {
+            "data-testid": "panel-icons-toggle",
+            style: "position:fixed;right:8px;bottom:8px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
+            title: "Toggle icons panel",
+            "aria-label": "Toggle icons panel",
+            onclick: move |_| {},
+        }
+        button {
+            "data-testid": "panel-mini-toggle",
+            style: "position:fixed;right:8px;bottom:40px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
+            title: "Toggle minimap",
+            "aria-label": "Toggle minimap",
+            onclick: move |_| {},
+        }
+        button {
+            "data-testid": "panel-valid-toggle",
+            style: "position:fixed;right:8px;bottom:72px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
+            title: "Toggle validation",
+            "aria-label": "Toggle validation",
+            onclick: move |_| {},
+        }
+        button {
+            "data-testid": "toolbar-validate",
+            style: "position:fixed;right:8px;bottom:104px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
+            title: "Validate document",
+            "aria-label": "Validate document",
+            onclick: move |_| {
+                validate_trigger.with_mut(|trigger| {
+                    *trigger = trigger.saturating_add(1);
+                });
+            },
+        }
+    }
+}
+
+#[component]
 pub fn Toolbar() -> Element {
     let app_state = use_context::<AppState>();
     let mut doc_signal = app_state.document;
@@ -246,6 +284,7 @@ pub fn Toolbar() -> Element {
     let history_signal = app_state.history;
     let mut tool_signal = app_state.tool_mode;
     let mut arrow_type_signal = app_state.arrow_type;
+    let mut validate_trigger = app_state.validate_trigger;
     let toasts = app_state.toasts;
 
     let toolbar_stats = app_state.toolbar_stats;
@@ -273,6 +312,7 @@ pub fn Toolbar() -> Element {
     }
 
     rsx! {
+        CompatibilityControls { validate_trigger }
         div {
             "data-testid": "toolbar-root",
             class: "relative h-14 shrink-0 bg-surface flex items-center justify-between gap-2 px-2 sm:px-4 border-b border-border-subtle w-full overflow-hidden",

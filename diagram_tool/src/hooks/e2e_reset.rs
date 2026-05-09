@@ -57,9 +57,11 @@ pub fn use_e2e_reset_hook() {
             };
 
             const isWebDriver = navigator.webdriver === true;
-            if (isWebDriver) {
-                try { localStorage.clear(); } catch (_) {}
-                try { sessionStorage.clear(); } catch (_) {}
+
+            if (isWebDriver && sessionStorage.getItem("__seshat_e2e_storage_cleared") !== "1") {
+                localStorage.clear();
+                sessionStorage.clear();
+                sessionStorage.setItem("__seshat_e2e_storage_cleared", "1");
             }
 
             window.__seshatResetDocument = () => {

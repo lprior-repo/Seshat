@@ -21,11 +21,12 @@ pub fn GridLayer(
     /// Lightweight trigger Memo for camera/selection data.
     /// `GridLayer` subscribes to this instead of the full `doc_signal`
     /// to avoid re-rendering on every node position change during drag.
-    node_viewport_trigger: Memo<(f64, f64, f64, ImHashSet<String>)>,
+    node_viewport_trigger: Memo<(u64, f64, f64, f64, ImHashSet<String>)>,
     doc_signal: Signal<diagram_models::document::DiagramDocument>,
     viewport_size: Signal<(f64, f64)>,
 ) -> Element {
-    let (_camera_x, _camera_y, _zoom, _selected_items) = node_viewport_trigger.read().clone();
+    let (_revision, _camera_x, _camera_y, _zoom, _selected_items) =
+        node_viewport_trigger.read().clone();
     // Peek at doc for grid_size and show_grid — does NOT subscribe to doc_signal.
     let doc = doc_signal.peek();
     let s = &doc.editor_state;
