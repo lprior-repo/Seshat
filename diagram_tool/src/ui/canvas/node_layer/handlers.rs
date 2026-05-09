@@ -137,7 +137,7 @@ pub fn handle_mouseup(
     mut history_signal: Signal<History>,
     mut interaction_mode: Signal<InteractionMode>,
     pending_pointer_sample: Signal<Option<(f64, f64)>>,
-    geometry_render_tick: Signal<u64>,
+    mut geometry_render_tick: Signal<u64>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
     mut tool_signal: Signal<ToolMode>,
     edge_style_default: EdgeStyle,
@@ -231,10 +231,14 @@ pub fn handle_mouseup(
             document: doc_signal.read().clone(),
             interaction_mode: interaction_mode.read().clone(),
         };
+        let previous_revision = initial_state.document.revision;
         match apply_event(initial_state, event) {
             Ok(new_state) => {
                 let history = history_signal.read().clone();
                 *history_signal.write() = history.push(doc_signal.read().clone());
+                if new_state.document.revision != previous_revision {
+                    geometry_render_tick.with_mut(|tick| *tick = (*tick).saturating_add(1));
+                }
                 doc_signal.set(new_state.document);
                 interaction_mode.set(new_state.interaction_mode);
             }

@@ -144,6 +144,8 @@ fn handle_drawing_edge_release(
                     .update(EdgeId::new(Uuid::new_v4().to_string()), candidate_edge);
                 doc_mut.revision = doc_mut.revision.increment();
             });
+            let mut geometry_render_tick = state.geometry_render_tick;
+            geometry_render_tick.with_mut(|tick| *tick = (*tick).saturating_add(1));
         }
     }
 
