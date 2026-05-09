@@ -105,6 +105,25 @@ async function dragFromSourceEdgeToTarget(page: Page) {
   await page.mouse.up();
 }
 
+async function expectRenderedEdge(page: Page, expectedD: string, expectedMarkerEnd: string) {
+  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(1);
+  const edge = page.locator('path[data-node-kind="edge"]').first();
+  await expect.poll(async () => (await edge.getAttribute("d")) ?? "").toBe(expectedD);
+  await expect
+    .poll(async () => (await edge.getAttribute("marker-end")) ?? "")
+    .toBe(expectedMarkerEnd);
+}
+
+async function expectActiveEdgeDrawing(page: Page) {
+  await expect(page.locator('line[marker-end="url(#arrow-pending)"]')).toHaveCount(1);
+  await expect.poll(() => page.getByTestId("connection-edge-hit-zone").count()).toBeGreaterThan(0);
+}
+
+async function expectNoActiveEdgeDrawing(page: Page) {
+  await expect(page.getByTestId("connection-edge-hit-zone")).toHaveCount(0);
+  await expect(page.locator('line[marker-end="url(#arrow-pending)"]')).toHaveCount(0);
+}
+
 test("renders a newly created connection arrow immediately @baseline", async ({ page }) => {
   const pageErrors = trapPageErrors(page);
   await freshBasePathStart(page);
@@ -121,7 +140,8 @@ test("renders a newly created connection arrow immediately @baseline", async ({ 
   await dragFromSourceEdgeToTarget(page);
 
   await expectEdgeCount(page, 1);
-  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(1);
+  await expectRenderedEdge(page, "M 340 244 L 460 244", "url(#arrowhead)");
+  await expectActiveEdgeDrawing(page);
   expect(pageErrors).toHaveLength(0);
 });
 
@@ -137,7 +157,7 @@ test("select mode node-edge drag moves the node instead of starting an arrow @ba
   await expectNodeCount(page, 2);
 
   const { node, box } = await nodeBox(page, "source");
-  await page.mouse.move(box.x + box.width - 2, box.y + 12);
+  await page.mouse.move(box.x + box.width - 2, box.y + box.height / 2);
   await expect(page.getByTestId("connection-dot")).toHaveCount(4);
   await expect(page.getByTestId("connection-edge-hit-zone")).toHaveCount(0);
 
@@ -176,6 +196,12 @@ test("duplicate and self-edge releases do not create extra arrows @baseline", as
   await dragFromSourceEdgeToTarget(page);
   await expectEdgeCount(page, 1);
   await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(1);
+  await expectNoActiveEdgeDrawing(page);
+
+  await dragFromSourceEdgeToTarget(page);
+  await expectEdgeCount(page, 1);
+  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(1);
+  await expectNoActiveEdgeDrawing(page);
 
   await resetDocument(page);
   await waitForCleanState(page);
@@ -197,6 +223,12 @@ test("duplicate and self-edge releases do not create extra arrows @baseline", as
 
   await expectEdgeCount(page, 0);
   await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
+  await expectNoActiveEdgeDrawing(page);
+
+  await dragFromSourceEdgeToTarget(page);
+  await expectEdgeCount(page, 0);
+  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
+  await expectNoActiveEdgeDrawing(page);
   expect(pageErrors).toHaveLength(0);
 });
 
@@ -216,6 +248,11 @@ test("background release cancels arrow drawing without creating a path @baseline
   await page.mouse.move(source.box.x + 360, source.box.y + 220, { steps: 8 });
   await page.mouse.up();
 
+  await expectEdgeCount(page, 0);
+  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
+  await expectNoActiveEdgeDrawing(page);
+
+  await dragFromSourceEdgeToTarget(page);
   await expectEdgeCount(page, 0);
   await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
   expect(pageErrors).toHaveLength(0);
@@ -262,12 +299,61 @@ test("right-click release while drawing cancels without creating an arrow @basel
   await page.mouse.move(target.box.x + 1, target.box.y + target.box.height / 2, {
     steps: 8,
   });
-  await page.mouse.down({ button: "right" });
   await page.mouse.up({ button: "right" });
   await page.mouse.up();
 
   await expectEdgeCount(page, 0);
   await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
+  await expectNoActiveEdgeDrawing(page);
+  expect(pageErrors).toHaveLength(0);
+});
+
+test("circular edge rejection clears the active arrow preview @baseline", async ({ page }) => {
+  const pageErrors = trapPageErrors(page);
+  await freshBasePathStart(page);
+
+  const loaded = await loadDocument(
+    page,
+    twoNodeDocument(1, {
+      reverse: {
+        source: "target",
+        target: "source",
+        directed: true,
+      },
+    }),
+  );
+  expect(loaded).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+  await expectEdgeCount(page, 1);
+  await page.getByTestId("tool-edge").click();
+
+  await dragFromSourceEdgeToTarget(page);
+
+  await expectEdgeCount(page, 1);
+  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(1);
+  await expectNoActiveEdgeDrawing(page);
+  expect(pageErrors).toHaveLength(0);
+});
+
+test("e2e reset clears active edge drawing state @baseline", async ({ page }) => {
+  const pageErrors = trapPageErrors(page);
+  await freshBasePathStart(page);
+
+  const loaded = await loadDocument(page, twoNodeDocument());
+  expect(loaded).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+  await page.getByTestId("tool-edge").click();
+  await dragFromSourceEdgeToTarget(page);
+
+  await expectEdgeCount(page, 1);
+  await expectActiveEdgeDrawing(page);
+
+  await resetDocument(page);
+  await waitForCleanState(page);
+
+  await expectNoActiveEdgeDrawing(page);
   expect(pageErrors).toHaveLength(0);
 });
 
@@ -303,17 +389,69 @@ test("right-click background drag does not pan the canvas @baseline", async ({ p
   expect(pageErrors).toHaveLength(0);
 });
 
+test("document edge update rerenders path geometry and marker @baseline", async ({ page }) => {
+  const pageErrors = trapPageErrors(page);
+  await freshBasePathStart(page);
+
+  const loaded = await loadDocument(
+    page,
+    twoNodeDocument(0, {
+      existing: {
+        source: "source",
+        target: "target",
+        directed: false,
+        arrow_type: "straight",
+      },
+    }),
+  );
+  expect(loaded).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+  await expectEdgeCount(page, 1);
+  await expectRenderedEdge(page, "M 280 244 L 520 244", "");
+
+  const updated = await loadDocument(
+    page,
+    twoNodeDocument(1, {
+      existing: {
+        source: "source",
+        target: "target",
+        directed: true,
+        arrow_type: "curved",
+      },
+    }),
+  );
+  expect(updated).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+  await expectEdgeCount(page, 1);
+  await expectRenderedEdge(page, "M 280 244 Q 400 304 520 244", "url(#arrowhead)");
+  expect(pageErrors).toHaveLength(0);
+});
+
 test("renders an e2e-loaded document when revision matches reset state @baseline", async ({
   page,
 }) => {
   const pageErrors = trapPageErrors(page);
   await freshBasePathStart(page);
 
-  const loaded = await loadDocument(page, twoNodeDocument(0));
+  const loaded = await loadDocument(
+    page,
+    twoNodeDocument(0, {
+      existing: {
+        source: "source",
+        target: "target",
+        directed: true,
+        arrow_type: "straight",
+      },
+    }),
+  );
   expect(loaded).toBe(true);
   await waitForNoRebuildOverlay(page);
   await expectNodeCount(page, 2);
+  await expectEdgeCount(page, 1);
   await expect(page.locator('[data-testid="node"][data-node-id="source"]')).toBeVisible();
   await expect(page.locator('[data-testid="node"][data-node-id="target"]')).toBeVisible();
+  await expectRenderedEdge(page, "M 280 244 L 520 244", "url(#arrowhead)");
   expect(pageErrors).toHaveLength(0);
 });

@@ -60,6 +60,7 @@ pub fn use_canvas_state() -> CanvasState {
     let tool_signal = app_state.tool_mode;
     let edge_style_default = app_state.edge_style;
     let arrow_type_default = app_state.arrow_type;
+    let canvas_reset_trigger = app_state.canvas_reset_trigger;
     let _toast = use_toast();
 
     let interaction_mode = use_signal(|| InteractionMode::Select);
@@ -98,6 +99,41 @@ pub fn use_canvas_state() -> CanvasState {
         )
     });
     let db_tx = use_context::<Option<Coroutine<diagram_models::envelope::EventEnvelope>>>();
+
+    let mut reset_interaction_mode = interaction_mode;
+    let mut reset_space_pressed = space_pressed;
+    let mut reset_shift_pressed = shift_pressed;
+    let mut reset_ctrl_pressed = ctrl_pressed;
+    let mut reset_meta_pressed = meta_pressed;
+    let mut reset_drag_over = drag_over;
+    let mut reset_editor_state = editor_state;
+    let mut reset_edit_value = edit_value;
+    let mut reset_nudge_batch_active = nudge_batch_active;
+    let mut reset_space_pan_active = space_pan_active;
+    let mut reset_pending_pointer_sample = pending_pointer_sample;
+    let mut reset_pending_wheel_sample = pending_wheel_sample;
+    let mut reset_multi_touch_active = multi_touch_active;
+    let mut reset_captured_pointer = captured_pointer;
+    let mut reset_active_pointers = active_pointers;
+
+    use_effect(move || {
+        let _ = canvas_reset_trigger.read();
+        reset_interaction_mode.set(InteractionMode::Select);
+        reset_space_pressed.set(false);
+        reset_shift_pressed.set(false);
+        reset_ctrl_pressed.set(false);
+        reset_meta_pressed.set(false);
+        reset_drag_over.set(false);
+        reset_editor_state.set(EditorState::Idle);
+        reset_edit_value.set(String::new());
+        reset_nudge_batch_active.set(false);
+        reset_space_pan_active.set(false);
+        reset_pending_pointer_sample.set(None);
+        reset_pending_wheel_sample.set(None);
+        reset_multi_touch_active.set(false);
+        reset_captured_pointer.set(None);
+        reset_active_pointers.set(StdHashSet::new());
+    });
 
     use_keyboard_handler(
         doc_signal,

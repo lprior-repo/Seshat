@@ -30,6 +30,16 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
     };
     let edge_tool_active = *props.tool_signal.read() == ToolMode::Edge;
     let broad_hit_zones_active = edge_tool_active || drawing_from_this_node;
+    let dot_pointer_events = if broad_hit_zones_active {
+        "auto"
+    } else {
+        "none"
+    };
+    let dot_cursor = if broad_hit_zones_active {
+        "crosshair"
+    } else {
+        "default"
+    };
     let show_connection_dots = !props.is_editing
         && (props.is_selected || props.is_hovered || edge_tool_active || drawing_from_this_node);
 
@@ -96,7 +106,7 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
         for (dot_x, dot_y) in dot_specs {
             div {
                 key: "{dot_x}-{dot_y}",
-                style: "position: absolute; width: 20px; height: 20px; border-radius: 999px; background: transparent; cursor: crosshair; left: {dot_x - 10.0}px; top: {dot_y - 10.0}px;",
+                style: "position: absolute; width: 20px; height: 20px; border-radius: 999px; background: transparent; cursor: {dot_cursor}; pointer-events: {dot_pointer_events}; left: {dot_x - 10.0}px; top: {dot_y - 10.0}px;",
                 "data-testid": "connection-dot",
                 onmousedown: {
                     let current_id = id.clone();

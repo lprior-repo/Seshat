@@ -97,6 +97,7 @@ fn handle_drawing_edge_release(
 ) -> InteractionMode {
     let mut doc_signal = state.doc_signal;
     let mut history_signal = state.history_signal;
+    let mut tool_signal = state.tool_signal;
     let coords = evt.data.coordinates().client();
     let origin = sync_canvas_origin().unwrap_or_else(|| *state.canvas_origin.read());
     let doc = doc_signal.read().clone();
@@ -130,6 +131,7 @@ fn handle_drawing_edge_release(
             };
 
             if !edge_preserves_dag(&doc, &candidate_edge) {
+                tool_signal.set(ToolMode::Select);
                 let _ = toast.show(
                     crate::ui::toast::ToastIntent::Warning,
                     "Cannot create circular connection",
@@ -153,7 +155,7 @@ fn handle_drawing_edge_release(
         }
     }
 
-    if *state.tool_signal.read() == ToolMode::Edge && edge_created {
+    if *tool_signal.read() == ToolMode::Edge && edge_created {
         if let Some(target_id) = target {
             let (_, end_port) = calculate_ports(&doc_signal.read(), &from_node, &target_id);
             return InteractionMode::DrawingEdge {
@@ -162,6 +164,9 @@ fn handle_drawing_edge_release(
                 start_port: end_port,
             };
         }
+    }
+    if !edge_created {
+        tool_signal.set(ToolMode::Select);
     }
     InteractionMode::Select
 }

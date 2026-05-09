@@ -41,6 +41,7 @@ pub fn use_e2e_reset_hook() {
     let mut toolbar_stats = app_state.toolbar_stats;
     let mut viewport_size = app_state.viewport_size;
     let mut validate_trigger = app_state.validate_trigger;
+    let mut canvas_reset_trigger = app_state.canvas_reset_trigger;
 
     use_effect(move || {
         let mut eval = document::eval(
@@ -104,6 +105,9 @@ pub fn use_e2e_reset_hook() {
                     toolbar_stats.set(ToolbarStats::default());
                     viewport_size.set((1200.0, 800.0));
                     validate_trigger.set(0);
+                    canvas_reset_trigger.with_mut(|trigger| {
+                        *trigger = trigger.saturating_add(1);
+                    });
 
                     // Signal completion back to the JS Promise.
                     let _ = document::eval(
@@ -140,6 +144,9 @@ pub fn use_e2e_reset_hook() {
                             toolbar_stats.set(ToolbarStats::default());
                             viewport_size.set((1200.0, 800.0));
                             validate_trigger.set(0);
+                            canvas_reset_trigger.with_mut(|trigger| {
+                                *trigger = trigger.saturating_add(1);
+                            });
                             (true, String::new())
                         }
                         Err(e) => (false, e.to_string()),

@@ -136,7 +136,7 @@ pub fn handle_mouseup(
     mut doc_signal: Signal<DiagramDocument>,
     mut history_signal: Signal<History>,
     mut interaction_mode: Signal<InteractionMode>,
-    pending_pointer_sample: Signal<Option<(f64, f64)>>,
+    mut pending_pointer_sample: Signal<Option<(f64, f64)>>,
     mut geometry_render_tick: Signal<u64>,
     db_tx: Option<Coroutine<diagram_models::envelope::EventEnvelope>>,
     mut tool_signal: Signal<ToolMode>,
@@ -149,6 +149,19 @@ pub fn handle_mouseup(
 
     // Let panning release events bubble up to the root container
     if matches!(mode, InteractionMode::Panning { .. }) {
+        return;
+    }
+
+    if matches!(mode, InteractionMode::DrawingEdge { .. })
+        && evt.data.trigger_button() != Some(MouseButton::Primary)
+    {
+        if evt.data.trigger_button() == Some(MouseButton::Secondary) {
+            evt.prevent_default();
+        }
+        evt.stop_propagation();
+        pending_pointer_sample.set(None);
+        interaction_mode.set(InteractionMode::Select);
+        tool_signal.set(ToolMode::Select);
         return;
     }
 
@@ -227,6 +240,7 @@ pub fn handle_mouseup(
     };
 
     if let Some(event) = event {
+        let edge_finish_attempt = matches!(&event, CanvasEvent::EdgeDrawingFinished { .. });
         let initial_state = CanvasState {
             document: doc_signal.read().clone(),
             interaction_mode: interaction_mode.read().clone(),
@@ -234,22 +248,33 @@ pub fn handle_mouseup(
         let previous_revision = initial_state.document.revision;
         match apply_event(initial_state, event) {
             Ok(new_state) => {
-                if new_state.document.revision != previous_revision {
+                let edge_created = new_state.document.revision != previous_revision;
+                if edge_created {
                     let history = history_signal.read().clone();
                     *history_signal.write() = history.push(doc_signal.read().clone());
                     geometry_render_tick.with_mut(|tick| *tick = (*tick).saturating_add(1));
                 }
                 doc_signal.set(new_state.document);
                 interaction_mode.set(new_state.interaction_mode);
+                if edge_finish_attempt && !edge_created {
+                    tool_signal.set(ToolMode::Select);
+                }
             }
             Err(CanvasError::CircularConnectionRejected) => {
+                interaction_mode.set(InteractionMode::Select);
+                tool_signal.set(ToolMode::Select);
                 let _ = toast.show(
                     crate::ui::toast::ToastIntent::Warning,
                     "Cannot create circular connection",
                     None,
                 );
             }
-            Err(_) => {}
+            Err(_) => {
+                if edge_finish_attempt {
+                    interaction_mode.set(InteractionMode::Select);
+                    tool_signal.set(ToolMode::Select);
+                }
+            }
         }
     }
 

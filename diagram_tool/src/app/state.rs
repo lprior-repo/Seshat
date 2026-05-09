@@ -26,6 +26,7 @@ pub struct AppState {
     pub conflict_toast_shown: Signal<bool>,
     pub pending_ai_ops: Signal<HashSet<String>>,
     pub validate_trigger: Signal<u64>,
+    pub canvas_reset_trigger: Signal<u64>,
     pub toasts: Signal<ToastQueue>,
 }
 
@@ -49,6 +50,7 @@ impl AppState {
             conflict_toast_shown: Signal::new(false),
             pending_ai_ops: Signal::new(HashSet::new()),
             validate_trigger: Signal::new(0_u64),
+            canvas_reset_trigger: Signal::new(0_u64),
             toasts: Signal::new(ToastQueue::default()),
         })
     }
@@ -68,6 +70,7 @@ mod tests {
             assert_eq!(state.edge_style.read().clone(), EdgeStyle::Solid);
             assert_eq!(state.arrow_type.read().clone(), ArrowType::Default);
             assert_eq!(state.sidebar.read().open, true);
+            assert_eq!(*state.canvas_reset_trigger.read(), 0);
             assert!(!state.session.read().is_dirty());
             assert!(state.session.read().file_path().is_none());
             rsx! { div {} }
