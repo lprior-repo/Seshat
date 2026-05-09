@@ -92,9 +92,9 @@ fn render_desktop_closed(sidebar_ui: Signal<crate::ui::mobile::SidebarUiState>) 
 
 fn get_panel_class(is_mobile: bool) -> String {
     if is_mobile {
-        String::from("fixed top-[56px] bottom-0 left-0 w-[min(19rem,90vw)] bg-gradient-to-b from-surface to-background border-r border-border-subtle p-[max(10px,env(safe-area-inset-top))] flex flex-col gap-2.5 overflow-hidden z-[70] shadow-2xl h-full")
+        String::from("fixed top-[56px] bottom-0 left-0 w-[min(19rem,90vw)] bg-gradient-to-b from-surface to-base border-r border-border-subtle p-[max(10px,env(safe-area-inset-top))] flex flex-col gap-2.5 overflow-hidden z-[70] shadow-2xl")
     } else {
-        String::from("w-[280px] max-w-[40vw] bg-gradient-to-b from-surface to-background border-r border-border-subtle p-2.5 flex flex-col gap-2.5 overflow-hidden h-full")
+        String::from("w-[280px] max-w-[40vw] bg-gradient-to-b from-surface to-base border-r border-border-subtle p-2.5 flex flex-col gap-2.5 overflow-hidden h-full")
     }
 }
 
@@ -110,7 +110,7 @@ fn render_sidebar_content(
         SidebarSheet { class: Some(String::from("flex flex-col flex-1 min-h-0 gap-2.5")),
             SidebarHeader { title: String::from("Components"), action_label, onaction: move |_| { close_sidebar(sidebar_ui); } }
             SearchBox { search: state.search, search_is_truncated: result.is_truncated }
-            SidebarInset { class: Some(String::from("flex flex-1 min-h-0 flex-col overflow-y-auto pr-2 -mr-2")),
+            SidebarInset { class: Some(String::from("flex flex-1 min-h-0 flex-col overflow-y-auto pr-1")),
                 SidebarMenu {
                     for bucket in result.buckets.into_iter() { ProviderAccordion { bucket, query_active, state } }
                 }

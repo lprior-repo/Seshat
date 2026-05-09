@@ -8,9 +8,7 @@ use crate::ui::canvas::grid_layer::GridLayer;
 use crate::ui::canvas::node_layer::NodeLayer;
 use crate::ui::canvas::state::CanvasState;
 use crate::ui::canvas::toolbar::{SelectionPill, Toolbar};
-use crate::ui::theme::{
-    ThemeMode, ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, EDGE_DEFAULT, EDGE_SELECTED,
-};
+use crate::ui::theme::{ACCENT_DASH_BORDER, BG_BASE, BG_ELEVATED, EDGE_DEFAULT, EDGE_SELECTED};
 use canvas_domain::interaction_reducer::{InteractionMode, ResizeHandle};
 use canvas_domain::perf::to_screen_coords;
 use dioxus::html::input_data::MouseButton;
@@ -221,29 +219,6 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 interaction_mode: state.interaction_mode
             }
             SelectionPill { doc_signal: state.doc_signal }
-            ThemeToggle {}
-        }
-    }
-}
-
-/// Visible theme toggle button positioned at the bottom-right of the canvas.
-/// Cycles through `System` → `Light` → `Dark` → `White` → `System` on click.
-/// Reads/writes the `theme_mode` `Signal` provided by `ThemeProvider`.
-#[component]
-fn ThemeToggle() -> Element {
-    let mut theme_mode = use_context::<Signal<ThemeMode>>();
-    let current = *theme_mode.read();
-    let label = current.label();
-
-    rsx! {
-        button {
-            class: "absolute right-[12px] bottom-[12px] z-[20] rounded-[8px] text-[11px] px-[9px] py-[5px] backdrop-blur-sm border border-border bg-[var(--toolbar-bg)]/90 text-muted-foreground shadow-lg cursor-pointer hover:opacity-80 transition-opacity",
-            "data-testid": "theme-toggle-btn",
-            onclick: move |_| {
-                let next = theme_mode.read().next();
-                theme_mode.set(next);
-            },
-            "{label}"
         }
     }
 }

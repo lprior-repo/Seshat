@@ -24,8 +24,14 @@ pub struct ConnectionDotsProps {
 
 #[component]
 pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
+    let drawing_from_this_node = {
+        let mode = props.interaction_mode.read();
+        matches!(&*mode, InteractionMode::DrawingEdge { from_node, .. } if from_node == &props.id)
+    };
+    let edge_tool_active = *props.tool_signal.read() == ToolMode::Edge;
+    let broad_hit_zones_active = edge_tool_active || drawing_from_this_node;
     let show_connection_dots = !props.is_editing
-        && (props.is_selected || props.is_hovered || *props.tool_signal.read() == ToolMode::Edge);
+        && (props.is_selected || props.is_hovered || edge_tool_active || drawing_from_this_node);
 
     if !show_connection_dots {
         return rsx! {};
@@ -34,13 +40,59 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
     let cx = props.width / 2.0;
     let cy = props.height / 2.0;
     let dot_specs = [(cx, 0.0), (cx, props.height), (0.0, cy), (props.width, cy)];
+    let hit_zones = [
+        (
+            "top",
+            format!(
+                "position: absolute; width: {}px; height: 16px; left: 0px; top: -8px; background: transparent; cursor: crosshair;",
+                props.width
+            ),
+        ),
+        (
+            "bottom",
+            format!(
+                "position: absolute; width: {}px; height: 16px; left: 0px; top: {}px; background: transparent; cursor: crosshair;",
+                props.width,
+                props.height - 8.0
+            ),
+        ),
+        (
+            "left",
+            format!(
+                "position: absolute; width: 16px; height: {}px; left: -8px; top: 0px; background: transparent; cursor: crosshair;",
+                props.height
+            ),
+        ),
+        (
+            "right",
+            format!(
+                "position: absolute; width: 16px; height: {}px; left: {}px; top: 0px; background: transparent; cursor: crosshair;",
+                props.height,
+                props.width - 8.0
+            ),
+        ),
+    ];
 
     let id = props.id.clone();
     let canvas_origin = props.canvas_origin;
     let doc_signal = props.doc_signal;
-    let mut interaction_mode = props.interaction_mode;
+    let interaction_mode = props.interaction_mode;
 
     rsx! {
+        if broad_hit_zones_active {
+            for (side, zone_style) in hit_zones {
+                div {
+                    key: "hit-{side}",
+                    style: "{zone_style}",
+                    "data-testid": "connection-edge-hit-zone",
+                    "data-side": "{side}",
+                    onmousedown: {
+                        let current_id = id.clone();
+                        move |evt| start_edge_from_pointer(&evt, &current_id, canvas_origin, doc_signal, interaction_mode)
+                    }
+                }
+            }
+        }
         for (dot_x, dot_y) in dot_specs {
             div {
                 key: "{dot_x}-{dot_y}",
@@ -48,30 +100,7 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
                 "data-testid": "connection-dot",
                 onmousedown: {
                     let current_id = id.clone();
-                    move |evt| {
-                        if evt.data.trigger_button() != Some(MouseButton::Primary) {
-                            return;
-                        }
-                        evt.stop_propagation();
-                        let coords = evt.data.coordinates().client();
-                        let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
-                        let local_x = coords.x - origin.0;
-                        let local_y = coords.y - origin.1;
-                        let doc = doc_signal.read().clone();
-                        let mouse_pos = to_canvas_coords(
-                            canvas_domain::ScreenCoord(local_x, local_y),
-                            canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
-                            doc.editor_state.zoom.0
-                        );
-                        let start_port = doc.document.nodes.get(&current_id).map(|src| {
-                            snap_edge_port_toward(src, mouse_pos.0, mouse_pos.1)
-                        });
-                        interaction_mode.set(InteractionMode::DrawingEdge {
-                            from_node: current_id.clone(),
-                            current_pos: (mouse_pos.0, mouse_pos.1),
-                            start_port,
-                        });
-                    }
+                    move |evt| start_edge_from_pointer(&evt, &current_id, canvas_origin, doc_signal, interaction_mode)
                 },
                 div {
                     style: "position: absolute; left: 5px; top: 5px; width: 10px; height: 10px; border-radius: 999px; opacity: 0.9; pointer-events: none; background:{ACCENT}; border:1px solid {BG_BASE};"
@@ -79,4 +108,37 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
             }
         }
     }
+}
+
+fn start_edge_from_pointer(
+    evt: &Event<MouseData>,
+    current_id: &NodeId,
+    canvas_origin: ReadSignal<(f64, f64)>,
+    doc_signal: Signal<DiagramDocument>,
+    mut interaction_mode: Signal<InteractionMode>,
+) {
+    if evt.data.trigger_button() != Some(MouseButton::Primary) {
+        return;
+    }
+    evt.stop_propagation();
+    let coords = evt.data.coordinates().client();
+    let origin = sync_canvas_origin().unwrap_or_else(|| *canvas_origin.read());
+    let local_x = coords.x - origin.0;
+    let local_y = coords.y - origin.1;
+    let doc = doc_signal.read().clone();
+    let mouse_pos = to_canvas_coords(
+        canvas_domain::ScreenCoord(local_x, local_y),
+        canvas_domain::CanvasCoord(doc.editor_state.camera_x.0, doc.editor_state.camera_y.0),
+        doc.editor_state.zoom.0,
+    );
+    let start_port = doc
+        .document
+        .nodes
+        .get(current_id)
+        .map(|src| snap_edge_port_toward(src, mouse_pos.0, mouse_pos.1));
+    interaction_mode.set(InteractionMode::DrawingEdge {
+        from_node: current_id.clone(),
+        current_pos: (mouse_pos.0, mouse_pos.1),
+        start_port,
+    });
 }

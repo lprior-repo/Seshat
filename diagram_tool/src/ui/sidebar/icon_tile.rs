@@ -8,14 +8,14 @@ fn IconImage(src: Option<String>) -> Element {
         if let Some(src_str) = src {
             img {
                 src: "{src_str}",
-                class: "w-8 h-8 object-contain pointer-events-none",
+                class: "w-9 h-9 object-contain pointer-events-none",
                 draggable: "false",
                 loading: "lazy",
                 decoding: "async"
             }
         } else {
             div {
-                class: "w-8 h-8 rounded bg-muted",
+                class: "w-9 h-9 rounded bg-muted",
             }
         }
     }
@@ -25,7 +25,7 @@ fn IconImage(src: Option<String>) -> Element {
 fn IconLabel(text: String) -> Element {
     rsx! {
         span {
-            class: "text-[10px] text-muted-foreground text-center leading-tight line-clamp-2 break-words",
+            class: "text-[11px] text-foreground text-center leading-tight line-clamp-2 break-words",
             "{text}"
         }
     }
@@ -59,8 +59,9 @@ pub fn IconTile(
 
     rsx! {
         button {
-            class: "flex flex-col justify-center items-center gap-1.5 p-2 rounded-md border border-border bg-surface cursor-grab w-full box-border",
+            class: "flex flex-col justify-center items-center gap-1.5 p-2 rounded-md border border-border bg-surface hover:bg-[var(--bg-elevated)] cursor-grab w-full min-h-[92px] box-border transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
             "data-testid": "icon-item",
+            "aria-label": "Add {title_display} icon",
             title: "{title_display}\n{title_key}\n{category_for_title}",
             draggable: "true",
             onmousedown: move |_| handle_drag(&current_icon_mousedown, &mut dragging_icon),

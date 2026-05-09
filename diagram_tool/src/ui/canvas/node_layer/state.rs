@@ -6,7 +6,7 @@ use diagram_models::document::{
 use im::HashMap;
 use uuid::Uuid;
 
-use crate::ui::canvas::document_ops::edge_preserves_dag;
+use crate::ui::canvas::document_ops::{edge_exists_between, edge_preserves_dag};
 use crate::ui::interaction::{
     drag_original_positions, select_single, toggle_selection, with_auto_selected_edges,
 };
@@ -116,9 +116,10 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
             start_port,
             end_port,
         } => {
-            if from_node != to_node {
+            let mut edge_created = false;
+            if from_node != to_node && !edge_exists_between(&state.document, &from_node, &to_node) {
                 let candidate_edge = Edge {
-                    source: from_node,
+                    source: from_node.clone(),
                     target: to_node.clone(),
                     label: String::new(),
                     style: edge_style,
@@ -141,11 +142,12 @@ pub fn apply_event(mut state: CanvasState, event: CanvasEvent) -> Result<CanvasS
                         .edges
                         .update(EdgeId::new(Uuid::new_v4().to_string()), candidate_edge);
                     state.document.revision = state.document.revision.increment();
+                    edge_created = true;
                 } else {
                     return Err(CanvasError::CircularConnectionRejected);
                 }
             }
-            if continue_drawing {
+            if continue_drawing && edge_created {
                 state.interaction_mode = InteractionMode::DrawingEdge {
                     from_node: to_node,
                     current_pos: (current_pos.0, current_pos.1),

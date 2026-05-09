@@ -221,3 +221,76 @@ fn test_edge_drawing_finished_circular_rejected() {
         Err(CanvasError::CircularConnectionRejected)
     ));
 }
+
+#[test]
+fn test_self_edge_release_cancels_without_continuing() -> Result<(), CanvasError> {
+    let doc = create_test_doc();
+    let original_revision = doc.revision;
+    let state = CanvasState {
+        document: doc,
+        interaction_mode: InteractionMode::DrawingEdge {
+            from_node: NodeId::new("node1".to_string()),
+            current_pos: (0.0, 0.0),
+            start_port: None,
+        },
+    };
+
+    let result = apply_event(
+        state,
+        CanvasEvent::EdgeDrawingFinished {
+            from_node: NodeId::new("node1".to_string()),
+            to_node: NodeId::new("node1".to_string()),
+            current_pos: CanvasCoord(100.0, 100.0),
+            continue_drawing: true,
+            edge_style: EdgeStyle::Solid,
+            arrow_type: ArrowType::Default,
+            start_port: None,
+            end_port: None,
+        },
+    )?;
+
+    assert!(result.document.document.edges.is_empty());
+    assert_eq!(result.document.revision, original_revision);
+    assert!(matches!(result.interaction_mode, InteractionMode::Select));
+    Ok(())
+}
+
+#[test]
+fn test_duplicate_edge_release_does_not_create_parallel_edge() -> Result<(), CanvasError> {
+    let mut doc = create_test_doc();
+    doc.document.edges.insert(
+        diagram_models::document::EdgeId::new("edge1".to_string()),
+        create_test_edge(
+            NodeId::new("node1".to_string()),
+            NodeId::new("node2".to_string()),
+        ),
+    );
+    let original_revision = doc.revision;
+    let state = CanvasState {
+        document: doc,
+        interaction_mode: InteractionMode::DrawingEdge {
+            from_node: NodeId::new("node1".to_string()),
+            current_pos: (0.0, 0.0),
+            start_port: None,
+        },
+    };
+
+    let result = apply_event(
+        state,
+        CanvasEvent::EdgeDrawingFinished {
+            from_node: NodeId::new("node1".to_string()),
+            to_node: NodeId::new("node2".to_string()),
+            current_pos: CanvasCoord(200.0, 100.0),
+            continue_drawing: true,
+            edge_style: EdgeStyle::Solid,
+            arrow_type: ArrowType::Default,
+            start_port: None,
+            end_port: None,
+        },
+    )?;
+
+    assert_eq!(result.document.document.edges.len(), 1);
+    assert_eq!(result.document.revision, original_revision);
+    assert!(matches!(result.interaction_mode, InteractionMode::Select));
+    Ok(())
+}

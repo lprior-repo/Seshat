@@ -23,9 +23,10 @@ pub fn SearchBox(mut search: Signal<String>, search_is_truncated: bool) -> Eleme
                 crate::ui::icons::Icon { kind: crate::ui::icons::IconKind::Search, size: 14, color: None }
             }
             input {
+                "aria-label": "Search icons",
                 placeholder: "Search icons...",
                 value: "{search}",
-                class: "pl-8 pr-2 py-1.5 w-full rounded-md border border-[var(--border-subtle)] bg-[oklch(0.13_0.005_260)] text-foreground text-[13px] outline-none focus:border-[var(--accent)] transition-colors",
+                class: "pl-8 pr-2 py-1.5 w-full rounded-md border border-[var(--border-subtle)] bg-elevated text-foreground placeholder:text-muted-foreground text-[13px] outline-none focus:border-[var(--accent)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2 transition-colors",
                 oninput: move |evt| search.set(evt.value())
             }
         }
@@ -61,12 +62,14 @@ pub fn CategoryButton(
     expanded: bool,
     onclick: EventHandler<MouseEvent>,
 ) -> Element {
-    let base_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-transparent bg-transparent text-foreground cursor-pointer text-[13px] hover:bg-[var(--bg-elevated)] transition-colors";
-    let active_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-[var(--accent)] bg-[oklch(0.12_0.02_165)] text-foreground cursor-pointer text-[13px] transition-colors";
+    let base_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-transparent bg-transparent text-foreground cursor-pointer text-[13px] hover:bg-[var(--bg-elevated)] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2";
+    let active_class = "w-full flex justify-between items-center py-1.5 px-2 rounded-md border border-[var(--accent)] bg-[var(--accent-soft)] text-foreground cursor-pointer text-[13px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2";
 
     rsx! {
         button {
             class: if expanded { active_class } else { base_class },
+            "aria-expanded": "{expanded}",
+            "aria-label": "{name} icons, {count} items",
             onclick: move |e| onclick.call(e),
             div {
                 class: "flex items-center gap-2",
@@ -86,7 +89,7 @@ pub fn CategoryGrid(
 ) -> Element {
     rsx! {
         div {
-            class: "grid grid-cols-3 gap-[5px] mt-1 pl-4",
+            class: "grid grid-cols-[repeat(auto-fit,minmax(72px,1fr))] gap-2 mt-1 pl-0 sm:pl-4",
             for icon in icons {
                 IconTile { key: "{icon.icon_key}", icon, dragging_icon }
             }
@@ -166,7 +169,7 @@ pub fn ProviderAccordion(
 pub fn SidebarFooter(total_components: usize) -> Element {
     rsx! {
         div {
-            class: "mt-auto pt-4 pb-1 border-t border-border text-center text-[11px] text-muted-foreground leading-relaxed",
+            class: "mt-auto shrink-0 pt-3 pb-1 border-t border-border text-center text-[11px] text-muted-foreground leading-relaxed",
             "{total_components} components available"
             br {}
             "Drag to canvas to add"

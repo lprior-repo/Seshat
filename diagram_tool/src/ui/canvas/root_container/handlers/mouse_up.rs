@@ -1,6 +1,7 @@
 use crate::ui::canvas::document_ops::{
-    apply_rubber_band_release, dispatch_drag_move_batch, edge_preserves_dag, find_node_at,
-    flush_pending_pointer_update, snapped_edge_ports, subgraph_release_bounds, sync_canvas_origin,
+    apply_rubber_band_release, dispatch_drag_move_batch, edge_exists_between, edge_preserves_dag,
+    find_node_at, flush_pending_pointer_update, snapped_edge_ports, subgraph_release_bounds,
+    sync_canvas_origin,
 };
 use crate::ui::canvas::state::CanvasState;
 use crate::ui::editor::ToolMode;
@@ -97,9 +98,10 @@ fn handle_drawing_edge_release(
         doc.editor_state.zoom.0,
     );
     let target = find_node_at(&doc, pos.0, pos.1);
+    let mut edge_created = false;
 
     if let Some(target_id) = target.clone() {
-        if target_id != from_node {
+        if target_id != from_node && !edge_exists_between(&doc, &from_node, &target_id) {
             let (calculated_start_port, end_port) = calculate_ports(&doc, &from_node, &target_id);
             let candidate_edge = diagram_models::document::Edge {
                 source: from_node.clone(),
@@ -125,13 +127,6 @@ fn handle_drawing_edge_release(
                     "Cannot create circular connection",
                     None,
                 );
-                if *state.tool_signal.read() == ToolMode::Edge {
-                    return InteractionMode::DrawingEdge {
-                        from_node: target_id,
-                        current_pos: (pos.0, pos.1),
-                        start_port: end_port,
-                    };
-                }
                 return InteractionMode::Select;
             }
 
@@ -146,10 +141,11 @@ fn handle_drawing_edge_release(
             });
             let mut geometry_render_tick = state.geometry_render_tick;
             geometry_render_tick.with_mut(|tick| *tick = (*tick).saturating_add(1));
+            edge_created = true;
         }
     }
 
-    if *state.tool_signal.read() == ToolMode::Edge {
+    if *state.tool_signal.read() == ToolMode::Edge && edge_created {
         if let Some(target_id) = target {
             let (_, end_port) = calculate_ports(&doc_signal.read(), &from_node, &target_id);
             return InteractionMode::DrawingEdge {

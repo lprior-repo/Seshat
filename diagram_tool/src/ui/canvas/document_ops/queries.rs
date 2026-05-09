@@ -121,6 +121,13 @@ pub fn edge_preserves_dag(doc: &DiagramDocument, edge: &Edge) -> bool {
     validate_dag(&doc.document.nodes, &candidate_edges).is_ok()
 }
 
+pub fn edge_exists_between(doc: &DiagramDocument, source: &NodeId, target: &NodeId) -> bool {
+    doc.document
+        .edges
+        .values()
+        .any(|edge| &edge.source == source && &edge.target == target)
+}
+
 pub fn ordered_node_ids(doc: &DiagramDocument) -> Vec<NodeId> {
     let mut node_ids = doc.document.nodes.keys().cloned().collect::<Vec<_>>();
     node_ids.sort_by(|a_id, b_id| {

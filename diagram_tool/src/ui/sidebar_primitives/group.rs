@@ -37,7 +37,9 @@ pub fn SidebarGroup(
             class: "flex flex-col mb-1",
 
             button {
-                class: "w-full bg-transparent border-none py-1.5 px-2 text-foreground flex justify-between items-center cursor-pointer text-[13px] hover:bg-[var(--bg-elevated)] rounded-md transition-colors",
+                class: "w-full bg-transparent border-none py-1.5 px-2 text-foreground flex justify-between items-center cursor-pointer text-[13px] hover:bg-[var(--bg-elevated)] rounded-md transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
+                "aria-expanded": "{expanded}",
+                "aria-label": "{provider} provider, {total_count} icons",
                 onclick: move |evt| ontoggle.call(evt),
 
                 div {

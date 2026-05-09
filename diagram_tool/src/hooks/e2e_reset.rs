@@ -120,7 +120,17 @@ pub fn use_e2e_reset_hook() {
 
                     let (loaded, error_msg) = match result {
                         Ok(doc) => {
-                            doc_signal.set(doc);
+                            let current_revision = doc_signal.peek().revision;
+                            let next_doc = if doc.revision == current_revision {
+                                DiagramDocument {
+                                    revision: doc.revision.increment(),
+                                    ..doc
+                                }
+                            } else {
+                                doc
+                            };
+
+                            doc_signal.set(next_doc);
                             dragging_icon.set(None);
                             history_signal.set(History::new());
                             tool_mode.set(ToolMode::Select);

@@ -21,7 +21,7 @@ use crate::ui::commands::{
 };
 use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
-use crate::ui::theme::ACCENT;
+use crate::ui::theme::{ThemeMode, ACCENT};
 use dioxus::prelude::*;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -127,8 +127,9 @@ fn IconButton(props: IconButtonProps) -> Element {
     rsx! {
         button {
             "data-testid": props.test_id,
-            class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 text-foreground transition-colors",
+            class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 text-foreground transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
             title: "{tooltip}",
+            "aria-label": "{tooltip}",
             onclick: move |evt| {
                 if props.state != ButtonState::Disabled {
                     props.onclick.call(evt);
@@ -174,8 +175,9 @@ fn TextButton(props: TextButtonProps) -> Element {
     rsx! {
         button {
             "data-testid": props.test_id,
-            class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 {fill} text-[18px] font-medium font-mono transition-colors",
+            class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 {fill} text-[18px] font-medium font-mono transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
             title: "{props.title}",
+            "aria-label": "{props.title}",
             onclick: move |evt| {
                 if props.state != ButtonState::Disabled {
                     props.onclick.call(evt);
@@ -196,7 +198,9 @@ fn LabelButton(
     rsx! {
         button {
             "data-testid": test_id,
-            class: "h-9 px-2 flex items-center justify-center rounded-md border border-transparent bg-transparent hover:bg-[var(--bg-elevated)] cursor-pointer p-0 outline-none mx-0.5 text-foreground text-[13px] transition-colors gap-1.5",
+            class: "h-9 px-2 flex items-center justify-center rounded-md border border-transparent bg-transparent hover:bg-[var(--bg-elevated)] cursor-pointer p-0 outline-none mx-0.5 text-foreground text-[13px] transition-colors gap-1.5 focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
+            title: "{text}",
+            "aria-label": "{text}",
             onclick: move |evt| {
                 if let Some(handler) = &onclick {
                     handler.call(evt);
@@ -206,6 +210,28 @@ fn LabelButton(
                 Icon { kind: i, size: 16 }
             }
             span { "{text}" }
+        }
+    }
+}
+
+#[component]
+fn ToolbarThemeToggle() -> Element {
+    let mut theme_mode = use_context::<Signal<ThemeMode>>();
+    let current = *theme_mode.read();
+    let label = current.label();
+    let aria_label = format!("Theme: {label}. Change theme");
+
+    rsx! {
+        button {
+            class: "h-9 px-2.5 flex items-center justify-center rounded-md border border-border bg-[var(--toolbar-bg)] text-muted-foreground hover:text-foreground hover:bg-[var(--bg-elevated)] cursor-pointer text-[12px] transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
+            "data-testid": "theme-toggle-btn",
+            title: "{aria_label}",
+            "aria-label": "{aria_label}",
+            onclick: move |_| {
+                let next = theme_mode.read().next();
+                theme_mode.set(next);
+            },
+            "{label}"
         }
     }
 }
@@ -247,11 +273,11 @@ pub fn Toolbar() -> Element {
     rsx! {
         div {
             "data-testid": "toolbar-root",
-            class: "h-14 shrink-0 bg-surface flex items-center justify-between px-4 border-b border-border-subtle w-full",
+            class: "h-14 shrink-0 bg-surface flex items-center justify-between gap-2 px-2 sm:px-4 border-b border-border-subtle w-full overflow-hidden",
 
             // Left section: Tools and actions
             div {
-                class: "flex items-center",
+                class: "flex items-center min-w-0",
 
                 // Tools
                 IconButton {
@@ -275,13 +301,6 @@ pub fn Toolbar() -> Element {
                     icon: IconKind::Edge,
                     variant: ButtonVariant::Tool { title: "Edge (L)" }
                 }
-                IconButton {
-                    test_id: "tool-subgraph",
-                    state: if *tool_signal.read() == ToolMode::Subgraph { ButtonState::Active } else { ButtonState::Default },
-                    onclick: move |_| tool_signal.set(ToolMode::Subgraph),
-                    icon: IconKind::Subgraph,
-                    variant: ButtonVariant::Tool { title: "Subgraph (R)" }
-                }
                 TextButton {
                     test_id: "tool-text",
                     state: if *tool_signal.read() == ToolMode::Text { ButtonState::Active } else { ButtonState::Default },
@@ -289,136 +308,150 @@ pub fn Toolbar() -> Element {
                     text: "T",
                     title: "Text (T)"
                 }
-                IconButton {
-                    test_id: "tool-grid",
-                    state: if show_grid { ButtonState::Active } else { ButtonState::Default },
-                    onclick: move |_| {
-                        let mut d = doc_signal.write();
-                        d.editor_state.show_grid = !d.editor_state.show_grid;
-                    },
-                    icon: IconKind::Grid,
-                    variant: ButtonVariant::GridToggle { title: "Toggle Grid" }
-                }
-
-                Divider {}
-
-                // History
-                IconButton {
-                    test_id: "toolbar-undo",
-                    state: if undo_disabled { ButtonState::Disabled } else { ButtonState::Default },
-                    onclick: move |_| { apply_undo(doc_signal, history_signal); },
-                    icon: IconKind::Undo,
-                    variant: ButtonVariant::Tool { title: "Undo" }
-                }
-                IconButton {
-                    test_id: "toolbar-redo",
-                    state: if redo_disabled { ButtonState::Disabled } else { ButtonState::Default },
-                    onclick: move |_| { apply_redo(doc_signal, history_signal); },
-                    icon: IconKind::Redo,
-                    variant: ButtonVariant::Tool { title: "Redo" }
-                }
-
-                Divider {}
-
-                // Zoom
-                IconButton {
-                    test_id: "zoom-in",
-                    state: ButtonState::Default,
-                    onclick: move |_| { let _ = apply_zoom_in(doc_signal, history_signal, *viewport_size_signal.read()); },
-                    icon: IconKind::ZoomIn,
-                    variant: ButtonVariant::Tool { title: "Zoom In" }
-                }
-                div {
-                    "data-testid": "zoom-reset",
-                    "data-zoom-percent": "{zoom_percent:.0}",
-                    class: "text-foreground font-mono text-[13px] mx-2 cursor-pointer select-none hover:text-[var(--accent)] transition-colors w-[45px] text-center",
-                    onclick: move |_| { let _ = apply_zoom_reset(doc_signal, history_signal, *viewport_size_signal.read()); },
-                    title: "Reset zoom",
-                    "{zoom_percent:.0}%"
-                }
-                IconButton {
-                    test_id: "zoom-out",
-                    state: ButtonState::Default,
-                    onclick: move |_| { let _ = apply_zoom_out(doc_signal, history_signal, *viewport_size_signal.read()); },
-                    icon: IconKind::ZoomOut,
-                    variant: ButtonVariant::Tool { title: "Zoom Out" }
-                }
-
-                Divider {}
-
-                // Delete
-                IconButton {
-                    test_id: "toolbar-delete",
-                    state: if stats.selected_count == 0 { ButtonState::Disabled } else { ButtonState::Default },
-                    onclick: move |_| {
-                        let selected_nodes: Vec<String> = {
-                            let doc = doc_signal.read();
-                            canvas_domain::selection_geometry::selected_node_ids(&doc)
-                                .into_iter()
-                                .map(|id| id.to_string())
-                                .collect()
-                        };
-                        let dispatch_result = crate::ui::dispatch::dispatch_node_delete_batch(&None, &selected_nodes);
-                        match dispatch_result {
-                            Ok(_) => crate::ui::commands::apply_clear_selection(doc_signal),
-                            Err(_) => {
-                                let _ = apply_delete_selected(doc_signal, history_signal);
-                            }
-                        }
-                    },
-                    icon: IconKind::Trash,
-                    variant: ButtonVariant::Destructive { title: "Delete" }
-                }
-
-                Divider {}
-
-                // Style settings
-                LabelButton {
-                    test_id: "style-line",
-                    icon: Some(IconKind::Minus), // Assuming we have Minus or Line icon
-                    text: "Solid",
-                    onclick: None,
-                }
-                LabelButton {
-                    test_id: "style-arrow-type",
-                    icon: Some(IconKind::ChevronRight),
-                    text: match *arrow_type_signal.read() {
-                        diagram_models::document::ArrowType::Default => "Default",
-                        diagram_models::document::ArrowType::Sharp => "Sharp",
-                        diagram_models::document::ArrowType::Curved => "Curved",
-                        diagram_models::document::ArrowType::Step => "Step",
-                        diagram_models::document::ArrowType::Straight => "Straight",
-                    },
-                    onclick: move |_| {
-                        use diagram_models::document::ArrowType;
-                        let next_type = match *arrow_type_signal.read() {
-                            ArrowType::Default => ArrowType::Sharp,
-                            ArrowType::Sharp => ArrowType::Curved,
-                            ArrowType::Curved => ArrowType::Step,
-                            ArrowType::Step => ArrowType::Straight,
-                            ArrowType::Straight => ArrowType::Default,
-                        };
-                        arrow_type_signal.set(next_type);
-                        let _ = crate::ui::commands::apply_arrow_type_to_selection(doc_signal, history_signal, next_type);
+                div { class: "hidden sm:flex items-center",
+                    IconButton {
+                        test_id: "tool-subgraph",
+                        state: if *tool_signal.read() == ToolMode::Subgraph { ButtonState::Active } else { ButtonState::Default },
+                        onclick: move |_| tool_signal.set(ToolMode::Subgraph),
+                        icon: IconKind::Subgraph,
+                        variant: ButtonVariant::Tool { title: "Subgraph (R)" }
+                    }
+                    IconButton {
+                        test_id: "tool-grid",
+                        state: if show_grid { ButtonState::Active } else { ButtonState::Default },
+                        onclick: move |_| {
+                            let mut d = doc_signal.write();
+                            d.editor_state.show_grid = !d.editor_state.show_grid;
+                        },
+                        icon: IconKind::Grid,
+                        variant: ButtonVariant::GridToggle { title: "Toggle Grid" }
                     }
                 }
-                IconButton {
-                    test_id: "style-arrow",
-                    state: ButtonState::Default,
-                    onclick: move |_| {
-                        let _ = apply_toggle_edge_direction(doc_signal, history_signal);
-                    },
-                    icon: IconKind::ArrowRight,
-                    variant: ButtonVariant::Standard
+
+                div { class: "hidden sm:flex items-center",
+                    Divider {}
+
+                    // History
+                    IconButton {
+                        test_id: "toolbar-undo",
+                        state: if undo_disabled { ButtonState::Disabled } else { ButtonState::Default },
+                        onclick: move |_| { apply_undo(doc_signal, history_signal); },
+                        icon: IconKind::Undo,
+                        variant: ButtonVariant::Tool { title: "Undo" }
+                    }
+                    IconButton {
+                        test_id: "toolbar-redo",
+                        state: if redo_disabled { ButtonState::Disabled } else { ButtonState::Default },
+                        onclick: move |_| { apply_redo(doc_signal, history_signal); },
+                        icon: IconKind::Redo,
+                        variant: ButtonVariant::Tool { title: "Redo" }
+                    }
+                }
+
+                div { class: "hidden md:flex items-center",
+                    Divider {}
+
+                    // Zoom
+                    IconButton {
+                        test_id: "zoom-in",
+                        state: ButtonState::Default,
+                        onclick: move |_| { let _ = apply_zoom_in(doc_signal, history_signal, *viewport_size_signal.read()); },
+                        icon: IconKind::ZoomIn,
+                        variant: ButtonVariant::Tool { title: "Zoom In" }
+                    }
+                    button {
+                        "data-testid": "zoom-reset",
+                        "data-zoom-percent": "{zoom_percent:.0}",
+                        class: "text-foreground font-mono text-[13px] mx-2 cursor-pointer select-none hover:text-[var(--accent)] transition-colors w-[45px] text-center rounded outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
+                        onclick: move |_| { let _ = apply_zoom_reset(doc_signal, history_signal, *viewport_size_signal.read()); },
+                        title: "Reset zoom",
+                        "aria-label": "Reset zoom",
+                        "{zoom_percent:.0}%"
+                    }
+                    IconButton {
+                        test_id: "zoom-out",
+                        state: ButtonState::Default,
+                        onclick: move |_| { let _ = apply_zoom_out(doc_signal, history_signal, *viewport_size_signal.read()); },
+                        icon: IconKind::ZoomOut,
+                        variant: ButtonVariant::Tool { title: "Zoom Out" }
+                    }
+
+                    Divider {}
+
+                    // Delete
+                    IconButton {
+                        test_id: "toolbar-delete",
+                        state: if stats.selected_count == 0 { ButtonState::Disabled } else { ButtonState::Default },
+                        onclick: move |_| {
+                            let selected_nodes: Vec<String> = {
+                                let doc = doc_signal.read();
+                                canvas_domain::selection_geometry::selected_node_ids(&doc)
+                                    .into_iter()
+                                    .map(|id| id.to_string())
+                                    .collect()
+                            };
+                            let dispatch_result = crate::ui::dispatch::dispatch_node_delete_batch(&None, &selected_nodes);
+                            match dispatch_result {
+                                Ok(_) => crate::ui::commands::apply_clear_selection(doc_signal),
+                                Err(_) => {
+                                    let _ = apply_delete_selected(doc_signal, history_signal);
+                                }
+                            }
+                        },
+                        icon: IconKind::Trash,
+                        variant: ButtonVariant::Destructive { title: "Delete" }
+                    }
+
+                    Divider {}
+
+                    // Style settings
+                    LabelButton {
+                        test_id: "style-line",
+                        icon: Some(IconKind::Minus),
+                        text: "Solid",
+                        onclick: None,
+                    }
+                    LabelButton {
+                        test_id: "style-arrow-type",
+                        icon: Some(IconKind::ChevronRight),
+                        text: match *arrow_type_signal.read() {
+                            diagram_models::document::ArrowType::Default => "Default",
+                            diagram_models::document::ArrowType::Sharp => "Sharp",
+                            diagram_models::document::ArrowType::Curved => "Curved",
+                            diagram_models::document::ArrowType::Step => "Step",
+                            diagram_models::document::ArrowType::Straight => "Straight",
+                        },
+                        onclick: move |_| {
+                            use diagram_models::document::ArrowType;
+                            let next_type = match *arrow_type_signal.read() {
+                                ArrowType::Default => ArrowType::Sharp,
+                                ArrowType::Sharp => ArrowType::Curved,
+                                ArrowType::Curved => ArrowType::Step,
+                                ArrowType::Step => ArrowType::Straight,
+                                ArrowType::Straight => ArrowType::Default,
+                            };
+                            arrow_type_signal.set(next_type);
+                            let _ = crate::ui::commands::apply_arrow_type_to_selection(doc_signal, history_signal, next_type);
+                        }
+                    }
+                    IconButton {
+                        test_id: "style-arrow",
+                        state: ButtonState::Default,
+                        onclick: move |_| {
+                            let _ = apply_toggle_edge_direction(doc_signal, history_signal);
+                        },
+                        icon: IconKind::ArrowRight,
+                        variant: ButtonVariant::Tool { title: "Toggle edge direction" }
+                    }
                 }
             }
 
                 // Right section: Export/Stats
                 div {
-                    class: "flex items-center gap-2",
+                    class: "flex items-center gap-2 shrink-0",
 
                     div {
-                        class: "flex items-center",
+                        class: "hidden sm:flex items-center",
                         IconButton {
                             test_id: "toolbar-export",
                             state: if is_dirty { ButtonState::Active } else { ButtonState::Default },
@@ -444,12 +477,14 @@ pub fn Toolbar() -> Element {
                         }
                     }
 
+                    ToolbarThemeToggle {}
+
                 div {
-                    class: "w-[1px] h-6 bg-[var(--border-subtle)] ml-1 mr-3"
+                    class: "hidden lg:block w-[1px] h-6 bg-[var(--border-subtle)] ml-1 mr-3"
                 }
 
                 div {
-                    class: "text-muted-foreground font-mono text-[12px] flex gap-3 whitespace-nowrap",
+                    class: "hidden lg:flex text-muted-foreground font-mono text-[12px] gap-3 whitespace-nowrap",
                     span { "data-testid": "counter-nodes", "data-count": "{stats.node_count}", "{stats.node_count} nodes" }
                     span { "data-testid": "counter-edges", "data-count": "{stats.edge_count}", "{stats.edge_count} edges" }
                     span { "data-testid": "counter-selected", "data-count": "{stats.selected_count}", "Rev {stats.revision}" }

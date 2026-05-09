@@ -22,6 +22,7 @@ pub fn SidebarTrigger(
             class: "{trigger_class}",
             style: trigger_style,
             title: "{title}",
+            "aria-label": "{title}",
             onclick: move |evt| {
                 if let Some(handler) = &onclick {
                     handler.call(evt);
@@ -59,6 +60,7 @@ pub fn SidebarRail(
             button {
                 style: "border: none; background: transparent; color: {TEXT_MUTED}; cursor: pointer; font-size: 12px; padding: 4px;",
                 title: "{title}",
+                "aria-label": "{title}",
                 onclick: move |evt| {
                     if let Some(handler) = &onclick {
                         handler.call(evt);

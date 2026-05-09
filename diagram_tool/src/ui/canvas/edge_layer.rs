@@ -14,13 +14,14 @@ use serde_json::Value;
 #[allow(non_snake_case)]
 #[allow(clippy::needless_collect)]
 pub fn EdgeLayer(props: EdgeLayerProps) -> Element {
-    // Subscribe to lightweight trigger Memo instead of full doc_signal.
-    // This avoids re-rendering all edges when only unrelated document fields change.
+    // Subscribe to viewport/geometry triggers, plus document revision for edge-only
+    // updates such as direction and arrow-type changes.
     let trigger = props.node_viewport_trigger.read();
     let _geometry_tick = *props.geometry_render_tick.read();
+    let _document_revision = props.doc_signal.read().revision;
     let (camera_x, camera_y, zoom, selected_items) = (trigger.0, trigger.1, trigger.2, &trigger.3);
 
-    // Peek at document for edge/node geometry — does NOT subscribe to doc_signal.
+    // Peek at document for edge/node geometry after the revision subscription above.
     let doc = props.doc_signal.peek();
     let canvas_origin = canvas_domain::CanvasCoord::from(*props.canvas_origin.read());
     let ctx = EdgeContext {

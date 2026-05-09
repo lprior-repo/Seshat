@@ -234,9 +234,9 @@ pub fn handle_mouseup(
         let previous_revision = initial_state.document.revision;
         match apply_event(initial_state, event) {
             Ok(new_state) => {
-                let history = history_signal.read().clone();
-                *history_signal.write() = history.push(doc_signal.read().clone());
                 if new_state.document.revision != previous_revision {
+                    let history = history_signal.read().clone();
+                    *history_signal.write() = history.push(doc_signal.read().clone());
                     geometry_render_tick.with_mut(|tick| *tick = (*tick).saturating_add(1));
                 }
                 doc_signal.set(new_state.document);

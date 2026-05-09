@@ -42,6 +42,30 @@ pub fn App() -> Element {
     #[cfg(target_arch = "wasm32")]
     autosave_hooks::use_auto_save(doc_signal);
 
+    #[cfg(target_arch = "wasm32")]
+    use_effect(move || {
+        let _eval = document::eval(
+            r#"
+                (() => {
+                    const cleanup = () => {
+                        if (!document.querySelector('[data-testid="canvas-root"]')) {
+                            return;
+                        }
+                        document.body.dataset.seshatHydrated = "true";
+                        document.querySelectorAll('#__dx-toast-inner, .dx-toast-inner').forEach((node) => {
+                            if (node.textContent && node.textContent.includes('Your app is being rebuilt')) {
+                                node.remove();
+                            }
+                        });
+                    };
+                    cleanup();
+                    requestAnimationFrame(cleanup);
+                    setTimeout(cleanup, 250);
+                })();
+            "#,
+        );
+    });
+
     use_effect(move || {
         let doc = doc_signal.read();
         let next = ToolbarStats {
