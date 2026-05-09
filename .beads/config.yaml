@@ -55,3 +55,7 @@
 
 sync:
   git-remote: "priorlewis43/seshat-database"
+
+dolt.database: "seshat"
+
+dolt.port: 44051

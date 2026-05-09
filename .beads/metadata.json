@@ -1,9 +1,9 @@
 {
-  "backend": "dolt",
   "database": "dolt",
-  "dolt_database": "Seshat",
+  "backend": "dolt",
   "dolt_mode": "server",
   "dolt_server_host": "127.0.0.1",
-  "dolt_server_port": 3307,
+  "dolt_server_port": 44051,
+  "dolt_database": "seshat",
   "project_id": "b9b33db6-c52d-4843-945d-1c917502dd84"
 }
