@@ -134,7 +134,7 @@ tasks:
       git checkout -b gh-pages
       git add -A
       git commit -m "Deploy optimized WASM to GitHub Pages"
-      git push -f git@github.com:lprior-repo/Seshat.git gh-pages:gh-pages
+      git push -f https://github.com/lprior-repo/Seshat.git gh-pages:gh-pages
     options:
       cache: false
 

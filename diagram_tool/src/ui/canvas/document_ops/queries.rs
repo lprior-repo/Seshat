@@ -6,6 +6,8 @@ use diagram_models::{
 use serde_json::Value;
 use uuid::Uuid;
 
+const SESHAT_BASE_PATH: &str = env!("SESHAT_BASE_PATH");
+
 use crate::{
     geometry::hit_test_margin,
     icons::icon_index,
@@ -92,7 +94,7 @@ pub fn icon_url_for_relpath(file_relpath: &str) -> Option<String> {
     if file_relpath.contains("..") || file_relpath.starts_with('/') {
         return None;
     }
-    Some(format!("/resources/{file_relpath}"))
+    Some(format!("{SESHAT_BASE_PATH}/resources/{file_relpath}"))
 }
 
 pub fn icon_url(icon_key: &str) -> Option<String> {
