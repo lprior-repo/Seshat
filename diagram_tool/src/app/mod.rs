@@ -5,6 +5,7 @@
 #![forbid(unsafe_code)]
 #![allow(dead_code)]
 
+mod async_sync;
 mod autosave_hooks;
 mod state;
 mod types;
@@ -36,6 +37,7 @@ pub fn App() -> Element {
 
     use_global_keyboard();
     use_e2e_reset_hook();
+    let _ = async_sync::provide_db_event_context();
 
     #[cfg(target_arch = "wasm32")]
     autosave_hooks::use_auto_save(doc_signal);
