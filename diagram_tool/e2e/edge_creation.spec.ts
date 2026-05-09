@@ -245,6 +245,32 @@ test("right-click on a node edge does not start arrow drawing @baseline", async 
   expect(pageErrors).toHaveLength(0);
 });
 
+test("right-click release while drawing cancels without creating an arrow @baseline", async ({ page }) => {
+  const pageErrors = trapPageErrors(page);
+  await freshBasePathStart(page);
+
+  const loaded = await loadDocument(page, twoNodeDocument());
+  expect(loaded).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+  await page.getByTestId("tool-edge").click();
+
+  const source = await nodeBox(page, "source");
+  const target = await nodeBox(page, "target");
+  await page.mouse.move(source.box.x + source.box.width - 2, source.box.y + 12);
+  await page.mouse.down();
+  await page.mouse.move(target.box.x + 1, target.box.y + target.box.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.down({ button: "right" });
+  await page.mouse.up({ button: "right" });
+  await page.mouse.up();
+
+  await expectEdgeCount(page, 0);
+  await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
+  expect(pageErrors).toHaveLength(0);
+});
+
 test("right-click background drag does not pan the canvas @baseline", async ({ page }) => {
   const pageErrors = trapPageErrors(page);
   await freshBasePathStart(page);

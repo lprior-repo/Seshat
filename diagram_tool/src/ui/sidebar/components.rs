@@ -17,7 +17,12 @@ use super::models::{
 use super::{toggle_set, SidebarState};
 
 #[component]
-pub fn SearchBox(mut search: Signal<String>, search_is_truncated: bool) -> Element {
+pub fn SearchBox(
+    mut search: Signal<String>,
+    search_is_truncated: bool,
+    search_visible_count: usize,
+    search_limit: Option<Signal<usize>>,
+) -> Element {
     rsx! {
         div {
             class: "relative mb-4",
@@ -35,8 +40,18 @@ pub fn SearchBox(mut search: Signal<String>, search_is_truncated: bool) -> Eleme
         }
         if search_is_truncated {
             div {
-                class: "text-[11px] text-muted-foreground mb-2",
-                "Showing first {models::MAX_SEARCH_RESULTS} matches. Refine search to narrow results."
+                class: "mb-2 flex items-center justify-between gap-2 text-[11px] text-muted-foreground",
+                span { "Showing first {search_visible_count} matches." }
+                if let Some(mut limit) = search_limit {
+                    button {
+                        class: "rounded-md border border-[var(--border-subtle)] bg-elevated px-2 py-1 text-[11px] text-foreground hover:bg-[var(--accent-soft)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
+                        "aria-label": "Load more search results",
+                        onclick: move |_| {
+                            limit.with_mut(|value| *value = value.saturating_add(models::MAX_SEARCH_RESULTS));
+                        },
+                        "Load more search results"
+                    }
+                }
             }
         }
     }
@@ -199,7 +214,12 @@ mod tests {
         let mut vdom = VirtualDom::new(|| {
             let search = use_signal(|| String::from("database"));
             rsx! {
-                SearchBox { search, search_is_truncated: true }
+                SearchBox {
+                    search,
+                    search_is_truncated: true,
+                    search_visible_count: models::MAX_SEARCH_RESULTS,
+                    search_limit: None,
+                }
             }
         });
         vdom.rebuild_in_place();

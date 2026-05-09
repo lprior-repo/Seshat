@@ -10,6 +10,7 @@ use canvas_domain::perf::to_canvas_coords;
 use diagram_models::document::{
     EdgeId, LockState, Node, NodeId, NodeKind, NodeStyle, OrderedFloat,
 };
+use dioxus::html::input_data::MouseButton;
 use dioxus::prelude::*;
 use im::HashMap;
 use uuid::Uuid;
@@ -39,6 +40,13 @@ pub fn handle_mouse_up(state: CanvasState, evt: Event<dioxus::prelude::MouseData
             start_port,
             ..
         } => {
+            if evt.data.trigger_button() != Some(MouseButton::Primary) {
+                if evt.data.trigger_button() == Some(MouseButton::Secondary) {
+                    evt.prevent_default();
+                }
+                *mode = InteractionMode::Select;
+                return;
+            }
             let next_mode =
                 handle_drawing_edge_release(&state, &evt, from_node.clone(), *start_port, toast);
             *mode = next_mode;

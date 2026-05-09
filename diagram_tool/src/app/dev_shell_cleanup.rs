@@ -7,6 +7,9 @@ pub fn use_dev_shell_cleanup() {
         let _eval = document::eval(
             r#"
                 (() => {
+                    if (typeof window.__seshatDevShellCleanup === "function") {
+                        window.__seshatDevShellCleanup();
+                    }
                     const staleToastText = "Your app is being rebuilt. A non-hot-reloadable change occurred and we must rebuild.";
                     const normalize = (value) => (value || "").replace(/\s+/g, " ").trim();
                     const isExactStaleDioxusToast = (node) => {
@@ -30,6 +33,19 @@ pub fn use_dev_shell_cleanup() {
                     cleanup();
                     requestAnimationFrame(cleanup);
                     setTimeout(cleanup, 250);
+                    const observer = new MutationObserver(cleanup);
+                    observer.observe(document.body, { childList: true, subtree: true });
+                    const timeout = setTimeout(() => {
+                        observer.disconnect();
+                        if (window.__seshatDevShellCleanup === disconnect) {
+                            delete window.__seshatDevShellCleanup;
+                        }
+                    }, 10000);
+                    const disconnect = () => {
+                        clearTimeout(timeout);
+                        observer.disconnect();
+                    };
+                    window.__seshatDevShellCleanup = disconnect;
                 })();
             "#,
         );

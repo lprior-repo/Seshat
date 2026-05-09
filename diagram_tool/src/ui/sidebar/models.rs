@@ -27,6 +27,7 @@ pub struct ProviderBucket {
 pub struct ProviderBucketsResult {
     pub buckets: Vec<ProviderBucket>,
     pub is_truncated: bool,
+    pub visible_count: usize,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
@@ -133,16 +134,21 @@ pub fn bucket_icons_by_category(icons: &[IconMeta]) -> Vec<CategoryBucket> {
         .collect()
 }
 
-pub fn search_matches(index: &[IconMeta], query: LowercasedQuery<'_>) -> (usize, Vec<IconMeta>) {
+pub fn search_matches(
+    index: &[IconMeta],
+    query: LowercasedQuery<'_>,
+    limit: usize,
+) -> (usize, Vec<IconMeta>) {
+    let cap = limit.max(1);
     let mut visible: Vec<IconMeta> = index
         .iter()
         .filter(|icon| matches_query(icon, query))
-        .take(MAX_SEARCH_RESULTS + 1)
+        .take(cap.saturating_add(1))
         .cloned()
         .collect();
 
     let count = visible.len();
-    if count > MAX_SEARCH_RESULTS {
+    if count > cap {
         visible.pop();
     }
 
@@ -191,8 +197,9 @@ pub fn build_provider_bucket(
     })
 }
 
-fn build_search_buckets(query: LowercasedQuery<'_>) -> ProviderBucketsResult {
-    let (match_count, limited) = search_matches(&icon_index().all, query);
+fn build_search_buckets(query: LowercasedQuery<'_>, search_limit: usize) -> ProviderBucketsResult {
+    let (match_count, limited) = search_matches(&icon_index().all, query, search_limit);
+    let visible_count = limited.len();
     let mut grouped = BTreeMap::<String, Vec<IconMeta>>::new();
 
     for icon in limited {
@@ -215,13 +222,15 @@ fn build_search_buckets(query: LowercasedQuery<'_>) -> ProviderBucketsResult {
 
     ProviderBucketsResult {
         buckets,
-        is_truncated: match_count > MAX_SEARCH_RESULTS,
+        is_truncated: match_count > search_limit.max(1),
+        visible_count,
     }
 }
 
 pub fn build_provider_buckets(
     query: LowercasedQuery<'_>,
     provider_limits: &BTreeMap<String, usize>,
+    search_limit: usize,
 ) -> ProviderBucketsResult {
     if query.is_empty() {
         let index = icon_index();
@@ -239,9 +248,10 @@ pub fn build_provider_buckets(
         ProviderBucketsResult {
             buckets,
             is_truncated: false,
+            visible_count: 0,
         }
     } else {
-        build_search_buckets(query)
+        build_search_buckets(query, search_limit)
     }
 }
 

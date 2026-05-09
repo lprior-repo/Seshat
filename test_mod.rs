@@ -295,7 +295,7 @@ pub fn Sidebar() -> Element {
 
     let trimmed = state.search.read().trim().to_ascii_lowercase();
     let lowercased = models::LowercasedQuery::new(&trimmed).expect("valid lowercase");
-    let result = build_provider_buckets(lowercased, &state.provider_limits.read());
+    let result = build_provider_buckets(lowercased, &state.provider_limits.read(), MAX_SEARCH_RESULTS);
 
     render_open_sidebar(sidebar_ui, ui_state.is_mobile, result, state)
 }

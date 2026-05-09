@@ -63,6 +63,11 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
 
     if is_right {
         evt.prevent_default();
+        interaction_mode.with_mut(|mode| {
+            if matches!(mode, InteractionMode::DrawingEdge { .. }) {
+                *mode = InteractionMode::Select;
+            }
+        });
         return;
     }
 

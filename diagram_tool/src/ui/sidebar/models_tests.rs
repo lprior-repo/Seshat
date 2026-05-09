@@ -166,9 +166,28 @@ fn test_mid_category_slicing() {
 #[test]
 fn test_search_matches_are_capped_for_dom_scalability() {
     let query = LowercasedQuery::empty();
-    let (_, icons) = search_matches(&crate::icons::icon_index().all, query);
+    let (_, icons) = search_matches(&crate::icons::icon_index().all, query, MAX_SEARCH_RESULTS);
 
     assert!(icons.len() <= MAX_SEARCH_RESULTS);
+}
+
+#[test]
+fn test_search_matches_report_more_beyond_limit() {
+    let query = LowercasedQuery::empty();
+    let (match_count, icons) = search_matches(&crate::icons::icon_index().all, query, 2);
+
+    assert_eq!(icons.len(), 2);
+    assert_eq!(match_count, 3);
+}
+
+#[test]
+fn test_search_matches_expand_when_limit_increases() {
+    let query = LowercasedQuery::empty();
+    let (_, first_page) = search_matches(&crate::icons::icon_index().all, query, 2);
+    let (_, second_page) = search_matches(&crate::icons::icon_index().all, query, 4);
+
+    assert_eq!(first_page.len(), 2);
+    assert_eq!(second_page.len(), 4);
 }
 
 #[test]

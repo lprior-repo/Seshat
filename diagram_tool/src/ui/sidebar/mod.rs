@@ -23,7 +23,7 @@ use crate::ui::{
 use self::components::{ProviderAccordion, SearchBox, SidebarFooter};
 use self::models::{
     build_provider_buckets, category_keys_for_visible_provider_icons, DEFAULT_EXPANDED_CATEGORY,
-    DEFAULT_EXPANDED_PROVIDER, INITIAL_PROVIDER_LIMIT,
+    DEFAULT_EXPANDED_PROVIDER, INITIAL_PROVIDER_LIMIT, MAX_SEARCH_RESULTS,
 };
 
 #[derive(Clone, Copy, PartialEq)]
@@ -33,11 +33,13 @@ pub struct SidebarState {
     pub expanded_providers: Signal<BTreeSet<String>>,
     pub expanded_categories: Signal<BTreeSet<String>>,
     pub provider_limits: Signal<BTreeMap<String, usize>>,
+    pub search_limit: Signal<usize>,
 }
 
 fn use_sidebar_state() -> SidebarState {
     let search = use_signal(String::new);
     let mut debounced_search = use_signal(String::new);
+    let mut search_limit = use_signal(|| MAX_SEARCH_RESULTS);
 
     use_resource(move || {
         let current = search();
@@ -46,6 +48,7 @@ fn use_sidebar_state() -> SidebarState {
                 gloo_timers::future::sleep(std::time::Duration::from_millis(200)).await;
             }
             debounced_search.set(current);
+            search_limit.set(MAX_SEARCH_RESULTS);
         }
     });
 
@@ -66,6 +69,7 @@ fn use_sidebar_state() -> SidebarState {
             }
         }),
         provider_limits: use_signal(BTreeMap::new),
+        search_limit,
     }
 }
 
@@ -119,7 +123,12 @@ fn render_sidebar_content(
     rsx! {
         SidebarSheet { class: Some(String::from("flex flex-col flex-1 min-h-0 gap-2.5")),
             SidebarHeader { title: String::from("Components"), action_label, onaction: move |_| { close_sidebar(sidebar_ui); } }
-            SearchBox { search: state.search, search_is_truncated: result.is_truncated }
+            SearchBox {
+                search: state.search,
+                search_is_truncated: result.is_truncated,
+                search_visible_count: result.visible_count,
+                search_limit: Some(state.search_limit),
+            }
             SidebarInset { class: Some(String::from("flex flex-1 min-h-0 flex-col overflow-y-auto pr-1")),
                 SidebarMenu {
                     for bucket in result.buckets.into_iter() { ProviderAccordion { bucket, query_active, state } }
@@ -158,7 +167,11 @@ pub fn Sidebar() -> Element {
         let trimmed = state.debounced_search.read().trim().to_lowercase();
         let lowercased =
             models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
-        build_provider_buckets(lowercased, &state.provider_limits.read())
+        build_provider_buckets(
+            lowercased,
+            &state.provider_limits.read(),
+            *state.search_limit.read(),
+        )
     });
 
     let ui_state = *sidebar_ui.read();
