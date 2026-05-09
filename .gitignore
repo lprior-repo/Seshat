@@ -58,6 +58,7 @@ mutants.out.old/
 # Agent runtime lock files
 .runtime/
 .claude/
+.memsearch/
 
 # Local scratch workspaces
 dont-fuck-up/
