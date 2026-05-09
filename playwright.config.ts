@@ -94,7 +94,7 @@ export default defineConfig({
   ],
   webServer: {
     command: "moon run :serve-e2e",
-    url: "http://127.0.0.1:8081",
+    url: "http://127.0.0.1:8081/Seshat/",
     reuseExistingServer: true,
     timeout: 300_000,
   },

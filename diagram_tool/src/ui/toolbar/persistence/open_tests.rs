@@ -38,7 +38,7 @@ mod open_workspace_integration_tests {
     use crate::ui::toast::ToastApi;
     use dioxus::prelude::{rsx, Component, Element, VirtualDom};
 
-    /// Test that apply_open_document creates session that is not dirty.
+    /// Test that `apply_open_document` creates session that is not dirty.
     #[test]
     fn apply_open_document_creates_clean_session() {
         let doc = make_test_doc();
@@ -52,7 +52,7 @@ mod open_workspace_integration_tests {
         assert!(!session.is_dirty(), "Loaded session should not be dirty");
     }
 
-    /// Test that report_open_error updates toast to error state.
+    /// Test that `report_open_error` updates toast to error state.
     #[test]
     fn report_open_error_updates_toast_to_error() {
         #[component]
@@ -86,21 +86,21 @@ mod open_workspace_integration_tests {
         vdom.rebuild_in_place();
     }
 
-    /// Test that OpenError::Parse displays correctly.
+    /// Test that `OpenError::Parse` displays correctly.
     #[test]
     fn open_error_parse_display() {
         let err = OpenError::Parse(String::from("invalid json"));
         assert_eq!(format!("{err}"), "Parse error: invalid json");
     }
 
-    /// Test that OpenError::Validation displays correctly.
+    /// Test that `OpenError::Validation` displays correctly.
     #[test]
     fn open_error_validation_display() {
         let err = OpenError::Validation(String::from("missing required field"));
         assert_eq!(format!("{err}"), "Validation error: missing required field");
     }
 
-    /// Test that OpenError::Io displays correctly.
+    /// Test that `OpenError::Io` displays correctly.
     #[test]
     fn open_error_io_display() {
         let err = OpenError::Io(String::from("file not found"));

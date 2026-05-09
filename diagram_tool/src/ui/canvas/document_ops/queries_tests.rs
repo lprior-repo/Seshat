@@ -262,17 +262,21 @@ fn make_node_with_metadata(metadata: im::HashMap<String, Value>) -> Node {
     }
 }
 
+fn resource_url(path: &str) -> String {
+    format!("{}/resources/{path}", env!("SESHAT_BASE_PATH"))
+}
+
 #[test]
 fn icon_url_for_relpath_formats_path() {
     assert_eq!(
         icon_url_for_relpath("gcp/compute/gke.png"),
-        Some("/resources/gcp/compute/gke.png".to_string())
+        Some(resource_url("gcp/compute/gke.png"))
     );
 }
 
 #[test]
 fn icon_url_for_relpath_empty_path() {
-    assert_eq!(icon_url_for_relpath(""), Some("/resources/".to_string()));
+    assert_eq!(icon_url_for_relpath(""), Some(resource_url("")));
 }
 
 #[test]
@@ -316,7 +320,7 @@ fn node_image_url_ignores_old_icon_data_url_key() {
     let node = make_node_with_metadata(metadata);
     assert_eq!(
         node_image_url(&node),
-        Some("/resources/".to_string()),
+        Some(resource_url("")),
         "Must fall back to icon_url for empty icon key"
     );
 }
@@ -347,7 +351,7 @@ fn node_image_url_falls_back_to_icon_url_when_metadata_missing() {
     let result = node_image_url(&node);
     assert_eq!(
         result,
-        Some("/resources/aws/analytics/athena.png".to_string()),
+        Some(resource_url("aws/analytics/athena.png")),
         "Must fall back to icon_url for icon key in index"
     );
 }
@@ -358,7 +362,7 @@ fn icon_url_returns_url_for_known_icon_in_index() {
     // Key format is lowercase, e.g. "aws/analytics/athena".
     assert_eq!(
         icon_url("aws/analytics/athena"),
-        Some("/resources/aws/analytics/athena.png".to_string()),
+        Some(resource_url("aws/analytics/athena.png")),
         "Known icon key must resolve from the index"
     );
 }
@@ -367,7 +371,7 @@ fn icon_url_returns_url_for_known_icon_in_index() {
 fn icon_url_for_relpath_with_trailing_slash() {
     assert_eq!(
         icon_url_for_relpath("aws/"),
-        Some("/resources/aws/".to_string()),
+        Some(resource_url("aws/")),
         "Trailing slash must be preserved"
     );
 }
@@ -385,7 +389,7 @@ fn icon_url_for_relpath_with_leading_slash() {
 fn icon_url_for_relpath_with_unicode() {
     assert_eq!(
         icon_url_for_relpath("émoji/icon.png"),
-        Some("/resources/émoji/icon.png".to_string()),
+        Some(resource_url("émoji/icon.png")),
         "Unicode characters must be preserved"
     );
 }
@@ -394,7 +398,7 @@ fn icon_url_for_relpath_with_unicode() {
 fn icon_url_empty_string_returns_assets_resources() {
     assert_eq!(
         icon_url(""),
-        Some("/resources/".to_string()),
+        Some(resource_url("")),
         "Empty key must produce base path"
     );
 }
@@ -403,7 +407,7 @@ fn icon_url_empty_string_returns_assets_resources() {
 fn icon_url_single_segment_path() {
     assert_eq!(
         icon_url("athena"),
-        Some("/resources/athena".to_string()),
+        Some(resource_url("athena")),
         "Bare name without slash must resolve directly"
     );
 }
@@ -413,7 +417,7 @@ fn node_image_url_empty_metadata_empty_icon() {
     let node = make_node_with_metadata(im::HashMap::new());
     assert_eq!(
         node_image_url(&node),
-        Some("/resources/".to_string()),
+        Some(resource_url("")),
         "Empty metadata and empty icon must fall back to base path"
     );
 }

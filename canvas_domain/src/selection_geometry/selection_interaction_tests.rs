@@ -97,9 +97,7 @@ fn given_selection_history_when_undo_redo_then_selection_restored() {
         "After undo, n2 should not be selected"
     );
 
-    let (redone_doc, _history) = history
-        .redo(restored_doc.clone())
-        .expect("redo should succeed");
+    let (redone_doc, _history) = history.redo(restored_doc).expect("redo should succeed");
 
     assert_eq!(
         redone_doc.editor_state.selected_items.len(),
@@ -128,10 +126,7 @@ fn given_single_selected_node_when_edit_mode_initiated_then_target_is_identifiab
             editable_id.clone(),
             make_node(NodeKind::Node, 0.0, 0.0, 100.0, 50.0),
         )
-        .update(
-            other_id.clone(),
-            make_node(NodeKind::Node, 200.0, 0.0, 100.0, 50.0),
-        );
+        .update(other_id, make_node(NodeKind::Node, 200.0, 0.0, 100.0, 50.0));
 
     let _ = doc
         .editor_state

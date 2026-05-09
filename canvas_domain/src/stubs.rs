@@ -208,8 +208,8 @@ mod tests {
 
     #[test]
     fn label_target_type_variants() {
-        let _node = LabelTargetType::Node;
-        let _edge = LabelTargetType::Edge;
+        assert!(matches!(LabelTargetType::Node, LabelTargetType::Node));
+        assert!(matches!(LabelTargetType::Edge, LabelTargetType::Edge));
     }
 
     #[test]
@@ -283,9 +283,9 @@ mod tests {
         let (gp_id, gp) = make_node("grandparent", 0.0, 0.0, None);
         let (p_id, p) = make_node("parent", 10.0, 10.0, Some(gp_id.clone()));
         let (c_id, c) = make_node("child", 20.0, 20.0, Some(p_id.clone()));
-        doc.document.nodes.insert(gp_id.clone(), gp);
-        doc.document.nodes.insert(p_id.clone(), p);
-        doc.document.nodes.insert(c_id.clone(), c);
+        doc.document.nodes.insert(gp_id, gp);
+        doc.document.nodes.insert(p_id, p);
+        doc.document.nodes.insert(c_id, c);
 
         let selected: HashSet<String> = HashSet::new();
         let selected = selected.update("grandparent".to_string());
@@ -324,7 +324,7 @@ mod tests {
             ..make_node("b", 10.0, 10.0, None).1
         };
         doc.document.nodes.insert(a_id.clone(), a_node);
-        doc.document.nodes.insert(b_id.clone(), b_node);
+        doc.document.nodes.insert(b_id, b_node);
 
         let selected: HashSet<String> = HashSet::new();
         let selected = selected.update("a".to_string());
@@ -368,7 +368,6 @@ mod tests {
         let e1 = DispatchError::Failed;
         let e2 = DispatchError::Failed;
         assert_eq!(e1, e2);
-        assert_eq!(e1.clone(), e2);
         assert_eq!(format!("{e1:?}"), "Failed");
     }
 }

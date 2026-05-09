@@ -8,13 +8,13 @@ tasks:
       fuser -k $PORT/tcp 2>/dev/null || true
       sleep 1
       echo "Starting dx serve without sccache..."
-      cd diagram_tool && env -u RUSTC_WRAPPER dx serve --platform web --port $PORT --open false
+      cd diagram_tool && env -u RUSTC_WRAPPER SESHAT_BASE_PATH=/Seshat dx serve --platform web --port $PORT --open false
     options:
       cache: false
 
   serve-e2e:
     script: |
-      cd diagram_tool && env -u RUSTC_WRAPPER dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
+      cd diagram_tool && env -u RUSTC_WRAPPER SESHAT_BASE_PATH=/Seshat dx serve --platform web --port 8081 --open false --watch false --hot-reload false --interactive false
     options:
       cache: false
 
@@ -106,11 +106,11 @@ tasks:
 
   build-web:
     script: |
-      cd diagram_tool && dx build --platform web --release
+      cd diagram_tool && env SESHAT_BASE_PATH=/Seshat dx build --platform web --release
 
   bundle-web-optimized:
     script: |
-      cd diagram_tool && dx bundle --release --base-path /Seshat/
+      cd diagram_tool && env SESHAT_BASE_PATH=/Seshat dx bundle --release --base-path /Seshat/
       if ! command -v wasm-opt &> /dev/null; then
         echo "wasm-opt not found, downloading..."
         wget https://github.com/WebAssembly/binaryen/releases/download/version_117/binaryen-version_117-x86_64-linux.tar.gz -O /tmp/binaryen.tar.gz

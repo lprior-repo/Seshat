@@ -1,6 +1,6 @@
 //! Async sync layer — provides DB event context to the UI.
 //!
-//! After removing store_async/store_bridge, this module provides a no-op
+//! After removing `store_async/store_bridge`, this module provides a no-op
 //! context on WASM (no persistent store) and native (store removed).
 
 use dioxus::prelude::*;

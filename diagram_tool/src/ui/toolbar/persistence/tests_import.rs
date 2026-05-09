@@ -192,7 +192,7 @@ proptest! {
         let current = DiagramDocument::default();
         let invalid_contents = "{this is not valid json at all!!!";
 
-        let mut doc = current.clone();
+        let mut doc = current;
         let mut history = History::new();
 
         // Record state before

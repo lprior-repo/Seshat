@@ -41,7 +41,10 @@ mod tests {
         };
         assert_eq!(
             icon_src(&meta),
-            Some("/resources/aws/Analytics/athena.svg".to_string())
+            Some(format!(
+                "{}/resources/aws/Analytics/athena.svg",
+                env!("SESHAT_BASE_PATH")
+            ))
         );
     }
 }

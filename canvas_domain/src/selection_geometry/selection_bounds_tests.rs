@@ -99,8 +99,17 @@ fn given_nodes_at_negative_coords_when_selected_then_bounds_correct() {
 
     let (min_x, min_y, width, height) = bounds.unwrap();
 
-    assert_eq!(min_x, -200.0, "min_x should be -200");
-    assert_eq!(min_y, -200.0, "min_y should be -200");
-    assert_eq!(width, 330.0, "width should be 330 (130 - (-200))");
-    assert_eq!(height, 310.0, "height should be 310 (110 - (-200))");
+    assert!(
+        (min_x - -200.0).abs() < f64::EPSILON,
+        "min_x should be -200"
+    );
+    assert!(
+        (min_y - -200.0).abs() < f64::EPSILON,
+        "min_y should be -200"
+    );
+    assert!((width - 330.0).abs() < f64::EPSILON, "width should be 330");
+    assert!(
+        (height - 310.0).abs() < f64::EPSILON,
+        "height should be 310"
+    );
 }

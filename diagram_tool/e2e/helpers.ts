@@ -7,6 +7,7 @@ const SELECTOR_COUNTER_EDGES = '[data-testid="counter-edges"]';
 const SELECTOR_COUNTER_SELECTED = '[data-testid="counter-selected"]';
 const SELECTOR_ZOOM_RESET = '[data-testid="zoom-reset"]';
 const SELECTOR_MINIMAP_VIEWPORT = '[data-testid="minimap-viewport"]';
+const APP_BASE_PATH = "/Seshat/";
 
 /** Timeout (ms) for waiting for the WASM app to expose reset hooks. */
 const E2E_READY_TIMEOUT = 30_000;
@@ -341,7 +342,7 @@ export async function waitForCleanState(page: Page) {
 /**
  * Full fresh-start sequence for a test:
  * 1. Clear browser storage (localStorage, cookies)
- * 2. Navigate to "/"
+ * 2. Navigate to the Dioxus base path
  * 3. Wait for UI ready + e2e hooks
  * 4. Reset document state (in case prior navigation preserved state)
  * 5. Verify clean state
@@ -354,7 +355,7 @@ export async function freshStart(page: Page) {
       try { localStorage.clear(); } catch (_) { /* noop */ }
       try { sessionStorage.clear(); } catch (_) { /* noop */ }
     }),
-    () => page.goto("/", { waitUntil: "domcontentloaded" }),
+    () => page.goto(APP_BASE_PATH, { waitUntil: "domcontentloaded" }),
     () => waitForUiReady(page),
     () => waitForE2eReady(page),
     () => resetDocument(page),
