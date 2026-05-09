@@ -10,7 +10,10 @@ use crate::{
 };
 
 use super::icon_tile::IconTile;
-use super::models::{self, category_key, ProviderBucket, INITIAL_PROVIDER_LIMIT, LOAD_MORE_STEP};
+use super::models::{
+    self, category_key, category_keys_for_visible_provider_icons, ProviderBucket,
+    INITIAL_PROVIDER_LIMIT, LOAD_MORE_STEP,
+};
 use super::{toggle_set, SidebarState};
 
 #[component]
@@ -125,6 +128,7 @@ pub fn CategoryAccordion(
 pub fn LoadMoreButton(
     provider: String,
     mut provider_limits: Signal<BTreeMap<String, usize>>,
+    mut expanded_categories: Signal<BTreeSet<String>>,
 ) -> Element {
     rsx! {
         SidebarMenuButton {
@@ -132,7 +136,13 @@ pub fn LoadMoreButton(
             onclick: move |_| {
                 let mut limits = provider_limits.write();
                 let current = limits.get(&provider).copied().unwrap_or(INITIAL_PROVIDER_LIMIT);
-                limits.insert(provider.clone(), current + LOAD_MORE_STEP);
+                let next = current + LOAD_MORE_STEP;
+                limits.insert(provider.clone(), next);
+                if let Ok(keys) = category_keys_for_visible_provider_icons(&provider, next, crate::icons::icon_index()) {
+                    expanded_categories.with_mut(|expanded| {
+                        expanded.extend(keys);
+                    });
+                }
             },
         }
     }
@@ -158,7 +168,7 @@ pub fn ProviderAccordion(
                             CategoryAccordion { provider: provider.clone(), category, query_active, expanded_categories: state.expanded_categories }
                         }
                     }
-                    if bucket.has_more { LoadMoreButton { provider: provider, provider_limits: state.provider_limits } }
+                    if bucket.has_more { LoadMoreButton { provider: provider, provider_limits: state.provider_limits, expanded_categories: state.expanded_categories } }
                 }
             }
         }

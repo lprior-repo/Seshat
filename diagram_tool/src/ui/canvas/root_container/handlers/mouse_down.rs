@@ -61,9 +61,13 @@ pub fn handle_mouse_down(state: CanvasState, evt: Event<dioxus::prelude::MouseDa
         evt.prevent_default();
     }
 
-    if *space_pressed.read() || is_middle || is_right || tool == ToolMode::Pan {
-        space_pan_active
-            .set(*space_pressed.read() && !is_middle && !is_right && tool != ToolMode::Pan);
+    if is_right {
+        evt.prevent_default();
+        return;
+    }
+
+    if *space_pressed.read() || is_middle || tool == ToolMode::Pan {
+        space_pan_active.set(*space_pressed.read() && !is_middle && tool != ToolMode::Pan);
         interaction_mode.set(InteractionMode::Panning {
             last_pos: (local_x, local_y),
         });

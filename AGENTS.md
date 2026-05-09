@@ -23,6 +23,36 @@ moon run :ci-source    # Format + clippy + tests
 npx playwright test    # E2E tests
 ```
 
+## Dioxus UI Bug Workflow
+
+Use this exact path for frontend bugs. The app lives under `/Seshat/`; root `/` is not the app.
+
+```bash
+fuser -k 8081/tcp 2>/dev/null || true
+SESHAT_BASE_PATH=/Seshat moon run :serve-e2e >/tmp/seshat-ui-debug.log 2>&1 &
+```
+
+Live inspection with the Dioxus agent:
+
+```bash
+/home/lewis/src/dioxus-agent-rs/target/release/dioxus-agent-rs --url http://127.0.0.1:8081/Seshat/ --json eval "({title: document.title, ready: window.__seshatE2eReady === true, canvas: !!document.querySelector('[data-testid=\"canvas-root\"]')})"
+/home/lewis/src/dioxus-agent-rs/target/release/dioxus-agent-rs --url http://127.0.0.1:8081/Seshat/ --json screenshot /tmp/seshat-ui.png
+```
+
+Targeted UI regressions:
+
+```bash
+rtk playwright test diagram_tool/e2e/ui_polish.spec.ts --project=e2e-smoke --reporter=list
+rtk playwright test diagram_tool/e2e/edge_creation.spec.ts --project=e2e-smoke --reporter=list
+```
+
+Rules for UI fixes:
+- Kill port `8081` before browser verification so stale WASM is not reused.
+- Use Playwright helpers from `diagram_tool/e2e/helpers.ts`: `waitForNoRebuildOverlay`, `waitForE2eReady`, `resetDocument`, and `waitForCleanState`.
+- If Tailwind classes or `diagram_tool/input.css` change, regenerate `diagram_tool/assets/tailwind.css` with `npx --yes @tailwindcss/cli -i ./input.css -o ./assets/tailwind.css` from `diagram_tool/`.
+- After `moon run :ci-source`, restore incidental `.claude/tdd-guard/data/test.json` churn unless the task intentionally changes guard fixtures.
+- Do not call a UI bug fixed until focused Playwright, `moon run :ci-source`, and a Dioxus-agent eval/screenshot have all passed.
+
 ### sccache Workaround
 
 sccache (enabled via `RUSTC_WRAPPER=sccache` in `~/.zshrc`) causes build failures with Dioxus because:

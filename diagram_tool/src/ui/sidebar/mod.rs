@@ -21,7 +21,10 @@ use crate::ui::{
 };
 
 use self::components::{ProviderAccordion, SearchBox, SidebarFooter};
-use self::models::{build_provider_buckets, DEFAULT_EXPANDED_CATEGORY, DEFAULT_EXPANDED_PROVIDER};
+use self::models::{
+    build_provider_buckets, category_keys_for_visible_provider_icons, DEFAULT_EXPANDED_CATEGORY,
+    DEFAULT_EXPANDED_PROVIDER, INITIAL_PROVIDER_LIMIT,
+};
 
 #[derive(Clone, Copy, PartialEq)]
 pub struct SidebarState {
@@ -53,7 +56,14 @@ fn use_sidebar_state() -> SidebarState {
             BTreeSet::from([String::from(DEFAULT_EXPANDED_PROVIDER)])
         }),
         expanded_categories: use_signal(|| {
-            BTreeSet::from([String::from(DEFAULT_EXPANDED_CATEGORY)])
+            match category_keys_for_visible_provider_icons(
+                DEFAULT_EXPANDED_PROVIDER,
+                INITIAL_PROVIDER_LIMIT,
+                crate::icons::icon_index(),
+            ) {
+                Ok(keys) => keys.into_iter().collect(),
+                Err(_) => BTreeSet::from([String::from(DEFAULT_EXPANDED_CATEGORY)]),
+            }
         }),
         provider_limits: use_signal(BTreeMap::new),
     }

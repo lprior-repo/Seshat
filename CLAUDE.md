@@ -50,6 +50,38 @@ moon run :test         # Run unit tests
 npx playwright test    # Run E2E tests
 ```
 
+## 6. UI Bug Debugging Workflow
+
+When fixing Dioxus UI bugs, do not rely on source inspection alone. Get into the live app and prove the behavior in Chromium.
+
+1. Start from a fresh app server so Playwright and the agent do not reuse stale WASM:
+   ```bash
+   fuser -k 8081/tcp 2>/dev/null || true
+   SESHAT_BASE_PATH=/Seshat moon run :serve-e2e >/tmp/seshat-ui-debug.log 2>&1 &
+   ```
+2. Always use the app base path URL: `http://127.0.0.1:8081/Seshat/`. Root `/` is not the app.
+3. Use the local Dioxus agent for fast live inspection:
+   ```bash
+   /home/lewis/src/dioxus-agent-rs/target/release/dioxus-agent-rs --url http://127.0.0.1:8081/Seshat/ --json eval "({title: document.title, ready: window.__seshatE2eReady === true, canvas: !!document.querySelector('[data-testid=\"canvas-root\"]')})"
+   /home/lewis/src/dioxus-agent-rs/target/release/dioxus-agent-rs --url http://127.0.0.1:8081/Seshat/ --json screenshot /tmp/seshat-ui.png
+   ```
+4. Use Playwright for regressions and interactions. Prefer existing helpers in `diagram_tool/e2e/helpers.ts`: `waitForNoRebuildOverlay`, `waitForE2eReady`, `resetDocument`, `waitForCleanState`, and `/Seshat/` navigation.
+5. For layout/sidebar/toolbar bugs, run the targeted spec first:
+   ```bash
+   rtk playwright test diagram_tool/e2e/ui_polish.spec.ts --project=e2e-smoke --reporter=list
+   ```
+6. For arrows/edges/canvas pointer bugs, run:
+   ```bash
+   rtk playwright test diagram_tool/e2e/edge_creation.spec.ts --project=e2e-smoke --reporter=list
+   ```
+7. If editing Tailwind classes or `diagram_tool/input.css`, regenerate the committed CSS asset:
+   ```bash
+   cd diagram_tool && npx --yes @tailwindcss/cli -i ./input.css -o ./assets/tailwind.css
+   ```
+8. After `moon run :ci-source`, restore generated `.claude/tdd-guard/data/test.json` unless the task explicitly changes guard fixtures. Do not commit incidental guard-output churn.
+
+Minimum UI fix proof: focused Playwright spec passes, `moon run :ci-source` passes, and a Dioxus-agent eval or screenshot proves the live app is hydrated at `/Seshat/`.
+
 ### sccache Workaround (CRITICAL)
 
 sccache (enabled via `RUSTC_WRAPPER=sccache` in `~/.zshrc`) causes build failures with Dioxus because:

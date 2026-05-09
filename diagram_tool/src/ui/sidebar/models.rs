@@ -4,7 +4,7 @@ use crate::icons::{icon_index, IconMeta};
 
 pub const INITIAL_PROVIDER_LIMIT: usize = 25;
 pub const LOAD_MORE_STEP: usize = 25;
-pub const MAX_SEARCH_RESULTS: usize = 150;
+pub const MAX_SEARCH_RESULTS: usize = 96;
 pub const DEFAULT_EXPANDED_PROVIDER: &str = "aws";
 pub const DEFAULT_EXPANDED_CATEGORY: &str = "aws/analytics";
 
@@ -88,6 +88,35 @@ pub fn category_key(provider: &str, category_label: &str) -> String {
         }
     }
     format!("{}/{}", provider.to_ascii_lowercase(), normalized)
+}
+
+pub fn category_keys_for_visible_provider_icons(
+    provider: &str,
+    limit: usize,
+    index: &crate::icons::IconIndex,
+) -> Result<Vec<String>, Error> {
+    if limit == 0 || !limit.is_multiple_of(LOAD_MORE_STEP) {
+        return Err(Error::InvalidLimit(limit));
+    }
+
+    if !index.by_provider.contains_key(provider) {
+        return Err(Error::ProviderNotFound);
+    }
+
+    let keys = index
+        .icons_by_provider(provider)
+        .into_iter()
+        .take(limit)
+        .map(category_label)
+        .map(|label| category_key(provider, &label))
+        .fold(Vec::<String>::new(), |mut acc, key| {
+            if !acc.contains(&key) {
+                acc.push(key);
+            }
+            acc
+        });
+
+    Ok(keys)
 }
 
 pub fn bucket_icons_by_category(icons: &[IconMeta]) -> Vec<CategoryBucket> {

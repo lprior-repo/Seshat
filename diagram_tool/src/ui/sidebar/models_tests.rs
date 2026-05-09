@@ -162,3 +162,23 @@ fn test_mid_category_slicing() {
     assert_eq!(bucket.categories[0].name, "Mega");
     assert_eq!(bucket.categories[0].icons.len(), 25);
 }
+
+#[test]
+fn test_search_matches_are_capped_for_dom_scalability() {
+    let query = LowercasedQuery::empty();
+    let (_, icons) = search_matches(&crate::icons::icon_index().all, query);
+
+    assert!(icons.len() <= MAX_SEARCH_RESULTS);
+}
+
+#[test]
+fn test_visible_provider_category_keys_cover_loaded_icon_window() {
+    let index = create_test_index(&[("A", 10), ("B", 10), ("C", 10)]);
+
+    let keys = category_keys_for_visible_provider_icons("test_provider", 25, &index).unwrap();
+
+    assert_eq!(
+        keys,
+        vec!["test_provider/a", "test_provider/b", "test_provider/c"]
+    );
+}

@@ -4,6 +4,7 @@
 #![forbid(unsafe_code)]
 
 pub mod auto_save;
+mod mobile_menu;
 pub mod persistence;
 mod persistence_compat;
 
@@ -23,6 +24,7 @@ use crate::ui::editor::ToolMode;
 use crate::ui::icons::{Icon, IconKind};
 use crate::ui::theme::{ThemeMode, ACCENT};
 use dioxus::prelude::*;
+use mobile_menu::MobileToolbarMenu;
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 #[allow(clippy::struct_field_names)]
@@ -273,7 +275,7 @@ pub fn Toolbar() -> Element {
     rsx! {
         div {
             "data-testid": "toolbar-root",
-            class: "h-14 shrink-0 bg-surface flex items-center justify-between gap-2 px-2 sm:px-4 border-b border-border-subtle w-full overflow-hidden",
+            class: "relative h-14 shrink-0 bg-surface flex items-center justify-between gap-2 px-2 sm:px-4 border-b border-border-subtle w-full overflow-hidden",
 
             // Left section: Tools and actions
             div {
@@ -477,6 +479,7 @@ pub fn Toolbar() -> Element {
                         }
                     }
 
+                    MobileToolbarMenu {}
                     ToolbarThemeToggle {}
 
                 div {

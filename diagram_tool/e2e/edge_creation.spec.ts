@@ -1,5 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
 import {
+  canvas,
   expectEdgeCount,
   expectNodeCount,
   loadDocument,
@@ -241,6 +242,38 @@ test("right-click on a node edge does not start arrow drawing @baseline", async 
 
   await expectEdgeCount(page, 0);
   await expect(page.locator('path[data-node-kind="edge"]')).toHaveCount(0);
+  expect(pageErrors).toHaveLength(0);
+});
+
+test("right-click background drag does not pan the canvas @baseline", async ({ page }) => {
+  const pageErrors = trapPageErrors(page);
+  await freshBasePathStart(page);
+
+  const loaded = await loadDocument(page, twoNodeDocument());
+  expect(loaded).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+
+  const source = await nodeBox(page, "source");
+  const canvasBox = await runEffect(() => canvas(page).boundingBox());
+  if (!canvasBox) {
+    throw new Error("canvas box missing");
+  }
+
+  await page.mouse.move(canvasBox.x + canvasBox.width - 120, canvasBox.y + canvasBox.height - 120);
+  await page.mouse.down({ button: "right" });
+  await page.mouse.move(canvasBox.x + canvasBox.width - 260, canvasBox.y + canvasBox.height - 210, {
+    steps: 8,
+  });
+  await page.mouse.up({ button: "right" });
+
+  await expectEdgeCount(page, 0);
+  await expect
+    .poll(async () => {
+      const next = await source.node.boundingBox();
+      return Math.abs((next?.x ?? source.box.x) - source.box.x) + Math.abs((next?.y ?? source.box.y) - source.box.y);
+    })
+    .toBeLessThan(2);
   expect(pageErrors).toHaveLength(0);
 });
 
