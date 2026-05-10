@@ -56,9 +56,8 @@ const getCanvasBox = async (page: Page) => {
   return box ?? { x: 0, y: 0, width: 800, height: 600 };
 };
 
-const waitForAnimationFrames = (page: Page, frames = 2) =>
-  effectStep(() =>
-    page.evaluate((count) => {
+const waitForAnimationFrameTicks = (page: Page, frames = 2): Promise<void> =>
+  page.evaluate((count) => {
       const target = Math.max(1, Math.floor(count));
       return new Promise<void>((resolve) => {
         let remaining = target;
@@ -72,8 +71,10 @@ const waitForAnimationFrames = (page: Page, frames = 2) =>
         };
         requestAnimationFrame(tick);
       });
-    }, frames),
-  );
+    }, frames);
+
+const waitForAnimationFrames = (page: Page, frames = 2) =>
+  effectStep(() => waitForAnimationFrameTicks(page, frames));
 
 const opProgram = (page: Page, op: RedQueenOp): Effect.Effect<void, never, never> => {
   const repeated = (n: number, program: Effect.Effect<void, never, never>) =>
@@ -182,7 +183,7 @@ const opProgram = (page: Page, op: RedQueenOp): Effect.Effect<void, never, never
       return effectStep(async () => {
         const subgraphs = await page.getByTestId("node").filter({ hasText: "Subgraph" }).all();
         for (let i = 0; i < Math.min(subgraphs.length, op.intensity); i += 1) {
-          await subgraphs[i].dblclick();
+          await subgraphs[i].dblclick({ force: true });
         }
       });
 
@@ -200,13 +201,14 @@ const opProgram = (page: Page, op: RedQueenOp): Effect.Effect<void, never, never
 
     case "import_export_roundtrip":
       return effectStep(async () => {
-        const exportBtn = page.getByRole("button", { name: /Export JSON/ });
+        const exportBtn = page.getByTestId("toolbar-export");
         if (await exportBtn.isVisible().catch(() => false)) {
           const [download] = await Promise.all([
             page.waitForEvent("download", { timeout: 5000 }).catch(() => null),
             exportBtn.click().catch(() => {}),
           ]);
           void download;
+          await waitForAnimationFrameTicks(page, 2);
         }
       });
 
@@ -296,15 +298,17 @@ const opProgram = (page: Page, op: RedQueenOp): Effect.Effect<void, never, never
 
     case "theme_flip_during_gesture":
       return effectStep(async () => {
-        const theme = page.getByRole("combobox").first();
+        const theme = page.getByTestId("theme-toggle-btn");
         const node = page.getByTestId("node").first();
         const box = await node.boundingBox();
         if (box) {
           await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
           await page.mouse.down();
-          await theme.selectOption({ index: 0 }).catch(() => {});
+          await theme.evaluate((element) => (element as HTMLButtonElement).click()).catch(() => {});
+          await waitForAnimationFrameTicks(page, 2);
           await page.mouse.move(box.x + box.width / 2 + 50, box.y + box.height / 2, { steps: 5 });
-          await theme.selectOption({ index: 1 }).catch(() => {});
+          await theme.evaluate((element) => (element as HTMLButtonElement).click()).catch(() => {});
+          await waitForAnimationFrameTicks(page, 2);
           await page.mouse.up();
         }
       });

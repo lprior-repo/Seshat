@@ -21,6 +21,7 @@ pub use types::DraggedIconPayload;
 use crate::hooks::e2e_reset::use_e2e_reset_hook;
 use crate::hooks::keyboard::use_global_keyboard;
 use crate::ui::canvas::Canvas;
+use crate::ui::properties::PropertiesPanel;
 use crate::ui::sidebar::Sidebar;
 use crate::ui::theme_provider::ThemeProvider;
 use crate::ui::toast::Toaster;
@@ -64,6 +65,13 @@ pub fn App() -> Element {
     } else {
         "Invalid"
     };
+    let panels = *state.panels.read();
+    let show_properties = panels.properties;
+    let validation_class = if panels.validation {
+        "absolute left-4 bottom-4 z-20 rounded border border-border bg-surface/95 px-2 py-1 text-[12px] pointer-events-none opacity-100"
+    } else {
+        "absolute left-4 bottom-4 z-20 text-[12px] pointer-events-none opacity-0"
+    };
 
     rsx! {
         ThemeProvider {
@@ -78,9 +86,13 @@ pub fn App() -> Element {
                     class: "flex flex-1 relative min-w-0 min-h-0",
                     Sidebar {}
                     Canvas {}
+                    if show_properties {
+                        PropertiesPanel {}
+                    }
                     span {
                         "data-testid": "validation-status",
-                        class: "absolute left-4 bottom-4 z-20 text-[12px] pointer-events-none opacity-0",
+                        "data-visible": "{panels.validation}",
+                        class: "{validation_class}",
                         "{validation_status}"
                     }
                 }

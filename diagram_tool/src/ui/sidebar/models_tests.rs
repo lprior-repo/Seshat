@@ -57,6 +57,48 @@ fn given_non_matching_query_when_matches_query_then_returns_false() {
     ));
 }
 
+#[test]
+fn lowercased_query_accepts_uncased_unicode_and_special_characters() {
+    let query = LowercasedQuery::new("日本語<>\"&zzzzzzzzzz");
+
+    assert_eq!(
+        query.map(|value| value.as_str()),
+        Some("日本語<>\"&zzzzzzzzzz")
+    );
+}
+
+#[test]
+fn search_matches_returns_no_icons_when_unicode_special_query_has_no_matches() {
+    let query = LowercasedQuery::new("日本語<>\"&zzzzzzzzzz");
+    let result = query.map(|valid_query| {
+        search_matches(
+            &crate::icons::icon_index().all,
+            valid_query,
+            MAX_SEARCH_RESULTS,
+        )
+    });
+
+    assert_eq!(result, Some((0, Vec::<IconMeta>::new())));
+}
+
+#[test]
+fn build_provider_buckets_returns_empty_search_result_for_unicode_special_query() {
+    let provider_limits = std::collections::BTreeMap::new();
+    let query = LowercasedQuery::new("日本語<>\"&zzzzzzzzzz");
+    let result = query.map(|valid_query| {
+        build_provider_buckets(valid_query, &provider_limits, MAX_SEARCH_RESULTS)
+    });
+
+    assert_eq!(
+        result,
+        Some(ProviderBucketsResult {
+            buckets: Vec::<ProviderBucket>::new(),
+            is_truncated: false,
+            visible_count: 0,
+        })
+    );
+}
+
 fn create_test_index(categories: &[(&str, usize)]) -> crate::icons::IconIndex {
     let mut all = Vec::new();
     let mut by_provider = std::collections::BTreeMap::new();

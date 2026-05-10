@@ -8,6 +8,7 @@ pub mod icons;
 pub mod interaction;
 pub mod mobile;
 pub mod panels;
+pub mod properties;
 pub mod sidebar;
 pub mod sidebar_persistence;
 pub mod sidebar_primitives;

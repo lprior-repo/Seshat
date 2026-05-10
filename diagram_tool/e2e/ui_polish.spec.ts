@@ -169,6 +169,20 @@ test.describe("UI polish regressions", () => {
     });
   }
 
+  test("shows no results instead of default icons for unicode special-character search @baseline", async ({ page }) => {
+    await page.setViewportSize({ width: 1280, height: 800 });
+    await freshLayoutStart(page);
+
+    const query = '日本語<>"&zzzzzzzzzz';
+    const search = page.getByRole("textbox", { name: "Search icons" });
+    await search.fill(query);
+
+    await expect(search).toHaveValue(query);
+    await expect.poll(async () => page.getByTestId("icon-item").count()).toBe(0);
+    await expect(page.getByRole("button", { name: "Load more search results" })).toHaveCount(0);
+    await expect(page.getByText(/Showing first \d+ matches/)).toHaveCount(0);
+  });
+
   for (const viewport of NON_MOBILE_VIEWPORTS) {
     test(`keeps the light shell crisp at ${viewport.name} width @baseline`, async ({ page }) => {
       await page.setViewportSize({ width: viewport.width, height: viewport.height });

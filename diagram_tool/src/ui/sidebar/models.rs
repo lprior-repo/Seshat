@@ -35,10 +35,7 @@ pub struct LowercasedQuery<'a>(&'a str);
 
 impl<'a> LowercasedQuery<'a> {
     pub fn new(query: &'a str) -> Option<Self> {
-        if query
-            .chars()
-            .all(|c| c.is_lowercase() || !c.is_alphabetic())
-        {
+        if query.chars().all(|c| !c.is_uppercase()) {
             Some(Self(query))
         } else {
             None

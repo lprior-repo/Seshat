@@ -2,6 +2,7 @@ use crate::app::types::DraggedIconPayload;
 use crate::history::History;
 use crate::ui::editor::ToolMode;
 use crate::ui::mobile::SidebarUiState;
+use crate::ui::panels::PanelVisibility;
 use crate::ui::toast::{AiConflictState, ToastQueue};
 use crate::ui::toolbar::ToolbarStats;
 use diagram_models::clipboard::ClipboardData;
@@ -20,6 +21,7 @@ pub struct AppState {
     pub arrow_type: Signal<ArrowType>,
     pub dragging_icon: Signal<Option<DraggedIconPayload>>,
     pub sidebar: Signal<SidebarUiState>,
+    pub panels: Signal<PanelVisibility>,
     pub toolbar_stats: Signal<ToolbarStats>,
     pub viewport_size: Signal<(f64, f64)>,
     pub ai_conflict: Signal<Option<AiConflictState>>,
@@ -44,6 +46,7 @@ impl AppState {
             arrow_type: Signal::new(ArrowType::Default),
             dragging_icon: Signal::new(None),
             sidebar: Signal::new(SidebarUiState::default()),
+            panels: Signal::new(PanelVisibility::default()),
             toolbar_stats: Signal::new(ToolbarStats::default()),
             viewport_size: Signal::new((0.0_f64, 0.0_f64)),
             ai_conflict: Signal::new(None),
@@ -70,6 +73,7 @@ mod tests {
             assert_eq!(state.edge_style.read().clone(), EdgeStyle::Solid);
             assert_eq!(state.arrow_type.read().clone(), ArrowType::Default);
             assert_eq!(state.sidebar.read().open, true);
+            assert!(state.panels.read().properties);
             assert_eq!(*state.canvas_reset_trigger.read(), 0);
             assert!(!state.session.read().is_dirty());
             assert!(state.session.read().file_path().is_none());

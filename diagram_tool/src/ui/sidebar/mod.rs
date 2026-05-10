@@ -165,8 +165,10 @@ pub fn Sidebar() -> Element {
 
     let result = use_memo(move || {
         let trimmed = state.debounced_search.read().trim().to_lowercase();
-        let lowercased =
-            models::LowercasedQuery::new(&trimmed).unwrap_or_else(models::LowercasedQuery::empty);
+        let lowercased = match models::LowercasedQuery::new(&trimmed) {
+            Some(query) => query,
+            None => models::LowercasedQuery::empty(),
+        };
         build_provider_buckets(
             lowercased,
             &state.provider_limits.read(),

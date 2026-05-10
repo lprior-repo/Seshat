@@ -9,6 +9,7 @@ pub struct PanelVisibility {
     pub sidebar: bool,
     pub minimap: bool,
     pub validation: bool,
+    pub properties: bool,
 }
 
 impl Default for PanelVisibility {
@@ -17,6 +18,7 @@ impl Default for PanelVisibility {
             sidebar: true,
             minimap: true,
             validation: false,
+            properties: true,
         }
     }
 }
@@ -31,5 +33,6 @@ mod tests {
         assert!(panels.sidebar);
         assert!(panels.minimap);
         assert!(!panels.validation);
+        assert!(panels.properties);
     }
 }

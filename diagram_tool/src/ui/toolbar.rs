@@ -239,39 +239,72 @@ fn ToolbarThemeToggle() -> Element {
 }
 
 #[component]
-fn CompatibilityControls(mut validate_trigger: Signal<u64>) -> Element {
+fn PanelControls(
+    sidebar: Signal<crate::ui::mobile::SidebarUiState>,
+    mut validate_trigger: Signal<u64>,
+    mut panels: Signal<crate::ui::panels::PanelVisibility>,
+) -> Element {
+    let sidebar_state = *sidebar.read();
+    let panels_state = *panels.read();
+    let icons_active = if sidebar_state.is_mobile {
+        sidebar_state.open_mobile
+    } else {
+        sidebar_state.open
+    };
+
     rsx! {
-        button {
-            "data-testid": "panel-icons-toggle",
-            style: "position:fixed;right:8px;bottom:8px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
-            title: "Toggle icons panel",
-            "aria-label": "Toggle icons panel",
-            onclick: move |_| {},
-        }
-        button {
-            "data-testid": "panel-mini-toggle",
-            style: "position:fixed;right:8px;bottom:40px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
-            title: "Toggle minimap",
-            "aria-label": "Toggle minimap",
-            onclick: move |_| {},
-        }
-        button {
-            "data-testid": "panel-valid-toggle",
-            style: "position:fixed;right:8px;bottom:72px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
-            title: "Toggle validation",
-            "aria-label": "Toggle validation",
-            onclick: move |_| {},
-        }
-        button {
-            "data-testid": "toolbar-validate",
-            style: "position:fixed;right:8px;bottom:104px;width:24px;height:24px;opacity:0;z-index:2147483647;padding:0;border:0;margin:0;pointer-events:auto;background:transparent;color:transparent;",
-            title: "Validate document",
-            "aria-label": "Validate document",
-            onclick: move |_| {
-                validate_trigger.with_mut(|trigger| {
-                    *trigger = trigger.saturating_add(1);
-                });
-            },
+        div { class: "hidden lg:flex items-center gap-1",
+            TextButton {
+                test_id: "panel-icons-toggle",
+                state: if icons_active { ButtonState::Active } else { ButtonState::Default },
+                onclick: move |_| crate::ui::mobile::toggle_sidebar(sidebar, panels),
+                text: "I",
+                title: "Toggle icons panel"
+            }
+            TextButton {
+                test_id: "panel-mini-toggle",
+                state: if panels_state.minimap { ButtonState::Active } else { ButtonState::Default },
+                onclick: move |_| {
+                    panels.with_mut(|visibility| {
+                        visibility.minimap = !visibility.minimap;
+                    });
+                },
+                text: "M",
+                title: "Toggle minimap"
+            }
+            TextButton {
+                test_id: "panel-valid-toggle",
+                state: if panels_state.validation { ButtonState::Active } else { ButtonState::Default },
+                onclick: move |_| {
+                    panels.with_mut(|visibility| {
+                        visibility.validation = !visibility.validation;
+                    });
+                },
+                text: "V",
+                title: "Toggle validation panel"
+            }
+            TextButton {
+                test_id: "panel-props-toggle",
+                state: if panels_state.properties { ButtonState::Active } else { ButtonState::Default },
+                onclick: move |_| {
+                    panels.with_mut(|visibility| {
+                        visibility.properties = !visibility.properties;
+                    });
+                },
+                text: "P",
+                title: "Toggle properties panel"
+            }
+            TextButton {
+                test_id: "toolbar-validate",
+                state: ButtonState::Default,
+                onclick: move |_| {
+                    validate_trigger.with_mut(|trigger| {
+                        *trigger = trigger.saturating_add(1);
+                    });
+                },
+                text: "C",
+                title: "Validate document"
+            }
         }
     }
 }
@@ -284,7 +317,8 @@ pub fn Toolbar() -> Element {
     let history_signal = app_state.history;
     let mut tool_signal = app_state.tool_mode;
     let mut arrow_type_signal = app_state.arrow_type;
-    let mut validate_trigger = app_state.validate_trigger;
+    let validate_trigger = app_state.validate_trigger;
+    let panels = app_state.panels;
     let toasts = app_state.toasts;
 
     let toolbar_stats = app_state.toolbar_stats;
@@ -312,7 +346,6 @@ pub fn Toolbar() -> Element {
     }
 
     rsx! {
-        CompatibilityControls { validate_trigger }
         div {
             "data-testid": "toolbar-root",
             class: "relative h-14 shrink-0 bg-surface flex items-center justify-between gap-2 px-2 sm:px-4 border-b border-border-subtle w-full overflow-hidden",
@@ -518,6 +551,8 @@ pub fn Toolbar() -> Element {
                             variant: ButtonVariant::Tool { title: "Import (Ctrl+O)" }
                         }
                     }
+
+                    PanelControls { sidebar: app_state.sidebar, validate_trigger, panels }
 
                     MobileToolbarMenu {}
                     ToolbarThemeToggle {}

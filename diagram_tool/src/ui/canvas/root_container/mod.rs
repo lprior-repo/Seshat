@@ -20,6 +20,8 @@ use handlers::{
 #[component]
 pub fn RootContainer(state: CanvasState) -> Element {
     let mut drag_over = state.drag_over;
+    let app_state = use_context::<crate::app::AppState>();
+    let minimap_visible = app_state.panels.read().minimap;
 
     let bg_color = BG_BASE;
     let is_dragging_selection = matches!(
@@ -35,6 +37,11 @@ pub fn RootContainer(state: CanvasState) -> Element {
         " diagram-canvas--dragging"
     } else {
         ""
+    };
+    let minimap_class = if minimap_visible {
+        "absolute right-4 bottom-4 w-28 h-20 pointer-events-none rounded border border-border bg-[var(--minimap-bg)] opacity-100"
+    } else {
+        "absolute right-4 bottom-4 w-28 h-20 pointer-events-none opacity-0"
     };
     let cursor_style = if *state.space_pressed.read() {
         if *state.space_pan_active.read() {
@@ -226,7 +233,8 @@ pub fn RootContainer(state: CanvasState) -> Element {
 
             div {
                 "data-testid": "minimap-viewport",
-                class: "absolute right-4 bottom-4 w-28 h-20 pointer-events-none opacity-0",
+                class: "{minimap_class}",
+                "data-visible": "{minimap_visible}",
                 style: "z-index: 12;"
             }
 

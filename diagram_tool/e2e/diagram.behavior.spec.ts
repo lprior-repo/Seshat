@@ -13,25 +13,25 @@ import {
 test.describe("diagram editor hardening", () => {
   test.describe.configure({ mode: "parallel" });
 
-  test("loads with core panels and controls", async ({ page }) => {
+  test("loads with core panels and controls @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
-    await expect(page.getByRole("button", { name: "Auto-Arrange" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Validate" })).toBeVisible();
+    await expect(page.getByTestId("toolbar-validate")).toHaveCount(1);
+    await expect(page.getByTestId("panel-props-toggle")).toHaveCount(1);
     await expect(page.getByRole("heading", { name: "Properties" })).toBeVisible();
     await expectEdgeCount(page, 0);
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("survives rapid panel toggles", async ({ page }) => {
+  test("survives rapid panel toggles @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
-    const icons = page.getByRole("button", { name: "Icons", exact: true });
-    const props = page.getByRole("button", { name: "Props", exact: true });
-    const mini = page.getByRole("button", { name: "Mini", exact: true });
-    const valid = page.getByRole("button", { name: "Valid", exact: true });
+    const icons = page.getByTestId("panel-icons-toggle");
+    const props = page.getByTestId("panel-props-toggle");
+    const mini = page.getByTestId("panel-mini-toggle");
+    const valid = page.getByTestId("panel-valid-toggle");
 
     for (let i = 0; i < 5; i += 1) {
       await runEffect(() => icons.click());
@@ -40,18 +40,22 @@ test.describe("diagram editor hardening", () => {
       await runEffect(() => valid.click());
     }
 
+    await expect(page.getByText("Components")).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Properties" })).toHaveCount(0);
+    await expect(page.getByTestId("minimap-viewport")).toHaveAttribute("data-visible", "false");
+    await expect(page.getByTestId("validation-status")).toHaveAttribute("data-visible", "true");
     await expect(canvas(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Export JSON" })).toBeVisible();
+    await expect(page.getByTestId("toolbar-export")).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("survives validate storm while toggling panels", async ({ page }) => {
+  test("survives validate storm while toggling panels @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
-    const validate = page.getByRole("button", { name: "Validate", exact: true });
-    const valid = page.getByRole("button", { name: "Valid", exact: true });
-    const props = page.getByRole("button", { name: "Props", exact: true });
+    const validate = page.getByTestId("toolbar-validate");
+    const valid = page.getByTestId("panel-valid-toggle");
+    const props = page.getByTestId("panel-props-toggle");
 
     for (let i = 0; i < 12; i += 1) {
       await runEffect(() => validate.click());
@@ -61,34 +65,39 @@ test.describe("diagram editor hardening", () => {
       await runEffect(() => props.click());
     }
 
-    await expect(page.getByRole("button", { name: "Auto-Arrange" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Properties" })).toBeVisible();
+    await expect(page.getByTestId("validation-status")).toHaveAttribute("data-visible", "false");
+    await expect(page.getByTestId("toolbar-validate")).toHaveCount(1);
     await expectNodeCount(page, 0);
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("handles aggressive zoom and theme flips", async ({ page }) => {
+  test("handles aggressive zoom and theme flips @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
-    const zoomIn = page.getByRole("button", { name: "+", exact: true }).first();
-    const zoomOut = page.getByRole("button", { name: "-", exact: true });
-    const theme = page.getByRole("combobox").first();
+    const zoomIn = page.getByTestId("zoom-in");
+    const zoomOut = page.getByTestId("zoom-out");
+    const theme = page.getByTestId("theme-toggle-btn");
 
     for (let i = 0; i < 5; i += 1) {
       await runEffect(() => zoomIn.click());
       await runEffect(() => zoomOut.click());
     }
 
-    await runEffect(() => theme.selectOption({ label: "Light theme" }));
-    await runEffect(() => theme.selectOption({ label: "Dark theme" }));
-    await runEffect(() => theme.selectOption({ label: "System theme" }));
+    await runEffect(() => theme.click());
+    await expect(theme).toContainText("Light");
+    await runEffect(() => theme.click());
+    await expect(theme).toContainText("Dark");
+    await runEffect(() => theme.click());
+    await expect(theme).toContainText("White");
 
     await expect(canvas(page)).toBeVisible();
     await expectEdgeCount(page, 0);
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("survives keyboard shortcut fuzzing", async ({ page }) => {
+  test("survives keyboard shortcut fuzzing @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
@@ -101,13 +110,13 @@ test.describe("diagram editor hardening", () => {
       await runEffect(() => page.keyboard.press("-"));
     }
 
-    await expect(page.getByRole("button", { name: "Select", exact: true })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Pan", exact: true })).toBeVisible();
+    await expect(page.getByTestId("tool-select")).toBeVisible();
+    await expect(page.getByTestId("tool-pan")).toBeVisible();
     await expectSelectedCount(page, 0);
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("survives wheel and space-pan stress", async ({ page }) => {
+  test("survives wheel and space-pan stress @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
@@ -141,11 +150,11 @@ test.describe("diagram editor hardening", () => {
     ]);
 
     await expect(canvas(page)).toBeVisible();
-    await expect(page.getByRole("button", { name: "Validate" })).toBeVisible();
+    await expect(page.getByTestId("toolbar-validate")).toHaveCount(1);
     expect(pageErrors).toHaveLength(0);
   });
 
-  test("keeps pan controls responsive after stress", async ({ page }) => {
+  test("keeps pan controls responsive after stress @baseline", async ({ page }) => {
     const pageErrors = trapPageErrors(page);
     await freshStart(page);
 
@@ -163,7 +172,7 @@ test.describe("diagram editor hardening", () => {
     await runEffect(() => page.mouse.up());
     await runEffect(() => page.keyboard.up(" "));
 
-    await expect(page.getByRole("button", { name: "Pan", exact: true })).toBeVisible();
+    await expect(page.getByTestId("tool-pan")).toBeVisible();
     await expect(canvas(page)).toBeVisible();
     expect(pageErrors).toHaveLength(0);
   });
