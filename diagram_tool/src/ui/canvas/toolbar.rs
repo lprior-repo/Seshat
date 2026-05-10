@@ -66,10 +66,18 @@ pub fn Toolbar(
                 class: "absolute -translate-x-1/2 flex items-center gap-[6px] px-[8px] py-[6px] rounded-[8px] backdrop-blur-sm",
                 style: "left: {screen_x}px; top: {top}px; z-index: 25; border: 1px solid {BORDER}; background: {TOOLBAR_BG}f2;",
                 onmousedown: move |evt| evt.stop_propagation(),
+                onclick: move |evt| evt.stop_propagation(),
+                ondoubleclick: move |evt| evt.stop_propagation(),
 
                 button {
+                    "data-testid": "selection-font-decrease",
                     class: "border border-border rounded-md bg-[var(--bg-base)] text-foreground w-6 h-6 cursor-pointer flex items-center justify-center",
-                    onclick: move |_| {
+                    title: "Decrease font size",
+                    "aria-label": "Decrease selected font size",
+                    onmousedown: move |evt| evt.stop_propagation(),
+                    ondoubleclick: move |evt| evt.stop_propagation(),
+                    onclick: move |evt| {
+                        evt.stop_propagation();
                         let selected = doc_signal.read().editor_state.selected_items.clone();
                         let current = doc_signal.read().clone();
                         let history = history_signal.read().clone();
@@ -95,8 +103,14 @@ pub fn Toolbar(
                 }
                 span { class: "text-[11px] text-muted-foreground min-w-[26px] text-center", "{font_size.round()}" }
                 button {
+                    "data-testid": "selection-font-increase",
                     class: "border border-border rounded-md bg-[var(--bg-base)] text-foreground w-6 h-6 cursor-pointer flex items-center justify-center",
-                    onclick: move |_| {
+                    title: "Increase font size",
+                    "aria-label": "Increase selected font size",
+                    onmousedown: move |evt| evt.stop_propagation(),
+                    ondoubleclick: move |evt| evt.stop_propagation(),
+                    onclick: move |evt| {
+                        evt.stop_propagation();
                         let selected = doc_signal.read().editor_state.selected_items.clone();
                         let current = doc_signal.read().clone();
                         let history = history_signal.read().clone();

@@ -177,7 +177,7 @@ fn TextButton(props: TextButtonProps) -> Element {
     rsx! {
         button {
             "data-testid": props.test_id,
-            class: "w-9 h-9 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} p-0 outline-none mx-0.5 {fill} text-[18px] font-medium font-mono transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
+            class: "min-w-9 h-9 px-2 flex items-center justify-center rounded-md border {border} {bg} {cursor} {opacity} outline-none mx-0.5 {fill} text-[12px] font-medium transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-[var(--accent)] focus-visible:outline-offset-2",
             title: "{props.title}",
             "aria-label": "{props.title}",
             onclick: move |evt| {
@@ -258,7 +258,7 @@ fn PanelControls(
                 test_id: "panel-icons-toggle",
                 state: if icons_active { ButtonState::Active } else { ButtonState::Default },
                 onclick: move |_| crate::ui::mobile::toggle_sidebar(sidebar, panels),
-                text: "I",
+                text: "Icons",
                 title: "Toggle icons panel"
             }
             TextButton {
@@ -269,7 +269,7 @@ fn PanelControls(
                         visibility.minimap = !visibility.minimap;
                     });
                 },
-                text: "M",
+                text: "Mini",
                 title: "Toggle minimap"
             }
             TextButton {
@@ -280,7 +280,7 @@ fn PanelControls(
                         visibility.validation = !visibility.validation;
                     });
                 },
-                text: "V",
+                text: "Valid",
                 title: "Toggle validation panel"
             }
             TextButton {
@@ -291,7 +291,7 @@ fn PanelControls(
                         visibility.properties = !visibility.properties;
                     });
                 },
-                text: "P",
+                text: "Props",
                 title: "Toggle properties panel"
             }
             TextButton {
@@ -302,7 +302,7 @@ fn PanelControls(
                         *trigger = trigger.saturating_add(1);
                     });
                 },
-                text: "C",
+                text: "Check",
                 title: "Validate document"
             }
         }
@@ -397,6 +397,7 @@ pub fn Toolbar() -> Element {
                         onclick: move |_| {
                             let mut d = doc_signal.write();
                             d.editor_state.show_grid = !d.editor_state.show_grid;
+                            d.revision = d.revision.increment();
                         },
                         icon: IconKind::Grid,
                         variant: ButtonVariant::GridToggle { title: "Toggle Grid" }

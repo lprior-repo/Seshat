@@ -18,7 +18,7 @@ impl Default for PanelVisibility {
             sidebar: true,
             minimap: true,
             validation: false,
-            properties: true,
+            properties: false,
         }
     }
 }
@@ -33,6 +33,6 @@ mod tests {
         assert!(panels.sidebar);
         assert!(panels.minimap);
         assert!(!panels.validation);
-        assert!(panels.properties);
+        assert!(!panels.properties);
     }
 }

@@ -172,6 +172,35 @@ test("select mode node-edge drag moves the node instead of starting an arrow @ba
   expect(pageErrors).toHaveLength(0);
 });
 
+test("select mode double-click on a connection handle starts an arrow @baseline", async ({ page }) => {
+  const pageErrors = trapPageErrors(page);
+  await freshBasePathStart(page);
+
+  const loaded = await loadDocument(page, twoNodeDocument());
+  expect(loaded).toBe(true);
+  await waitForNoRebuildOverlay(page);
+  await expectNodeCount(page, 2);
+  await expectEdgeCount(page, 0);
+
+  const source = await nodeBox(page, "source");
+  const target = await nodeBox(page, "target");
+  await runEffect(() => source.node.click());
+  const rightHandle = page.locator('[data-testid="connection-dot"][data-side="right"]').first();
+  await expect(rightHandle).toBeVisible();
+  await runEffect(() => rightHandle.dblclick());
+
+  await expect(page.locator('line[marker-end="url(#arrow-pending)"]')).toHaveCount(1);
+  await page.mouse.move(target.box.x + 1, target.box.y + target.box.height / 2, {
+    steps: 8,
+  });
+  await page.mouse.up();
+
+  await expectNodeCount(page, 2);
+  await expectEdgeCount(page, 1);
+  await expectRenderedEdge(page, "M 340 244 L 460 244", "url(#arrowhead)");
+  expect(pageErrors).toHaveLength(0);
+});
+
 test("duplicate and self-edge releases do not create extra arrows @baseline", async ({ page }) => {
   const pageErrors = trapPageErrors(page);
   await freshBasePathStart(page);

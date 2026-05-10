@@ -39,9 +39,14 @@ pub fn RootContainer(state: CanvasState) -> Element {
         ""
     };
     let minimap_class = if minimap_visible {
-        "absolute right-4 bottom-4 w-28 h-20 pointer-events-none rounded border border-border bg-[var(--minimap-bg)] opacity-100"
+        "pointer-events-none rounded border border-border bg-[var(--minimap-bg)] opacity-100 shadow-lg"
     } else {
-        "absolute right-4 bottom-4 w-28 h-20 pointer-events-none opacity-0"
+        "pointer-events-none rounded border border-transparent opacity-0"
+    };
+    let minimap_style = if minimap_visible {
+        "position:absolute; right:16px; bottom:16px; width:112px; height:80px; z-index:12;"
+    } else {
+        "position:absolute; right:16px; bottom:16px; width:112px; height:80px; z-index:12;"
     };
     let cursor_style = if *state.space_pressed.read() {
         if *state.space_pan_active.read() {
@@ -235,7 +240,16 @@ pub fn RootContainer(state: CanvasState) -> Element {
                 "data-testid": "minimap-viewport",
                 class: "{minimap_class}",
                 "data-visible": "{minimap_visible}",
-                style: "z-index: 12;"
+                style: "{minimap_style}",
+                div {
+                    class: "absolute inset-2 rounded border border-[var(--border-subtle)] bg-[var(--bg-base)]/60"
+                }
+                div {
+                    class: "absolute left-4 top-4 h-2 w-8 rounded-full bg-[var(--accent)]/60"
+                }
+                div {
+                    class: "absolute right-4 bottom-4 h-5 w-7 rounded border border-[var(--accent)]/70 bg-[var(--accent)]/10"
+                }
             }
 
             Toolbar {

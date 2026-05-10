@@ -30,16 +30,6 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
     };
     let edge_tool_active = *props.tool_signal.read() == ToolMode::Edge;
     let broad_hit_zones_active = edge_tool_active || drawing_from_this_node;
-    let dot_pointer_events = if broad_hit_zones_active {
-        "auto"
-    } else {
-        "none"
-    };
-    let dot_cursor = if broad_hit_zones_active {
-        "crosshair"
-    } else {
-        "default"
-    };
     let show_connection_dots = !props.is_editing
         && (props.is_selected || props.is_hovered || edge_tool_active || drawing_from_this_node);
 
@@ -49,7 +39,12 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
 
     let cx = props.width / 2.0;
     let cy = props.height / 2.0;
-    let dot_specs = [(cx, 0.0), (cx, props.height), (0.0, cy), (props.width, cy)];
+    let dot_specs = [
+        ("top", cx, 0.0),
+        ("bottom", cx, props.height),
+        ("left", 0.0, cy),
+        ("right", props.width, cy),
+    ];
     let hit_zones = [
         (
             "top",
@@ -99,16 +94,31 @@ pub fn ConnectionDots(props: ConnectionDotsProps) -> Element {
                     onmousedown: {
                         let current_id = id.clone();
                         move |evt| start_edge_from_pointer(&evt, &current_id, canvas_origin, doc_signal, interaction_mode)
+                    },
+                    ondoubleclick: {
+                        let current_id = id.clone();
+                        move |evt| start_edge_from_pointer(&evt, &current_id, canvas_origin, doc_signal, interaction_mode)
                     }
                 }
             }
         }
-        for (dot_x, dot_y) in dot_specs {
+        for (side, dot_x, dot_y) in dot_specs {
             div {
-                key: "{dot_x}-{dot_y}",
-                style: "position: absolute; width: 20px; height: 20px; border-radius: 999px; background: transparent; cursor: {dot_cursor}; pointer-events: {dot_pointer_events}; left: {dot_x - 10.0}px; top: {dot_y - 10.0}px;",
+                key: "{side}",
+                style: "position: absolute; width: 20px; height: 20px; border-radius: 999px; background: transparent; cursor: crosshair; pointer-events: auto; left: {dot_x - 10.0}px; top: {dot_y - 10.0}px;",
                 "data-testid": "connection-dot",
+                "data-side": "{side}",
+                title: "Create connection",
+                "aria-label": "Create connection from {side} handle",
                 onmousedown: {
+                    let current_id = id.clone();
+                    move |evt| {
+                        if broad_hit_zones_active {
+                            start_edge_from_pointer(&evt, &current_id, canvas_origin, doc_signal, interaction_mode);
+                        }
+                    }
+                },
+                ondoubleclick: {
                     let current_id = id.clone();
                     move |evt| start_edge_from_pointer(&evt, &current_id, canvas_origin, doc_signal, interaction_mode)
                 },

@@ -73,7 +73,7 @@ mod tests {
             assert_eq!(state.edge_style.read().clone(), EdgeStyle::Solid);
             assert_eq!(state.arrow_type.read().clone(), ArrowType::Default);
             assert_eq!(state.sidebar.read().open, true);
-            assert!(state.panels.read().properties);
+            assert!(!state.panels.read().properties);
             assert_eq!(*state.canvas_reset_trigger.read(), 0);
             assert!(!state.session.read().is_dirty());
             assert!(state.session.read().file_path().is_none());

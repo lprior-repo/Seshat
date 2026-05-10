@@ -5,10 +5,91 @@ import {
   expectNodeCount,
   expectSelectedCount,
   freshStart,
+  loadDocument,
   runEffect,
   runEffectsSequential,
   trapPageErrors,
+  waitForNoRebuildOverlay,
 } from "./helpers";
+
+function threeNodeDocument(): Record<string, unknown> {
+  return {
+    version: 2,
+    revision: 1,
+    document: {
+      nodes: {
+        alpha: {
+          kind: "text",
+          icon: "",
+          label: "Alpha",
+          x: 180,
+          y: 180,
+          width: 120,
+          height: 48,
+          fontSize: null,
+          font_weight: null,
+          locked: false,
+          parent: null,
+          dag_rank: null,
+          tags: [],
+          metadata: {},
+          z_index: 0,
+          style: "box",
+          collapsed: null,
+        },
+        beta: {
+          kind: "text",
+          icon: "",
+          label: "Beta",
+          x: 360,
+          y: 180,
+          width: 120,
+          height: 48,
+          fontSize: null,
+          font_weight: null,
+          locked: false,
+          parent: null,
+          dag_rank: null,
+          tags: [],
+          metadata: {},
+          z_index: 0,
+          style: "box",
+          collapsed: null,
+        },
+        gamma: {
+          kind: "text",
+          icon: "",
+          label: "Gamma",
+          x: 540,
+          y: 180,
+          width: 120,
+          height: 48,
+          fontSize: null,
+          font_weight: null,
+          locked: false,
+          parent: null,
+          dag_rank: null,
+          tags: [],
+          metadata: {},
+          z_index: 0,
+          style: "box",
+          collapsed: null,
+        },
+      },
+      edges: {},
+    },
+    editor_state: {
+      camera_x: 0,
+      camera_y: 0,
+      zoom: 1,
+      snap_to_grid: true,
+      grid_size: 20,
+      selected_items: [],
+      show_grid: true,
+      minimap_visible: false,
+    },
+  };
+}
 
 test.describe("diagram editor hardening", () => {
   test.describe.configure({ mode: "parallel" });
@@ -19,8 +100,49 @@ test.describe("diagram editor hardening", () => {
 
     await expect(page.getByTestId("toolbar-validate")).toHaveCount(1);
     await expect(page.getByTestId("panel-props-toggle")).toHaveCount(1);
-    await expect(page.getByRole("heading", { name: "Properties" })).toBeVisible();
+    await expect(page.getByTestId("panel-icons-toggle")).toContainText("Icons");
+    await expect(page.getByTestId("panel-mini-toggle")).toContainText("Mini");
+    await expect(page.getByTestId("panel-valid-toggle")).toContainText("Valid");
+    await expect(page.getByTestId("panel-props-toggle")).toContainText("Props");
+    await expect(page.getByTestId("toolbar-validate")).toContainText("Check");
+    await expect(page.getByRole("heading", { name: "Properties" })).toHaveCount(0);
     await expectEdgeCount(page, 0);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test("selection font controls preserve multi-selection under repeated clicks @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await freshStart(page);
+    expect(await loadDocument(page, threeNodeDocument())).toBe(true);
+    await waitForNoRebuildOverlay(page);
+    await expectNodeCount(page, 3);
+
+    await page.keyboard.press("ControlOrMeta+A");
+    await expectSelectedCount(page, 3);
+    const increase = page.getByTestId("selection-font-increase");
+    await expect(increase).toHaveAttribute("aria-label", "Increase selected font size");
+    await runEffect(() => increase.dblclick());
+    await runEffect(() => increase.click());
+
+    await expectNodeCount(page, 3);
+    await expectSelectedCount(page, 3);
+    expect(pageErrors).toHaveLength(0);
+  });
+
+  test("grid and minimap toggles update the rendered canvas affordances @baseline", async ({ page }) => {
+    const pageErrors = trapPageErrors(page);
+    await freshStart(page);
+
+    const minimap = page.getByTestId("minimap-viewport");
+    await expect(minimap).toHaveAttribute("data-visible", "true");
+    await expect.poll(async () => (await minimap.boundingBox())?.width ?? 0).toBeGreaterThan(80);
+    await expect.poll(async () => (await minimap.boundingBox())?.height ?? 0).toBeGreaterThan(50);
+
+    await expect(page.locator("#canvas-grid-dot-pattern")).toHaveCount(1);
+    await page.getByTestId("tool-grid").click();
+    await expect(page.locator("#canvas-grid-dot-pattern")).toHaveCount(0);
+    await page.getByTestId("tool-grid").click();
+    await expect(page.locator("#canvas-grid-dot-pattern")).toHaveCount(1);
     expect(pageErrors).toHaveLength(0);
   });
 
@@ -41,7 +163,7 @@ test.describe("diagram editor hardening", () => {
     }
 
     await expect(page.getByText("Components")).toHaveCount(0);
-    await expect(page.getByRole("heading", { name: "Properties" })).toHaveCount(0);
+    await expect(page.getByRole("heading", { name: "Properties" })).toBeVisible();
     await expect(page.getByTestId("minimap-viewport")).toHaveAttribute("data-visible", "false");
     await expect(page.getByTestId("validation-status")).toHaveAttribute("data-visible", "true");
     await expect(canvas(page)).toBeVisible();
@@ -65,7 +187,7 @@ test.describe("diagram editor hardening", () => {
       await runEffect(() => props.click());
     }
 
-    await expect(page.getByRole("heading", { name: "Properties" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Properties" })).toHaveCount(0);
     await expect(page.getByTestId("validation-status")).toHaveAttribute("data-visible", "false");
     await expect(page.getByTestId("toolbar-validate")).toHaveCount(1);
     await expectNodeCount(page, 0);
